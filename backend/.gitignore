@@ -30,3 +30,5 @@ config.yaml
 
 dist/
 data/
+!frontend
+frontend/*
