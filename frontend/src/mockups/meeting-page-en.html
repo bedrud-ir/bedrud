@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" x-data="{ darkMode: false, spotlight: null }" :class="{ 'dark': darkMode }">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meet</title>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .video-container {
+            aspect-ratio: 16/9;
+        }
+    </style>
+</head>
+
+<body
+    class="transition-colors duration-200 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white h-screen flex flex-col">
+    <!-- Header -->
+    <header
+        class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex justify-between items-center">
+        <div class="flex items-center space-x-4">
+            <h1 class="text-xl font-medium">Meet</h1>
+            <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <span class="text-sm text-gray-500 dark:text-gray-400">10 participants</span>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button @click="darkMode = !darkMode"
+                class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <i data-lucide="sun" x-show="!darkMode" class="h-5 w-5"></i>
+                <i data-lucide="moon" x-show="darkMode" class="h-5 w-5"></i>
+            </button>
+            <button class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <i data-lucide="layout-grid" class="h-5 w-5"></i>
+            </button>
+            <button class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <i data-lucide="settings" class="h-5 w-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content - Video Grid -->
+    <main class="flex-1 p-4 overflow-auto" x-data="{ 
+        participants: [
+            { id: 1, name: 'You', isMuted: false, isVideoOff: false },
+            { id: 2, name: 'John Apple', isMuted: true, isVideoOff: false },
+            { id: 3, name: 'Sarah Johnson', isMuted: false, isVideoOff: false },
+            { id: 4, name: 'Miguel Santos', isMuted: true, isVideoOff: false },
+            { id: 5, name: 'Emma Davis', isMuted: false, isVideoOff: true },
+            { id: 6, name: 'Michael Chen', isMuted: true, isVideoOff: false },
+            { id: 7, name: 'Olivia Wilson', isMuted: false, isVideoOff: false },
+            { id: 8, name: 'James Lee', isMuted: true, isVideoOff: false },
+            { id: 9, name: 'Sofia Garcia', isMuted: false, isVideoOff: false },
+            { id: 10, name: 'Liam Taylor', isMuted: true, isVideoOff: true }
+        ] 
+    }">
+        <!-- Spotlight View -->
+        <div x-show="spotlight !== null" class="h-full flex justify-center items-center">
+            <div class="relative w-full max-w-5xl h-[75vh]">
+                <div class="absolute inset-0 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg">
+                    <div class="w-full h-full flex items-center justify-center">
+                        <template x-if="participants.find(p => p.id === spotlight).isVideoOff">
+                            <div class="flex flex-col items-center">
+                                <div
+                                    class="w-24 h-24 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center mb-3">
+                                    <span class="text-3xl font-medium"
+                                        x-text="participants.find(p => p.id === spotlight).name.charAt(0)"></span>
+                                </div>
+                                <span class="text-lg" x-text="participants.find(p => p.id === spotlight).name"></span>
+                            </div>
+                        </template>
+                        <template x-if="!participants.find(p => p.id === spotlight).isVideoOff">
+                            <img class="w-full h-full object-cover" src="https://picsum.photos/id/1020/800/600"
+                                alt="Video feed">
+                        </template>
+                    </div>
+                    <div
+                        class="absolute bottom-4 left-4 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-lg flex items-center">
+                        <span x-text="participants.find(p => p.id === spotlight).name" class="text-white"></span>
+                        <i data-lucide="mic-off" x-show="participants.find(p => p.id === spotlight).isMuted"
+                            class="ml-2 h-4 w-4 text-white"></i>
+                    </div>
+                    <button @click="spotlight = null"
+                        class="absolute top-4 right-4 bg-black/40 backdrop-blur-sm p-2 rounded-full text-white hover:bg-black/60">
+                        <i data-lucide="minimize-2" class="h-5 w-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid View -->
+        <div x-show="spotlight === null"
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr h-full">
+            <template x-for="participant in participants" :key="participant.id">
+                <div class="relative rounded-xl overflow-hidden shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-shadow video-container"
+                    :class="{ 'border-2 border-blue-500': participant.id === 1 }">
+                    <!-- Video or avatar placeholder -->
+                    <div class="absolute inset-0 flex items-center justify-center"
+                        :class="{ 'bg-gray-200 dark:bg-gray-700': participant.isVideoOff }">
+                        <template x-if="participant.isVideoOff">
+                            <div class="flex flex-col items-center">
+                                <div
+                                    class="w-16 h-16 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center mb-2">
+                                    <span class="text-xl font-medium" x-text="participant.name.charAt(0)"></span>
+                                </div>
+                                <span x-text="participant.name"></span>
+                            </div>
+                        </template>
+                        <template x-if="!participant.isVideoOff">
+                            <img class="w-full h-full object-cover"
+                                :src="`https://picsum.photos/id/${1010 + participant.id}/400/300`" alt="Video feed">
+                        </template>
+                    </div>
+
+                    <!-- Participant name and status -->
+                    <div
+                        class="absolute bottom-2 left-2 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center">
+                        <span x-text="participant.name" class="text-white text-sm"></span>
+                        <i data-lucide="mic-off" x-show="participant.isMuted" class="ml-1.5 h-3 w-3 text-white"></i>
+                    </div>
+
+                    <!-- Spotlight button -->
+                    <button @click="spotlight = participant.id"
+                        class="absolute top-2 right-2 bg-black/40 backdrop-blur-sm p-1.5 rounded-full text-white hover:bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i data-lucide="maximize-2" class="h-4 w-4"></i>
+                    </button>
+                </div>
+            </template>
+        </div>
+    </main>
+
+    <!-- Controls Bar -->
+    <footer
+        class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+        <div class="flex justify-between items-center">
+            <div class="flex-1 flex justify-start">
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                    12:45 PM • Meeting ID: 123-456-789
+                </div>
+            </div>
+
+            <div class="flex-1 flex justify-center space-x-2">
+                <button
+                    class="p-3 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
+                    <i data-lucide="mic" class="h-6 w-6"></i>
+                </button>
+                <button
+                    class="p-3 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
+                    <i data-lucide="video" class="h-6 w-6"></i>
+                </button>
+                <button
+                    class="p-3 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
+                    <i data-lucide="monitor" class="h-6 w-6"></i>
+                </button>
+                <button class="p-3 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors">
+                    <i data-lucide="phone-off" class="h-6 w-6"></i>
+                </button>
+                <button
+                    class="p-3 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
+                    <i data-lucide="more-vertical" class="h-6 w-6"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 flex justify-end space-x-2">
+                <button
+                    class="p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
+                    <i data-lucide="message-square" class="h-5 w-5"></i>
+                </button>
+                <button
+                    class="p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
+                    <i data-lucide="users" class="h-5 w-5"></i>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+
+</html>

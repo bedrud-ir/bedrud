@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bedrud_postgres
+    environment:
+      - POSTGRES_USER=test
+      - POSTGRES_PASSWORD=Testtest12345
+      - POSTGRES_DB=test
+    ports:
+      - "5444:5432"
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    networks:
+      - livekit-network
+      - database-network  # renamed from postgres-network
+
+  dbgate:
+    image: dbgate/dbgate:latest
+    container_name: bedrud_dbgate
+    restart: unless-stopped
+    environment:
+      DBGATE_CONNECTIONS: |
+        [
+          {
+            "engine": "postgres@dbgate-plugin-postgres",
+            "name": "Bedrud Database",
+            "server": "postgres",
+            "port": 5432,
+            "user": "test",
+            "password": "Testtest12345",
+            "database": "test"
+          }
+        ]
+      # Add these required environment variables
+      DBGATE_ADMIN_PASSWORD: admin123
+      DBGATE_PORT: 3000
+      DBGATE_PUBLIC_URL: http://localhost:3000
+      DBGATE_AUTH_DISABLED: "true"  # For development only, remove in production
+      DBGATE_ALLOW_ANONYMOUS: "true"  # For development only, remove in production
+    ports:
+      - "3000:3000"
+    volumes:
+      - dbgate_data:/root/.dbgate
+    depends_on:
+      - postgres
+    networks:
+      - database-network
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: bedrud_livekit
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    environment:
+      - REDIS_ADDRESS=redis:6379
+      - KEYS_TTL=48h
+      - PORT=7880
+      - BIND_INTERFACE=0.0.0.0
+      - KEY=devkey
+      - TURN_PORT=3478
+      - RTC_NODE_IP=127.0.0.1
+    depends_on:
+      - redis
+    volumes:
+      - ./config/livekit.yaml:/config.yaml
+    command: --config /config.yaml
+    networks:
+      - livekit-network
+
+  redis:
+    image: redis:6-alpine
+    container_name: bedrud_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - livekit-network
+
+volumes:
+  pgadmin_data:  # Add named volume definition
+    driver: local
+  dbgate_data:  # Add dbgate data volume
+    driver: local
+
+networks:
+  livekit-network:
+    driver: bridge
+  database-network:  # renamed from postgres-network
+    driver: bridge
