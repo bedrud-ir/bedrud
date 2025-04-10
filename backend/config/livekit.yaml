@@ -1,0 +1,26 @@
+port: 7880
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 60000
+  use_external_ip: true
+
+keys:
+  devkey: devsecret
+
+redis:
+  address: redis:6379
+  username: ""
+  password: ""
+
+room:
+  # allow rooms to be automatically created when participants join
+  auto_create: true
+  # number of seconds to keep the room open when nobody joins
+  empty_timeout: 60
+  # number of seconds to keep the room open after everyone leaves
+  departure_timeout: 60
+  # maximum number of participants in a room (0 for no limit)
+  max_participants: 20
+  # enable remote unmuting of tracks
+  enable_remote_unmute: true

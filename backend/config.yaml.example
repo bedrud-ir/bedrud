@@ -1,0 +1,44 @@
+server:
+  port: "8090"
+  host: "0.0.0.0"
+  readTimeout: 30
+  writeTimeout: 30
+
+database:
+  host: "localhost"
+  port: "5444"
+  user: "test"
+  password: "Testtest12345"
+  dbname: "test"
+  sslmode: "disable"
+  maxIdleConns: 10
+  maxOpenConns: 100
+  maxLifetime: 60
+
+logger:
+  level: "debug"
+  outputPath: "logs/app.log"
+
+livekit:
+  host: "http://localhost:7880"
+  apiKey: "devkey"
+  apiSecret: "devsecret"
+
+auth:
+  jwtSecret: "your-secret-key"
+  sessionSecret: "your-session-secret-key"
+  tokenDuration: 24
+  frontendURL: "http://localhost:8090"
+  google:
+    clientId: ""
+    clientSecret: ""
+    redirectUrl: "http://localhost:8090/auth/google/callback"
+  github:
+    clientId: "your-github-client-id"
+    clientSecret: "your-github-client-secret"
+    redirectUrl: "http://localhost:8090/auth/github/callback"
+  twitter:
+    clientId: "your-twitter-client-id"
+    clientSecret: "your-twitter-client-secret"
+    redirectUrl: "http://localhost:8090/auth/twitter/callback"
+
