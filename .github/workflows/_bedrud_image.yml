@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18' # Updated to Node.js 18.x
 
       # Set up Go for backend dependencies
       - name: Set up Go
