@@ -137,49 +137,19 @@ func main() {
 		MaxAge:           300,
 	}))
 
+	// Group all API routes under /api
+	api := app.Group("/api")
+
+	// Health check routes
+	api.Get("/health", healthCheck)
+	api.Get("/ready", readinessCheck)
+
 	// Swagger configuration
-	app.Get("/swagger/*", swagger.New(swagger.Config{
-		URL:          "/swagger/doc.json",
+	api.Get("/swagger/*", swagger.New(swagger.Config{
+		URL:          "/api/swagger/doc.json",
 		DeepLinking:  true,
 		DocExpansion: "list",
 	}))
-
-	// Health check routes
-	app.Get("/health", healthCheck)
-	app.Get("/ready", readinessCheck)
-
-	// Serve static files
-	app.Static("/static", "./static")
-
-	// Serve frontend application
-	app.Static("/", "./frontend")
-
-	// Serve SPA - handle routes for SPA by serving index.html for unmatched routes
-	app.Get("/*", func(c *fiber.Ctx) error {
-		// Exclude API routes
-		path := c.Path()
-		if strings.HasPrefix(path, "/api") ||
-			strings.HasPrefix(path, "/auth") ||
-			strings.HasPrefix(path, "/admin") ||
-			strings.HasPrefix(path, "/swagger") ||
-			strings.HasPrefix(path, "/create-room") ||
-			strings.HasPrefix(path, "/join-room") ||
-			strings.HasPrefix(path, "/health") ||
-			strings.HasPrefix(path, "/ready") ||
-			strings.HasPrefix(path, "/static") {
-			return c.Next()
-		}
-		return c.SendFile("./frontend/index.html")
-	})
-
-	// Serve templates
-	app.Get("/login", func(c *fiber.Ctx) error {
-		return c.SendFile("./internal/templates/login.html")
-	})
-
-	// API routes
-	// api := app.Group("/api")
-	// api.Get("/user", handlers.AuthMiddleware, handlers.GetUserInfo)
 
 	// Auth routes with handlers
 	userRepo := repository.NewUserRepository(database.GetDB())
@@ -187,15 +157,15 @@ func main() {
 	authHandler := handlers.NewAuthHandler(authService, cfg)
 
 	// Register auth routes
-	app.Post("/auth/register", authHandler.Register)
-	app.Post("/auth/login", authHandler.Login)
-	app.Post("/auth/refresh", authHandler.RefreshToken)
-	app.Post("/auth/logout", middleware.Protected(), authHandler.Logout)
-	app.Get("/auth/me", middleware.Protected(), authHandler.GetMe)
+	api.Post("/auth/register", authHandler.Register)
+	api.Post("/auth/login", authHandler.Login)
+	api.Post("/auth/refresh", authHandler.RefreshToken)
+	api.Post("/auth/logout", middleware.Protected(), authHandler.Logout)
+	api.Get("/auth/me", middleware.Protected(), authHandler.GetMe)
 
-	// Social auth routes (existing)
-	app.Get("/auth/:provider/login", handlers.BeginAuthHandler)
-	app.Get("/auth/:provider/callback", handlers.CallbackHandler)
+	// Social auth routes
+	api.Get("/auth/:provider/login", handlers.BeginAuthHandler)
+	api.Get("/auth/:provider/callback", handlers.CallbackHandler)
 
 	// Initialize repositories
 	roomRepo := repository.NewRoomRepository(database.GetDB())
@@ -209,25 +179,45 @@ func main() {
 	)
 
 	// Room routes
-	app.Post("/create-room", middleware.Protected(), roomHandler.CreateRoom)
-	app.Post("/join-room", middleware.Protected(), roomHandler.JoinRoom)
+	api.Post("/room/create", middleware.Protected(), roomHandler.CreateRoom)
+	api.Post("/room/join", middleware.Protected(), roomHandler.JoinRoom)
 
 	// Initialize handlers
 	usersHandler := handlers.NewUsersHandler(userRepo)
 
 	// Admin routes
-	adminGroup := app.Group("/admin",
+	adminGroup := api.Group("/admin",
 		middleware.Protected(),
 		middleware.RequireAccess("superadmin"),
 	)
 
-	// Add these new routes
+	// Admin user routes
 	adminGroup.Get("/users", usersHandler.ListUsers)
 	adminGroup.Put("/users/:id/status", usersHandler.UpdateUserStatus)
 
-	// ...existing admin routes...
+	// Admin room routes
 	adminGroup.Get("/rooms", roomHandler.AdminListRooms)
 	adminGroup.Post("/rooms/:roomId/token", roomHandler.AdminGenerateToken)
+
+	// Serve static files
+	app.Static("/static", "./static")
+
+	// Serve frontend application
+	app.Static("/", "./frontend")
+
+	// For backward compatibility - these will be removed later
+	app.Get("/health", func(c *fiber.Ctx) error { return c.Redirect("/api/health") })
+	app.Get("/ready", func(c *fiber.Ctx) error { return c.Redirect("/api/ready") })
+
+	// Serve SPA - handle routes for SPA by serving index.html for all non-API routes
+	app.Get("*", func(c *fiber.Ctx) error {
+		// Skip if path starts with /api or /static
+		path := c.Path()
+		if strings.HasPrefix(path, "/api") || strings.HasPrefix(path, "/static") {
+			return c.Next()
+		}
+		return c.SendFile("./frontend/index.html")
+	})
 
 	// Start server in a goroutine
 	serverAddr := cfg.Server.Host + ":" + cfg.Server.Port
