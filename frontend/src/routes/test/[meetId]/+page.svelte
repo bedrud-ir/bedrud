@@ -1,3 +1,8 @@
+<script context="module" lang="ts">
+    export const prerender = true;
+    export const ssr = false;
+</script>
+
 <script lang="ts">
     import { userStore } from "$lib/stores/user.store";
     import { onMount, onDestroy } from "svelte";

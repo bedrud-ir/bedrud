@@ -2,6 +2,7 @@
     import { onMount, onDestroy } from "svelte";
     import { goto } from "$app/navigation";
     import { userStore } from "$lib/stores/user.store";
+    import { page } from "$app/stores";
     import {
         createRoom,
         connectToRoom,
@@ -33,7 +34,8 @@
 
     let meetingState = $state("INIT"); // INIT, CONNECTING, CONNECTED, DISCONNECTED, ERROR
     let error = $state(null);
-    let unsubscribe: (() => void)[];
+    let unsubscribe: (() => void)[] = [];
+    let isLoading = $state(true);
 
     let room: Room | undefined;
 
@@ -48,13 +50,28 @@
     let videoStream: MediaStream | null = null;
     let audioStream: MediaStream | null = null;
 
+    // Fetch meeting data directly in the component
+    async function fetchMeetingData() {
+        try {
+            const meetId = $page.params.meetId;
+            const response = await joinRoomAPI({ roomName: meetId });
+            meetingData = response;
+            return response;
+        } catch (e) {
+            console.error("Failed to join room:", e);
+            error = e.message || "Failed to join meeting";
+            isLoading = false;
+            return null;
+        }
+    }
+
     async function setupRoom() {
         try {
-            if (!data.meetingData) {
+            if (!meetingData) {
                 throw new Error("No meeting data available");
             }
 
-            console.log("Setting up room with token:", data.meetingData.token);
+            console.log("Setting up room with token:", meetingData.token);
             room = createRoom();
 
             // Setup event listeners
@@ -77,9 +94,8 @@
                 .on(RoomEvent.Disconnected, handleDisconnect);
 
             // Connect using the meeting data that contains the LiveKit token
-            await connectToRoom(room, data.meetingData);
+            await connectToRoom(room, meetingData);
             console.log("Room connected:", room.state);
-            meetingData = data.meetingData;
 
             isLoading = false;
 
@@ -141,13 +157,31 @@
         }
     }
 
-    // Start room setup when we have the token
-    $effect(() => {
-        if (data.meetingData?.token) {
+    // Start room setup when component is mounted
+    onMount(async () => {
+        // first we need to get the user's token. if no token => login
+        // then get the join token => join room
+        // then setup the room
+        // then connect to the room
+
+        const data = await fetchMeetingData();
+
+        if (data?.token) {
             setTimeout(() => {
                 setupRoom();
             }, 1000);
         }
+
+        unsubscribe.push(
+            userStore.subscribe((value) => {
+                if (room?.localParticipant) {
+                    room.localParticipant.identity = value.name;
+                }
+            }),
+        );
+        // Debug log to check the token
+        console.log("Meeting data:", meetingData);
+        console.log("Token available:", meetingData?.token);
     });
 
     $effect(() => {
@@ -240,25 +274,6 @@
         }
         goto("/");
     }
-
-    onMount(() => {
-        // first we need to get the user's token. if no token => login
-        
-        // then get the join token => join room
-        // then setup the room
-        // then connect to the room
-
-        unsubscribe.push(
-            userStore.subscribe((value) => {
-                if (room?.localParticipant) {
-                    room.localParticipant.identity = value.name;
-                }
-            }),
-        );
-        // Debug log to check the token
-        console.log("Meeting data:", data.meetingData);
-        console.log("Token available:", data.meetingData?.token);
-    });
 
     onDestroy(() => {
         if (room) room.disconnect();

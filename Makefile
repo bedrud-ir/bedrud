@@ -23,9 +23,12 @@ build-back:
 
 # Build both frontend and backend
 build: build-front
-	# Copy frontend dist to backend
-	mkdir -p backend/static
-	cp -r frontend/dist/* backend/static/
+	# Clean backend frontend directory
+	rm -rf backend/frontend
+	# Create backend/frontend directory
+	mkdir -p backend/frontend
+	# Copy frontend build to backend
+	cp -r frontend/build/* backend/frontend/
 	$(MAKE) build-back
 
 # Run both frontend and backend concurrently
