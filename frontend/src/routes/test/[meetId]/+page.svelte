@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
     export const prerender = true;
     export const ssr = false;
 </script>

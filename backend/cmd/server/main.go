@@ -4,6 +4,7 @@ import (
 	"bedrud-backend/config"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -150,10 +151,28 @@ func main() {
 	// Serve static files
 	app.Static("/static", "./static")
 
+	// Serve frontend application
+	app.Static("/", "./frontend")
+
+	// Serve SPA - handle routes for SPA by serving index.html for unmatched routes
+	app.Get("/*", func(c *fiber.Ctx) error {
+		// Exclude API routes
+		path := c.Path()
+		if strings.HasPrefix(path, "/api") ||
+			strings.HasPrefix(path, "/auth") ||
+			strings.HasPrefix(path, "/admin") ||
+			strings.HasPrefix(path, "/swagger") ||
+			strings.HasPrefix(path, "/create-room") ||
+			strings.HasPrefix(path, "/join-room") ||
+			strings.HasPrefix(path, "/health") ||
+			strings.HasPrefix(path, "/ready") ||
+			strings.HasPrefix(path, "/static") {
+			return c.Next()
+		}
+		return c.SendFile("./frontend/index.html")
+	})
+
 	// Serve templates
-	// app.Get("/", handlers.AuthMiddleware, func(c *fiber.Ctx) error {
-	// 	return c.SendFile("./internal/templates/index.html")
-	// })
 	app.Get("/login", func(c *fiber.Ctx) error {
 		return c.SendFile("./internal/templates/login.html")
 	})
