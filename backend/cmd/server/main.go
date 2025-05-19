@@ -131,12 +131,12 @@ func main() {
 	// ===============================
 	app.Use(recover.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173",
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
-		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
-		AllowCredentials: true,
-		ExposeHeaders:    "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Cache-Control, Content-Language, Content-Type",
-		MaxAge:           300,
+		AllowOrigins:     cfg.Cors.AllowedOrigins,
+		AllowHeaders:     cfg.Cors.AllowedHeaders,
+		AllowMethods:     cfg.Cors.AllowedMethods,
+		AllowCredentials: cfg.Cors.AllowCredentials,
+		ExposeHeaders:    cfg.Cors.ExposeHeaders,
+		MaxAge:           cfg.Cors.MaxAge,
 	}))
 
 	// ===============================
