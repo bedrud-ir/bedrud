@@ -6,6 +6,7 @@
     import { onMount } from "svelte";
     import { userStore } from "$lib/stores/user.store";
     import { authStore } from "$lib/stores/auth.store";
+    import { fetchAndUpdateCurrentUser } from "$lib/auth";
 
     // Dark mode toggle
     let darkMode = $state(false);
@@ -25,7 +26,20 @@
         },
     );
 
-    onMount(() => {
+    onMount(async () => {
+        // Attempt to fetch and update current user data
+        // This ensures the user information is up-to-date if they had a session.
+        if ($userStore) {
+            // Only fetch if there's a user in the store, implying a session might exist
+            try {
+                await fetchAndUpdateCurrentUser();
+            } catch (error) {
+                console.error("Error fetching user data on page load:", error);
+                // If fetching fails (e.g., token expired and refresh failed),
+                // the user and auth stores would have been cleared by the auth logic.
+            }
+        }
+
         setTimeout(() => {
             wiggleAnimation = false;
             // Add a small delay before starting the spring animation
@@ -122,9 +136,20 @@
                     {/if}
                 </Button>
                 {#if $userStore}
+                    {#if $userStore.avatarUrl}
+                        <img
+                            src={$userStore.avatarUrl}
+                            alt="User avatar"
+                            class="h-8 w-8 rounded-full"
+                        />
+                    {/if}
                     <Button variant="outline" onclick={logout}>Logout</Button>
+                    <Button variant="default" href="/dashboard"
+                        >Dashboard</Button
+                    >
                 {:else}
-                    <Button variant="outline" href="/auth/login">Sign in</Button>
+                    <Button variant="outline" href="/auth/login">Sign in</Button
+                    >
                     <Button href="/auth/register">Register</Button>
                 {/if}
             </div>
