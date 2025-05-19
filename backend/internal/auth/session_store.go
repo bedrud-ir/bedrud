@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth/gothic"
+	"github.com/rs/zerolog/log" // Added for logging
 )
 
 // InitializeSessionStore sets up the gothic session store
@@ -17,8 +18,10 @@ func InitializeSessionStore(secret string) {
 		MaxAge:   86400 * 30,
 		HttpOnly: true,
 		Secure:   false, // Set to true in production with HTTPS
+		// SameSite: http.SameSiteLaxMode, // Consider SameSite policy
 	}
 	gothic.Store = store
+	log.Debug().Msg("Gothic session store initialized with NewCookieStore from session_store.go")
 }
 
 // SetProviderToSession adds the provider to the gothic session

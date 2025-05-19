@@ -413,33 +413,6 @@ paths:
       summary: Update user status
       tags:
       - admin
-  /auth/{provider}:
-    get:
-      description: Initiates the OAuth authentication process with the specified provider
-      parameters:
-      - description: Authentication provider (google, github, twitter)
-        in: path
-        name: provider
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "302":
-          description: Redirect to provider's auth page
-          schema:
-            type: string
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Begin OAuth authentication
-      tags:
-      - auth
   /auth/{provider}/callback:
     get:
       description: Handles the OAuth callback from the authentication provider
@@ -465,6 +438,33 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: OAuth callback
+      tags:
+      - auth
+  /auth/{provider}/login:
+    get:
+      description: Initiates the OAuth authentication process with the specified provider
+      parameters:
+      - description: Authentication provider (google, github, twitter)
+        in: path
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to provider's auth page
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Begin OAuth authentication
       tags:
       - auth
   /auth/login:

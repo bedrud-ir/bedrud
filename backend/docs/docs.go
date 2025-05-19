@@ -462,47 +462,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/{provider}": {
-            "get": {
-                "description": "Initiates the OAuth authentication process with the specified provider",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Begin OAuth authentication",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Authentication provider (google, github, twitter)",
-                        "name": "provider",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "302": {
-                        "description": "Redirect to provider's auth page",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/auth/{provider}/callback": {
             "get": {
                 "description": "Handles the OAuth callback from the authentication provider",
@@ -527,6 +486,47 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handlers.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/{provider}/login": {
+            "get": {
+                "description": "Initiates the OAuth authentication process with the specified provider",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Begin OAuth authentication",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authentication provider (google, github, twitter)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to provider's auth page",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     "400": {

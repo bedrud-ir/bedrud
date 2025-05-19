@@ -48,7 +48,7 @@
     }
 
     async function handleGoogleLogin() {
-        window.location.href = `${import.meta.env.VITE_BACKEND_API}/auth/google`;
+        window.location.href = `${import.meta.env.VITE_BACKEND_API}/auth/google/login`;
     }
 </script>
 
@@ -136,7 +136,8 @@
                             checked={remember}
                             onCheckedChange={(checked) => (remember = checked)}
                         />
-                        <Label for="remember" class="text-xs">Remember me</Label>
+                        <Label for="remember" class="text-xs">Remember me</Label
+                        >
                     </div>
                     <a
                         href="/auth/reset-password"
