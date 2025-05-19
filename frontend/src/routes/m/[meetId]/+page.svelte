@@ -34,10 +34,10 @@
 
     let meetingState = $state("INIT"); // INIT, CONNECTING, CONNECTED, DISCONNECTED, ERROR
     let error = $state(null);
-    let unsubscribe: (() => void)[] = [];
+    let unsubscribe: (() => void)[] = $state([]);
     let isLoading = $state(true);
 
-    let room: Room | undefined;
+    let room: Room | undefined = $state(undefined);
 
     let audioEnabled = $state(true);
     let videoEnabled = $state(true);
@@ -51,7 +51,7 @@
     let audioStream: MediaStream | null = $state(null);
 
     // Fetch meeting data directly in the component
-    async function fetchMeetingData() {
+    async function fetchMeetingData(): Promise<any> {
         try {
             const meetId = $page.params.meetId;
             const response = await joinRoomAPI({ roomName: meetId });
@@ -113,7 +113,7 @@
 
         const data = await fetchMeetingData();
 
-        console.log("=>", data?.token);
+        console.log("=>", data);
         // Assuming data includes both url and token
         if (data?.livekitHost && data?.token) {
             setupRoom(data.livekitHost, data.token);
@@ -236,7 +236,7 @@
         if (room) {
             await room.disconnect();
         }
-        goto("/");
+        goto("/dashboard");
     }
 
     onDestroy(() => {

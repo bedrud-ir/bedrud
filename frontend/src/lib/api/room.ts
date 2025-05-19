@@ -12,7 +12,7 @@ export type CreateRoomResponse = Room;
 export function createRoomAPI(
   data: CreateRoomRequest,
 ): Promise<CreateRoomResponse> {
-  return authFetch(`${baseURL}/create-room`, {
+  return authFetch(`${baseURL}/room/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
