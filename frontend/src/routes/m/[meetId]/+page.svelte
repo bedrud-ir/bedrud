@@ -30,7 +30,7 @@
         LogOut,
         Loader2,
     } from "lucide-svelte";
-    import { joinRoomAPI } from "$lib/api";
+    import { joinRoomAPI } from "$lib/api/room";
 
     let meetingState = $state("INIT"); // INIT, CONNECTING, CONNECTED, DISCONNECTED, ERROR
     let error = $state(null);
@@ -41,14 +41,14 @@
 
     let audioEnabled = $state(true);
     let videoEnabled = $state(true);
-    let meetingData = $state(null);
+    let meetingData: any = $state(null);
     let participants = $state<Participant[]>([]);
-    let myVideoEl: HTMLVideoElement;
-    let myAudioEl: HTMLAudioElement;
+    let myVideoEl: HTMLVideoElement | null = $state(null);
+    let myAudioEl: HTMLAudioElement | null = $state(null);
 
     // Remove track variables as we'll handle directly with elements
-    let videoStream: MediaStream | null = null;
-    let audioStream: MediaStream | null = null;
+    let videoStream: MediaStream | null = $state(null);
+    let audioStream: MediaStream | null = $state(null);
 
     // Fetch meeting data directly in the component
     async function fetchMeetingData() {
@@ -57,7 +57,7 @@
             const response = await joinRoomAPI({ roomName: meetId });
             meetingData = response;
             return response;
-        } catch (e) {
+        } catch (e: any) {
             console.error("Failed to join room:", e);
             error = e.message || "Failed to join meeting";
             isLoading = false;
@@ -166,6 +166,7 @@
 
         const data = await fetchMeetingData();
 
+        console.log("=>", data?.token);
         if (data?.token) {
             setTimeout(() => {
                 setupRoom();

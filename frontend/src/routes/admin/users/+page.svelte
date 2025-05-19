@@ -6,10 +6,10 @@
     import { Button } from "$lib/components/ui/button";
     import Search from "lucide-svelte/icons/search";
     import Plus from "lucide-svelte/icons/plus";
-    import type { AdminUser } from "$lib/api";
-    import { listUsersAPI, updateUserStatusAPI } from "$lib/api";
+    import type { AdminUser } from "$lib/models/users";
+    import { listUsersAPI, updateUserStatusAPI } from "$lib/api/admin";
 
-    let searchQuery = "";
+    let searchQuery = $state("");
     let users = $state<AdminUser[]>([]);
     let isLoading = $state(true);
     let error = $state<string | null>(null);
@@ -23,9 +23,9 @@
             error = null;
             const response = await listUsersAPI();
             users = response.users;
-        } catch (e) {
-            error = e.message || 'Failed to load users';
-            console.error('Load error:', e);
+        } catch (e: any) {
+            error = e.message || "Failed to load users";
+            console.error("Load error:", e);
             users = [];
         } finally {
             isLoading = false;
@@ -35,12 +35,12 @@
     async function toggleUserStatus(userId: string, currentStatus: boolean) {
         try {
             statusUpdateLoading = userId;
-            await updateUserStatusAPI(userId, !currentStatus);
+            await updateUserStatusAPI(userId, { active: !currentStatus });
             // Reload users to get updated data
             await loadUsers();
-        } catch (e) {
-            error = e.message || 'Failed to update user status';
-            console.error('Status update error:', e);
+        } catch (e: any) {
+            error = e.message || "Failed to update user status";
+            console.error("Status update error:", e);
         } finally {
             statusUpdateLoading = null;
         }
@@ -70,7 +70,9 @@
         </div>
         <div class="flex items-center gap-2">
             <div class="relative">
-                <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search
+                    class="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500"
+                />
                 <Input
                     bind:value={searchQuery}
                     placeholder="Search users..."
@@ -90,33 +92,58 @@
             {error}
         </div>
     {/if}
-    
+
     {#if isLoading}
         <div class="flex justify-center p-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <div
+                class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"
+            ></div>
         </div>
     {:else}
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             {#if users.length === 0}
-                <div class="p-8 text-center text-gray-500">
-                    No users found
-                </div>
+                <div class="p-8 text-center text-gray-500">No users found</div>
             {:else}
                 <table class="w-full">
                     <thead>
-                        <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                            <th class="h-12 px-4 text-left align-middle font-medium">Name</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium">Email</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium">Provider</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium">Role</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium">Status</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium">Created</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium">Actions</th>
+                        <tr
+                            class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                        >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Name</th
+                            >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Email</th
+                            >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Provider</th
+                            >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Role</th
+                            >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Status</th
+                            >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Created</th
+                            >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Actions</th
+                            >
                         </tr>
                     </thead>
                     <tbody>
                         {#each users as user (user.id)}
-                            <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                            <tr
+                                class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                            >
                                 <td class="p-4">{user.name}</td>
                                 <td class="p-4">{user.email}</td>
                                 <td class="p-4">{user.provider}</td>
@@ -124,7 +151,9 @@
                                     {#if user.accesses}
                                         <div class="flex gap-1">
                                             {#each user.accesses as access}
-                                                <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20">
+                                                <span
+                                                    class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20"
+                                                >
                                                     {access}
                                                 </span>
                                             {/each}
@@ -140,19 +169,31 @@
                                         class:bg-red-50={!user.isActive}
                                         class:text-red-700={!user.isActive}
                                         class:ring-red-600={!user.isActive}
-                                        class:opacity-50={statusUpdateLoading === user.id}
-                                        disabled={statusUpdateLoading === user.id}
-                                        onclick={() => toggleUserStatus(user.id, user.isActive)}
+                                        class:opacity-50={statusUpdateLoading ===
+                                            user.id}
+                                        disabled={statusUpdateLoading ===
+                                            user.id}
+                                        onclick={() =>
+                                            toggleUserStatus(
+                                                user.id,
+                                                user.isActive,
+                                            )}
                                     >
                                         {#if statusUpdateLoading === user.id}
-                                            <span class="inline-block animate-spin mr-1">⟳</span>
+                                            <span
+                                                class="inline-block animate-spin mr-1"
+                                                >⟳</span
+                                            >
                                         {/if}
-                                        {user.isActive ? 'Active' : 'Inactive'}
+                                        {user.isActive ? "Active" : "Inactive"}
                                     </button>
                                 </td>
-                                <td class="p-4">{formatDate(user.createdAt)}</td>
+                                <td class="p-4">{formatDate(user.createdAt)}</td
+                                >
                                 <td class="p-4">
-                                    <Button variant="ghost" size="sm">Edit</Button>
+                                    <Button variant="ghost" size="sm"
+                                        >Edit</Button
+                                    >
                                 </td>
                             </tr>
                         {/each}
