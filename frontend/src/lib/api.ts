@@ -1,8 +1,8 @@
-import { getToken } from './auth';
-import { userStore } from './stores/user.store';
+import { getToken } from "./auth";
+import { userStore } from "./stores/user.store";
 
 export const baseURL = import.meta.env.VITE_BACKEND_API;
-
+console.log(baseURL);
 interface LoginResponse {
   tokens: {
     accessToken: string;
@@ -76,8 +76,7 @@ interface UpdateUserStatusResponse {
   message: string;
 }
 
-export async function authFetch(url, options = {
-}) {
+export async function authFetch(url, options = {}) {
   let token;
   try {
     token = await getToken();
@@ -98,8 +97,8 @@ export async function authFetch(url, options = {
     ...options,
     headers: {
       ...options?.headers,
-      "Authorization": `Bearer ${token?.accessToken ?? ""}`
-    }
+      Authorization: `Bearer ${token?.accessToken ?? ""}`,
+    },
   });
 
   if (!response.ok) {
@@ -113,15 +112,17 @@ export async function authFetch(url, options = {
   return response;
 }
 
-
 // ----------------- Authentication API -----------------
-export function loginAPI(email: string, password: string): Promise<LoginResponse> {
+export function loginAPI(
+  email: string,
+  password: string,
+): Promise<LoginResponse> {
   return fetch(`${baseURL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  }).then(res => {
-    if (!res.ok) throw new Error('Login failed');
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  }).then((res) => {
+    if (!res.ok) throw new Error("Login failed");
     return res.json();
   });
 }
@@ -132,33 +133,35 @@ export function registerAPI(data: {
   name: string;
 }): Promise<RegisterResponse> {
   return fetch(`${baseURL}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  }).then(async res => {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  }).then(async (res) => {
     if (!res.ok) {
       // Parse the error response to get the specific error message
       const errorData = await res.json();
-      throw new Error(errorData.error || 'Registration failed');
+      throw new Error(errorData.error || "Registration failed");
     }
     return res.json();
   });
 }
 
-export function oAuthLoginAPI(provider: 'google' | 'github' | 'twitter') {
+export function oAuthLoginAPI(provider: "google" | "github" | "twitter") {
   return fetch(`${baseURL}/auth/${provider}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' }
-  }).then(res => res.json());
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  }).then((res) => res.json());
 }
 
-export function authRefresh(refreshToken: string): Promise<RefreshTokenResponse> {
+export function authRefresh(
+  refreshToken: string,
+): Promise<RefreshTokenResponse> {
   return fetch(`${baseURL}/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: refreshToken })
-  }).then(res => {
-    if (!res.ok) throw new Error('Token refresh failed');
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  }).then((res) => {
+    if (!res.ok) throw new Error("Token refresh failed");
     return res.json();
   });
 }
@@ -169,9 +172,9 @@ export function createRoomAPI(data: {
   maxParticipants?: number;
 }) {
   return authFetch(`${baseURL}/create-room`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 }
 
@@ -188,29 +191,35 @@ export interface JoinRoomResponse {
 }
 
 export function joinRoomAPI(data: {
-  roomName: string;  // Changed from roomId to roomName
+  roomName: string; // Changed from roomId to roomName
 }): Promise<JoinRoomResponse> {
   return authFetch(`${baseURL}/join-room`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 }
 
 // ----------------- Admin Room Management API -----------------
 export function listAllRoomsAPI(skip = 0, limit = 20) {
-  const params = new URLSearchParams({ skip: skip.toString(), limit: limit.toString() });
+  const params = new URLSearchParams({
+    skip: skip.toString(),
+    limit: limit.toString(),
+  });
   return authFetch(`${baseURL}/admin/rooms?${params}`);
 }
 
-export function generateRoomTokenAPI(roomId: string, data: {
-  userId: string;
-  duration?: number; // duration in minutes
-}) {
+export function generateRoomTokenAPI(
+  roomId: string,
+  data: {
+    userId: string;
+    duration?: number; // duration in minutes
+  },
+) {
   return authFetch(`${baseURL}/admin/rooms/${roomId}/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 }
 
@@ -220,9 +229,9 @@ export function getRoomsAPI() {
 
 export function updateRoomAPI(roomId: string, data: Partial<Room>) {
   return authFetch(`${baseURL}/admin/rooms/${roomId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 }
 
@@ -232,9 +241,12 @@ export function listUsersAPI() {
 }
 
 export function updateUserStatusAPI(userId: string, active: boolean) {
-  return authFetch<UpdateUserStatusResponse>(`${baseURL}/admin/users/${userId}/status`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ active })
-  });
+  return authFetch<UpdateUserStatusResponse>(
+    `${baseURL}/admin/users/${userId}/status`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active }),
+    },
+  );
 }
