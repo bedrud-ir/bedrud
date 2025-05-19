@@ -41,6 +41,9 @@
     let localVideoContainer: HTMLDivElement;
     let logs = $state<string[]>([]);
 
+    // Store for pending track attachments - solves race condition
+    let pendingTrackAttachments = $state(new Map());
+
     const log = (m: string) => logs.push(`[room] ${m}`);
 
     // Function to connect to LiveKit room
@@ -118,16 +121,58 @@
         goto("/dashboard");
     }
 
+    // Process any pending track attachments for a participant
+    function processPendingTracks(participantIdentity, container) {
+        if (pendingTrackAttachments.has(participantIdentity)) {
+            const tracks = pendingTrackAttachments.get(participantIdentity);
+            log(
+                `Processing ${tracks.length} pending tracks for ${participantIdentity}`,
+            );
+
+            if (tracks && tracks.length > 0) {
+                // Clear container before adding new elements
+                container.innerHTML = "";
+
+                // Attach all pending tracks
+                tracks.forEach((track) => {
+                    const element = track.attach();
+                    if (element instanceof HTMLVideoElement) {
+                        element.autoplay = true;
+                        element.playsInline = true;
+                        // Only mute video tracks, not audio
+                        if (track.kind === Track.Kind.Video) {
+                            element.muted = true;
+                        }
+                        element.style.width = "100%";
+                        element.style.height = "100%";
+                        element.style.objectFit = "cover";
+                    } else if (element instanceof HTMLAudioElement) {
+                        element.autoplay = true;
+                        element.muted = false;
+                    }
+                    container.appendChild(element);
+                });
+
+                // Remove from pending map after processing
+                pendingTrackAttachments.delete(participantIdentity);
+            }
+        }
+    }
+
     function setupEventListeners() {
         if (!room) return;
 
-        room.on(RoomEvent.ParticipantConnected, () => {
-            console.log("Participant connected");
+        room.on(RoomEvent.ParticipantConnected, (participant) => {
+            console.log("Participant connected:", participant.identity);
             updateParticipantsList();
         });
 
-        room.on(RoomEvent.ParticipantDisconnected, () => {
-            console.log("Participant disconnected");
+        room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+            console.log("Participant disconnected:", participant.identity);
+            // Clear any pending tracks for this participant
+            if (pendingTrackAttachments.has(participant.identity)) {
+                pendingTrackAttachments.delete(participant.identity);
+            }
             updateParticipantsList();
         });
 
@@ -138,23 +183,22 @@
                 publication: RemoteTrackPublication,
                 participant: RemoteParticipant,
             ) => {
-                console.log(
-                    "Track subscribed:",
-                    track.kind,
-                    "from",
-                    participant.identity,
+                log(
+                    `Track subscribed: ${track.kind} from ${participant.identity}`,
                 );
-                // Find the participant in our list to use its container reference
+
+                // Find if we already have a container for this participant
                 const existingParticipant = participants.find(
                     (p) => p.identity === participant.identity,
                 );
+
                 if (existingParticipant && existingParticipant.container) {
-                    // Directly use the container reference
+                    // Container exists, attach track immediately
                     const element = track.attach();
                     if (element instanceof HTMLVideoElement) {
                         element.autoplay = true;
                         element.playsInline = true;
-                        // Important: Don't mute audio tracks!
+                        // Only mute video tracks, not audio
                         if (track.kind === Track.Kind.Video) {
                             element.muted = true;
                         }
@@ -162,13 +206,27 @@
                         element.style.height = "100%";
                         element.style.objectFit = "cover";
                     } else if (element instanceof HTMLAudioElement) {
-                        // Ensure audio elements are not muted
                         element.autoplay = true;
                         element.muted = false;
                     }
 
-                    existingParticipant.container.innerHTML = "";
+                    // For video tracks, replace existing content
+                    if (track.kind === Track.Kind.Video) {
+                        existingParticipant.container.innerHTML = "";
+                    }
                     existingParticipant.container.appendChild(element);
+                } else {
+                    // No container yet, store track for later attachment
+                    log(
+                        `No container for ${participant.identity}, queuing track`,
+                    );
+                    const tracks =
+                        pendingTrackAttachments.get(participant.identity) || [];
+                    tracks.push(track);
+                    pendingTrackAttachments.set(participant.identity, tracks);
+
+                    // Force an update to the participants list to ensure container gets created
+                    updateParticipantsList();
                 }
             },
         );
@@ -177,6 +235,25 @@
             track.detach();
         });
     }
+
+    // Effect to process pending tracks when containers are ready
+    $effect(() => {
+        // Process any pending tracks whenever participants list changes
+        for (const participant of participants) {
+            if (
+                participant.container &&
+                pendingTrackAttachments.has(participant.identity)
+            ) {
+                log(
+                    `Container for ${participant.identity} is now ready, processing tracks`,
+                );
+                processPendingTracks(
+                    participant.identity,
+                    participant.container,
+                );
+            }
+        }
+    });
 
     function updateParticipantsList() {
         if (!room || room.state !== "connected") return;
@@ -191,7 +268,10 @@
             );
             if (existing && existing.container) {
                 // Cast the remote participant to our extended type and add container
-                return Object.assign(remote, { container: existing.container });
+                return Object.assign(
+                    { ...remote },
+                    { container: existing.container },
+                );
             }
             return remote;
         });
@@ -327,8 +407,8 @@
                 <Card.Description>{error || connectionError}</Card.Description>
             </Card.Header>
             <Card.Footer class="flex justify-between">
-                <Button on:click={handleRetry} variant="outline">Retry</Button>
-                <Button on:click={leaveMeeting} variant="default"
+                <Button onclick={handleRetry} variant="outline">Retry</Button>
+                <Button onclick={leaveMeeting} variant="default"
                     >Return Home</Button
                 >
             </Card.Footer>
@@ -353,7 +433,7 @@
                         <span>{participants.length + 1}</span>
                     </div>
                 </div>
-                <Button variant="ghost" size="sm" on:click={leaveMeeting}>
+                <Button variant="ghost" size="sm" onclick={leaveMeeting}>
                     <LogOut class="h-4 w-4 mr-2" />
                     Leave
                 </Button>
@@ -393,7 +473,7 @@
 
                 <!-- Remote participants - using bind:this to store container references directly -->
                 <div id="remote-participants" class="flex flex-wrap gap-4">
-                    {#each participants as participant}
+                    {#each participants as participant (participant.identity)}
                         <div
                             class="participant-video bg-gray-800 rounded-lg overflow-hidden relative"
                         >
@@ -420,7 +500,7 @@
                 <Button
                     variant={audioEnabled ? "outline" : "destructive"}
                     size="icon"
-                    on:click={toggleMic}
+                    onclick={toggleMic}
                 >
                     {#if audioEnabled}
                         <Mic class="h-4 w-4" />
@@ -431,7 +511,7 @@
                 <Button
                     variant={videoEnabled ? "outline" : "destructive"}
                     size="icon"
-                    on:click={toggleVideo}
+                    onclick={toggleVideo}
                 >
                     {#if videoEnabled}
                         <Video class="h-4 w-4" />
@@ -443,7 +523,7 @@
                     <MessageCircle class="h-4 w-4" />
                 </Button>
                 <Separator orientation="vertical" class="h-8" />
-                <Button variant="destructive" size="sm" on:click={leaveMeeting}>
+                <Button variant="destructive" size="sm" onclick={leaveMeeting}>
                     <LogOut class="h-4 w-4 mr-2" />
                     End Call
                 </Button>
