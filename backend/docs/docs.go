@@ -684,6 +684,49 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/room/list": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a list of rooms created by or participated in by the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rooms"
+                ],
+                "summary": "List rooms for the current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/handlers.UserRoomResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -982,6 +1025,36 @@ const docTemplate = `{
                 "provider": {
                     "type": "string",
                     "example": "google"
+                }
+            }
+        },
+        "handlers.UserRoomResponse": {
+            "type": "object",
+            "properties": {
+                "createdBy": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "maxParticipants": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "relationship": {
+                    "description": "e.g., \"creator\", \"participant\"",
+                    "type": "string"
+                },
+                "settings": {
+                    "$ref": "#/definitions/models.RoomSettings"
                 }
             }
         },
