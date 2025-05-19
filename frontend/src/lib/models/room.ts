@@ -29,5 +29,5 @@ export interface Room {
   maxParticipants: number;
   expiresAt: string;
   settings: RoomSettings;
-  participants: RoomParticipant[];
+  relationship: string; // "creator" or "participant"
 }

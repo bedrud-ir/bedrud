@@ -20,6 +20,24 @@ export function createRoomAPI(
 }
 
 // -------------------------------------------------
+export interface UserRoomResponse {
+  id: string;
+  name: string;
+  createdBy: string;
+  isActive: boolean;
+  maxParticipants: number;
+  expiresAt: string; // Assuming backend sends time.Time as string
+  settings: RoomSettings;
+  relationship: string; // "creator" or "participant"
+}
+
+export function listRoomsAPI(): Promise<UserRoomResponse[]> {
+  return authFetch(`${baseURL}/room/list`, {
+    method: "GET",
+  });
+}
+
+// -------------------------------------------------
 export interface JoinRoomRequest {
   roomName: string;
 }
