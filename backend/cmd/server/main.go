@@ -185,6 +185,7 @@ func main() {
 	// Room routes
 	api.Post("/room/create", middleware.Protected(), roomHandler.CreateRoom)
 	api.Post("/room/join", middleware.Protected(), roomHandler.JoinRoom)
+	api.Get("/room/list", middleware.Protected(), roomHandler.ListRooms)
 
 	// Initialize handlers
 	usersHandler := handlers.NewUsersHandler(userRepo)

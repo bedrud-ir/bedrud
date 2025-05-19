@@ -39,6 +39,18 @@ type RoomResponse struct {
 	LiveKitHost     string              `json:"livekitHost,omitempty"`
 }
 
+// UserRoomResponse represents a room entry for a regular user list
+type UserRoomResponse struct {
+	ID              string              `json:"id"`
+	Name            string              `json:"name"`
+	CreatedBy       string              `json:"createdBy"`
+	IsActive        bool                `json:"isActive"`
+	MaxParticipants int                 `json:"maxParticipants"`
+	ExpiresAt       time.Time           `json:"expiresAt"`
+	Settings        models.RoomSettings `json:"settings"`
+	Relationship    string              `json:"relationship"` // e.g., "creator", "participant"
+}
+
 // AdminRoomResponse represents the detailed room information for admins
 type AdminRoomResponse struct {
 	RoomResponse
@@ -203,6 +215,71 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 		Settings:        room.Settings,
 		LiveKitHost:     h.livekitHost,
 	})
+}
+
+// @Summary List rooms for the current user
+// @Description Get a list of rooms created by or participated in by the authenticated user
+// @Tags rooms
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} UserRoomResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /room/list [get]
+func (h *RoomHandler) ListRooms(c *fiber.Ctx) error {
+	claims := c.Locals("user").(*auth.Claims)
+	userID := claims.UserID
+
+	createdRooms, err := h.roomRepo.GetRoomsCreatedByUser(userID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get rooms created by user")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch rooms",
+		})
+	}
+
+	participatedRooms, err := h.roomRepo.GetRoomsParticipatedInByUser(userID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get rooms participated in by user")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch rooms",
+		})
+	}
+
+	var response []UserRoomResponse
+
+	// Add created rooms
+	for _, room := range createdRooms {
+		response = append(response, UserRoomResponse{
+			ID:              room.ID,
+			Name:            room.Name,
+			CreatedBy:       room.CreatedBy,
+			IsActive:        room.IsActive,
+			MaxParticipants: room.MaxParticipants,
+			ExpiresAt:       room.ExpiresAt,
+			Settings:        room.Settings,
+			Relationship:    "creator",
+		})
+	}
+
+	// Add participated rooms (excluding those already added as creator by the repository query)
+	for _, room := range participatedRooms {
+		response = append(response, UserRoomResponse{
+			ID:              room.ID,
+			Name:            room.Name,
+			CreatedBy:       room.CreatedBy, // Note: This is the original creator, not the current user
+			IsActive:        room.IsActive,
+			MaxParticipants: room.MaxParticipants,
+			ExpiresAt:       room.ExpiresAt,
+			Settings:        room.Settings,
+			Relationship:    "participant",
+		})
+	}
+
+	// Optional: Sort the combined list, e.g., by CreatedAt or ExpiresAt
+
+	return c.JSON(response)
 }
 
 // @Summary List all rooms (Admin only)

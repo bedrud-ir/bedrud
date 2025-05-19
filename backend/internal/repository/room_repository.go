@@ -227,3 +227,32 @@ func (r *RoomRepository) GetUserByID(userID string) (*models.User, error) {
 	}
 	return &user, nil
 }
+
+// GetRoomsCreatedByUser retrieves rooms created by a specific user
+func (r *RoomRepository) GetRoomsCreatedByUser(userID string) ([]models.Room, error) {
+	var rooms []models.Room
+	err := r.db.Where("created_by = ?", userID).Order("created_at desc").Find(&rooms).Error
+	return rooms, err
+}
+
+// GetRoomsParticipatedInByUser retrieves rooms a user has participated in (excluding those they created)
+func (r *RoomRepository) GetRoomsParticipatedInByUser(userID string) ([]models.Room, error) {
+	var rooms []models.Room
+	// Find RoomIDs where the user is a participant
+	var participantRoomIDs []string
+	err := r.db.Model(&models.RoomParticipant{}).
+		Where("user_id = ? AND room_id NOT IN (?)", userID, r.db.Model(&models.Room{}).Select("id").Where("created_by = ?", userID)).
+		Distinct("room_id").
+		Pluck("room_id", &participantRoomIDs).Error
+	if err != nil {
+		return nil, err
+	}
+
+	if len(participantRoomIDs) == 0 {
+		return rooms, nil // Return empty slice if no participated rooms
+	}
+
+	// Fetch the rooms based on the found IDs
+	err = r.db.Where("id IN (?)", participantRoomIDs).Order("created_at desc").Find(&rooms).Error
+	return rooms, err
+}

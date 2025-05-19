@@ -203,6 +203,26 @@ definitions:
         example: google
         type: string
     type: object
+  handlers.UserRoomResponse:
+    properties:
+      createdBy:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      maxParticipants:
+        type: integer
+      name:
+        type: string
+      relationship:
+        description: e.g., "creator", "participant"
+        type: string
+      settings:
+        $ref: '#/definitions/models.RoomSettings'
+    type: object
   handlers.UserStatusUpdateRequest:
     description: Request body for updating user status
     properties:
@@ -688,6 +708,34 @@ paths:
       security:
       - BearerAuth: []
       summary: Join a room
+      tags:
+      - rooms
+  /room/list:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of rooms created by or participated in by the authenticated
+        user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.UserRoomResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List rooms for the current user
       tags:
       - rooms
 securityDefinitions:
