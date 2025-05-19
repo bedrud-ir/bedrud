@@ -86,7 +86,7 @@ func NewRoomHandler(host, apiKey, apiSecret string, roomRepo *repository.RoomRep
 // @Success 200 {object} RoomResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
-// @Router /create-room [post]
+// @Router /room/create [post]
 func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
 	var req CreateRoomRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -140,7 +140,7 @@ func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
 // @Success 200 {object} RoomResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
-// @Router /join-room [post]
+// @Router /room/join [post]
 func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 	var req JoinRoomRequest
 	if err := c.BodyParser(&req); err != nil {
