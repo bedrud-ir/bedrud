@@ -5,7 +5,7 @@
     import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 
     let { children } = $props();
-    let adminConfig = $state(null);
+    let adminConfig: any = $state(null);
 
     $effect(() => {
         if ($userStore) {
@@ -18,7 +18,7 @@
 
 {#if adminConfig}
     <Sidebar.Provider>
-        <AppSidebar 
+        <AppSidebar
             user={adminConfig.user}
             navMain={adminConfig.navMain}
             navSecondary={adminConfig.navSecondary}

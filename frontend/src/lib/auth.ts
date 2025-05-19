@@ -1,9 +1,21 @@
 import { authStore } from "./stores/auth.store";
 import { userStore } from "./stores/user.store";
-import { authFetch, authRefresh, loginAPI, registerAPI } from "./api";
+import { authFetch } from "./api";
+import {
+  loginAPI,
+  type LoginRequest,
+  type LoginResponse,
+  registerAPI,
+  type RegisterRequest,
+  type RegisterResponse,
+  authRefreshAPI,
+  type RefreshTokenRequest,
+  type RefreshTokenResponse,
+  getMeAPI,
+  type MeResponse,
+} from "./api/auth";
 import { jwtDecode } from "jwt-decode";
 
-// Add this interface to define the JWT payload structure
 interface DecodedToken {
   userId: string;
   email: string;
@@ -18,8 +30,7 @@ export async function login(
   password: string,
   remember: boolean = false,
 ) {
-  const response = await loginAPI(email, password);
-  console.log(response);
+  const response: LoginResponse = await loginAPI({ email, password });
   if (response.tokens && response.user) {
     authStore.setTokens(response.tokens, remember);
     userStore.set(response.user, remember);
@@ -30,7 +41,11 @@ export async function login(
 
 export async function register(email: string, password: string, name: string) {
   try {
-    const response = await registerAPI({ email, password, name });
+    const response: RegisterResponse = await registerAPI({
+      email,
+      password,
+      name,
+    });
     console.log(response);
 
     if (response.access_token && response.refresh_token) {
@@ -68,55 +83,6 @@ export async function register(email: string, password: string, name: string) {
   }
 }
 
-// export async function handleGoogleCallback(queryString: string) {
-//   const backendUrl = `${import.meta.env.VITE_BACKEND_API}/auth/google/callback${queryString}`;
-//   try {
-//     const res = await fetch(backendUrl, { credentials: "include" });
-//     if (!res.ok) {
-//       const errorData = await res
-//         .json()
-//         .catch(() => ({
-//           message: "Google callback failed with status: " + res.status,
-//         }));
-//       throw new Error(errorData.message || "Google callback failed");
-//     }
-//     const response = await res.json();
-
-//     if (response.token && response.user) {
-//       const tokens = {
-//         accessToken: response.token,
-//         refreshToken: "", // Google OAuth typically doesn't return a refresh token in this step to the client
-//       };
-//       authStore.setTokens(tokens, true); // Assuming 'remember me' by default for OAuth
-
-//       // Decode JWT to get user info with proper typing
-//       const decoded = jwtDecode<DecodedToken>(tokens.accessToken);
-
-//       // Create user object
-//       const user = {
-//         id: decoded.userId, // Or response.user.id, but JWT is the source of truth for session id
-//         email: decoded.email, // Or response.user.email
-//         name: response.user.name,
-//         pictureUrl: response.user.avatarUrl,
-//         provider: decoded.provider, // Or response.user.provider
-//         isAdmin: decoded.accesses?.includes("admin"),
-//       };
-
-//       userStore.set(user, true); // Assuming 'remember me'
-
-//       return user;
-//     }
-//     throw new Error("Google callback response is missing token or user data.");
-//   } catch (error) {
-//     console.error("Google callback error:", error);
-//     // Re-throw the error to be handled by the UI
-//     if (error instanceof Error) {
-//       throw error;
-//     }
-//     throw new Error("An unknown error occurred during Google callback.");
-//   }
-// }
-
 export async function storeTokenAndMinimalUser(
   accessToken: string,
   remember: boolean = true,
@@ -127,63 +93,39 @@ export async function storeTokenAndMinimalUser(
 
   const tokens = {
     accessToken: accessToken,
-    // Assuming refresh token might be handled separately or not provided in this specific flow immediately
-    // If your backend /auth/google/callback starts returning a refresh_token alongside the access_token in the redirect,
-    // you'll need a way to get it here or adjust the flow. For now, an empty string is a placeholder.
-    refreshToken: "", // Placeholder: Adjust if backend provides refresh token in redirect query
+    refreshToken: "",
   };
 
   authStore.setTokens(tokens, remember);
 
-  // Decode JWT to get user info
   const decoded = jwtDecode<DecodedToken>(tokens.accessToken);
 
-  // Create a minimal user object from JWT
-  // The name might not be in the JWT, or it might be. Adjust as per your JWT content.
-  // `pictureUrl` and detailed `name` will be fetched by `fetchAndUpdateCurrentUser`.
   const user = {
     id: decoded.userId,
     email: decoded.email,
-    name: "", // Placeholder, to be updated by /auth/me
-    pictureUrl: undefined, // Placeholder
+    name: "",
+    pictureUrl: undefined,
     isAdmin: decoded.accesses?.includes("admin"),
-    // provider: decoded.provider // Also available from JWT
   };
 
   userStore.set(user, remember);
   return user;
 }
 
-// This type should match the user object structure returned by your /auth/me endpoint
-interface MeResponseUser {
-  id: string;
-  email: string;
-  name: string;
-  pictureUrl?: string;
-  isAdmin?: boolean;
-  provider?: string;
-  // Add any other fields your /auth/me endpoint returns for the user
-}
-
-export async function fetchAndUpdateCurrentUser(): Promise<MeResponseUser | null> {
+export async function fetchAndUpdateCurrentUser(): Promise<MeResponse | null> {
   try {
-    // authFetch already handles token attachment and errors
-    const meUser = (await authFetch(
-      `${import.meta.env.VITE_BACKEND_API}/auth/me`,
-    )) as MeResponseUser;
+    const meUser: MeResponse | null = await getMeAPI(); // getMeAPI returns Promise<MeResponse>
 
     if (meUser) {
-      // Update the user store with the more complete user information
       userStore.update((currentUser) => {
-        if (!currentUser) return meUser; // Should ideally not happen if storeTokenAndMinimalUser ran
+        if (!currentUser) return meUser;
         return {
-          ...currentUser, // Keep initial minimal info or override
+          ...currentUser,
           id: meUser.id,
           email: meUser.email,
           name: meUser.name,
           pictureUrl: meUser.pictureUrl,
           isAdmin: meUser.isAdmin,
-          // provider: meUser.provider, // if backend sends it
         };
       });
       return meUser;
@@ -191,9 +133,7 @@ export async function fetchAndUpdateCurrentUser(): Promise<MeResponseUser | null
     return null;
   } catch (error) {
     console.error("Failed to fetch current user:", error);
-    // Optionally logout if /auth/me fails (e.g. token is invalid for some reason not caught by getToken)
-    // await logout();
-    throw error; // Re-throw to be handled by the caller (e.g., callback page)
+    throw error;
   }
 }
 
@@ -216,9 +156,10 @@ export async function getToken(): Promise<{ accessToken: string } | null> {
     return { accessToken: tokens.accessToken };
   }
 
-  // Try to refresh the token
   try {
-    const response = await authRefresh(tokens.refreshToken);
+    const response: RefreshTokenResponse = await authRefreshAPI({
+      refresh_token: tokens.refreshToken,
+    });
     if (response.access_token) {
       authStore.updateAccessToken(response.access_token);
       return { accessToken: response.access_token };

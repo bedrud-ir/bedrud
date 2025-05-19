@@ -9,7 +9,7 @@
     import Settings from "lucide-svelte/icons/settings";
     import { goto } from "$app/navigation";
 
-    let adminConfig = $state(null);
+    let adminConfig: any = $state(null);
 
     const adminCards = [
         {
