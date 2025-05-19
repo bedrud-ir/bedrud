@@ -127,6 +127,17 @@ func main() {
 	})
 
 	// ===============================
+	// Repositories
+	// ===============================
+	userRepo := repository.NewUserRepository(database.GetDB())
+	roomRepo := repository.NewRoomRepository(database.GetDB())
+
+	// ===============================
+	// Services
+	// ===============================
+	authService := auth.NewAuthService(userRepo)
+
+	// ===============================
 	// Middleware
 	// ===============================
 	app.Use(recover.New())
@@ -141,37 +152,27 @@ func main() {
 
 	// ===============================
 	// Group all API routes under /api
+	// ===============================
 	api := app.Group("/api")
 
-	// Health check routes
 	api.Get("/health", healthCheck)
 	api.Get("/ready", readinessCheck)
 
-	// Swagger configuration
 	api.Get("/swagger/*", swagger.New(swagger.Config{
 		URL:          "/api/swagger/doc.json",
 		DeepLinking:  true,
 		DocExpansion: "list",
 	}))
 
-	// Auth routes with handlers
-	userRepo := repository.NewUserRepository(database.GetDB())
-	authService := auth.NewAuthService(userRepo)
+	// ------------------------------
 	authHandler := handlers.NewAuthHandler(authService, cfg)
-
-	// Register auth routes
 	api.Post("/auth/register", authHandler.Register)
 	api.Post("/auth/login", authHandler.Login)
 	api.Post("/auth/refresh", authHandler.RefreshToken)
 	api.Post("/auth/logout", middleware.Protected(), authHandler.Logout)
 	api.Get("/auth/me", middleware.Protected(), authHandler.GetMe)
-
-	// Social auth routes
 	api.Get("/auth/:provider/login", handlers.BeginAuthHandler)
 	api.Get("/auth/:provider/callback", handlers.CallbackHandler)
-
-	// Initialize repositories
-	roomRepo := repository.NewRoomRepository(database.GetDB())
 
 	// Initialize handlers
 	roomHandler := handlers.NewRoomHandler(
@@ -193,21 +194,20 @@ func main() {
 		middleware.Protected(),
 		middleware.RequireAccess("superadmin"),
 	)
-
-	// Admin user routes
 	adminGroup.Get("/users", usersHandler.ListUsers)
 	adminGroup.Put("/users/:id/status", usersHandler.UpdateUserStatus)
-
-	// Admin room routes
 	adminGroup.Get("/rooms", roomHandler.AdminListRooms)
 	adminGroup.Post("/rooms/:roomId/token", roomHandler.AdminGenerateToken)
 
+	// ------------------------------
 	// Serve static files
 	app.Static("/static", "./static")
 
+	// ------------------------------
 	// Serve frontend application
 	app.Static("/", "./frontend")
 
+	// ------------------------------
 	// For backward compatibility - these will be removed later
 	app.Get("/health", func(c *fiber.Ctx) error { return c.Redirect("/api/health") })
 	app.Get("/ready", func(c *fiber.Ctx) error { return c.Redirect("/api/ready") })

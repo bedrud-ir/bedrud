@@ -5,6 +5,7 @@
     import { Label } from "$lib/components/ui/label/index.js";
     import { Separator } from "$lib/components/ui/separator";
     import { login } from "$lib/auth";
+    import { baseURL } from "$lib/api"; // Import baseURL for direct backend calls
     import { goto } from "$app/navigation";
     import { userStore } from "$lib/stores/user.store";
     import { Mail, Lock, AlertCircle, CheckCircle } from "lucide-svelte";
@@ -48,7 +49,21 @@
     }
 
     async function handleGoogleLogin() {
-        window.location.href = `${import.meta.env.VITE_BACKEND_API}/auth/google/login`;
+        isLoading = true;
+        error = "";
+        try {
+            // Construct the backend URL for Google login
+            const googleLoginUrl = `${baseURL}/auth/google/login`;
+            // Redirect the browser to this URL
+            window.location.href = googleLoginUrl;
+            // If the redirect is successful, the page will navigate away.
+            // isLoading will remain true, which is fine as the page is changing.
+        } catch (e) {
+            // This catch block handles errors in constructing the URL or if window.location.href fails.
+            console.error("Google login error:", e);
+            error = e.message || "Google login failed. Please try again.";
+            isLoading = false; // Reset loading state in case of an immediate error
+        }
     }
 </script>
 
@@ -79,7 +94,7 @@
 <!-- Login form - appears after animation -->
 <div class="w-full max-w-sm px-4" in:fly={{ y: 20, duration: 400, delay: 100 }}>
     <Card.Root class="border shadow-sm">
-        <form on:submit={handleSubmit} class="space-y-4">
+        <form onsubmit={handleSubmit} class="space-y-4">
             <Card.Header class="pb-0">
                 <Card.Title class="text-center">Sign in</Card.Title>
             </Card.Header>

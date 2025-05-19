@@ -48,7 +48,7 @@ type AuthConfig struct {
 	Google        OAuth2Config `yaml:"google"`
 	Github        OAuth2Config `yaml:"github"`
 	Twitter       OAuth2Config `yaml:"twitter"`
-	FrontendURL   string       `env:"AUTH_FRONTEND_URL"`
+	FrontendURL   string       `yaml:"frontendURL"`
 	SessionSecret string       `yaml:"sessionSecret"`
 }
 
