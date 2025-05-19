@@ -7,9 +7,7 @@
     import { userStore } from "$lib/stores/user.store";
     import { onMount, onDestroy } from "svelte";
     import { goto } from "$app/navigation";
-    import { joinRoomAPI } from "$lib/api";
     import { page } from "$app/state";
-    import type { JoinRoomResponse } from "$lib/api";
     import {
         Participant,
         RoomEvent,
@@ -20,8 +18,13 @@
         RemoteParticipant,
     } from "livekit-client";
     import MainMeetingLayout from "$lib/components/layout/MainMeetingLayout.svelte";
+    import { joinRoomAPI, type JoinRoomResponse } from "$lib/api/room";
 
-    async function connectToRoom(room: Room, token: string, livekitHost: string): Promise<void> {
+    async function connectToRoom(
+        room: Room,
+        token: string,
+        livekitHost: string,
+    ): Promise<void> {
         log("Connecting to room");
 
         try {
@@ -69,7 +72,7 @@
 
     async function toggleMic() {
         if (!room?.localParticipant) return;
-        
+
         try {
             if (micEnabled) {
                 await room.localParticipant.setMicrophoneEnabled(false);
@@ -78,13 +81,13 @@
             }
             micEnabled = !micEnabled;
         } catch (error) {
-            console.error('Failed to toggle microphone:', error);
+            console.error("Failed to toggle microphone:", error);
         }
     }
 
     async function toggleCamera() {
         if (!room?.localParticipant) return;
-        
+
         try {
             if (cameraEnabled) {
                 await room.localParticipant.setCameraEnabled(false);
@@ -93,7 +96,7 @@
             }
             cameraEnabled = !cameraEnabled;
         } catch (error) {
-            console.error('Failed to toggle camera:', error);
+            console.error("Failed to toggle camera:", error);
         }
     }
 
@@ -141,7 +144,11 @@
 
         // Connect using the meeting data that contains the LiveKit token
         try {
-            await connectToRoom(room, joinRoomResp.token, joinRoomResp.livekitHost);
+            await connectToRoom(
+                room,
+                joinRoomResp.token,
+                joinRoomResp.livekitHost,
+            );
         } catch (roomError) {
             console.error("Room connection error:", roomError);
             connectionError =
@@ -283,17 +290,17 @@
 </script>
 
 <MainMeetingLayout
-    darkMode={darkMode}
-    micEnabled={micEnabled}
-    cameraEnabled={cameraEnabled}
+    {darkMode}
+    {micEnabled}
+    {cameraEnabled}
     participantCount={participants.length + 1}
     meetingId={page.params.meetId}
-    connecting={connecting}
-    connectionError={connectionError}
-    onToggleDarkMode={() => darkMode = !darkMode}
+    {connecting}
+    {connectionError}
+    onToggleDarkMode={() => (darkMode = !darkMode)}
     onToggleMic={toggleMic}
     onToggleCamera={toggleCamera}
-    onLeave={() => goto('/')}
+    onLeave={() => goto("/")}
     onRetry={handleRetry}
     onSettings={() => {}}
     onChat={() => {}}
@@ -306,18 +313,13 @@
             class="local-video-container bg-gray-800 rounded-lg overflow-hidden relative"
             class:opacity-50={!cameraEnabled}
         >
-            <div
-                bind:this={localVideoContainer}
-                class="w-full h-full"
-            ></div>
+            <div bind:this={localVideoContainer} class="w-full h-full"></div>
             <div
                 class="absolute bottom-2 left-2 text-white bg-black bg-opacity-50 px-2 py-1 rounded"
             >
                 You ({$userStore?.name || "Local"})
             </div>
-            <div
-                class="absolute top-2 right-2 flex gap-2"
-            >
+            <div class="absolute top-2 right-2 flex gap-2">
                 {#if !micEnabled}
                     <div class="bg-red-500 p-1 rounded">
                         <i class="fas fa-microphone-slash text-white"></i>
@@ -332,10 +334,7 @@
         </div>
 
         <!-- Remote participants - using bind:this to store container references directly -->
-        <div
-            id="remote-participants"
-            class="flex flex-wrap gap-4"
-        >
+        <div id="remote-participants" class="flex flex-wrap gap-4">
             {#each participants as participant}
                 <div
                     class="participant-video bg-gray-800 rounded-lg overflow-hidden relative"
