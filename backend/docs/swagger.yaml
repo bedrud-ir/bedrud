@@ -452,10 +452,8 @@ paths:
       produces:
       - application/json
       responses:
-        "302":
-          description: Redirect to provider's auth page
-          schema:
-            type: string
+        "307":
+          description: Redirects to the authentication provider
         "400":
           description: Bad Request
           schema:
@@ -600,7 +598,35 @@ paths:
       summary: Register new user
       tags:
       - auth
-  /create-room:
+  /health:
+    get:
+      description: Get the health status of the service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Health check endpoint
+      tags:
+      - health
+  /ready:
+    get:
+      description: Get the readiness status of the service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Readiness check endpoint
+      tags:
+      - health
+  /room/create:
     post:
       consumes:
       - application/json
@@ -632,21 +658,7 @@ paths:
       summary: Create a new room
       tags:
       - rooms
-  /health:
-    get:
-      description: Get the health status of the service
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Health check endpoint
-      tags:
-      - health
-  /join-room:
+  /room/join:
     post:
       consumes:
       - application/json
@@ -678,20 +690,6 @@ paths:
       summary: Join a room
       tags:
       - rooms
-  /ready:
-    get:
-      description: Get the readiness status of the service
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Readiness check endpoint
-      tags:
-      - health
 securityDefinitions:
   BearerAuth:
     description: Enter the token with the `Bearer ` prefix, e.g. "Bearer abcde12345"
