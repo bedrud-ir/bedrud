@@ -66,7 +66,7 @@ export async function register(email: string, password: string, name: string) {
         id: decoded.userId,
         email: decoded.email,
         name: name,
-        pictureUrl: undefined,
+        avatarUrl: undefined,
         isAdmin: decoded.accesses?.includes("admin"),
       };
 
@@ -104,7 +104,7 @@ export async function storeTokenAndMinimalUser(
     id: decoded.userId,
     email: decoded.email,
     name: "",
-    pictureUrl: undefined,
+    avatarUrl: undefined,
     isAdmin: decoded.accesses?.includes("admin"),
   };
 
@@ -124,7 +124,7 @@ export async function fetchAndUpdateCurrentUser(): Promise<MeResponse | null> {
           id: meUser.id,
           email: meUser.email,
           name: meUser.name,
-          pictureUrl: meUser.pictureUrl,
+          avatarUrl: meUser.avatarUrl,
           isAdmin: meUser.isAdmin,
         };
       });

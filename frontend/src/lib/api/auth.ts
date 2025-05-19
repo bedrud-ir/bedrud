@@ -15,7 +15,7 @@ export interface LoginResponse {
     id: string;
     email: string;
     name: string;
-    pictureUrl?: string;
+    avatarUrl?: string;
     isAdmin?: boolean;
   };
 }
@@ -87,7 +87,7 @@ export interface MeResponse {
   id: string;
   email: string;
   name: string;
-  pictureUrl?: string;
+  avatarUrl?: string;
   isAdmin?: boolean;
   provider?: string;
 }
