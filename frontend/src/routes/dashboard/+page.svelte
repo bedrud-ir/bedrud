@@ -91,7 +91,9 @@
         class="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur"
     >
         <div class="container flex h-14 items-center justify-between">
-            <span class="text-xl font-bold">Bedrud Dashboard</span>
+            <a href="/"
+                ><span class="text-xl font-bold">Bedrud Dashboard</span></a
+            >
             <!-- Dark mode toggle could go here if needed -->
         </div>
     </header>

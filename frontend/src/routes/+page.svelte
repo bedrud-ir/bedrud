@@ -4,6 +4,8 @@
     import { spring } from "svelte/motion";
     import { fade } from "svelte/transition";
     import { onMount } from "svelte";
+    import { userStore } from "$lib/stores/user.store";
+    import { authStore } from "$lib/stores/auth.store";
 
     // Dark mode toggle
     let darkMode = $state(false);
@@ -35,6 +37,15 @@
             }, 100);
         }, 1200); // Longer initial wiggle
     });
+
+    function logout() {
+        userStore.clear();
+        authStore.clear();
+        // Optionally, you might want to redirect the user after logout, e.g., to the home page.
+        // You would need to import `goto` from `$app/navigation` for this.
+        // import { goto } from '$app/navigation';
+        // goto('/');
+    }
 </script>
 
 <svelte:head>
@@ -110,8 +121,12 @@
                         <Moon class="h-5 w-5" />
                     {/if}
                 </Button>
-                <Button variant="outline" href="/auth/login">Sign in</Button>
-                <Button href="/auth/register">Register</Button>
+                {#if $userStore}
+                    <Button variant="outline" onclick={logout}>Logout</Button>
+                {:else}
+                    <Button variant="outline" href="/auth/login">Sign in</Button>
+                    <Button href="/auth/register">Register</Button>
+                {/if}
             </div>
         </div>
     {/if}

@@ -6,7 +6,15 @@
     import { Separator } from "$lib/components/ui/separator";
     import { register } from "$lib/auth";
     import { goto } from "$app/navigation";
-    import { Mail, Lock, AlertCircle, CheckCircle, User, Eye, EyeOff } from "lucide-svelte";
+    import {
+        Mail,
+        Lock,
+        AlertCircle,
+        CheckCircle,
+        User,
+        Eye,
+        EyeOff,
+    } from "lucide-svelte";
     import { fade, scale, fly } from "svelte/transition";
     import { authStore } from "$lib/stores/auth.store";
     import { userStore } from "$lib/stores/user.store";
@@ -18,17 +26,19 @@
     let error = $state("");
     let isLoading = $state(false);
     let showSuccessAnimation = $state(false);
-    let passwordsMatch = $derived(password === repeatPassword || repeatPassword === "");
-    
+    let passwordsMatch = $derived(
+        password === repeatPassword || repeatPassword === "",
+    );
+
     // Password visibility states
     let showPassword = $state(false);
     let showRepeatPassword = $state(false);
-    
+
     // Toggle password visibility functions
     function togglePasswordVisibility() {
         showPassword = !showPassword;
     }
-    
+
     function toggleRepeatPasswordVisibility() {
         showRepeatPassword = !showRepeatPassword;
     }
@@ -48,7 +58,7 @@
             await register(email, password, name);
             showSuccessAnimation = true;
             setTimeout(() => {
-                goto("/admin");
+                goto("/dashboard");
             }, 1200);
         } catch (e) {
             console.error("Registration error:", e);
@@ -167,7 +177,7 @@
                                 disabled={isLoading}
                                 minlength={8}
                             />
-                            <button 
+                            <button
                                 type="button"
                                 class="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
                                 onclick={togglePasswordVisibility}
@@ -186,7 +196,9 @@
                     </div>
 
                     <div class="space-y-1.5">
-                        <Label for="repeatPassword" class="text-xs">Repeat Password</Label>
+                        <Label for="repeatPassword" class="text-xs"
+                            >Repeat Password</Label
+                        >
                         <div class="relative">
                             <Lock
                                 class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
@@ -196,11 +208,11 @@
                                 type={showRepeatPassword ? "text" : "password"}
                                 bind:value={repeatPassword}
                                 required
-                                class={`pl-8 pr-10 ${!passwordsMatch && repeatPassword ? 'border-destructive' : ''}`}
+                                class={`pl-8 pr-10 ${!passwordsMatch && repeatPassword ? "border-destructive" : ""}`}
                                 disabled={isLoading}
                                 minlength={8}
                             />
-                            <button 
+                            <button
                                 type="button"
                                 class="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
                                 onclick={toggleRepeatPasswordVisibility}
@@ -223,7 +235,9 @@
                     <Button
                         type="submit"
                         class="w-full"
-                        disabled={isLoading || showSuccessAnimation || !passwordsMatch}
+                        disabled={isLoading ||
+                            showSuccessAnimation ||
+                            !passwordsMatch}
                     >
                         {#if isLoading && !showSuccessAnimation}
                             Creating account...
