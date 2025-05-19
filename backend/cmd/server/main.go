@@ -126,7 +126,9 @@ func main() {
 		},
 	})
 
+	// ===============================
 	// Middleware
+	// ===============================
 	app.Use(recover.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173",
@@ -137,6 +139,7 @@ func main() {
 		MaxAge:           300,
 	}))
 
+	// ===============================
 	// Group all API routes under /api
 	api := app.Group("/api")
 

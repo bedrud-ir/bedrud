@@ -263,6 +263,8 @@ func (s *AuthService) UpdateUserAccesses(userID string, accesses []string) error
 func Init(cfg *config.Config) {
 	providers := []goth.Provider{}
 
+	log.Debug().Interface("auth_config", cfg.Auth).Msg("Auth configuration")
+
 	// Initialize Google provider if credentials are provided
 	if cfg.Auth.Google.ClientID != "" && cfg.Auth.Google.ClientSecret != "" {
 		log.Debug().Msg("Initializing Google provider")
