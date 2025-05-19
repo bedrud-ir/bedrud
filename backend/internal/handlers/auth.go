@@ -60,7 +60,7 @@ func (r *responseWriter) WriteHeader(statusCode int) {
 // @Tags auth
 // @Produce json
 // @Param provider path string true "Authentication provider (google, github, twitter)"
-// @Success 302 {string} string "Redirect to provider's auth page"
+// @Success 307 "Redirects to the authentication provider"
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /auth/{provider}/login [get]
@@ -128,7 +128,12 @@ func BeginAuthHandler(c *fiber.Ctx) error {
 			c.Response().Header.Add(keyH, valueH)
 		}
 	}
-	return c.Redirect(authURL, http.StatusTemporaryRedirect) // Use 307 for GET redirect
+
+	// Redirect to the authURL
+	// The http.StatusTemporaryRedirect (307) is used to indicate that the resource has
+	// temporarily moved and the client should resubmit the request to the new URI,
+	// maintaining the original request method.
+	return c.Redirect(authURL, http.StatusTemporaryRedirect)
 }
 
 // @Summary OAuth callback
@@ -254,6 +259,9 @@ func CallbackHandler(c *fiber.Ctx) error {
 		SameSite: "Lax",
 	}
 	c.Cookie(&cookie)
+
+	// frontend url debug print
+	log.Debug().Str("frontend url", cfg.Auth.FrontendURL).Msg("frontend url")
 
 	// If frontend URL is provided in config, redirect there with token
 	if cfg.Auth.FrontendURL != "" {

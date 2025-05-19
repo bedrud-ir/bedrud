@@ -146,12 +146,29 @@ export function registerAPI(data: {
   });
 }
 
-export function oAuthLoginAPI(provider: "google" | "github" | "twitter") {
-  return fetch(`${baseURL}/auth/${provider}`, {
+/*
+export function oAuthLoginAPI(
+  provider: "google" | "github" | "twitter",
+): Promise<{ authURL: string }> {
+  return fetch(`${baseURL}/auth/${provider}/login`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
-  }).then((res) => res.json());
+    credentials: "include",
+  }).then(async (res) => {
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({
+        error: `OAuth login failed for ${provider} with status: ${res.status}`,
+      }));
+      throw new Error(errorData.error || `OAuth login failed for ${provider}`);
+    }
+
+    // get all response headers and console.log
+    console.log(res.headers);
+    document.cookie = `session=${res.headers.get("Set-Cookie")}`;
+    return res.json();
+  });
 }
+*/
 
 export function authRefresh(
   refreshToken: string,
@@ -193,7 +210,7 @@ export interface JoinRoomResponse {
 export function joinRoomAPI(data: {
   roomName: string; // Changed from roomId to roomName
 }): Promise<JoinRoomResponse> {
-  return authFetch(`${baseURL}/join-room`, {
+  return authFetch(`${baseURL}/room/join`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),

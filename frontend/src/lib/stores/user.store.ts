@@ -5,6 +5,7 @@ export interface User {
     email: string;
     name: string;
     pictureUrl?: string;
+    provider?: string; // Added provider field
     isAdmin?: boolean;
 }
 
