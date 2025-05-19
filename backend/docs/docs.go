@@ -758,6 +758,9 @@ const docTemplate = `{
                 "isActive": {
                     "type": "boolean"
                 },
+                "livekitHost": {
+                    "type": "string"
+                },
                 "maxParticipants": {
                     "type": "integer"
                 },
@@ -882,6 +885,9 @@ const docTemplate = `{
                 },
                 "isActive": {
                     "type": "boolean"
+                },
+                "livekitHost": {
+                    "type": "string"
                 },
                 "maxParticipants": {
                     "type": "integer"
@@ -1069,7 +1075,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8090",
-	BasePath:         "/",
+	BasePath:         "/api",
 	Schemes:          []string{},
 	Title:            "Bedrud Backend API",
 	Description:      "This is a Bedrud Backend API server.",

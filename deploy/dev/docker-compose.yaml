@@ -11,8 +11,8 @@ services:
     volumes:
       - ./data/db:/var/lib/postgresql/data
     networks:
-      - livekit-network
-      - database-network
+      bedrud-network:
+        ipv4_address: 172.16.240.10
 
   dbgate:
     image: dbgate/dbgate:latest
@@ -31,7 +31,7 @@ services:
             "database": "test"
           }
         ]
-    
+
       DBGATE_ADMIN_PASSWORD: admin123
       DBGATE_PORT: 3000
       DBGATE_PUBLIC_URL: http://localhost:3000
@@ -40,11 +40,12 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - dbgate_data:/root/.dbgate
+      - ./data/dbgate:/root/.dbgate
     depends_on:
       - postgres
     networks:
-      - database-network
+      bedrud-network:
+        ipv4_address: 172.16.240.11
 
   livekit:
     image: livekit/livekit-server:latest
@@ -64,10 +65,11 @@ services:
     depends_on:
       - redis
     volumes:
-      - ./config/livekit.yaml:/config.yaml
+      - ./livekit.yaml:/config.yaml
     command: --config /config.yaml
     networks:
-      - livekit-network
+      bedrud-network:
+        ipv4_address: 172.16.240.12
 
   redis:
     image: redis:6-alpine
@@ -75,16 +77,12 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - livekit-network
-
-volumes:
-  pgadmin_data:
-    driver: local
-  dbgate_data:
-    driver: local
+      bedrud-network:
+        ipv4_address: 172.16.240.13
 
 networks:
-  livekit-network:
+  bedrud-network:
     driver: bridge
-  database-network:
-    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.240.0/24

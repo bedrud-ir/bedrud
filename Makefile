@@ -1,4 +1,4 @@
-.PHONY: run-front run-back build-front build-back build run init
+.PHONY: run-front run-back build-front build-back build run init docker-dev-up docker-dev-down docker-dev-pull
 
 # Initialize project dependencies
 init:
@@ -36,3 +36,19 @@ run:
 	$(MAKE) run-back & $(MAKE) run-front
 	# The trap ensures child processes are killed when this command is terminated
 	trap 'kill $$(jobs -p)' INT TERM
+
+# Docker development targets
+docker-dev-up:
+	docker compose -f deploy/dev/docker-compose.yaml up -d
+
+docker-dev-down:
+	docker compose -f deploy/dev/docker-compose.yaml down
+
+docker-dev-pull:
+	docker compose -f deploy/dev/docker-compose.yaml pull
+
+docker-dev-logs:
+	docker compose -f deploy/dev/docker-compose.yaml logs -f
+
+docker-dev-ps:
+	docker compose -f deploy/dev/docker-compose.yaml ps

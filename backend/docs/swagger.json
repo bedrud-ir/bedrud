@@ -16,7 +16,7 @@
         "version": "1.0"
     },
     "host": "localhost:8090",
-    "basePath": "/",
+    "basePath": "/api",
     "paths": {
         "/admin/rooms": {
             "get": {
@@ -752,6 +752,9 @@
                 "isActive": {
                     "type": "boolean"
                 },
+                "livekitHost": {
+                    "type": "string"
+                },
                 "maxParticipants": {
                     "type": "integer"
                 },
@@ -876,6 +879,9 @@
                 },
                 "isActive": {
                     "type": "boolean"
+                },
+                "livekitHost": {
+                    "type": "string"
                 },
                 "maxParticipants": {
                     "type": "integer"

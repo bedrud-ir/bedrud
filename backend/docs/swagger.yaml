@@ -1,4 +1,4 @@
-basePath: /
+basePath: /api
 definitions:
   auth.ErrorResponse:
     properties:
@@ -44,6 +44,8 @@ definitions:
         type: string
       isActive:
         type: boolean
+      livekitHost:
+        type: string
       maxParticipants:
         type: integer
       name:
@@ -127,6 +129,8 @@ definitions:
         type: string
       isActive:
         type: boolean
+      livekitHost:
+        type: string
       maxParticipants:
         type: integer
       name:
