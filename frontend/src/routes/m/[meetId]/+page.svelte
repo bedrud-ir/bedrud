@@ -64,14 +64,13 @@
             return null;
         }
     }
-
-    async function setupRoom() {
+    async function setupRoom(url: string, token: string) {
         try {
-            if (!meetingData) {
+            if (!url || !token) {
                 throw new Error("No meeting data available");
             }
 
-            console.log("Setting up room with token:", meetingData.token);
+            console.log("Setting up room with token:", token);
             room = createRoom();
 
             // Setup event listeners
@@ -93,63 +92,11 @@
                 .on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
                 .on(RoomEvent.Disconnected, handleDisconnect);
 
-            // Connect using the meeting data that contains the LiveKit token
-            await connectToRoom(room, meetingData);
+            // Connect using the LiveKit URL and token
+            await connectToRoom(room, token);
             console.log("Room connected:", room.state);
 
             isLoading = false;
-
-            setTimeout(async () => {
-                // Initialize after confirmed connection
-                if (room.state === "connected") {
-                    participants = Array.from(room.remoteParticipants.values());
-
-                    // Enable camera and mic with explicit options
-                    await room.localParticipant.enableCameraAndMicrophone();
-
-                    // Handle video track
-                    const cameraPublication =
-                        room.localParticipant.getTrackPublication(
-                            Track.Source.Camera,
-                        );
-                    if (cameraPublication?.track) {
-                        let myVideoTrack = cameraPublication.track;
-                        if (myVideoEl) {
-                            const videoElement = myVideoTrack.attach();
-                            if (videoElement instanceof HTMLVideoElement) {
-                                videoElement.autoplay = true;
-                                videoElement.playsInline = true;
-                                videoElement.muted = true;
-                                videoElement.style.width = "100%";
-                                videoElement.style.height = "100%";
-                                videoElement.style.objectFit = "cover";
-                                myVideoEl.replaceWith(videoElement);
-                                myVideoEl = videoElement;
-                            }
-                        } else {
-                            console.log("No video element");
-                        }
-                    }
-
-                    // Handle audio track
-                    const micPublication =
-                        room.localParticipant.getTrackPublication(
-                            Track.Source.Microphone,
-                        );
-                    if (micPublication?.track) {
-                        let myAudioTrack = micPublication.track;
-                        if (myAudioEl) {
-                            const audioElement = myAudioTrack.attach();
-                            if (audioElement instanceof HTMLAudioElement) {
-                                audioElement.autoplay = true;
-                                audioElement.muted = true;
-                                myAudioEl.replaceWith(audioElement);
-                                myAudioEl = audioElement;
-                            }
-                        }
-                    }
-                }
-            }, 200);
         } catch (e) {
             console.error("Failed to setup room:", e);
             error = e.message || "Failed to setup video call";
@@ -167,10 +114,9 @@
         const data = await fetchMeetingData();
 
         console.log("=>", data?.token);
-        if (data?.token) {
-            setTimeout(() => {
-                setupRoom();
-            }, 1000);
+        // Assuming data includes both url and token
+        if (data?.livekitHost && data?.token) {
+            setupRoom(data.livekitHost, data.token);
         }
 
         unsubscribe.push(
@@ -185,8 +131,18 @@
         console.log("Token available:", meetingData?.token);
     });
 
+    // Effect to handle track attachment once room is connected and elements are ready
     $effect(() => {
         if (room?.state === "connected" && myVideoEl && myAudioEl) {
+            console.log("Room connected, attaching tracks");
+            // Initialize local tracks and attach to elements
+
+            // Enable camera and mic with explicit options
+            // Called here when elements are available
+            room.localParticipant
+                .enableCameraAndMicrophone()
+                .catch(console.error);
+
             const cameraPublication = room.localParticipant.getTrackPublication(
                 Track.Source.Camera,
             );
@@ -195,24 +151,31 @@
             );
 
             if (cameraPublication?.track) {
-                // Instead of replacing the element, set its srcObject
-                const videoElement = cameraPublication.track.attach();
-                if (videoElement instanceof HTMLVideoElement) {
-                    videoStream = videoElement.srcObject as MediaStream;
-                    if (videoStream && myVideoEl) {
-                        myVideoEl.srcObject = videoStream;
-                        myVideoEl.play().catch(console.error);
+                let myVideoTrack = cameraPublication.track;
+                if (myVideoEl) {
+                    const videoElement = myVideoTrack.attach();
+                    if (videoElement instanceof HTMLVideoElement) {
+                        videoElement.autoplay = true;
+                        videoElement.playsInline = true;
+                        videoElement.muted = true;
+                        videoElement.style.width = "100%";
+                        videoElement.style.height = "100%";
+                        videoElement.style.objectFit = "cover";
+                        myVideoEl.replaceWith(videoElement);
+                        myVideoEl = videoElement;
                     }
                 }
             }
 
             if (micPublication?.track) {
-                const audioElement = micPublication.track.attach();
-                if (audioElement instanceof HTMLAudioElement) {
-                    audioStream = audioElement.srcObject as MediaStream;
-                    if (audioStream && myAudioEl) {
-                        myAudioEl.srcObject = audioStream;
-                        myAudioEl.play().catch(console.error);
+                let myAudioTrack = micPublication.track;
+                if (myAudioEl) {
+                    const audioElement = myAudioTrack.attach();
+                    if (audioElement instanceof HTMLAudioElement) {
+                        audioElement.autoplay = true;
+                        audioElement.muted = true;
+                        myAudioEl.replaceWith(audioElement);
+                        myAudioEl = audioElement;
                     }
                 }
             }
