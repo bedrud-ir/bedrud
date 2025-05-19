@@ -38,7 +38,7 @@
                 if (redirectPath) {
                     goto(redirectPath);
                 } else {
-                    goto("/admin");
+                    goto("/dashboard");
                 }
             }, 1200); // Show success for 1.2 seconds before redirecting
         } catch (e) {

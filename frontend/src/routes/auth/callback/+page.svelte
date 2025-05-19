@@ -39,7 +39,7 @@
                     localStorage.removeItem("redirect"); // Clean up
                     goto(redirectPath);
                 } else {
-                    goto("/admin"); // Default redirect
+                    goto("/dashboard"); // Default redirect
                 }
             }, 1500); // Show success for 1.5 seconds
         } catch (e: any) {
