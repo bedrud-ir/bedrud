@@ -34,6 +34,8 @@ type DatabaseConfig struct {
 	MaxIdleConns int    `yaml:"maxIdleConns"`
 	MaxOpenConns int    `yaml:"maxOpenConns"`
 	MaxLifetime  int    `yaml:"maxLifetime"` // in minutes
+	Type         string `yaml:"type"`        // e.g., "postgres", "sqlite"
+	Path         string `yaml:"path"`        // Path for SQLite, if used
 }
 
 type LiveKitConfig struct {
@@ -112,6 +114,12 @@ func Load(configPath string) (*Config, error) {
 		}
 		if dbName := os.Getenv("DB_NAME"); dbName != "" {
 			config.Database.DBName = dbName
+		}
+		if dbType := os.Getenv("DB_TYPE"); dbType != "" {
+			config.Database.Type = dbType
+		}
+		if dbPath := os.Getenv("DB_PATH"); dbPath != "" {
+			config.Database.Path = dbPath
 		}
 		if livekitHost := os.Getenv("LIVEKIT_HOST"); livekitHost != "" {
 			config.LiveKit.Host = livekitHost
