@@ -6,8 +6,8 @@
     import { Button } from "$lib/components/ui/button";
     import Search from "lucide-svelte/icons/search";
     import Plus from "lucide-svelte/icons/plus";
-    import type { Room } from "$lib/api";
-    import { listAllRoomsAPI } from "$lib/api";
+    import type { Room } from "livekit-client";
+    import { listAllRoomsAPI } from "$lib/api/admin";
 
     let searchQuery = "";
     let rooms = $state<Room[]>([]);
@@ -21,16 +21,16 @@
             isLoading = true;
             error = null;
             const response = await listAllRoomsAPI();
-            console.log('API Response:', response);
+            console.log("API Response:", response);
             if (Array.isArray(response)) {
                 rooms = response;
             } else {
                 rooms = [];
-                error = 'Invalid response format';
+                error = "Invalid response format";
             }
         } catch (e) {
-            error = e.message || 'Failed to load rooms';
-            console.error('Load error:', e);
+            error = e.message || "Failed to load rooms";
+            console.error("Load error:", e);
             rooms = [];
         } finally {
             isLoading = false;
@@ -61,7 +61,9 @@
         </div>
         <div class="flex items-center gap-2">
             <div class="relative">
-                <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search
+                    class="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500"
+                />
                 <Input
                     bind:value={searchQuery}
                     placeholder="Search rooms..."
@@ -81,47 +83,73 @@
             {error}
         </div>
     {/if}
-    
+
     {#if isLoading}
         <div class="flex justify-center p-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <div
+                class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"
+            ></div>
         </div>
     {:else}
         <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
             {#if rooms.length === 0}
-                <div class="p-8 text-center text-gray-500">
-                    No rooms found
-                </div>
+                <div class="p-8 text-center text-gray-500">No rooms found</div>
             {:else}
                 <table class="w-full">
                     <thead>
-                        <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                            <th class="h-12 px-4 text-left align-middle font-medium">Name</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium">Participants</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium">Status</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium">Expires</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium">Actions</th>
+                        <tr
+                            class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                        >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Name</th
+                            >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Participants</th
+                            >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Status</th
+                            >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Expires</th
+                            >
+                            <th
+                                class="h-12 px-4 text-left align-middle font-medium"
+                                >Actions</th
+                            >
                         </tr>
                     </thead>
                     <tbody>
                         {#each rooms as room (room.id)}
-                            <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                            <tr
+                                class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                            >
                                 <td class="p-4">{room.name}</td>
-                                <td class="p-4">{room.participants.length} / {room.maxParticipants}</td>
+                                <td class="p-4"
+                                    >{room.participants.length} / {room.maxParticipants}</td
+                                >
                                 <td class="p-4">
-                                    <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset"
+                                    <span
+                                        class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset"
                                         class:bg-green-50={room.isActive}
                                         class:text-green-700={room.isActive}
                                         class:ring-green-600={room.isActive}
                                         class:bg-red-50={!room.isActive}
                                         class:text-red-700={!room.isActive}
-                                        class:ring-red-600={!room.isActive}>
-                                        {room.isActive ? 'Active' : 'Inactive'}
+                                        class:ring-red-600={!room.isActive}
+                                    >
+                                        {room.isActive ? "Active" : "Inactive"}
                                     </span>
                                 </td>
-                                <td class="p-4">{formatDate(room.expiresAt)}</td>
+                                <td class="p-4">{formatDate(room.expiresAt)}</td
+                                >
                                 <td class="p-4">
-                                    <Button variant="ghost" size="sm">Manage</Button>
+                                    <Button variant="ghost" size="sm"
+                                        >Manage</Button
+                                    >
                                 </td>
                             </tr>
                         {/each}
