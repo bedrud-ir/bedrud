@@ -1,5 +1,5 @@
 import type { Room, RoomSettings } from "$lib/models/room";
-import { baseURL, authFetch } from "../api";
+import { baseURL, authFetch, optionalAuthFetch } from "../api";
 
 // -------------------------------------------------
 export interface CreateRoomRequest {
@@ -40,6 +40,7 @@ export function listRoomsAPI(): Promise<UserRoomResponse[]> {
 // -------------------------------------------------
 export interface JoinRoomRequest {
   roomName: string;
+  userName?: string;
 }
 
 export interface JoinRoomResponse {
@@ -55,7 +56,7 @@ export interface JoinRoomResponse {
 }
 
 export function joinRoomAPI(data: JoinRoomRequest): Promise<JoinRoomResponse> {
-  return authFetch(`${baseURL}/room/join`, {
+  return optionalAuthFetch(`${baseURL}/room/join`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),

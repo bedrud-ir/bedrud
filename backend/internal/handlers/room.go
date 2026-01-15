@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	lkauth "github.com/livekit/protocol/auth" // Changed import alias
 	"github.com/livekit/protocol/livekit"
 	lksdk "github.com/livekit/server-sdk-go/v2"
@@ -24,6 +25,7 @@ type CreateRoomRequest struct {
 // JoinRoomRequest represents the request body for joining a room
 type JoinRoomRequest struct {
 	RoomName string `json:"roomName" example:"my-room"`
+	UserName string `json:"userName,omitempty" example:"Guest User"`
 }
 
 // RoomResponse represents the response for room operations
@@ -72,15 +74,17 @@ type ParticipantInfo struct {
 
 type RoomHandler struct {
 	roomRepo    *repository.RoomRepository
+	userRepo    *repository.UserRepository
 	livekitHost string
 	apiKey      string
 	apiSecret   string
 	roomService *lksdk.RoomServiceClient
 }
 
-func NewRoomHandler(host, apiKey, apiSecret string, roomRepo *repository.RoomRepository) *RoomHandler {
+func NewRoomHandler(host, apiKey, apiSecret string, roomRepo *repository.RoomRepository, userRepo *repository.UserRepository) *RoomHandler {
 	return &RoomHandler{
 		roomRepo:    roomRepo,
+		userRepo:    userRepo,
 		livekitHost: host,
 		apiKey:      apiKey,
 		apiSecret:   apiSecret,
@@ -143,15 +147,14 @@ func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
 }
 
 // @Summary Join a room
-// @Description Join an existing room and get access token
+// @Description Join an existing room (or create if not exists) and get access token
 // @Tags rooms
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param request body JoinRoomRequest true "Room join parameters"
 // @Success 200 {object} RoomResponse
 // @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
 // @Router /room/join [post]
 func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 	var req JoinRoomRequest
@@ -161,25 +164,89 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 		})
 	}
 
-	claims := c.Locals("user").(*auth.Claims)
+	var userID string
+	var userName string
+	var email string
 
-	// Get room from database
-	room, err := h.roomRepo.GetRoomByName(req.RoomName)
-	if err != nil || room == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Room not found",
-		})
+	// Check if user is authenticated
+	if userLocals := c.Locals("user"); userLocals != nil {
+		claims := userLocals.(*auth.Claims)
+		userID = claims.UserID
+		email = claims.Email
+		// We can fetch name if needed, but for now we'll rely on what we have or fetch user
+		user, err := h.userRepo.GetUserByID(userID)
+		if err == nil && user != nil {
+			userName = user.Name
+		} else {
+			userName = email // Fallback
+		}
+	} else {
+		// Guest user
+		if req.UserName == "" {
+			req.UserName = "Guest"
+		}
+		userName = req.UserName
+
+		// Create a temporary/guest user
+		// We use a deterministic email based on UUID to avoid collisions
+		guestUUID := uuid.New().String()
+		email = "guest-" + guestUUID + "@temp.bedrud"
+		userID = guestUUID
+
+		guestUser := &models.User{
+			ID:       userID,
+			Email:    email,
+			Name:     userName,
+			Provider: "guest",
+			IsActive: true,
+			Accesses: models.StringArray{"guest"},
+		}
+
+		if err := h.userRepo.CreateUser(guestUser); err != nil {
+			log.Error().Err(err).Msg("Failed to create guest user")
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to initialize guest session",
+			})
+		}
 	}
 
-	// Check if room is active and not expired
-	if !room.IsActive || time.Now().After(room.ExpiresAt) {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Room is not active or has expired",
+	// Get room from database or create if not exists
+	room, err := h.roomRepo.GetRoomByName(req.RoomName)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get room")
+	}
+
+	if room == nil {
+		// Create room
+		settings := models.RoomSettings{
+			AllowChat:  true,
+			AllowVideo: true,
+			AllowAudio: true,
+		}
+		// Create room in LiveKit
+		_, err := h.roomService.CreateRoom(c.Context(), &livekit.CreateRoomRequest{
+			Name: req.RoomName,
 		})
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create LiveKit room")
+		}
+
+		room, err = h.roomRepo.CreateRoom(userID, req.RoomName, settings)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create room in database")
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to create room",
+			})
+		}
+	} else {
+		// Check if room is active and not expired
+		if !room.IsActive {
+			// Warn but proceed? Or just treat as needing reactivation
+		}
 	}
 
 	// Add participant to room
-	err = h.roomRepo.AddParticipant(room.ID, claims.UserID)
+	err = h.roomRepo.AddParticipant(room.ID, userID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to add participant to room")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -188,13 +255,14 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 	}
 
 	// Generate LiveKit token
-	at := lkauth.NewAccessToken(h.apiKey, h.apiSecret) // Changed to lkauth
-	grant := &lkauth.VideoGrant{                       // Changed to lkauth
+	at := lkauth.NewAccessToken(h.apiKey, h.apiSecret)
+	grant := &lkauth.VideoGrant{
 		RoomJoin: true,
 		Room:     req.RoomName,
 	}
 	at.AddGrant(grant).
-		SetIdentity(claims.Email).
+		SetIdentity(userID).
+		SetName(userName).
 		SetValidFor(time.Hour)
 
 	token, err := at.ToJWT()

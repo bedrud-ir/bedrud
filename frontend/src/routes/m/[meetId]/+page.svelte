@@ -26,6 +26,8 @@
         Loader2,
     } from "lucide-svelte";
     import { joinRoomAPI } from "$lib/api/room";
+    import { Input } from "$lib/components/ui/input";
+    import { Label } from "$lib/components/ui/label";
 
     // State management
     let room = $state<Room | null>(null);
@@ -36,6 +38,10 @@
     let isLoading = $state(true);
     let error = $state<string | null>(null);
     let connectionError = $state<string | null>(null);
+
+    // Guest join state
+    let showNameModal = $state(false);
+    let guestName = $state("");
 
     // Track local video container reference
     let localVideoContainer: HTMLDivElement;
@@ -284,25 +290,36 @@
     }
 
     onMount(async () => {
-        // Check User
-        if (!$userStore) {
-            localStorage.setItem("redirect", window.location.pathname);
-            goto("/auth/login");
-            return;
-        }
-
         // Check the params
         if (!$page.params.meetId) {
             goto("/404");
             return;
         }
 
-        // Try to join the meeting
+        // Check if user is logged in
+        if (!$userStore) {
+            showNameModal = true;
+            isLoading = false;
+            return;
+        }
+
+        // Try to join the meeting automatically if logged in
+        joinMeeting();
+    });
+
+    async function handleJoinAsGuest() {
+        if (!guestName.trim()) return;
+        showNameModal = false;
+        await joinMeeting(guestName);
+    }
+
+    async function joinMeeting(userName?: string) {
         isLoading = true;
 
         try {
             const joinRoomResp = await joinRoomAPI({
                 roomName: $page.params.meetId,
+                userName: userName
             });
 
             if (
@@ -377,7 +394,7 @@
             error = err.message || "Failed to join meeting";
             isLoading = false;
         }
-    });
+    }
 
     onDestroy(() => {
         if (room) {
@@ -392,7 +409,28 @@
     }
 </script>
 
-{#if isLoading}
+{#if showNameModal}
+    <div class="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+        <Card.Root class="w-[350px]">
+             <Card.Header>
+                <Card.Title>Join Meeting</Card.Title>
+                <Card.Description>Enter your name to join as a guest</Card.Description>
+            </Card.Header>
+            <Card.Content>
+                 <div class="grid w-full items-center gap-4">
+                    <div class="flex flex-col space-y-1.5">
+                        <Label for="name">Name</Label>
+                        <Input id="name" bind:value={guestName} placeholder="Your Name" onkeydown={(e) => e.key === 'Enter' && handleJoinAsGuest()} />
+                    </div>
+                </div>
+            </Card.Content>
+            <Card.Footer class="flex justify-between">
+                <Button variant="outline" href="/">Cancel</Button>
+                <Button onclick={handleJoinAsGuest}>Join</Button>
+            </Card.Footer>
+        </Card.Root>
+    </div>
+{:else if isLoading}
     <div class="h-screen flex items-center justify-center">
         <div class="flex flex-col items-center gap-4">
             <Loader2 class="h-8 w-8 animate-spin" />

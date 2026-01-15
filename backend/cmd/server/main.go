@@ -180,11 +180,12 @@ func main() {
 		cfg.LiveKit.APIKey,
 		cfg.LiveKit.APISecret,
 		roomRepo,
+		userRepo,
 	)
 
 	// Room routes
 	api.Post("/room/create", middleware.Protected(), roomHandler.CreateRoom)
-	api.Post("/room/join", middleware.Protected(), roomHandler.JoinRoom)
+	api.Post("/room/join", middleware.OptionalProtected(), roomHandler.JoinRoom)
 	api.Get("/room/list", middleware.Protected(), roomHandler.ListRooms)
 
 	// Initialize handlers

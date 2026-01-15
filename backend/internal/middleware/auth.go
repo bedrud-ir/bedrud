@@ -38,6 +38,27 @@ func Protected() fiber.Handler {
 	}
 }
 
+// OptionalProtected middleware attempts to validate the token but proceeds without error if it's missing or invalid
+func OptionalProtected() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		authHeader := c.Get("Authorization")
+		if authHeader != "" {
+			token := authHeader
+			if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+				token = authHeader[7:] // Remove "Bearer " prefix
+			}
+
+			claims, err := auth.ValidateToken(token, config.Get())
+			// If token is valid, set user in locals. If not, just proceed.
+			if err == nil {
+				c.Locals("user", claims)
+			}
+		}
+
+		return c.Next()
+	}
+}
+
 // RequireAccess middleware checks for specific access level
 func RequireAccess(requiredAccess models.AccessLevel) fiber.Handler {
 	return func(c *fiber.Ctx) error {

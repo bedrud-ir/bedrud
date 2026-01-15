@@ -1,9 +1,11 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
+    import { Input } from "$lib/components/ui/input";
     import { Hand, Sun, Moon } from "lucide-svelte";
     import { spring } from "svelte/motion";
     import { fade } from "svelte/transition";
     import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
     import { userStore } from "$lib/stores/user.store";
     import { authStore } from "$lib/stores/auth.store";
     import { fetchAndUpdateCurrentUser } from "$lib/auth";
@@ -60,6 +62,18 @@
         // import { goto } from '$app/navigation';
         // goto('/');
     }
+
+    let roomName = $state("");
+
+    function startMeeting() {
+        if (!roomName.trim()) {
+            // Generate random room name
+            const randomId = Math.random().toString(36).substring(7);
+            goto(`/m/${randomId}`);
+        } else {
+            goto(`/m/${roomName}`);
+        }
+    }
 </script>
 
 <svelte:head>
@@ -94,6 +108,10 @@
                     >
                         Meeting simplified & Open
                     </p>
+                    <div class="flex flex-col sm:flex-row gap-2 mt-6 w-full max-w-sm" in:fade={{ duration: 300, delay: 400 }}>
+                        <Input bind:value={roomName} placeholder="Enter room name..." onkeydown={(e) => e.key === 'Enter' && startMeeting()} />
+                        <Button onclick={startMeeting}>Go</Button>
+                    </div>
                 {/if}
             </div>
         </div>
