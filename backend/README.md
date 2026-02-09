@@ -1,5 +1,5 @@
 # Libraries
-- [Livekit](https://github.dev/livekit/livekit) - Go server for real-time audio/video communication
+- [Livekit](https://github.com/livekit/livekit) - Go server for real-time audio/video communication
 - [Fiber](https://gofiber.io/) - Express inspired web framework written in Go
 - [Zerolog](https://github.com/rs/zerolog) - Zero Allocation JSON Logger
 - [gofiber/swagger](https://github.com/gofiber/swagger) - Swagger middleware for Fiber
