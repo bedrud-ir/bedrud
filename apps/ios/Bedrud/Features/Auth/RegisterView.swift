@@ -4,14 +4,16 @@ struct RegisterView: View {
     @EnvironmentObject private var instanceManager: InstanceManager
     @Environment(\.dismiss) private var dismiss
 
-    @State private var name: String = ""
-    @State private var email: String = ""
-    @State private var password: String = ""
-    @State private var confirmPassword: String = ""
+    @State private var name = ""
+    @State private var email = ""
+    @State private var password = ""
+    @State private var confirmPassword = ""
     @State private var errorMessage: String?
-    @State private var isLoading: Bool = false
+    @State private var isLoading = false
+    @State private var isPasskeyLoading = false
 
     private var authManager: AuthManager? { instanceManager.authManager }
+    private var passkeyManager: PasskeyManager? { instanceManager.passkeyManager }
 
     private var isFormValid: Bool {
         !name.isEmpty && !email.isEmpty && !password.isEmpty &&
@@ -23,129 +25,142 @@ struct RegisterView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Header
-                VStack(spacing: 8) {
+        Form {
+            // Header
+            Section {
+                VStack(spacing: 10) {
                     Image(systemName: "person.badge.plus")
-                        .font(.system(size: 40))
-                        .foregroundStyle(BedrudColors.primary)
+                        .font(.system(size: 48, weight: .light))
+                        .foregroundStyle(.tint)
 
                     Text("Create Account")
-                        .font(BedrudTypography.title)
-                        .foregroundStyle(BedrudColors.foreground)
+                        .font(.largeTitle.bold())
 
                     Text("Join Bedrud to start video conferencing")
-                        .font(BedrudTypography.subheadline)
-                        .foregroundStyle(BedrudColors.mutedForeground)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.top, 40)
-                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .listRowBackground(Color.clear)
+            }
 
-                // Form
-                VStack(spacing: 16) {
-                    // Name field
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Name")
-                            .font(BedrudTypography.caption)
-                            .foregroundStyle(BedrudColors.mutedForeground)
+            // Account details
+            Section("Account") {
+                TextField("Name", text: $name)
+                    .textContentType(.name)
+                    .autocorrectionDisabled()
 
-                        TextField("Your name", text: $name)
-                            .textFieldStyle(BedrudTextFieldStyle())
-                            .textContentType(.name)
-                            .autocorrectionDisabled()
+                TextField("Email", text: $email)
+                    .textContentType(.emailAddress)
+                    .keyboardType(.emailAddress)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+            }
+
+            // Password
+            Section {
+                SecureField("Password", text: $password)
+                    .textContentType(.newPassword)
+
+                SecureField("Confirm Password", text: $confirmPassword)
+                    .textContentType(.newPassword)
+            } header: {
+                Text("Password")
+            } footer: {
+                VStack(alignment: .leading, spacing: 4) {
+                    if passwordMismatch {
+                        Label("Passwords do not match", systemImage: "xmark.circle")
+                            .foregroundStyle(.red)
                     }
-
-                    // Email field
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Email")
-                            .font(BedrudTypography.caption)
-                            .foregroundStyle(BedrudColors.mutedForeground)
-
-                        TextField("you@example.com", text: $email)
-                            .textFieldStyle(BedrudTextFieldStyle())
-                            .textContentType(.emailAddress)
-                            .keyboardType(.emailAddress)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
+                    if !password.isEmpty && password.count < 6 {
+                        Label("At least 6 characters required", systemImage: "info.circle")
+                            .foregroundStyle(.secondary)
                     }
+                }
+            }
 
-                    // Password field
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Password")
-                            .font(BedrudTypography.caption)
-                            .foregroundStyle(BedrudColors.mutedForeground)
+            // Error
+            if let errorMessage {
+                Section {
+                    Label(errorMessage, systemImage: "xmark.circle.fill")
+                        .foregroundStyle(.red)
+                        .font(.footnote)
+                }
+            }
 
-                        SecureField("At least 6 characters", text: $password)
-                            .textFieldStyle(BedrudTextFieldStyle())
-                            .textContentType(.newPassword)
-                    }
-
-                    // Confirm password field
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Confirm Password")
-                            .font(BedrudTypography.caption)
-                            .foregroundStyle(BedrudColors.mutedForeground)
-
-                        SecureField("Repeat your password", text: $confirmPassword)
-                            .textFieldStyle(BedrudTextFieldStyle())
-                            .textContentType(.newPassword)
-
-                        if passwordMismatch {
-                            Text("Passwords do not match")
-                                .font(BedrudTypography.caption)
-                                .foregroundStyle(BedrudColors.destructive)
-                        }
-                    }
-
-                    // Error message
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(BedrudTypography.caption)
-                            .foregroundStyle(BedrudColors.destructive)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    // Register button
-                    Button(action: performRegister) {
+            // Create Account button
+            Section {
+                Button(action: performRegister) {
+                    Group {
                         if isLoading {
                             ProgressView()
-                                .tint(.white)
                         } else {
                             Text("Create Account")
-                                .font(BedrudTypography.body.bold())
                         }
                     }
-                    .buttonStyle(BedrudPrimaryButtonStyle())
-                    .disabled(!isFormValid || isLoading)
+                    .frame(maxWidth: .infinity)
+                    .font(.body.bold())
                 }
-                .padding(.horizontal, 24)
+                .disabled(!isFormValid || isLoading || isPasskeyLoading)
+            }
 
-                // Back to login
-                HStack(spacing: 4) {
+            // Passkey signup
+            Section {
+                Button(action: performPasskeySignup) {
+                    HStack(spacing: 8) {
+                        if isPasskeyLoading {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "person.badge.key.fill")
+                        }
+                        Text("Sign up with Passkey")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .disabled(name.isEmpty || email.isEmpty || isLoading || isPasskeyLoading)
+            } header: {
+                HStack {
+                    VStack { Divider() }
+                    Text("or")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    VStack { Divider() }
+                }
+                .padding(.bottom, 4)
+            } footer: {
+                Text("Create an account using a passkey instead of a password.")
+            }
+
+            // Back to sign in
+            Section {
+                HStack {
+                    Spacer()
                     Text("Already have an account?")
-                        .font(BedrudTypography.footnote)
-                        .foregroundStyle(BedrudColors.mutedForeground)
-
+                        .foregroundStyle(.secondary)
                     Button("Sign In") {
                         dismiss()
                     }
-                    .font(BedrudTypography.footnote.bold())
-                    .foregroundStyle(BedrudColors.primary)
+                    .bold()
+                    Spacer()
                 }
-                .padding(.top, 8)
-
-                Spacer()
+                .font(.footnote)
+                .listRowBackground(Color.clear)
             }
         }
-        .background(BedrudColors.background)
+        .formStyle(.grouped)
+        .scrollDismissesKeyboard(.interactively)
         .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Actions
 
     private func performRegister() {
-        guard isFormValid, let authManager else { return }
+        guard isFormValid else { return }
+        guard let authManager else {
+            errorMessage = "Not connected to a server. Please go back and select one."
+            return
+        }
         isLoading = true
         errorMessage = nil
 
@@ -160,6 +175,33 @@ struct RegisterView: View {
                 errorMessage = error.localizedDescription
             }
             isLoading = false
+        }
+    }
+
+    private func performPasskeySignup() {
+        guard !name.isEmpty, !email.isEmpty, let passkeyManager else { return }
+
+        guard let window = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first?.windows.first
+        else { return }
+
+        isPasskeyLoading = true
+        errorMessage = nil
+
+        Task {
+            do {
+                _ = try await passkeyManager.signup(
+                    email: email,
+                    name: name,
+                    anchor: window
+                )
+            } catch PasskeyError.cancelled {
+                // User cancelled — no error
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isPasskeyLoading = false
         }
     }
 }

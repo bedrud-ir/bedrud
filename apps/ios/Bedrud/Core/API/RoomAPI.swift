@@ -88,6 +88,14 @@ struct RoomAPI {
         )
     }
 
+    func deleteRoom(roomId: String) async throws {
+        try await client.authFetchVoid(
+            "/room/\(roomId)",
+            method: "DELETE",
+            authManager: authManager
+        )
+    }
+
     func kickParticipant(roomId: String, identity: String) async throws {
         try await client.authFetchVoid(
             "/room/\(roomId)/kick/\(identity)",

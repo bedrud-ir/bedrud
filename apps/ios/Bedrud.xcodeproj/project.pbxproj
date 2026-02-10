@@ -8,17 +8,22 @@
 
 /* Begin PBXBuildFile section */
 		035DF73F8818FA7F1AB672C1 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10A0D6F797FC10ECA804850B /* User.swift */; };
+		08CC50664BB694120B0C567D /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97B40CB4FA7C07C27F422957 /* SettingsStore.swift */; };
 		0C3A16FABE48F1956211FD89 /* APIErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A16A81B43A1BD1AB980147F2 /* APIErrorTests.swift */; };
 		0DA7CCA1C3216360ADE5F4E0 /* PasskeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CCE93B4C02339996B64264 /* PasskeyManager.swift */; };
 		1EACFAC0C3CD699360386D3A /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = 19DC913469ED0B94598228EB /* KeychainAccess */; };
+		22D00C5EC4F618B726B3296F /* JoinByURLSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151B1685AB0FFDBC9D9AD93C /* JoinByURLSheet.swift */; };
+		2F0C20FCFE03954BABE1C10D /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 759F54A028619F2A1B50C78D /* MainTabView.swift */; };
 		2F47E14CFAB22E6B6096DDCA /* AuthAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 294DD059C1708CFB35405442 /* AuthAPI.swift */; };
 		3540B67712A8FE53FC791AEC /* ControlBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */; };
+		3D688C3585690B68CE9B2A01 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252B460A7E099456B30AFB5F /* SettingsView.swift */; };
 		4B8350F050404179FB98F598 /* RoomAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E54D5E71E44DA494FA8838 /* RoomAPITests.swift */; };
 		4BC55584286C1A7D4077868B /* MockURLProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE9F55D47CA1E808F074DAAE /* MockURLProtocol.swift */; };
 		4E2B9228AC08F5EAE06194B1 /* MigrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68FAEA904DCF6A780C534E57 /* MigrationManager.swift */; };
 		57282EA6094F9EBBFBF149C3 /* RoomCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737FCA2593FDFB10DC8A4CCB /* RoomCardView.swift */; };
 		5DE42740966FADC2AD6AF783 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B49FC1C1923E5053EF89591 /* APIClient.swift */; };
 		6198F5AF84B6176702988A0D /* InstanceManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0540266132F622C98D6D870 /* InstanceManagerTests.swift */; };
+		6C87A5E9B0761213B935041A /* Styles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78FDB79138F0A93C2F16252D /* Styles.swift */; };
 		6D6C16E35808B90C128D3FB5 /* MigrationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B91D0C9733B860CE754153 /* MigrationManagerTests.swift */; };
 		6E6EF5E9479E49A8230E33FE /* InstanceStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B3F8119935AF0B9C4F3FEE /* InstanceStoreTests.swift */; };
 		75C7F65BFA1E322EBAFCF411 /* Room.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE2D007CFF5AB38E2A5FFA32 /* Room.swift */; };
@@ -29,12 +34,15 @@
 		89ADB6DBA890981360F3C631 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE51CC3D64BD7B14CC122D99 /* LoginView.swift */; };
 		89E186C327424B2B315B8725 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 368B52DCC407760034A0BC2B /* Typography.swift */; };
 		91E36BB5D44FDD15414BD1B4 /* BedrudApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB914F4168E2359F730AEE9 /* BedrudApp.swift */; };
+		93EFD3B6450C7CFF054DE63D /* ServerIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422042B98B806A109F0F3411 /* ServerIconView.swift */; };
 		9A018D690E3ECFC71466E924 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5DC38BA66A83A8B0393440E /* DashboardView.swift */; };
 		9D2A35400CFC38D5379F072B /* AuthManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00779BA1EF734670B61814A9 /* AuthManagerTests.swift */; };
+		9DD9228BAED8291EE2E4C6A1 /* BedrudURLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB99C992E1618621B8C4342 /* BedrudURLParser.swift */; };
 		A5BC8228753FCBCA447CB6F7 /* InstanceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10333B7D66F07EDB60FB9A6A /* InstanceListView.swift */; };
 		ADC8AE133B1FB887209B01F4 /* InstanceSwitcherSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDE8842881927790317E4C9A /* InstanceSwitcherSheet.swift */; };
 		B106F69FD2C3BEA48B64B009 /* AddInstanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41C482BB82228D6C2A85419 /* AddInstanceView.swift */; };
 		B203B4B903EDBC32ACDD35A5 /* PasskeyErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB8862D305D7CC1117BCB85C /* PasskeyErrorTests.swift */; };
+		B46570D732734DFD8A339D64 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B40C6C896508CCD958042818 /* ProfileView.swift */; };
 		C41E627DF953AC7C3ACE84AB /* InstanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1CE43F0236D070A0335B02C /* InstanceManager.swift */; };
 		C5EC553D900DE339BCAB5A4E /* UserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6401AD5304E923D8392A4F17 /* UserTests.swift */; };
 		C988557C0F96F98594641BF0 /* ColorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E96000CD15CF09126D920C87 /* ColorsTests.swift */; };
@@ -67,7 +75,9 @@
 		0B4AF592FA9BCA4ADBDFBB78 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		10333B7D66F07EDB60FB9A6A /* InstanceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceListView.swift; sourceTree = "<group>"; };
 		10A0D6F797FC10ECA804850B /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		151B1685AB0FFDBC9D9AD93C /* JoinByURLSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinByURLSheet.swift; sourceTree = "<group>"; };
 		239A6FD6D471F9DE50554636 /* Bedrud.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Bedrud.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		252B460A7E099456B30AFB5F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		294DD059C1708CFB35405442 /* AuthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAPI.swift; sourceTree = "<group>"; };
 		32B3F8119935AF0B9C4F3FEE /* InstanceStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceStoreTests.swift; sourceTree = "<group>"; };
 		366CCCCDA13F7A96C09C3362 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
@@ -75,22 +85,28 @@
 		3B49FC1C1923E5053EF89591 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		3E180B8B3E6F5D75BFF638D0 /* MeetingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingView.swift; sourceTree = "<group>"; };
 		3E3F0F986721CF96D744AE42 /* BedrudTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BedrudTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		422042B98B806A109F0F3411 /* ServerIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerIconView.swift; sourceTree = "<group>"; };
 		4EA81758239498886B3AD762 /* RoomManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomManagerTests.swift; sourceTree = "<group>"; };
 		520C9E6B8C13EADD0A2DFF43 /* InstanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceStore.swift; sourceTree = "<group>"; };
 		5290E738195A622BCEECE8CF /* Instance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Instance.swift; sourceTree = "<group>"; };
 		6401AD5304E923D8392A4F17 /* UserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserTests.swift; sourceTree = "<group>"; };
 		68FAEA904DCF6A780C534E57 /* MigrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationManager.swift; sourceTree = "<group>"; };
+		6CB99C992E1618621B8C4342 /* BedrudURLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrudURLParser.swift; sourceTree = "<group>"; };
 		737FCA2593FDFB10DC8A4CCB /* RoomCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCardView.swift; sourceTree = "<group>"; };
 		73A233845A03A36E91FAF00F /* RoomTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomTests.swift; sourceTree = "<group>"; };
+		759F54A028619F2A1B50C78D /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		75CCE93B4C02339996B64264 /* PasskeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyManager.swift; sourceTree = "<group>"; };
 		78A31F7459DCE4C1238DE851 /* PasskeyDataExtensionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyDataExtensionTests.swift; sourceTree = "<group>"; };
+		78FDB79138F0A93C2F16252D /* Styles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Styles.swift; sourceTree = "<group>"; };
 		7D2CB613BB065F6075FF4165 /* AuthAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAPITests.swift; sourceTree = "<group>"; };
 		84677DFF3AA7719AD9F13719 /* RoomManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomManager.swift; sourceTree = "<group>"; };
+		97B40CB4FA7C07C27F422957 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		9E271E4E77D423D6A5EF80E9 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		A16A81B43A1BD1AB980147F2 /* APIErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIErrorTests.swift; sourceTree = "<group>"; };
 		A41C482BB82228D6C2A85419 /* AddInstanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddInstanceView.swift; sourceTree = "<group>"; };
 		A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlBar.swift; sourceTree = "<group>"; };
 		A5B91D0C9733B860CE754153 /* MigrationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationManagerTests.swift; sourceTree = "<group>"; };
+		B40C6C896508CCD958042818 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		B8610AD1B6C8E8134846C810 /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
 		BDB914F4168E2359F730AEE9 /* BedrudApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrudApp.swift; sourceTree = "<group>"; };
 		BE2D007CFF5AB38E2A5FFA32 /* Room.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Room.swift; sourceTree = "<group>"; };
@@ -138,6 +154,15 @@
 			path = API;
 			sourceTree = "<group>";
 		};
+		19CE301723243A65C97ED364 /* JoinByURL */ = {
+			isa = PBXGroup;
+			children = (
+				6CB99C992E1618621B8C4342 /* BedrudURLParser.swift */,
+				151B1685AB0FFDBC9D9AD93C /* JoinByURLSheet.swift */,
+			);
+			path = JoinByURL;
+			sourceTree = "<group>";
+		};
 		284E2A7679D750B9F11FFE7B /* Models */ = {
 			isa = PBXGroup;
 			children = (
@@ -173,8 +198,17 @@
 				A41C482BB82228D6C2A85419 /* AddInstanceView.swift */,
 				10333B7D66F07EDB60FB9A6A /* InstanceListView.swift */,
 				FDE8842881927790317E4C9A /* InstanceSwitcherSheet.swift */,
+				422042B98B806A109F0F3411 /* ServerIconView.swift */,
 			);
 			path = Instance;
+			sourceTree = "<group>";
+		};
+		5030537536E98F0565F1AB8E /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				B40C6C896508CCD958042818 /* ProfileView.swift */,
+			);
+			path = Profile;
 			sourceTree = "<group>";
 		};
 		6196715D66CFD15E717F95E7 /* Auth */ = {
@@ -263,6 +297,7 @@
 			isa = PBXGroup;
 			children = (
 				0B4AF592FA9BCA4ADBDFBB78 /* Colors.swift */,
+				78FDB79138F0A93C2F16252D /* Styles.swift */,
 				368B52DCC407760034A0BC2B /* Typography.swift */,
 			);
 			path = Theme;
@@ -327,7 +362,11 @@
 				6196715D66CFD15E717F95E7 /* Auth */,
 				8FF065275AF53FAA17F3F5F3 /* Dashboard */,
 				40A1CB227C0990902D8C4667 /* Instance */,
+				19CE301723243A65C97ED364 /* JoinByURL */,
+				E0A8606F3C134CB16D283B76 /* Main */,
 				DC4489C73A8AD76D4FD27EAB /* Meeting */,
+				5030537536E98F0565F1AB8E /* Profile */,
+				F2440D8140B885E1584EA15A /* Settings */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -349,6 +388,14 @@
 			path = Design;
 			sourceTree = "<group>";
 		};
+		E0A8606F3C134CB16D283B76 /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				759F54A028619F2A1B50C78D /* MainTabView.swift */,
+			);
+			path = Main;
+			sourceTree = "<group>";
+		};
 		E2DD2B6D11D6707E9FCB9762 /* Design */ = {
 			isa = PBXGroup;
 			children = (
@@ -364,6 +411,15 @@
 				C1AAA9096D9F343EC8E6F64F /* BedrudTests */,
 				A861C6C7FE8C23E464AE6AC2 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		F2440D8140B885E1584EA15A /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				97B40CB4FA7C07C27F422957 /* SettingsStore.swift */,
+				252B460A7E099456B30AFB5F /* SettingsView.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		FA54846CF23885EE1E42782C /* API */ = {
@@ -467,6 +523,7 @@
 				2F47E14CFAB22E6B6096DDCA /* AuthAPI.swift in Sources */,
 				F6035727B829577C5351AF64 /* AuthManager.swift in Sources */,
 				91E36BB5D44FDD15414BD1B4 /* BedrudApp.swift in Sources */,
+				9DD9228BAED8291EE2E4C6A1 /* BedrudURLParser.swift in Sources */,
 				D4F10C277E9E80B86769A5B5 /* Colors.swift in Sources */,
 				3540B67712A8FE53FC791AEC /* ControlBar.swift in Sources */,
 				9A018D690E3ECFC71466E924 /* DashboardView.swift in Sources */,
@@ -475,15 +532,22 @@
 				C41E627DF953AC7C3ACE84AB /* InstanceManager.swift in Sources */,
 				C9CF27E721699CBA1ADA0160 /* InstanceStore.swift in Sources */,
 				ADC8AE133B1FB887209B01F4 /* InstanceSwitcherSheet.swift in Sources */,
+				22D00C5EC4F618B726B3296F /* JoinByURLSheet.swift in Sources */,
 				89ADB6DBA890981360F3C631 /* LoginView.swift in Sources */,
+				2F0C20FCFE03954BABE1C10D /* MainTabView.swift in Sources */,
 				7EA06B438FC56EDBDC2CBA21 /* MeetingView.swift in Sources */,
 				4E2B9228AC08F5EAE06194B1 /* MigrationManager.swift in Sources */,
 				0DA7CCA1C3216360ADE5F4E0 /* PasskeyManager.swift in Sources */,
+				B46570D732734DFD8A339D64 /* ProfileView.swift in Sources */,
 				D45812B4E3826A072A13BC57 /* RegisterView.swift in Sources */,
 				75C7F65BFA1E322EBAFCF411 /* Room.swift in Sources */,
 				781216EDEE045E662B438CB6 /* RoomAPI.swift in Sources */,
 				57282EA6094F9EBBFBF149C3 /* RoomCardView.swift in Sources */,
 				83504CB2672E23103A521965 /* RoomManager.swift in Sources */,
+				93EFD3B6450C7CFF054DE63D /* ServerIconView.swift in Sources */,
+				08CC50664BB694120B0C567D /* SettingsStore.swift in Sources */,
+				3D688C3585690B68CE9B2A01 /* SettingsView.swift in Sources */,
+				6C87A5E9B0761213B935041A /* Styles.swift in Sources */,
 				89E186C327424B2B315B8725 /* Typography.swift in Sources */,
 				035DF73F8818FA7F1AB672C1 /* User.swift in Sources */,
 			);

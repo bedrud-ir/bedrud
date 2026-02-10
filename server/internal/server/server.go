@@ -135,6 +135,7 @@ func Run(configPath string) error {
 	api.Post("/room/:roomId/stage/:identity/bring", middleware.Protected(), roomHandler.BringToStage)
 	api.Post("/room/:roomId/stage/:identity/remove", middleware.Protected(), roomHandler.RemoveFromStage)
 	api.Put("/room/:roomId/settings", middleware.Protected(), roomHandler.UpdateSettings)
+	api.Delete("/room/:roomId", middleware.Protected(), roomHandler.DeleteRoom)
 
 	// Admin routes
 	usersHandler := handlers.NewUsersHandler(userRepo)

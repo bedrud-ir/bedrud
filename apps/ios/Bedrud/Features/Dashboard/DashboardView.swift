@@ -4,69 +4,78 @@ struct DashboardView: View {
     @EnvironmentObject private var instanceManager: InstanceManager
 
     @State private var rooms: [UserRoomResponse] = []
-    @State private var isLoading: Bool = false
+    @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var showCreateRoom: Bool = false
-    @State private var newRoomName: String = ""
-    @State private var isCreatingRoom: Bool = false
+    @State private var showCreateRoom = false
+    @State private var newRoomName = ""
+    @State private var isCreatingRoom = false
     @State private var selectedRoom: JoinRoomResponse?
-    @State private var isJoiningRoom: Bool = false
-    @State private var showInstanceSwitcher: Bool = false
+    @State private var joiningRoomId: String?
+    @State private var roomToDelete: UserRoomResponse?
 
-    private var authManager: AuthManager? { instanceManager.authManager }
     private var roomAPI: RoomAPI? { instanceManager.roomAPI }
+
+    private var activeRooms: [UserRoomResponse] {
+        rooms.filter { $0.isActive }
+    }
+
+    private var inactiveRooms: [UserRoomResponse] {
+        rooms.filter { !$0.isActive }
+    }
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                BedrudColors.background
-                    .ignoresSafeArea()
-
+            List {
                 if isLoading && rooms.isEmpty {
-                    ProgressView("Loading rooms...")
-                        .foregroundStyle(BedrudColors.mutedForeground)
-                } else if rooms.isEmpty {
-                    emptyStateView
-                } else {
-                    roomListView
-                }
-            }
-            .navigationTitle("Rooms")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 8) {
-                        // Instance switcher button
-                        if let instance = instanceManager.store.activeInstance {
-                            Button {
-                                showInstanceSwitcher = true
-                            } label: {
-                                Circle()
-                                    .fill(Color(hex: instance.iconColorHex) ?? BedrudColors.primary)
-                                    .frame(width: 28, height: 28)
-                                    .overlay(
-                                        Text(String(instance.displayName.prefix(1)).uppercased())
-                                            .font(BedrudTypography.caption.bold())
-                                            .foregroundStyle(.white)
-                                    )
-                            }
+                    Section {
+                        HStack {
+                            Spacer()
+                            ProgressView("Loading rooms...")
+                            Spacer()
                         }
+                        .listRowBackground(Color.clear)
+                    }
+                } else if rooms.isEmpty {
+                    emptyStateSection
+                } else {
+                    if !activeRooms.isEmpty {
+                        Section {
+                            ForEach(activeRooms) { room in
+                                roomRow(room)
+                            }
+                        } header: {
+                            Text("Active (\(activeRooms.count))")
+                        }
+                    }
 
-                        Button {
-                            guard let authManager else { return }
-                            Task { await authManager.logout() }
-                        } label: {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                                .foregroundStyle(BedrudColors.mutedForeground)
+                    if !inactiveRooms.isEmpty {
+                        Section {
+                            ForEach(inactiveRooms) { room in
+                                roomRow(room)
+                            }
+                        } header: {
+                            Text("Inactive (\(inactiveRooms.count))")
                         }
                     }
                 }
 
+                if let errorMessage {
+                    Section {
+                        Label(errorMessage, systemImage: "xmark.circle.fill")
+                            .foregroundStyle(.red)
+                            .font(.footnote)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Rooms")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showCreateRoom = true
                     } label: {
                         Image(systemName: "plus")
-                            .foregroundStyle(BedrudColors.primary)
                     }
                 }
             }
@@ -88,60 +97,62 @@ struct DashboardView: View {
             } message: {
                 Text("Enter a name for your new room.")
             }
+            .confirmationDialog(
+                "Delete \"\(roomToDelete?.name ?? "")\"?",
+                isPresented: .init(
+                    get: { roomToDelete != nil },
+                    set: { if !$0 { roomToDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Delete Room", role: .destructive) {
+                    if let room = roomToDelete {
+                        Task { await deleteRoom(room) }
+                    }
+                }
+            } message: {
+                Text("This room and all its data will be permanently deleted.")
+            }
             .fullScreenCover(item: $selectedRoom) { joinResponse in
                 MeetingView(joinResponse: joinResponse)
-            }
-            .sheet(isPresented: $showInstanceSwitcher) {
-                InstanceSwitcherSheet()
-                    .environmentObject(instanceManager)
             }
         }
     }
 
     // MARK: - Subviews
 
-    private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "rectangle.stack.badge.plus")
-                .font(.system(size: 48))
-                .foregroundStyle(BedrudColors.mutedForeground)
-
-            Text("No rooms yet")
-                .font(BedrudTypography.title2)
-                .foregroundStyle(BedrudColors.foreground)
-
-            Text("Create a room to get started with video conferencing.")
-                .font(BedrudTypography.subheadline)
-                .foregroundStyle(BedrudColors.mutedForeground)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-
-            Button {
-                showCreateRoom = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
+    private var emptyStateSection: some View {
+        Section {
+            ContentUnavailableView {
+                Label("No Rooms", systemImage: "rectangle.stack.badge.plus")
+            } description: {
+                Text("Create a room to start conferencing.")
+            } actions: {
+                Button {
+                    showCreateRoom = true
+                } label: {
                     Text("Create Room")
                 }
-                .font(BedrudTypography.body.bold())
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
             }
-            .buttonStyle(BedrudPrimaryButtonStyle())
-            .frame(width: 200)
-            .padding(.top, 8)
+            .listRowBackground(Color.clear)
         }
     }
 
-    private var roomListView: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                ForEach(rooms) { room in
-                    RoomCardView(room: room, isJoining: isJoiningRoom) {
-                        Task { await joinRoom(roomName: room.name) }
-                    }
-                }
+    private func roomRow(_ room: UserRoomResponse) -> some View {
+        RoomCardView(
+            room: room,
+            isJoining: joiningRoomId == room.id,
+            onJoin: { Task { await joinRoom(room) } },
+            onDelete: { roomToDelete = room }
+        )
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                roomToDelete = room
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
         }
     }
 
@@ -176,18 +187,31 @@ struct DashboardView: View {
         isCreatingRoom = false
     }
 
-    private func joinRoom(roomName: String) async {
+    private func joinRoom(_ room: UserRoomResponse) async {
         guard let roomAPI else { return }
-        isJoiningRoom = true
+        joiningRoomId = room.id
 
         do {
-            let response = try await roomAPI.joinRoom(roomName: roomName)
+            let response = try await roomAPI.joinRoom(roomName: room.name)
             selectedRoom = response
         } catch {
             errorMessage = error.localizedDescription
         }
 
-        isJoiningRoom = false
+        joiningRoomId = nil
+    }
+
+    private func deleteRoom(_ room: UserRoomResponse) async {
+        guard let roomAPI else { return }
+
+        do {
+            try await roomAPI.deleteRoom(roomId: room.id)
+            rooms.removeAll { $0.id == room.id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        roomToDelete = nil
     }
 }
 

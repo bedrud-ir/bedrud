@@ -71,7 +71,13 @@
       "Bash(make:*)",
       "Bash(/usr/bin/xcodebuild:*)",
       "Bash(SHELL=/bin/bash xcodebuild:*)",
-      "Bash(SHELL=/bin/bash xcrun xctrace:*)"
+      "Bash(SHELL=/bin/bash xcrun xctrace:*)",
+      "Bash(SHELL=/bin/bash cd:*)",
+      "Bash(SHELL=/bin/bash /opt/homebrew/bin/xcodegen generate:*)",
+      "Bash(PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\")",
+      "Bash(go build:*)",
+      "Bash(PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/bin:$PATH\")",
+      "Bash(/opt/homebrew/bin/go build:*)"
     ]
   },
   "outputStyle": "default"
