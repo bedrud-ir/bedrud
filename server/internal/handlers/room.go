@@ -136,6 +136,31 @@ func (h *RoomHandler) KickParticipant(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "success"})
 }
 
+func (h *RoomHandler) DeleteRoom(c *fiber.Ctx) error {
+	roomID := c.Params("roomId")
+	claims := c.Locals("user").(*auth.Claims)
+
+	room, _ := h.roomRepo.GetRoom(roomID)
+	if room == nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
+	}
+	if room.CreatedBy != claims.UserID {
+		return c.Status(403).JSON(fiber.Map{"error": "Only the room creator can delete this room"})
+	}
+
+	// Delete from LiveKit
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomCreate: true})
+	_, _ = h.client.DeleteRoom(ctx, &livekit.DeleteRoomRequest{Room: room.Name})
+
+	// Delete from database
+	if err := h.roomRepo.DeleteRoom(roomID, claims.UserID); err != nil {
+		log.Error().Err(err).Str("roomId", roomID).Msg("Failed to delete room")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to delete room"})
+	}
+
+	return c.JSON(fiber.Map{"status": "success"})
+}
+
 func (h *RoomHandler) MuteParticipant(c *fiber.Ctx) error { return c.JSON(fiber.Map{"status": "success"}) }
 func (h *RoomHandler) DisableParticipantVideo(c *fiber.Ctx) error { return c.JSON(fiber.Map{"status": "success"}) }
 func (h *RoomHandler) BringToStage(c *fiber.Ctx) error { return c.JSON(fiber.Map{"status": "success"}) }

@@ -237,6 +237,19 @@ func (r *RoomRepository) UpdateRoomSettings(roomID string, settings models.RoomS
 		Updates(models.Room{Settings: settings}).Error
 }
 
+// DeleteRoom deletes a room and its related data. Only the creator can delete.
+func (r *RoomRepository) DeleteRoom(roomID, userID string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var room models.Room
+		if err := tx.Where("id = ? AND created_by = ?", roomID, userID).First(&room).Error; err != nil {
+			return err
+		}
+		tx.Where("room_id = ?", roomID).Delete(&models.RoomPermissions{})
+		tx.Where("room_id = ?", roomID).Delete(&models.RoomParticipant{})
+		return tx.Delete(&room).Error
+	})
+}
+
 func (r *RoomRepository) GetAllRooms() ([]models.Room, error) {
 	var rooms []models.Room
 	err := r.db.Find(&rooms).Error

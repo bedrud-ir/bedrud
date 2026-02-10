@@ -4,6 +4,7 @@ import SwiftUI
 struct BedrudApp: App {
     @StateObject private var instanceStore: InstanceStore
     @StateObject private var instanceManager: InstanceManager
+    @StateObject private var settingsStore = SettingsStore()
 
     init() {
         let store = InstanceStore()
@@ -16,7 +17,7 @@ struct BedrudApp: App {
         WindowGroup {
             Group {
                 if instanceManager.isAuthenticated {
-                    DashboardView()
+                    MainTabView()
                 } else {
                     NavigationStack {
                         AddInstanceView()
@@ -25,6 +26,8 @@ struct BedrudApp: App {
             }
             .environmentObject(instanceManager)
             .environmentObject(instanceStore)
+            .environmentObject(settingsStore)
+            .preferredColorScheme(settingsStore.appearance.colorScheme)
         }
     }
 }

@@ -4,162 +4,193 @@ struct AddInstanceView: View {
     @EnvironmentObject private var instanceManager: InstanceManager
     @EnvironmentObject private var instanceStore: InstanceStore
 
-    @State private var serverURL = ""
-    @State private var displayName = ""
+    @State private var serverHost = "bedrud.xyz"
+    @State private var displayName = "Bedrud Home"
+    @State private var insecure = false
     @State private var isChecking = false
     @State private var errorMessage: String?
     @State private var navigateToLogin = false
 
+    private var scheme: String { insecure ? "http" : "https" }
+
+    /// The full URL that would be saved, used for duplicate checking.
+    private var resolvedURL: String {
+        var host = serverHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        for prefix in ["https://", "http://"] {
+            if host.hasPrefix(prefix) { host = String(host.dropFirst(prefix.count)) }
+        }
+        host = host.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return "\(scheme)://\(host)/"
+    }
+
+    private var isDuplicate: Bool {
+        instanceStore.instances.contains { $0.serverURL.lowercased() == resolvedURL.lowercased() }
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Header
-                VStack(spacing: 8) {
+        Form {
+            // Header
+            Section {
+                VStack(spacing: 10) {
                     Image(systemName: "server.rack")
-                        .font(.system(size: 48))
-                        .foregroundStyle(BedrudColors.primary)
+                        .font(.system(size: 48, weight: .light))
+                        .foregroundStyle(.tint)
 
                     Text("Bedrud")
-                        .font(BedrudTypography.largeTitle)
-                        .foregroundStyle(BedrudColors.foreground)
+                        .font(.largeTitle.bold())
 
                     Text("Connect to a server to get started")
-                        .font(BedrudTypography.subheadline)
-                        .foregroundStyle(BedrudColors.mutedForeground)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.top, 60)
-                .padding(.bottom, 20)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .listRowBackground(Color.clear)
+            }
 
-                VStack(spacing: 20) {
-                    // Existing servers
-                    if !instanceStore.instances.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("YOUR SERVERS")
-                                .font(BedrudTypography.caption)
-                                .foregroundStyle(BedrudColors.mutedForeground)
-                                .tracking(0.5)
+            // Existing servers
+            if !instanceStore.instances.isEmpty {
+                Section {
+                    ForEach(instanceStore.instances) { instance in
+                        Button {
+                            instanceManager.switchTo(instance.id)
+                            navigateToLogin = true
+                        } label: {
+                            HStack(spacing: 12) {
+                                ServerIconView(
+                                    serverURL: instance.serverURL,
+                                    displayName: instance.displayName,
+                                    fallbackColor: parseSwitcherColor(instance.iconColorHex)
+                                )
 
-                            ForEach(instanceStore.instances) { instance in
-                                ServerRowButton(
-                                    instance: instance,
-                                    isActive: instance.id == instanceStore.activeInstanceId
-                                ) {
-                                    instanceManager.switchTo(instance.id)
-                                    navigateToLogin = true
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(instance.displayName)
+                                        .font(.body)
+                                    Text(instance.serverURL)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                if instance.id == instanceStore.activeInstanceId {
+                                    Image(systemName: "checkmark")
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(.tint)
                                 }
                             }
                         }
-
-                        divider
+                        .tint(.primary)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                deleteInstance(instance)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
-
-                    // Add server form
-                    addServerForm
+                } header: {
+                    Text("Your Servers")
+                } footer: {
+                    Text("Tap a server to sign in. Swipe to remove.")
                 }
-                .padding(.horizontal, 24)
+            }
 
-                Spacer()
+            // Add server form
+            Section {
+                HStack(spacing: 0) {
+                    Text("\(scheme)://")
+                        .font(.footnote.monospaced())
+                        .foregroundStyle(.secondary)
+                        .padding(.trailing, 4)
+
+                    TextField("meet.example.com", text: $serverHost)
+                        .keyboardType(.URL)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .onChange(of: serverHost) { _, _ in
+                            errorMessage = nil
+                        }
+                }
+
+                TextField("Display Name", text: $displayName)
+                    .autocorrectionDisabled()
+
+                Toggle(isOn: $insecure) {
+                    Label("Insecure (no TLS)", systemImage: "lock.open")
+                }
+                .tint(.red)
+            } header: {
+                Text(instanceStore.instances.isEmpty ? "Server" : "Add New Server")
+            } footer: {
+                if insecure {
+                    Label(
+                        "Connection will not be encrypted. Only use for local or development servers.",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .foregroundStyle(.red)
+                }
+            }
+            .animation(.default, value: insecure)
+
+            // Duplicate warning
+            if isDuplicate && !serverHost.isEmpty {
+                Section {
+                    Label("A server with this address already exists.", systemImage: "exclamationmark.circle.fill")
+                        .foregroundStyle(.orange)
+                        .font(.footnote)
+                }
+            }
+
+            // Error
+            if let errorMessage {
+                Section {
+                    Label(errorMessage, systemImage: "xmark.circle.fill")
+                        .foregroundStyle(.red)
+                        .font(.footnote)
+                }
+            }
+
+            // Action
+            Section {
+                Button(action: addServer) {
+                    Group {
+                        if isChecking {
+                            ProgressView()
+                        } else {
+                            Text("Add Server")
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .font(.body.bold())
+                }
+                .disabled(isChecking || serverHost.isEmpty || displayName.isEmpty || isDuplicate)
             }
         }
+        .formStyle(.grouped)
         .scrollDismissesKeyboard(.interactively)
-        .background(BedrudColors.background)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $navigateToLogin) {
             LoginView()
         }
     }
 
-    // MARK: - Add Server Form
-
-    private var addServerForm: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if !instanceStore.instances.isEmpty {
-                Text("ADD NEW SERVER")
-                    .font(BedrudTypography.caption)
-                    .foregroundStyle(BedrudColors.mutedForeground)
-                    .tracking(0.5)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Server URL")
-                    .font(BedrudTypography.caption)
-                    .foregroundStyle(BedrudColors.mutedForeground)
-
-                TextField("https://meet.example.com", text: $serverURL)
-                    .textFieldStyle(BedrudTextFieldStyle())
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .onChange(of: serverURL) { _, _ in
-                        errorMessage = nil
-                    }
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Display Name")
-                    .font(BedrudTypography.caption)
-                    .foregroundStyle(BedrudColors.mutedForeground)
-
-                TextField("My Server", text: $displayName)
-                    .textFieldStyle(BedrudTextFieldStyle())
-                    .autocorrectionDisabled()
-            }
-
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(BedrudTypography.caption)
-                    .foregroundStyle(BedrudColors.destructive)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Button(action: addServer) {
-                if isChecking {
-                    ProgressView()
-                        .tint(.white)
-                } else {
-                    Text("Add Server")
-                        .font(BedrudTypography.body.bold())
-                }
-            }
-            .buttonStyle(BedrudPrimaryButtonStyle())
-            .disabled(isChecking || serverURL.isEmpty || displayName.isEmpty)
-        }
-    }
-
-    private var divider: some View {
-        HStack(spacing: 12) {
-            Rectangle()
-                .fill(BedrudColors.border)
-                .frame(height: 1)
-            Text("or")
-                .font(BedrudTypography.caption)
-                .foregroundStyle(BedrudColors.mutedForeground)
-            Rectangle()
-                .fill(BedrudColors.border)
-                .frame(height: 1)
-        }
-    }
-
     // MARK: - Actions
 
     private func addServer() {
-        var url = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !url.hasPrefix("http://") && !url.hasPrefix("https://") {
-            url = "https://\(url)"
-        }
-        if !url.hasSuffix("/") {
-            url += "/"
-        }
-
         isChecking = true
         errorMessage = nil
 
         Task {
             do {
                 try await instanceManager.addInstance(
-                    serverURL: url,
+                    serverURL: resolvedURL,
                     displayName: displayName.trimmingCharacters(in: .whitespaces)
                 )
+                // Clear the form for the next add
+                serverHost = ""
+                displayName = ""
+                insecure = false
                 navigateToLogin = true
             } catch {
                 errorMessage = "Could not reach server: \(error.localizedDescription)"
@@ -167,62 +198,17 @@ struct AddInstanceView: View {
             isChecking = false
         }
     }
-}
 
-// MARK: - Server Row
-
-private struct ServerRowButton: View {
-    let instance: Instance
-    let isActive: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Text(String(instance.displayName.prefix(1)).uppercased())
-                    .font(BedrudTypography.headline)
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(parseSwitcherColor(instance.iconColorHex))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(instance.displayName)
-                        .font(BedrudTypography.headline)
-                        .foregroundStyle(BedrudColors.foreground)
-                    Text(instance.serverURL)
-                        .font(BedrudTypography.caption)
-                        .foregroundStyle(BedrudColors.mutedForeground)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                if isActive {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(BedrudColors.primary)
-                }
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(BedrudColors.mutedForeground)
-            }
-            .padding(12)
-            .background(BedrudColors.card)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isActive ? BedrudColors.primary.opacity(0.3) : BedrudColors.border, lineWidth: 1)
-            )
+    private func deleteInstance(_ instance: Instance) {
+        Task {
+            await instanceManager.removeInstance(instance.id)
         }
     }
 
     private func parseSwitcherColor(_ hex: String) -> Color {
         let cleaned = hex.trimmingCharacters(in: .init(charactersIn: "#"))
         guard cleaned.count == 6,
-              let val = UInt64(cleaned, radix: 16) else {
-            return BedrudColors.primary
-        }
+              let val = UInt64(cleaned, radix: 16) else { return .accentColor }
         return Color(
             red: Double((val >> 16) & 0xFF) / 255,
             green: Double((val >> 8) & 0xFF) / 255,

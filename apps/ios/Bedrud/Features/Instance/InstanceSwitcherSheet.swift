@@ -4,7 +4,7 @@ struct InstanceSwitcherSheet: View {
     @EnvironmentObject private var instanceManager: InstanceManager
     @Environment(\.dismiss) private var dismiss
 
-    @State private var showAddInstance: Bool = false
+    @State private var showAddInstance = false
 
     private var instances: [Instance] {
         instanceManager.store.instances
@@ -17,54 +17,49 @@ struct InstanceSwitcherSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                ForEach(instances) { instance in
-                    Button {
-                        instanceManager.switchTo(instance.id)
-                        dismiss()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Circle()
-                                .fill(Color(hex: instance.iconColorHex) ?? BedrudColors.primary)
-                                .frame(width: 32, height: 32)
-                                .overlay(
-                                    Text(String(instance.displayName.prefix(1)).uppercased())
-                                        .font(BedrudTypography.footnote.bold())
-                                        .foregroundStyle(.white)
+                Section {
+                    ForEach(instances) { instance in
+                        Button {
+                            instanceManager.switchTo(instance.id)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 12) {
+                                ServerIconView(
+                                    serverURL: instance.serverURL,
+                                    displayName: instance.displayName,
+                                    fallbackColor: parseSwitcherColor(instance.iconColorHex),
+                                    size: 32
                                 )
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(instance.displayName)
-                                    .font(BedrudTypography.body)
-                                    .foregroundStyle(BedrudColors.foreground)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(instance.displayName)
+                                        .font(.body)
 
-                                Text(instance.serverURL)
-                                    .font(BedrudTypography.caption)
-                                    .foregroundStyle(BedrudColors.mutedForeground)
-                                    .lineLimit(1)
-                            }
+                                    Text(instance.serverURL)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
 
-                            Spacer()
+                                Spacer()
 
-                            if instance.id == activeId {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(BedrudColors.primary)
-                                    .fontWeight(.semibold)
+                                if instance.id == activeId {
+                                    Image(systemName: "checkmark")
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(.tint)
+                                }
                             }
                         }
+                        .tint(.primary)
                     }
                 }
 
-                Button {
-                    showAddInstance = true
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(BedrudColors.primary)
-
-                        Text("Add Server")
-                            .font(BedrudTypography.body)
-                            .foregroundStyle(BedrudColors.primary)
+                Section {
+                    Button {
+                        showAddInstance = true
+                    } label: {
+                        Label("Add Server", systemImage: "plus.circle.fill")
+                            .font(.body)
                     }
                 }
             }
@@ -76,9 +71,23 @@ struct InstanceSwitcherSheet: View {
                 }
             }
             .sheet(isPresented: $showAddInstance) {
-                AddInstanceView()
-                    .environmentObject(instanceManager)
+                NavigationStack {
+                    AddInstanceView()
+                        .environmentObject(instanceManager)
+                        .environmentObject(instanceManager.store)
+                }
             }
         }
+    }
+
+    private func parseSwitcherColor(_ hex: String) -> Color {
+        let cleaned = hex.trimmingCharacters(in: .init(charactersIn: "#"))
+        guard cleaned.count == 6,
+              let val = UInt64(cleaned, radix: 16) else { return .accentColor }
+        return Color(
+            red: Double((val >> 16) & 0xFF) / 255,
+            green: Double((val >> 8) & 0xFF) / 255,
+            blue: Double(val & 0xFF) / 255
+        )
     }
 }
