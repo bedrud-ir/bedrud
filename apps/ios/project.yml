@@ -1,0 +1,74 @@
+name: Bedrud
+options:
+  bundleIdPrefix: com.bedrud
+  deploymentTarget:
+    iOS: "18.0"
+  generateEmptyDirectories: true
+
+packages:
+  LiveKit:
+    url: https://github.com/livekit/client-sdk-swift.git
+    from: "2.0.0"
+  KeychainAccess:
+    url: https://github.com/kishikawakatsumi/KeychainAccess.git
+    from: "4.2.2"
+
+targets:
+  Bedrud:
+    type: application
+    platform: iOS
+    sources:
+      - path: Bedrud
+    dependencies:
+      - package: LiveKit
+        product: LiveKit
+      - package: KeychainAccess
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bedrud.ios
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        SUPPORTS_MACCATALYST: false
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_NSCameraUsageDescription: "Bedrud needs camera access for video calls"
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Bedrud needs microphone access for audio in calls"
+        SWIFT_VERSION: "5.9"
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: true
+        GENERATE_INFOPLIST_FILE: true
+
+  BedrudTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: BedrudTests
+    dependencies:
+      - target: Bedrud
+      - package: KeychainAccess
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bedrud.ios.tests
+        SWIFT_VERSION: "5.9"
+        GENERATE_INFOPLIST_FILE: true
+
+schemes:
+  Bedrud:
+    build:
+      targets:
+        Bedrud: all
+        BedrudTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - BedrudTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
