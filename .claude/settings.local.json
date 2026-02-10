@@ -70,7 +70,8 @@
       "Bash(find:*)",
       "Bash(make:*)",
       "Bash(/usr/bin/xcodebuild:*)",
-      "Bash(SHELL=/bin/bash xcodebuild:*)"
+      "Bash(SHELL=/bin/bash xcodebuild:*)",
+      "Bash(SHELL=/bin/bash xcrun xctrace:*)"
     ]
   },
   "outputStyle": "default"

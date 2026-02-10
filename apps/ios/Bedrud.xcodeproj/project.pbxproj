@@ -1,0 +1,805 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		035DF73F8818FA7F1AB672C1 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10A0D6F797FC10ECA804850B /* User.swift */; };
+		0C3A16FABE48F1956211FD89 /* APIErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A16A81B43A1BD1AB980147F2 /* APIErrorTests.swift */; };
+		0DA7CCA1C3216360ADE5F4E0 /* PasskeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CCE93B4C02339996B64264 /* PasskeyManager.swift */; };
+		1EACFAC0C3CD699360386D3A /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = 19DC913469ED0B94598228EB /* KeychainAccess */; };
+		2F47E14CFAB22E6B6096DDCA /* AuthAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 294DD059C1708CFB35405442 /* AuthAPI.swift */; };
+		3540B67712A8FE53FC791AEC /* ControlBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */; };
+		4B8350F050404179FB98F598 /* RoomAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E54D5E71E44DA494FA8838 /* RoomAPITests.swift */; };
+		4BC55584286C1A7D4077868B /* MockURLProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE9F55D47CA1E808F074DAAE /* MockURLProtocol.swift */; };
+		4E2B9228AC08F5EAE06194B1 /* MigrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68FAEA904DCF6A780C534E57 /* MigrationManager.swift */; };
+		57282EA6094F9EBBFBF149C3 /* RoomCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737FCA2593FDFB10DC8A4CCB /* RoomCardView.swift */; };
+		5DE42740966FADC2AD6AF783 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B49FC1C1923E5053EF89591 /* APIClient.swift */; };
+		6198F5AF84B6176702988A0D /* InstanceManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0540266132F622C98D6D870 /* InstanceManagerTests.swift */; };
+		6D6C16E35808B90C128D3FB5 /* MigrationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B91D0C9733B860CE754153 /* MigrationManagerTests.swift */; };
+		6E6EF5E9479E49A8230E33FE /* InstanceStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B3F8119935AF0B9C4F3FEE /* InstanceStoreTests.swift */; };
+		75C7F65BFA1E322EBAFCF411 /* Room.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE2D007CFF5AB38E2A5FFA32 /* Room.swift */; };
+		781216EDEE045E662B438CB6 /* RoomAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2FF83D074FFD1EF87716BC /* RoomAPI.swift */; };
+		7EA06B438FC56EDBDC2CBA21 /* MeetingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E180B8B3E6F5D75BFF638D0 /* MeetingView.swift */; };
+		83504CB2672E23103A521965 /* RoomManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84677DFF3AA7719AD9F13719 /* RoomManager.swift */; };
+		88579F45D08A9CD572950471 /* RoomManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA81758239498886B3AD762 /* RoomManagerTests.swift */; };
+		89ADB6DBA890981360F3C631 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE51CC3D64BD7B14CC122D99 /* LoginView.swift */; };
+		89E186C327424B2B315B8725 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 368B52DCC407760034A0BC2B /* Typography.swift */; };
+		91E36BB5D44FDD15414BD1B4 /* BedrudApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB914F4168E2359F730AEE9 /* BedrudApp.swift */; };
+		9A018D690E3ECFC71466E924 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5DC38BA66A83A8B0393440E /* DashboardView.swift */; };
+		9D2A35400CFC38D5379F072B /* AuthManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00779BA1EF734670B61814A9 /* AuthManagerTests.swift */; };
+		A5BC8228753FCBCA447CB6F7 /* InstanceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10333B7D66F07EDB60FB9A6A /* InstanceListView.swift */; };
+		ADC8AE133B1FB887209B01F4 /* InstanceSwitcherSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDE8842881927790317E4C9A /* InstanceSwitcherSheet.swift */; };
+		B106F69FD2C3BEA48B64B009 /* AddInstanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41C482BB82228D6C2A85419 /* AddInstanceView.swift */; };
+		B203B4B903EDBC32ACDD35A5 /* PasskeyErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB8862D305D7CC1117BCB85C /* PasskeyErrorTests.swift */; };
+		C41E627DF953AC7C3ACE84AB /* InstanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1CE43F0236D070A0335B02C /* InstanceManager.swift */; };
+		C5EC553D900DE339BCAB5A4E /* UserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6401AD5304E923D8392A4F17 /* UserTests.swift */; };
+		C988557C0F96F98594641BF0 /* ColorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E96000CD15CF09126D920C87 /* ColorsTests.swift */; };
+		C9CF27E721699CBA1ADA0160 /* InstanceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 520C9E6B8C13EADD0A2DFF43 /* InstanceStore.swift */; };
+		D45812B4E3826A072A13BC57 /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8610AD1B6C8E8134846C810 /* RegisterView.swift */; };
+		D4F10C277E9E80B86769A5B5 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4AF592FA9BCA4ADBDFBB78 /* Colors.swift */; };
+		D5C023877B26886BB0AB7B38 /* PasskeyDataExtensionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78A31F7459DCE4C1238DE851 /* PasskeyDataExtensionTests.swift */; };
+		D811D389C9D1DE20B39833D1 /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E271E4E77D423D6A5EF80E9 /* APIClientTests.swift */; };
+		E3EB262E8F8D65834C44E88B /* RoomTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A233845A03A36E91FAF00F /* RoomTests.swift */; };
+		E4C62D2D0D273FD5A7733239 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = BEC5F99592BFF9A5EACB8A8F /* LiveKit */; };
+		E9157BA87BD7724510D0BBB3 /* AuthAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D2CB613BB065F6075FF4165 /* AuthAPITests.swift */; };
+		F2501B4FA1F61A5CF1701E76 /* InstanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD2743F142DE2E36BD54E7F /* InstanceTests.swift */; };
+		F6035727B829577C5351AF64 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366CCCCDA13F7A96C09C3362 /* AuthManager.swift */; };
+		F8952462793A0D63336FBA9B /* Instance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5290E738195A622BCEECE8CF /* Instance.swift */; };
+		F9847B1335C6611C98EBB51D /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = 44944A1F1026F5A7EB146F44 /* KeychainAccess */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E0DE699CE3B035040D7C6996 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 58EB86FC0F60AB391106A75A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8A17502D47729CA04CD12B4F;
+			remoteInfo = Bedrud;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		00779BA1EF734670B61814A9 /* AuthManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManagerTests.swift; sourceTree = "<group>"; };
+		0B4AF592FA9BCA4ADBDFBB78 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
+		10333B7D66F07EDB60FB9A6A /* InstanceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceListView.swift; sourceTree = "<group>"; };
+		10A0D6F797FC10ECA804850B /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		239A6FD6D471F9DE50554636 /* Bedrud.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Bedrud.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		294DD059C1708CFB35405442 /* AuthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAPI.swift; sourceTree = "<group>"; };
+		32B3F8119935AF0B9C4F3FEE /* InstanceStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceStoreTests.swift; sourceTree = "<group>"; };
+		366CCCCDA13F7A96C09C3362 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		368B52DCC407760034A0BC2B /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
+		3B49FC1C1923E5053EF89591 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		3E180B8B3E6F5D75BFF638D0 /* MeetingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingView.swift; sourceTree = "<group>"; };
+		3E3F0F986721CF96D744AE42 /* BedrudTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BedrudTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4EA81758239498886B3AD762 /* RoomManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomManagerTests.swift; sourceTree = "<group>"; };
+		520C9E6B8C13EADD0A2DFF43 /* InstanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceStore.swift; sourceTree = "<group>"; };
+		5290E738195A622BCEECE8CF /* Instance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Instance.swift; sourceTree = "<group>"; };
+		6401AD5304E923D8392A4F17 /* UserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserTests.swift; sourceTree = "<group>"; };
+		68FAEA904DCF6A780C534E57 /* MigrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationManager.swift; sourceTree = "<group>"; };
+		737FCA2593FDFB10DC8A4CCB /* RoomCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCardView.swift; sourceTree = "<group>"; };
+		73A233845A03A36E91FAF00F /* RoomTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomTests.swift; sourceTree = "<group>"; };
+		75CCE93B4C02339996B64264 /* PasskeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyManager.swift; sourceTree = "<group>"; };
+		78A31F7459DCE4C1238DE851 /* PasskeyDataExtensionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyDataExtensionTests.swift; sourceTree = "<group>"; };
+		7D2CB613BB065F6075FF4165 /* AuthAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAPITests.swift; sourceTree = "<group>"; };
+		84677DFF3AA7719AD9F13719 /* RoomManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomManager.swift; sourceTree = "<group>"; };
+		9E271E4E77D423D6A5EF80E9 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
+		A16A81B43A1BD1AB980147F2 /* APIErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIErrorTests.swift; sourceTree = "<group>"; };
+		A41C482BB82228D6C2A85419 /* AddInstanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddInstanceView.swift; sourceTree = "<group>"; };
+		A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlBar.swift; sourceTree = "<group>"; };
+		A5B91D0C9733B860CE754153 /* MigrationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationManagerTests.swift; sourceTree = "<group>"; };
+		B8610AD1B6C8E8134846C810 /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
+		BDB914F4168E2359F730AEE9 /* BedrudApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrudApp.swift; sourceTree = "<group>"; };
+		BE2D007CFF5AB38E2A5FFA32 /* Room.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Room.swift; sourceTree = "<group>"; };
+		C0540266132F622C98D6D870 /* InstanceManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceManagerTests.swift; sourceTree = "<group>"; };
+		CAD2743F142DE2E36BD54E7F /* InstanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceTests.swift; sourceTree = "<group>"; };
+		CB8862D305D7CC1117BCB85C /* PasskeyErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyErrorTests.swift; sourceTree = "<group>"; };
+		CC2FF83D074FFD1EF87716BC /* RoomAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomAPI.swift; sourceTree = "<group>"; };
+		CE51CC3D64BD7B14CC122D99 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		D1CE43F0236D070A0335B02C /* InstanceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceManager.swift; sourceTree = "<group>"; };
+		D5DC38BA66A83A8B0393440E /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		DE9F55D47CA1E808F074DAAE /* MockURLProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockURLProtocol.swift; sourceTree = "<group>"; };
+		E96000CD15CF09126D920C87 /* ColorsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorsTests.swift; sourceTree = "<group>"; };
+		F3E54D5E71E44DA494FA8838 /* RoomAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomAPITests.swift; sourceTree = "<group>"; };
+		FDE8842881927790317E4C9A /* InstanceSwitcherSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceSwitcherSheet.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		19D7C978592DC30EF3B661D5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1EACFAC0C3CD699360386D3A /* KeychainAccess in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFE98B149651586F2751C290 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E4C62D2D0D273FD5A7733239 /* LiveKit in Frameworks */,
+				F9847B1335C6611C98EBB51D /* KeychainAccess in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1397A803A8A1FA0761335046 /* API */ = {
+			isa = PBXGroup;
+			children = (
+				3B49FC1C1923E5053EF89591 /* APIClient.swift */,
+				294DD059C1708CFB35405442 /* AuthAPI.swift */,
+				CC2FF83D074FFD1EF87716BC /* RoomAPI.swift */,
+			);
+			path = API;
+			sourceTree = "<group>";
+		};
+		284E2A7679D750B9F11FFE7B /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				5290E738195A622BCEECE8CF /* Instance.swift */,
+				BE2D007CFF5AB38E2A5FFA32 /* Room.swift */,
+				10A0D6F797FC10ECA804850B /* User.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		2BB76B32502C44372CB6346F /* Instance */ = {
+			isa = PBXGroup;
+			children = (
+				D1CE43F0236D070A0335B02C /* InstanceManager.swift */,
+				520C9E6B8C13EADD0A2DFF43 /* InstanceStore.swift */,
+				68FAEA904DCF6A780C534E57 /* MigrationManager.swift */,
+			);
+			path = Instance;
+			sourceTree = "<group>";
+		};
+		3D7F9728DF9C2CD4D9A63923 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				366CCCCDA13F7A96C09C3362 /* AuthManager.swift */,
+				75CCE93B4C02339996B64264 /* PasskeyManager.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		40A1CB227C0990902D8C4667 /* Instance */ = {
+			isa = PBXGroup;
+			children = (
+				A41C482BB82228D6C2A85419 /* AddInstanceView.swift */,
+				10333B7D66F07EDB60FB9A6A /* InstanceListView.swift */,
+				FDE8842881927790317E4C9A /* InstanceSwitcherSheet.swift */,
+			);
+			path = Instance;
+			sourceTree = "<group>";
+		};
+		6196715D66CFD15E717F95E7 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				CE51CC3D64BD7B14CC122D99 /* LoginView.swift */,
+				B8610AD1B6C8E8134846C810 /* RegisterView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		65C31A13680C81A7A1D4EFAD /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				00779BA1EF734670B61814A9 /* AuthManagerTests.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		66C48081C1DE4FA3B26FD666 /* Mocks */ = {
+			isa = PBXGroup;
+			children = (
+				DE9F55D47CA1E808F074DAAE /* MockURLProtocol.swift */,
+			);
+			path = Mocks;
+			sourceTree = "<group>";
+		};
+		6CE2E8BB92C184DDE4CAB395 /* Bedrud */ = {
+			isa = PBXGroup;
+			children = (
+				BDB914F4168E2359F730AEE9 /* BedrudApp.swift */,
+				B37F67BE41A30EDC2EDF3274 /* Core */,
+				DDCAAB780C8E67889749D7C0 /* Design */,
+				CBDA2D127A2542F456325CE0 /* Features */,
+				284E2A7679D750B9F11FFE7B /* Models */,
+			);
+			path = Bedrud;
+			sourceTree = "<group>";
+		};
+		735FAD7ABB45B960B40CDE4D /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+				A16A81B43A1BD1AB980147F2 /* APIErrorTests.swift */,
+				78A31F7459DCE4C1238DE851 /* PasskeyDataExtensionTests.swift */,
+				CB8862D305D7CC1117BCB85C /* PasskeyErrorTests.swift */,
+			);
+			path = Helpers;
+			sourceTree = "<group>";
+		};
+		793F11242F2245A1863F6574 /* LiveKit */ = {
+			isa = PBXGroup;
+			children = (
+				4EA81758239498886B3AD762 /* RoomManagerTests.swift */,
+			);
+			path = LiveKit;
+			sourceTree = "<group>";
+		};
+		8FF065275AF53FAA17F3F5F3 /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				D5DC38BA66A83A8B0393440E /* DashboardView.swift */,
+				737FCA2593FDFB10DC8A4CCB /* RoomCardView.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		9167737D3698C8AEE456DC2C /* Instance */ = {
+			isa = PBXGroup;
+			children = (
+				C0540266132F622C98D6D870 /* InstanceManagerTests.swift */,
+				32B3F8119935AF0B9C4F3FEE /* InstanceStoreTests.swift */,
+				A5B91D0C9733B860CE754153 /* MigrationManagerTests.swift */,
+			);
+			path = Instance;
+			sourceTree = "<group>";
+		};
+		9CAC32EC72B2F0C607451CEE /* LiveKit */ = {
+			isa = PBXGroup;
+			children = (
+				84677DFF3AA7719AD9F13719 /* RoomManager.swift */,
+			);
+			path = LiveKit;
+			sourceTree = "<group>";
+		};
+		A171BBF14DFD03B7A7911849 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				0B4AF592FA9BCA4ADBDFBB78 /* Colors.swift */,
+				368B52DCC407760034A0BC2B /* Typography.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		A861C6C7FE8C23E464AE6AC2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				239A6FD6D471F9DE50554636 /* Bedrud.app */,
+				3E3F0F986721CF96D744AE42 /* BedrudTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B1E2FB8B3811B465E21BA8A3 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				FA54846CF23885EE1E42782C /* API */,
+				65C31A13680C81A7A1D4EFAD /* Auth */,
+				9167737D3698C8AEE456DC2C /* Instance */,
+				793F11242F2245A1863F6574 /* LiveKit */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		B37F67BE41A30EDC2EDF3274 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				1397A803A8A1FA0761335046 /* API */,
+				3D7F9728DF9C2CD4D9A63923 /* Auth */,
+				2BB76B32502C44372CB6346F /* Instance */,
+				9CAC32EC72B2F0C607451CEE /* LiveKit */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		C1AAA9096D9F343EC8E6F64F /* BedrudTests */ = {
+			isa = PBXGroup;
+			children = (
+				B1E2FB8B3811B465E21BA8A3 /* Core */,
+				E2DD2B6D11D6707E9FCB9762 /* Design */,
+				735FAD7ABB45B960B40CDE4D /* Helpers */,
+				66C48081C1DE4FA3B26FD666 /* Mocks */,
+				CA7ED5626B5BA6A6B50594ED /* Models */,
+			);
+			path = BedrudTests;
+			sourceTree = "<group>";
+		};
+		CA7ED5626B5BA6A6B50594ED /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				CAD2743F142DE2E36BD54E7F /* InstanceTests.swift */,
+				73A233845A03A36E91FAF00F /* RoomTests.swift */,
+				6401AD5304E923D8392A4F17 /* UserTests.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		CBDA2D127A2542F456325CE0 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				6196715D66CFD15E717F95E7 /* Auth */,
+				8FF065275AF53FAA17F3F5F3 /* Dashboard */,
+				40A1CB227C0990902D8C4667 /* Instance */,
+				DC4489C73A8AD76D4FD27EAB /* Meeting */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		DC4489C73A8AD76D4FD27EAB /* Meeting */ = {
+			isa = PBXGroup;
+			children = (
+				A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */,
+				3E180B8B3E6F5D75BFF638D0 /* MeetingView.swift */,
+			);
+			path = Meeting;
+			sourceTree = "<group>";
+		};
+		DDCAAB780C8E67889749D7C0 /* Design */ = {
+			isa = PBXGroup;
+			children = (
+				A171BBF14DFD03B7A7911849 /* Theme */,
+			);
+			path = Design;
+			sourceTree = "<group>";
+		};
+		E2DD2B6D11D6707E9FCB9762 /* Design */ = {
+			isa = PBXGroup;
+			children = (
+				E96000CD15CF09126D920C87 /* ColorsTests.swift */,
+			);
+			path = Design;
+			sourceTree = "<group>";
+		};
+		F1C7E4E952DC907DA0A5AD1C = {
+			isa = PBXGroup;
+			children = (
+				6CE2E8BB92C184DDE4CAB395 /* Bedrud */,
+				C1AAA9096D9F343EC8E6F64F /* BedrudTests */,
+				A861C6C7FE8C23E464AE6AC2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FA54846CF23885EE1E42782C /* API */ = {
+			isa = PBXGroup;
+			children = (
+				9E271E4E77D423D6A5EF80E9 /* APIClientTests.swift */,
+				7D2CB613BB065F6075FF4165 /* AuthAPITests.swift */,
+				F3E54D5E71E44DA494FA8838 /* RoomAPITests.swift */,
+			);
+			path = API;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8A17502D47729CA04CD12B4F /* Bedrud */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E161C7EA8C9D855CFE607B07 /* Build configuration list for PBXNativeTarget "Bedrud" */;
+			buildPhases = (
+				1223EEBDC6FD75AFD9872BD0 /* Sources */,
+				CFE98B149651586F2751C290 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Bedrud;
+			packageProductDependencies = (
+				BEC5F99592BFF9A5EACB8A8F /* LiveKit */,
+				44944A1F1026F5A7EB146F44 /* KeychainAccess */,
+			);
+			productName = Bedrud;
+			productReference = 239A6FD6D471F9DE50554636 /* Bedrud.app */;
+			productType = "com.apple.product-type.application";
+		};
+		90A9F21E17BC1D8D9376FABD /* BedrudTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1B6E41BAA890F652E9DF15D /* Build configuration list for PBXNativeTarget "BedrudTests" */;
+			buildPhases = (
+				FA58CC83585B0C7A2DBF1C20 /* Sources */,
+				19D7C978592DC30EF3B661D5 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5025B005F63A23F926E3893B /* PBXTargetDependency */,
+			);
+			name = BedrudTests;
+			packageProductDependencies = (
+				19DC913469ED0B94598228EB /* KeychainAccess */,
+			);
+			productName = BedrudTests;
+			productReference = 3E3F0F986721CF96D744AE42 /* BedrudTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		58EB86FC0F60AB391106A75A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					8A17502D47729CA04CD12B4F = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 9D81B623EF830B4FD1A558CB /* Build configuration list for PBXProject "Bedrud" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = F1C7E4E952DC907DA0A5AD1C;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				20EF951375AA5DBDEB94E036 /* XCRemoteSwiftPackageReference "KeychainAccess" */,
+				3A1930D541681DDB35BB37BB /* XCRemoteSwiftPackageReference "client-sdk-swift" */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8A17502D47729CA04CD12B4F /* Bedrud */,
+				90A9F21E17BC1D8D9376FABD /* BedrudTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1223EEBDC6FD75AFD9872BD0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5DE42740966FADC2AD6AF783 /* APIClient.swift in Sources */,
+				B106F69FD2C3BEA48B64B009 /* AddInstanceView.swift in Sources */,
+				2F47E14CFAB22E6B6096DDCA /* AuthAPI.swift in Sources */,
+				F6035727B829577C5351AF64 /* AuthManager.swift in Sources */,
+				91E36BB5D44FDD15414BD1B4 /* BedrudApp.swift in Sources */,
+				D4F10C277E9E80B86769A5B5 /* Colors.swift in Sources */,
+				3540B67712A8FE53FC791AEC /* ControlBar.swift in Sources */,
+				9A018D690E3ECFC71466E924 /* DashboardView.swift in Sources */,
+				F8952462793A0D63336FBA9B /* Instance.swift in Sources */,
+				A5BC8228753FCBCA447CB6F7 /* InstanceListView.swift in Sources */,
+				C41E627DF953AC7C3ACE84AB /* InstanceManager.swift in Sources */,
+				C9CF27E721699CBA1ADA0160 /* InstanceStore.swift in Sources */,
+				ADC8AE133B1FB887209B01F4 /* InstanceSwitcherSheet.swift in Sources */,
+				89ADB6DBA890981360F3C631 /* LoginView.swift in Sources */,
+				7EA06B438FC56EDBDC2CBA21 /* MeetingView.swift in Sources */,
+				4E2B9228AC08F5EAE06194B1 /* MigrationManager.swift in Sources */,
+				0DA7CCA1C3216360ADE5F4E0 /* PasskeyManager.swift in Sources */,
+				D45812B4E3826A072A13BC57 /* RegisterView.swift in Sources */,
+				75C7F65BFA1E322EBAFCF411 /* Room.swift in Sources */,
+				781216EDEE045E662B438CB6 /* RoomAPI.swift in Sources */,
+				57282EA6094F9EBBFBF149C3 /* RoomCardView.swift in Sources */,
+				83504CB2672E23103A521965 /* RoomManager.swift in Sources */,
+				89E186C327424B2B315B8725 /* Typography.swift in Sources */,
+				035DF73F8818FA7F1AB672C1 /* User.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FA58CC83585B0C7A2DBF1C20 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D811D389C9D1DE20B39833D1 /* APIClientTests.swift in Sources */,
+				0C3A16FABE48F1956211FD89 /* APIErrorTests.swift in Sources */,
+				E9157BA87BD7724510D0BBB3 /* AuthAPITests.swift in Sources */,
+				9D2A35400CFC38D5379F072B /* AuthManagerTests.swift in Sources */,
+				C988557C0F96F98594641BF0 /* ColorsTests.swift in Sources */,
+				6198F5AF84B6176702988A0D /* InstanceManagerTests.swift in Sources */,
+				6E6EF5E9479E49A8230E33FE /* InstanceStoreTests.swift in Sources */,
+				F2501B4FA1F61A5CF1701E76 /* InstanceTests.swift in Sources */,
+				6D6C16E35808B90C128D3FB5 /* MigrationManagerTests.swift in Sources */,
+				4BC55584286C1A7D4077868B /* MockURLProtocol.swift in Sources */,
+				D5C023877B26886BB0AB7B38 /* PasskeyDataExtensionTests.swift in Sources */,
+				B203B4B903EDBC32ACDD35A5 /* PasskeyErrorTests.swift in Sources */,
+				4B8350F050404179FB98F598 /* RoomAPITests.swift in Sources */,
+				88579F45D08A9CD572950471 /* RoomManagerTests.swift in Sources */,
+				E3EB262E8F8D65834C44E88B /* RoomTests.swift in Sources */,
+				C5EC553D900DE339BCAB5A4E /* UserTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		5025B005F63A23F926E3893B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8A17502D47729CA04CD12B4F /* Bedrud */;
+			targetProxy = E0DE699CE3B035040D7C6996 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		06662208E63480684EB9F2F5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Bedrud needs camera access for video calls";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Bedrud needs microphone access for audio in calls";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bedrud.ios;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		0AED7CD35A32C071F6808A6D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Bedrud needs camera access for video calls";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Bedrud needs microphone access for audio in calls";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bedrud.ios;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		3432EE817D9A0B822B459D26 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bedrud.ios.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Bedrud.app/Bedrud";
+			};
+			name = Debug;
+		};
+		9FED3BEFB5CF6096C49199FC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A019E756FAF04DACA23EFF54 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		DAD14074EBDE1EF481F64D74 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bedrud.ios.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Bedrud.app/Bedrud";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		9D81B623EF830B4FD1A558CB /* Build configuration list for PBXProject "Bedrud" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A019E756FAF04DACA23EFF54 /* Debug */,
+				9FED3BEFB5CF6096C49199FC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D1B6E41BAA890F652E9DF15D /* Build configuration list for PBXNativeTarget "BedrudTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3432EE817D9A0B822B459D26 /* Debug */,
+				DAD14074EBDE1EF481F64D74 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E161C7EA8C9D855CFE607B07 /* Build configuration list for PBXNativeTarget "Bedrud" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				06662208E63480684EB9F2F5 /* Debug */,
+				0AED7CD35A32C071F6808A6D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		20EF951375AA5DBDEB94E036 /* XCRemoteSwiftPackageReference "KeychainAccess" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kishikawakatsumi/KeychainAccess.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.2.2;
+			};
+		};
+		3A1930D541681DDB35BB37BB /* XCRemoteSwiftPackageReference "client-sdk-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/livekit/client-sdk-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		19DC913469ED0B94598228EB /* KeychainAccess */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 20EF951375AA5DBDEB94E036 /* XCRemoteSwiftPackageReference "KeychainAccess" */;
+			productName = KeychainAccess;
+		};
+		44944A1F1026F5A7EB146F44 /* KeychainAccess */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 20EF951375AA5DBDEB94E036 /* XCRemoteSwiftPackageReference "KeychainAccess" */;
+			productName = KeychainAccess;
+		};
+		BEC5F99592BFF9A5EACB8A8F /* LiveKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3A1930D541681DDB35BB37BB /* XCRemoteSwiftPackageReference "client-sdk-swift" */;
+			productName = LiveKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 58EB86FC0F60AB391106A75A /* Project object */;
+}
