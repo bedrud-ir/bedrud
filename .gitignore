@@ -1,1 +1,31 @@
+# Data
 data
+*.db
+
+# Build artifacts
+dist
+server/dist/
+server/frontend/
+apps/web/build/
+apps/web/node_modules/
+node_modules/
+
+# Environment
+.env
+.DS_Store
+
+# Python
+__pycache__
+pyinfra-debug.log
+.venv
+
+# Logs
+access.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.mypy_cache
+**/xcuserdata/

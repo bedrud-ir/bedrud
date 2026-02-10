@@ -1,54 +1,141 @@
-.PHONY: run-front run-back build-front build-back build run init docker-dev-up docker-dev-down docker-dev-pull
+.PHONY: help init dev dev-web dev-server dev-livekit dev-ios dev-android build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim deploy
 
-# Initialize project dependencies
+# Show available targets
+help:
+	@echo "Usage: make <target>"
+	@echo ""
+	@echo "Development:"
+	@echo "  init                 Install all dependencies (web + server)"
+	@echo "  dev                  Run livekit + server + web concurrently"
+	@echo "  dev-web              Run frontend dev server"
+	@echo "  dev-server           Run backend server"
+	@echo "  dev-livekit          Run local LiveKit server"
+	@echo "  dev-ios              Open iOS project in Xcode"
+	@echo "  dev-android          Open Android project in Android Studio"
+	@echo ""
+	@echo "Build:"
+	@echo "  build                Build frontend + backend (embedded)"
+	@echo "  build-front          Build frontend only"
+	@echo "  build-back           Build backend only"
+	@echo "  build-dist           Build production linux/amd64 tarball"
+	@echo ""
+	@echo "Android:"
+	@echo "  build-android-debug  Build debug APK"
+	@echo "  build-android        Build release APK"
+	@echo "  install-android      Install release APK on device"
+	@echo "  release-android      Build + install release APK"
+	@echo ""
+	@echo "iOS:"
+	@echo "  build-ios            Build iOS archive (Release)"
+	@echo "  export-ios           Export IPA from archive"
+	@echo "  build-ios-sim        Build for iOS Simulator (Debug)"
+	@echo ""
+	@echo "Deploy:"
+	@echo "  deploy ARGS=...      Run deploy CLI tool"
+
+# Initialize all dependencies
 init:
-	cd frontend && npm install
-	cd backend && go mod tidy && go mod download
+	cd apps/web && bun install
+	cd server && go mod tidy && go mod download
+
+# Run livekit + server + web concurrently (Ctrl+C kills all)
+dev:
+	@trap 'kill 0' INT TERM; \
+	$(MAKE) dev-livekit & \
+	sleep 1; \
+	$(MAKE) dev-server & \
+	$(MAKE) dev-web & \
+	wait
 
 # Run frontend development server
-run-front:
-	cd frontend && npm run dev
+dev-web:
+	cd apps/web && bun run dev
 
 # Run backend server
-run-back:
-	cd backend && go run ./cmd/server/main.go
+dev-server:
+	cd server && go run ./cmd/server/main.go
+
+# Run local LiveKit server
+dev-livekit:
+	livekit-server --config server/livekit.yaml --dev
+
+# Open iOS project in Xcode
+dev-ios:
+	open apps/ios/Bedrud.xcodeproj
+
+# Open Android project in Android Studio
+dev-android:
+	open -a "Android Studio" apps/android
 
 # Build frontend
 build-front:
-	cd frontend && npm run build
+	cd apps/web && bun run build
 
 # Build backend
 build-back:
-	cd backend && go build -o dist/bedrud ./cmd/server/main.go
+	cd server && go build -o dist/bedrud ./cmd/bedrud/main.go
 
 # Build both frontend and backend
 build: build-front
-	# Clean backend frontend directory
-	rm -rf backend/frontend
-	# Create backend/frontend directory
-	mkdir -p backend/frontend
-	# Copy frontend build to backend
-	cp -r frontend/build/* backend/frontend/
+	rm -rf server/frontend
+	mkdir -p server/frontend
+	cp -r apps/web/build/* server/frontend/
 	$(MAKE) build-back
 
-# Run both frontend and backend concurrently
-run:
-	$(MAKE) run-back & $(MAKE) run-front
-	# The trap ensures child processes are killed when this command is terminated
-	trap 'kill $$(jobs -p)' INT TERM
+# Build a production-ready compressed distribution
+build-dist: build
+	@echo "Building production binary (linux/amd64)..."
+	@mkdir -p dist
+	@cd server && GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../dist/bedrud ./cmd/bedrud/main.go
+	@echo "Creating compressed archive..."
+	@tar -cJf dist/bedrud_linux_amd64.tar.xz -C dist bedrud
+	@rm dist/bedrud
+	@echo "Distribution ready: dist/bedrud_linux_amd64.tar.xz"
 
-# Docker development targets
-docker-dev-up:
-	docker compose -f deploy/dev/docker-compose.yaml up -d
+# Build Android debug APK
+build-android-debug:
+	cd apps/android && ./gradlew assembleDebug
+	@echo "Debug APK: apps/android/app/build/outputs/apk/debug/app-debug.apk"
 
-docker-dev-down:
-	docker compose -f deploy/dev/docker-compose.yaml down
+# Build Android release APK (requires keystore.properties)
+build-android:
+	cd apps/android && ./gradlew assembleRelease
+	@echo "Release APK: apps/android/app/build/outputs/apk/release/app-release.apk"
 
-docker-dev-pull:
-	docker compose -f deploy/dev/docker-compose.yaml pull
+# Install Android release APK on connected device
+install-android:
+	adb install apps/android/app/build/outputs/apk/release/app-release.apk
 
-docker-dev-logs:
-	docker compose -f deploy/dev/docker-compose.yaml logs -f
+# Build + install Android release on device
+release-android: build-android install-android
 
-docker-dev-ps:
-	docker compose -f deploy/dev/docker-compose.yaml ps
+# Build iOS archive (Release)
+build-ios:
+	cd apps/ios && xcodebuild archive \
+		-project Bedrud.xcodeproj \
+		-scheme Bedrud \
+		-configuration Release \
+		-archivePath build/Bedrud.xcarchive \
+		-destination "generic/platform=iOS" \
+		CODE_SIGN_STYLE=Automatic
+	@echo "Archive: apps/ios/build/Bedrud.xcarchive"
+
+# Export iOS IPA from archive (requires ExportOptions.plist)
+export-ios:
+	cd apps/ios && xcodebuild -exportArchive \
+		-archivePath build/Bedrud.xcarchive \
+		-exportPath build/export \
+		-exportOptionsPlist ExportOptions.plist
+	@echo "IPA: apps/ios/build/export/Bedrud.ipa"
+
+# Build iOS for simulator (debug)
+build-ios-sim:
+	cd apps/ios && xcodebuild build \
+		-project Bedrud.xcodeproj \
+		-scheme Bedrud \
+		-configuration Debug \
+		-destination "platform=iOS Simulator,name=iPhone 16"
+
+# Deploy using CLI tool
+deploy:
+	cd tools/cli && python bedrud.py $(ARGS)

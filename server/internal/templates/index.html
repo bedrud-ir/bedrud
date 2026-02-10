@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Bedrud</title>
+    <script src="https://unpkg.com/alpinejs" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div x-data="{ userInfo: null, loading: true }" x-init="
+        fetch('/api/user', {
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+            userInfo = data;
+            loading = false;
+        })
+        .catch(() => {
+            window.location.href = '/login';
+        })
+    ">
+        <!-- Navigation -->
+        <nav class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex-shrink-0 flex items-center">
+                        <h1 class="text-xl font-bold text-indigo-600">Bedrud</h1>
+                    </div>
+                    
+                    <!-- User Menu -->
+                    <div class="ml-3 relative flex items-center">
+                        <template x-if="!loading && userInfo">
+                            <div class="flex items-center space-x-4">
+                                <div class="text-sm">
+                                    <p class="text-gray-700" x-text="userInfo.name"></p>
+                                    <p class="text-gray-500 text-xs" x-text="userInfo.email"></p>
+                                </div>
+                                <img 
+                                    class="h-8 w-8 rounded-full"
+                                    :src="userInfo.avatarURL"
+                                    alt="User avatar"
+                                >
+                                <button 
+                                    @click="fetch('/auth/logout', { method: 'POST' }).then(() => window.location.href = '/login')"
+                                    class="text-sm text-gray-700 hover:text-indigo-600"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Loading State -->
+            <template x-if="loading">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p class="mt-4 text-gray-600">Loading...</p>
+                </div>
+            </template>
+
+            <!-- Content -->
+            <template x-if="!loading && userInfo">
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Welcome to Bedrud!</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Stats Card -->
+                        <div class="bg-indigo-50 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-indigo-600 mb-2">Provider</h3>
+                            <p class="text-gray-700" x-text="userInfo.provider"></p>
+                        </div>
+                        
+                        <!-- Account Info Card -->
+                        <div class="bg-green-50 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-green-600 mb-2">Account Status</h3>
+                            <p class="text-gray-700">Active</p>
+                        </div>
+
+                        <!-- Additional Info Card -->
+                        <div class="bg-purple-50 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-purple-600 mb-2">Last Login</h3>
+                            <p class="text-gray-700" x-text="new Date().toLocaleDateString()"></p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </main>
+    </div>
+</body>
+</html>

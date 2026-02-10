@@ -1,1 +1,0 @@
-replace github.com/gofiber/fiber/v2.Map map[string]interface{}
