@@ -65,7 +65,7 @@ dev-ios:
 
 # Open Android project in Android Studio
 dev-android:
-	open -a "Android Studio" apps/android
+	open -a "Android Studio" "$(CURDIR)/apps/android"
 
 # Build frontend
 build-front:
@@ -134,7 +134,7 @@ build-ios-sim:
 		-project Bedrud.xcodeproj \
 		-scheme Bedrud \
 		-configuration Debug \
-		-destination "platform=iOS Simulator,name=iPhone 16"
+		-destination "platform=iOS Simulator,name=iPhone 17 Pro"
 
 # Deploy using CLI tool
 deploy:
