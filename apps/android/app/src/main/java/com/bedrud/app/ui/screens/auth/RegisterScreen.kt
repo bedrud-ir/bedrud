@@ -1,6 +1,5 @@
 package com.bedrud.app.ui.screens.auth
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,17 +7,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,6 +28,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,8 +50,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.bedrud.app.core.instance.InstanceManager
 import com.bedrud.app.models.RegisterRequest
-import com.bedrud.app.ui.components.BedrudButton
-import com.bedrud.app.ui.components.BedrudButtonVariant
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -87,10 +86,7 @@ fun RegisterScreen(
                 title = { Text("Create Account") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateToLogin) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -104,34 +100,30 @@ fun RegisterScreen(
                 .padding(horizontal = 24.dp)
                 .imePadding()
                 .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
                 text = "Join Bedrud",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground
+                style = MaterialTheme.typography.headlineMedium
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "Create your account to get started",
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Name
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Full Name") },
-                leadingIcon = {
-                    Icon(Icons.Default.Person, contentDescription = "Name")
-                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next
@@ -145,13 +137,11 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Email
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email") },
-                leadingIcon = {
-                    Icon(Icons.Default.Email, contentDescription = "Email")
-                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
                     imeAction = ImeAction.Next
@@ -165,20 +155,17 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Password
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Password") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = "Password")
-                },
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
                             if (passwordVisible) Icons.Default.VisibilityOff
                             else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "Hide password"
-                            else "Show password"
+                            contentDescription = if (passwordVisible) "Hide" else "Show"
                         )
                     }
                 },
@@ -197,13 +184,11 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Confirm password
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
                 label = { Text("Confirm Password") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = "Confirm Password")
-                },
                 visualTransformation = if (passwordVisible) VisualTransformation.None
                 else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
@@ -223,12 +208,12 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            BedrudButton(
-                text = "Create Account",
+            // Create Account button
+            Button(
                 onClick = {
                     if (password != confirmPassword) {
                         errorMessage = "Passwords do not match"
-                        return@BedrudButton
+                        return@Button
                     }
                     scope.launch {
                         isLoading = true
@@ -252,20 +237,27 @@ fun RegisterScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
                 enabled = name.isNotBlank() && email.isNotBlank() &&
                         password.isNotBlank() && confirmPassword.isNotBlank() &&
-                        password == confirmPassword,
-                loading = isLoading
-            )
+                        password == confirmPassword && !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text("Create Account")
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            BedrudButton(
-                text = "Already have an account? Sign in",
-                onClick = onNavigateToLogin,
-                variant = BedrudButtonVariant.GHOST
-            )
+            TextButton(onClick = onNavigateToLogin) {
+                Text("Already have an account? Sign in")
+            }
 
             Spacer(modifier = Modifier.height(48.dp))
         }

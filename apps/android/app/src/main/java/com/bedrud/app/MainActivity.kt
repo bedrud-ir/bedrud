@@ -88,10 +88,7 @@ fun BedrudNavHost(instanceManager: InstanceManager) {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.ADD_INSTANCE) { inclusive = true }
                     }
-                },
-                onBack = if (instances.isNotEmpty()) {
-                    { navController.popBackStack() }
-                } else null
+                }
             )
         }
 
@@ -112,6 +109,11 @@ fun BedrudNavHost(instanceManager: InstanceManager) {
                 },
                 onNavigateToRegister = {
                     navController.navigate(Routes.REGISTER)
+                },
+                onBack = {
+                    navController.navigate(Routes.ADD_INSTANCE) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             )
         }
