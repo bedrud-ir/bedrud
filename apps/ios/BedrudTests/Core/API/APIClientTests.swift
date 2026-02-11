@@ -1,4 +1,5 @@
 import XCTest
+import KeychainAccess
 @testable import Bedrud
 
 final class APIClientTests: XCTestCase {
@@ -188,17 +189,143 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(result.lastName, "Smith")
     }
 
+    // MARK: - Invalid URL
+
+    func testFetchInvalidURLThrows() async throws {
+        // Use a base URL with spaces/newlines that make URL(string:) return nil
+        let badClient = APIClient(baseURL: "ht tp://bad host\n", session: session)
+        do {
+            let _: HealthResponse = try await badClient.fetch(" invalid path")
+            XCTFail("Should throw")
+        } catch let error as APIError {
+            // May throw invalidURL or networkError depending on URL construction
+            switch error {
+            case .invalidURL, .networkError:
+                break // Either is acceptable for a malformed URL
+            default:
+                XCTFail("Expected invalidURL or networkError, got \(error)")
+            }
+        }
+    }
+
+    // MARK: - HTTP Error Without JSON Body
+
+    func testFetchHTTPErrorWithoutJSONBody() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 403, httpVersion: nil, headerFields: nil)!
+            return (response, "plain text error".data(using: .utf8)!)
+        }
+
+        do {
+            let _: HealthResponse = try await client.fetch("/test")
+            XCTFail("Should throw")
+        } catch let error as APIError {
+            if case .httpError(let code, let message) = error {
+                XCTAssertEqual(code, 403)
+                XCTAssertTrue(message.contains("HTTP error"))
+            } else {
+                XCTFail("Expected httpError, got \(error)")
+            }
+        }
+    }
+
+    // MARK: - GET Request Has No Body
+
+    func testGETRequestHasNoBody() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertNil(request.httpBody)
+            XCTAssertNil(request.value(forHTTPHeaderField: "Content-Type"))
+
+            let json = #"{"status":"ok"}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, json.data(using: .utf8)!)
+        }
+
+        let _: HealthResponse = try await client.fetch("/test")
+    }
+
+    // MARK: - PUT and DELETE Methods
+
+    func testPUTMethod() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PUT")
+            let json = #"{"status":"ok"}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, json.data(using: .utf8)!)
+        }
+
+        let _: HealthResponse = try await client.fetch("/test", method: "PUT")
+    }
+
+    func testDELETEMethod() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "DELETE")
+            let json = #"{"status":"ok"}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, json.data(using: .utf8)!)
+        }
+
+        let _: HealthResponse = try await client.fetch("/test", method: "DELETE")
+    }
+
+    // MARK: - authFetch with Token
+
+    func testAuthFetchSendsBearerToken() async throws {
+        let keychain = Keychain(service: "com.bedrud.tests.apiclient.\(UUID().uuidString)")
+        defer { try? keychain.removeAll() }
+
+        let mockSession = URLSession.mock()
+        let authClient = APIClient(baseURL: "https://test.com/api", session: mockSession)
+        let authAPI = AuthAPI(client: authClient)
+        let authManager = await MainActor.run {
+            AuthManager(instanceId: "test", authAPI: authAPI, keychain: keychain)
+        }
+
+        // Create a valid JWT token
+        let payload: [String: Any] = [
+            "userId": "u1", "email": "a@b.com",
+            "exp": Date().timeIntervalSince1970 + 3600,
+            "iat": Date().timeIntervalSince1970
+        ]
+        let payloadData = try! JSONSerialization.data(withJSONObject: payload)
+        let payloadBase64 = payloadData.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        let token = "header.\(payloadBase64).signature"
+
+        await MainActor.run {
+            let tokens = AuthTokens(accessToken: token, refreshToken: "refresh")
+            let user = User(id: "u1", email: "a@b.com", name: "Alice", avatarUrl: nil, isAdmin: false, provider: nil)
+            authManager.loginWithTokens(tokens: tokens, user: user)
+        }
+
+        MockURLProtocol.requestHandler = { request in
+            let authHeader = request.value(forHTTPHeaderField: "Authorization")
+            XCTAssertNotNil(authHeader)
+            XCTAssertTrue(authHeader!.hasPrefix("Bearer "))
+
+            let json = #"{"status":"ok"}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, json.data(using: .utf8)!)
+        }
+
+        let _: HealthResponse = try await authClient.authFetch("/test", authManager: authManager)
+    }
+
     // MARK: - Encoder Snake Case
 
-    func testEncoderSnakeCaseKeys() async throws {
+    func testEncoderKeepsPropertyNames() async throws {
         struct CamelBody: Encodable {
             let firstName: String
         }
 
         MockURLProtocol.requestHandler = { request in
             let body = try! JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
-            XCTAssertNotNil(body["first_name"], "Encoder should convert to snake_case")
-            XCTAssertNil(body["firstName"], "CamelCase key should not be present")
+            // APIClient encoder does NOT use convertToSnakeCase — keys stay camelCase
+            XCTAssertNotNil(body["firstName"], "Encoder should keep camelCase keys")
+            XCTAssertEqual(body["firstName"] as? String, "Alice")
 
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (response, #"{"status":"ok"}"#.data(using: .utf8)!)

@@ -178,6 +178,154 @@ final class RoomAPITests: XCTestCase {
         try await roomAPI.updateRoomSettings(roomId: "r1", settings: .default)
     }
 
+    // MARK: - deleteRoom
+
+    func testDeleteRoomSendsCorrectEndpoint() async throws {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.absoluteString.contains("/room/r1"))
+            XCTAssertEqual(request.httpMethod, "DELETE")
+            XCTAssertNotNil(request.value(forHTTPHeaderField: "Authorization"))
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        try await roomAPI.deleteRoom(roomId: "r1")
+    }
+
+    // MARK: - disableParticipantVideo
+
+    func testDisableParticipantVideoSendsCorrectEndpoint() async throws {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.absoluteString.contains("/room/r1/video/user1/off"))
+            XCTAssertEqual(request.httpMethod, "POST")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        try await roomAPI.disableParticipantVideo(roomId: "r1", identity: "user1")
+    }
+
+    // MARK: - bringToStage
+
+    func testBringToStageSendsCorrectEndpoint() async throws {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.absoluteString.contains("/room/r1/stage/user1/bring"))
+            XCTAssertEqual(request.httpMethod, "POST")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        try await roomAPI.bringToStage(roomId: "r1", identity: "user1")
+    }
+
+    // MARK: - removeFromStage
+
+    func testRemoveFromStageSendsCorrectEndpoint() async throws {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.absoluteString.contains("/room/r1/stage/user1/remove"))
+            XCTAssertEqual(request.httpMethod, "POST")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        try await roomAPI.removeFromStage(roomId: "r1", identity: "user1")
+    }
+
+    // MARK: - createRoom with All Parameters
+
+    func testCreateRoomWithAllParameters() async throws {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            let body = try! JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+            XCTAssertEqual(body["name"] as? String, "Full Room")
+            // APIClient encoder uses camelCase (no convertToSnakeCase strategy)
+            XCTAssertEqual(body["maxParticipants"] as? Int, 50)
+            XCTAssertEqual(body["isPublic"] as? Bool, true)
+            XCTAssertEqual(body["mode"] as? String, "webinar")
+            XCTAssertNotNil(body["settings"])
+
+            let roomJSON = """
+            {"id": "r1", "name": "Full Room", "created_by": "u1", "admin_id": "u1", "is_active": true, "is_public": true, "max_participants": 50, "expires_at": "2025-12-31", "settings": {"allow_chat": false, "allow_video": true, "allow_audio": true, "require_approval": true, "e2ee": true}, "relationship": null, "mode": "webinar", "participants": null}
+            """
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, roomJSON.data(using: .utf8)!)
+        }
+
+        let settings = RoomSettings(allowChat: false, allowVideo: true, allowAudio: true, requireApproval: true, e2ee: true)
+        let room = try await roomAPI.createRoom(name: "Full Room", maxParticipants: 50, isPublic: true, mode: "webinar", settings: settings)
+        XCTAssertEqual(room.name, "Full Room")
+    }
+
+    // MARK: - joinRoom Sends Correct Body
+
+    func testJoinRoomSendsCorrectBody() async throws {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            let body = try! JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+            // APIClient encoder uses camelCase (no convertToSnakeCase strategy)
+            XCTAssertEqual(body["roomName"] as? String, "specific-room")
+
+            let joinJSON = """
+            {"id": "r1", "name": "specific-room", "token": "lk-token", "livekit_host": "wss://lk.test.com", "created_by": "u1", "admin_id": "u1", "is_active": true, "is_public": false, "max_participants": 10, "expires_at": "2025-12-31", "settings": {"allow_chat": true, "allow_video": true, "allow_audio": true, "require_approval": false, "e2ee": false}, "mode": "meeting"}
+            """
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, joinJSON.data(using: .utf8)!)
+        }
+
+        let result = try await roomAPI.joinRoom(roomName: "specific-room")
+        XCTAssertEqual(result.name, "specific-room")
+    }
+
+    // MARK: - listRooms Empty
+
+    func testListRoomsEmptyArray() async throws {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, "[]".data(using: .utf8)!)
+        }
+
+        let rooms = try await roomAPI.listRooms()
+        XCTAssertTrue(rooms.isEmpty)
+    }
+
+    // MARK: - API Error Propagation
+
+    func testCreateRoomServerError() async {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            let errorJSON = #"{"error":"Room limit reached"}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 403, httpVersion: nil, headerFields: nil)!
+            return (response, errorJSON.data(using: .utf8)!)
+        }
+
+        do {
+            _ = try await roomAPI.createRoom(name: "Test")
+            XCTFail("Should throw")
+        } catch let error as APIError {
+            if case .httpError(let code, let message) = error {
+                XCTAssertEqual(code, 403)
+                XCTAssertEqual(message, "Room limit reached")
+            } else {
+                XCTFail("Expected httpError, got \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     // MARK: - Unauthorized
 
     func testCreateRoomUnauthorized() async {

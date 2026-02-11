@@ -94,4 +94,133 @@ final class RoomManagerTests: XCTestCase {
         XCTAssertFalse(info.isMicrophoneEnabled)
         XCTAssertNil(info.videoTrack)
     }
+
+    // MARK: - ParticipantInfo Local
+
+    func testParticipantInfoLocalParticipant() {
+        let info = ParticipantInfo(
+            id: "local",
+            identity: "local",
+            name: "You",
+            isLocal: true,
+            isCameraEnabled: false,
+            isMicrophoneEnabled: true,
+            isScreenSharing: true,
+            videoTrack: nil,
+            screenShareTrack: nil
+        )
+
+        XCTAssertTrue(info.isLocal)
+        XCTAssertEqual(info.name, "You")
+        XCTAssertFalse(info.isCameraEnabled)
+        XCTAssertTrue(info.isMicrophoneEnabled)
+        XCTAssertTrue(info.isScreenSharing)
+    }
+
+    // MARK: - AppendChatMessage
+
+    func testAppendChatMessage() {
+        let manager = RoomManager()
+        XCTAssertTrue(manager.chatMessages.isEmpty)
+
+        let msg = ChatMessage(senderName: "Alice", text: "Hello", isLocal: false)
+        manager.appendChatMessage(msg)
+
+        XCTAssertEqual(manager.chatMessages.count, 1)
+        XCTAssertEqual(manager.chatMessages[0].senderName, "Alice")
+        XCTAssertEqual(manager.chatMessages[0].text, "Hello")
+        XCTAssertFalse(manager.chatMessages[0].isLocal)
+    }
+
+    func testAppendMultipleChatMessages() {
+        let manager = RoomManager()
+
+        manager.appendChatMessage(ChatMessage(senderName: "Alice", text: "Hello"))
+        manager.appendChatMessage(ChatMessage(senderName: "Bob", text: "Hi"))
+        manager.appendChatMessage(ChatMessage(senderName: "Alice", text: "How are you?"))
+
+        XCTAssertEqual(manager.chatMessages.count, 3)
+        XCTAssertEqual(manager.chatMessages[0].senderName, "Alice")
+        XCTAssertEqual(manager.chatMessages[1].senderName, "Bob")
+        XCTAssertEqual(manager.chatMessages[2].text, "How are you?")
+    }
+
+    // MARK: - Disconnect Clears Chat
+
+    func testDisconnectClearsChatMessages() async {
+        let manager = RoomManager()
+        manager.appendChatMessage(ChatMessage(senderName: "Alice", text: "Hello"))
+        manager.appendChatMessage(ChatMessage(senderName: "Bob", text: "Hi"))
+
+        XCTAssertEqual(manager.chatMessages.count, 2)
+
+        await manager.disconnect()
+
+        XCTAssertTrue(manager.chatMessages.isEmpty)
+    }
+
+    // MARK: - Error State
+
+    func testInitialErrorIsNil() {
+        let manager = RoomManager()
+        XCTAssertNil(manager.error)
+    }
+
+    // MARK: - ChatMessage Timestamp
+
+    func testChatMessageTimestampIsSet() {
+        let before = Date()
+        let msg = ChatMessage(senderName: "Alice", text: "Hello")
+        let after = Date()
+
+        XCTAssertGreaterThanOrEqual(msg.timestamp, before)
+        XCTAssertLessThanOrEqual(msg.timestamp, after)
+    }
+
+    // MARK: - ConnectionState String Representation
+
+    func testConnectionStateFailedContainsMessage() {
+        let state = RoomManager.ConnectionState.failed("Network timeout")
+        if case .failed(let message) = state {
+            XCTAssertEqual(message, "Network timeout")
+        } else {
+            XCTFail("Expected failed state")
+        }
+    }
+
+    // MARK: - Multiple Disconnects
+
+    func testMultipleDisconnectsAreIdempotent() async {
+        let manager = RoomManager()
+        manager.isMicrophoneEnabled = true
+        manager.isCameraEnabled = true
+
+        await manager.disconnect()
+        await manager.disconnect()
+
+        XCTAssertEqual(manager.connectionState, .disconnected)
+        XCTAssertFalse(manager.isMicrophoneEnabled)
+        XCTAssertFalse(manager.isCameraEnabled)
+    }
+
+    // MARK: - Disconnect Resets Screen Share
+
+    func testDisconnectResetsScreenShare() async {
+        let manager = RoomManager()
+        manager.isScreenShareEnabled = true
+
+        await manager.disconnect()
+
+        XCTAssertFalse(manager.isScreenShareEnabled)
+    }
+
+    // MARK: - Participants Empty After Disconnect
+
+    func testParticipantsEmptyAfterDisconnect() async {
+        let manager = RoomManager()
+        await manager.disconnect()
+
+        XCTAssertTrue(manager.participants.isEmpty)
+        XCTAssertNil(manager.localParticipant)
+    }
 }

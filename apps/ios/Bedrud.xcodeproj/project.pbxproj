@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -17,6 +17,8 @@
 		2F47E14CFAB22E6B6096DDCA /* AuthAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 294DD059C1708CFB35405442 /* AuthAPI.swift */; };
 		3540B67712A8FE53FC791AEC /* ControlBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */; };
 		3D688C3585690B68CE9B2A01 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252B460A7E099456B30AFB5F /* SettingsView.swift */; };
+		480D6DBB2FE4DE07CBD210FF /* AuthFlowIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168AAA8F06ECD0BADAB21943 /* AuthFlowIntegrationTests.swift */; };
+		4909358E206090A049000858 /* InstanceSwitchingIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8205A17567970D89665B7572 /* InstanceSwitchingIntegrationTests.swift */; };
 		4B8350F050404179FB98F598 /* RoomAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E54D5E71E44DA494FA8838 /* RoomAPITests.swift */; };
 		4BC55584286C1A7D4077868B /* MockURLProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE9F55D47CA1E808F074DAAE /* MockURLProtocol.swift */; };
 		4E2B9228AC08F5EAE06194B1 /* MigrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68FAEA904DCF6A780C534E57 /* MigrationManager.swift */; };
@@ -36,6 +38,7 @@
 		91E36BB5D44FDD15414BD1B4 /* BedrudApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB914F4168E2359F730AEE9 /* BedrudApp.swift */; };
 		93EFD3B6450C7CFF054DE63D /* ServerIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422042B98B806A109F0F3411 /* ServerIconView.swift */; };
 		9A018D690E3ECFC71466E924 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5DC38BA66A83A8B0393440E /* DashboardView.swift */; };
+		9C802F68F927B3D96EBE19FA /* PasskeyTypesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12FB732DC12EF9FD729C8300 /* PasskeyTypesTests.swift */; };
 		9D2A35400CFC38D5379F072B /* AuthManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00779BA1EF734670B61814A9 /* AuthManagerTests.swift */; };
 		9DD9228BAED8291EE2E4C6A1 /* BedrudURLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB99C992E1618621B8C4342 /* BedrudURLParser.swift */; };
 		A5BC8228753FCBCA447CB6F7 /* InstanceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10333B7D66F07EDB60FB9A6A /* InstanceListView.swift */; };
@@ -43,6 +46,7 @@
 		B106F69FD2C3BEA48B64B009 /* AddInstanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41C482BB82228D6C2A85419 /* AddInstanceView.swift */; };
 		B203B4B903EDBC32ACDD35A5 /* PasskeyErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB8862D305D7CC1117BCB85C /* PasskeyErrorTests.swift */; };
 		B46570D732734DFD8A339D64 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B40C6C896508CCD958042818 /* ProfileView.swift */; };
+		BA7B9BEC18742DFB9B230360 /* BedrudURLParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA75AC6D206F5E22D5468D1 /* BedrudURLParserTests.swift */; };
 		C41E627DF953AC7C3ACE84AB /* InstanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1CE43F0236D070A0335B02C /* InstanceManager.swift */; };
 		C5EC553D900DE339BCAB5A4E /* UserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6401AD5304E923D8392A4F17 /* UserTests.swift */; };
 		C988557C0F96F98594641BF0 /* ColorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E96000CD15CF09126D920C87 /* ColorsTests.swift */; };
@@ -56,6 +60,7 @@
 		E9157BA87BD7724510D0BBB3 /* AuthAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D2CB613BB065F6075FF4165 /* AuthAPITests.swift */; };
 		F2501B4FA1F61A5CF1701E76 /* InstanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD2743F142DE2E36BD54E7F /* InstanceTests.swift */; };
 		F6035727B829577C5351AF64 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366CCCCDA13F7A96C09C3362 /* AuthManager.swift */; };
+		F7206B3D27C4149FAF586BD0 /* SettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D443E4AB708CDA4B91B730F /* SettingsStoreTests.swift */; };
 		F8952462793A0D63336FBA9B /* Instance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5290E738195A622BCEECE8CF /* Instance.swift */; };
 		F9847B1335C6611C98EBB51D /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = 44944A1F1026F5A7EB146F44 /* KeychainAccess */; };
 /* End PBXBuildFile section */
@@ -75,13 +80,16 @@
 		0B4AF592FA9BCA4ADBDFBB78 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		10333B7D66F07EDB60FB9A6A /* InstanceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceListView.swift; sourceTree = "<group>"; };
 		10A0D6F797FC10ECA804850B /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		12FB732DC12EF9FD729C8300 /* PasskeyTypesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyTypesTests.swift; sourceTree = "<group>"; };
 		151B1685AB0FFDBC9D9AD93C /* JoinByURLSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinByURLSheet.swift; sourceTree = "<group>"; };
-		239A6FD6D471F9DE50554636 /* Bedrud.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bedrud.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		168AAA8F06ECD0BADAB21943 /* AuthFlowIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFlowIntegrationTests.swift; sourceTree = "<group>"; };
+		239A6FD6D471F9DE50554636 /* Bedrud.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Bedrud.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		252B460A7E099456B30AFB5F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		294DD059C1708CFB35405442 /* AuthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAPI.swift; sourceTree = "<group>"; };
 		32B3F8119935AF0B9C4F3FEE /* InstanceStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceStoreTests.swift; sourceTree = "<group>"; };
 		366CCCCDA13F7A96C09C3362 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		368B52DCC407760034A0BC2B /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
+		3AA75AC6D206F5E22D5468D1 /* BedrudURLParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrudURLParserTests.swift; sourceTree = "<group>"; };
 		3B49FC1C1923E5053EF89591 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		3E180B8B3E6F5D75BFF638D0 /* MeetingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingView.swift; sourceTree = "<group>"; };
 		3E3F0F986721CF96D744AE42 /* BedrudTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BedrudTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -92,6 +100,7 @@
 		6401AD5304E923D8392A4F17 /* UserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserTests.swift; sourceTree = "<group>"; };
 		68FAEA904DCF6A780C534E57 /* MigrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationManager.swift; sourceTree = "<group>"; };
 		6CB99C992E1618621B8C4342 /* BedrudURLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrudURLParser.swift; sourceTree = "<group>"; };
+		6D443E4AB708CDA4B91B730F /* SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
 		737FCA2593FDFB10DC8A4CCB /* RoomCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCardView.swift; sourceTree = "<group>"; };
 		73A233845A03A36E91FAF00F /* RoomTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomTests.swift; sourceTree = "<group>"; };
 		759F54A028619F2A1B50C78D /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
@@ -99,6 +108,7 @@
 		78A31F7459DCE4C1238DE851 /* PasskeyDataExtensionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyDataExtensionTests.swift; sourceTree = "<group>"; };
 		78FDB79138F0A93C2F16252D /* Styles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Styles.swift; sourceTree = "<group>"; };
 		7D2CB613BB065F6075FF4165 /* AuthAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAPITests.swift; sourceTree = "<group>"; };
+		8205A17567970D89665B7572 /* InstanceSwitchingIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceSwitchingIntegrationTests.swift; sourceTree = "<group>"; };
 		84677DFF3AA7719AD9F13719 /* RoomManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomManager.swift; sourceTree = "<group>"; };
 		97B40CB4FA7C07C27F422957 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		9E271E4E77D423D6A5EF80E9 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
@@ -152,6 +162,15 @@
 				CC2FF83D074FFD1EF87716BC /* RoomAPI.swift */,
 			);
 			path = API;
+			sourceTree = "<group>";
+		};
+		1576CA6DDFEF2B5E70B6E32D /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				8670E73898070FB8F4A676BB /* JoinByURL */,
+				6FDF0B60BEBAC24DC863ABF5 /* Settings */,
+			);
+			path = Features;
 			sourceTree = "<group>";
 		};
 		19CE301723243A65C97ED364 /* JoinByURL */ = {
@@ -248,6 +267,23 @@
 			path = Bedrud;
 			sourceTree = "<group>";
 		};
+		6FDF0B60BEBAC24DC863ABF5 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				6D443E4AB708CDA4B91B730F /* SettingsStoreTests.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		7246458029E555C059B692DD /* Integration */ = {
+			isa = PBXGroup;
+			children = (
+				168AAA8F06ECD0BADAB21943 /* AuthFlowIntegrationTests.swift */,
+				8205A17567970D89665B7572 /* InstanceSwitchingIntegrationTests.swift */,
+			);
+			path = Integration;
+			sourceTree = "<group>";
+		};
 		735FAD7ABB45B960B40CDE4D /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
@@ -264,6 +300,14 @@
 				4EA81758239498886B3AD762 /* RoomManagerTests.swift */,
 			);
 			path = LiveKit;
+			sourceTree = "<group>";
+		};
+		8670E73898070FB8F4A676BB /* JoinByURL */ = {
+			isa = PBXGroup;
+			children = (
+				3AA75AC6D206F5E22D5468D1 /* BedrudURLParserTests.swift */,
+			);
+			path = JoinByURL;
 			sourceTree = "<group>";
 		};
 		8FF065275AF53FAA17F3F5F3 /* Dashboard */ = {
@@ -339,7 +383,9 @@
 			children = (
 				B1E2FB8B3811B465E21BA8A3 /* Core */,
 				E2DD2B6D11D6707E9FCB9762 /* Design */,
+				1576CA6DDFEF2B5E70B6E32D /* Features */,
 				735FAD7ABB45B960B40CDE4D /* Helpers */,
+				7246458029E555C059B692DD /* Integration */,
 				66C48081C1DE4FA3B26FD666 /* Mocks */,
 				CA7ED5626B5BA6A6B50594ED /* Models */,
 			);
@@ -350,6 +396,7 @@
 			isa = PBXGroup;
 			children = (
 				CAD2743F142DE2E36BD54E7F /* InstanceTests.swift */,
+				12FB732DC12EF9FD729C8300 /* PasskeyTypesTests.swift */,
 				73A233845A03A36E91FAF00F /* RoomTests.swift */,
 				6401AD5304E923D8392A4F17 /* UserTests.swift */,
 			);
@@ -503,6 +550,7 @@
 				20EF951375AA5DBDEB94E036 /* XCRemoteSwiftPackageReference "KeychainAccess" */,
 				3A1930D541681DDB35BB37BB /* XCRemoteSwiftPackageReference "client-sdk-swift" */,
 			);
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -559,18 +607,23 @@
 				D811D389C9D1DE20B39833D1 /* APIClientTests.swift in Sources */,
 				0C3A16FABE48F1956211FD89 /* APIErrorTests.swift in Sources */,
 				E9157BA87BD7724510D0BBB3 /* AuthAPITests.swift in Sources */,
+				480D6DBB2FE4DE07CBD210FF /* AuthFlowIntegrationTests.swift in Sources */,
 				9D2A35400CFC38D5379F072B /* AuthManagerTests.swift in Sources */,
+				BA7B9BEC18742DFB9B230360 /* BedrudURLParserTests.swift in Sources */,
 				C988557C0F96F98594641BF0 /* ColorsTests.swift in Sources */,
 				6198F5AF84B6176702988A0D /* InstanceManagerTests.swift in Sources */,
 				6E6EF5E9479E49A8230E33FE /* InstanceStoreTests.swift in Sources */,
+				4909358E206090A049000858 /* InstanceSwitchingIntegrationTests.swift in Sources */,
 				F2501B4FA1F61A5CF1701E76 /* InstanceTests.swift in Sources */,
 				6D6C16E35808B90C128D3FB5 /* MigrationManagerTests.swift in Sources */,
 				4BC55584286C1A7D4077868B /* MockURLProtocol.swift in Sources */,
 				D5C023877B26886BB0AB7B38 /* PasskeyDataExtensionTests.swift in Sources */,
 				B203B4B903EDBC32ACDD35A5 /* PasskeyErrorTests.swift in Sources */,
+				9C802F68F927B3D96EBE19FA /* PasskeyTypesTests.swift in Sources */,
 				4B8350F050404179FB98F598 /* RoomAPITests.swift in Sources */,
 				88579F45D08A9CD572950471 /* RoomManagerTests.swift in Sources */,
 				E3EB262E8F8D65834C44E88B /* RoomTests.swift in Sources */,
+				F7206B3D27C4149FAF586BD0 /* SettingsStoreTests.swift in Sources */,
 				C5EC553D900DE339BCAB5A4E /* UserTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -591,10 +644,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RZRG93WW23;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Bedrud needs camera access for video calls";
@@ -622,10 +673,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RZRG93WW23;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Bedrud needs camera access for video calls";
