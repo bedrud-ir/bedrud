@@ -72,7 +72,7 @@ class RoomManager(private val application: Application) {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    suspend fun connect(url: String, token: String, roomName: String? = null) {
+    suspend fun connect(url: String, token: String, roomName: String? = null, avatarUrl: String? = null) {
         try {
             _connectionState.value = ConnectionState.CONNECTING
             _error.value = null
@@ -84,6 +84,18 @@ class RoomManager(private val application: Application) {
             room.connect(url, token)
 
             _connectionState.value = ConnectionState.CONNECTED
+
+            // Set avatar metadata on local participant
+            if (!avatarUrl.isNullOrBlank()) {
+                try {
+                    val metadata = JSONObject().apply {
+                        put("avatarUrl", avatarUrl)
+                    }.toString()
+                    room.localParticipant.updateMetadata(metadata)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to set avatar metadata", e)
+                }
+            }
 
             // Enable mic and camera after connecting
             try {
