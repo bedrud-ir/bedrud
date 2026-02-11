@@ -5,7 +5,6 @@ struct RoomCardView: View {
     let isJoining: Bool
     let onJoin: () -> Void
     var onDelete: (() -> Void)?
-    var onSettings: (() -> Void)?
 
     var body: some View {
         Button(action: onJoin) {
@@ -96,12 +95,6 @@ struct RoomCardView: View {
                     Label("Join Room", systemImage: "arrow.right.circle")
                 }
                 .disabled(!room.isActive)
-
-                if let onSettings {
-                    Button(action: onSettings) {
-                        Label("Settings", systemImage: "gearshape")
-                    }
-                }
 
                 if let onDelete {
                     Button(role: .destructive, action: onDelete) {

@@ -12,7 +12,6 @@ struct DashboardView: View {
     @State private var selectedRoom: JoinRoomResponse?
     @State private var joiningRoomId: String?
     @State private var roomToDelete: UserRoomResponse?
-    @State private var roomToEdit: UserRoomResponse?
 
     private var roomAPI: RoomAPI? { instanceManager.roomAPI }
 
@@ -120,22 +119,13 @@ struct DashboardView: View {
             } message: {
                 Text("This room and all its data will be permanently deleted.")
             }
-            .sheet(item: $roomToEdit) { room in
-                RoomSettingsSheet(
-                    room: room,
-                    roomAPI: roomAPI,
-                    onSaved: { Task { await loadRooms() } }
-                )
-            }
             #if os(iOS)
             .fullScreenCover(item: $selectedRoom) { joinResponse in
                 MeetingView(joinResponse: joinResponse)
-                    .environmentObject(instanceManager)
             }
             #else
             .sheet(item: $selectedRoom) { joinResponse in
                 MeetingView(joinResponse: joinResponse)
-                    .environmentObject(instanceManager)
                     .frame(minWidth: 800, minHeight: 600)
             }
             #endif
@@ -168,8 +158,7 @@ struct DashboardView: View {
             room: room,
             isJoining: joiningRoomId == room.id,
             onJoin: { Task { await joinRoom(room) } },
-            onDelete: { roomToDelete = room },
-            onSettings: room.relationship == "owner" ? { roomToEdit = room } : nil
+            onDelete: { roomToDelete = room }
         )
         #if os(macOS)
         .padding(.vertical, 4)
