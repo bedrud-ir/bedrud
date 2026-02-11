@@ -1,6 +1,11 @@
 package com.bedrud.app
 
+import android.app.PictureInPictureParams
+import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,7 +23,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.bedrud.app.core.deeplink.BedrudURLParser
 import com.bedrud.app.core.instance.InstanceManager
+import com.bedrud.app.core.pip.PipStateHolder
 import com.bedrud.app.ui.screens.auth.LoginScreen
 import com.bedrud.app.ui.screens.auth.RegisterScreen
 import com.bedrud.app.ui.screens.instance.AddInstanceScreen
@@ -27,16 +34,33 @@ import com.bedrud.app.ui.screens.meeting.MeetingScreen
 import com.bedrud.app.ui.screens.settings.AppAppearance
 import com.bedrud.app.ui.screens.settings.SettingsStore
 import com.bedrud.app.ui.theme.BedrudTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
 
     private val instanceManager: InstanceManager by inject()
     private val settingsStore: SettingsStore by inject()
+    private val pipStateHolder: PipStateHolder by inject()
+
+    private val _deepLinkRoomName = MutableStateFlow<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Parse deep link from initial intent
+        handleDeepLink(intent)
+
+        // Set up auto-enter PiP on API 31+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            setPictureInPictureParams(
+                PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(16, 9))
+                    .setAutoEnterEnabled(true)
+                    .build()
+            )
+        }
 
         setContent {
             val appearance by settingsStore.appearance.collectAsState()
@@ -51,10 +75,44 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    BedrudNavHost(instanceManager = instanceManager)
+                    BedrudNavHost(
+                        instanceManager = instanceManager,
+                        deepLinkRoomName = _deepLinkRoomName
+                    )
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleDeepLink(intent)
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        val parsed = BedrudURLParser.parse(uri.toString()) ?: return
+        _deepLinkRoomName.value = parsed.roomName
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (pipStateHolder.isInMeeting.value) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val params = PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(16, 9))
+                    .build()
+                enterPictureInPictureMode(params)
+            }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        pipStateHolder.setInPipMode(isInPictureInPictureMode)
     }
 }
 
@@ -69,7 +127,10 @@ object Routes {
 }
 
 @Composable
-fun BedrudNavHost(instanceManager: InstanceManager) {
+fun BedrudNavHost(
+    instanceManager: InstanceManager,
+    deepLinkRoomName: MutableStateFlow<String?> = MutableStateFlow(null)
+) {
     val navController = rememberNavController()
     val instances by instanceManager.store.instances.collectAsState()
     val authManager by instanceManager.authManager.collectAsState()
@@ -83,6 +144,16 @@ fun BedrudNavHost(instanceManager: InstanceManager) {
         }
         navController.navigate(target) {
             popUpTo(0) { inclusive = true }
+        }
+    }
+
+    // Handle deep links
+    val deepLink by deepLinkRoomName.collectAsState()
+    LaunchedEffect(deepLink) {
+        val roomName = deepLink ?: return@LaunchedEffect
+        if (isLoggedIn) {
+            navController.navigate(Routes.meeting(roomName))
+            deepLinkRoomName.value = null
         }
     }
 

@@ -6,7 +6,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,7 +42,10 @@ import androidx.compose.material.icons.filled.ScreenShare
 import androidx.compose.material.icons.filled.StopScreenShare
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -52,6 +57,7 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -68,8 +74,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import com.bedrud.app.core.api.RoomApi
 import com.bedrud.app.core.call.CallService
 import com.bedrud.app.core.instance.InstanceManager
+import com.bedrud.app.core.pip.PipStateHolder
 import com.bedrud.app.core.livekit.ChatMessage
 import com.bedrud.app.core.livekit.ConnectionState
 import com.bedrud.app.models.JoinRoomRequest
@@ -78,19 +87,32 @@ import io.livekit.android.compose.ui.VideoTrackView
 import io.livekit.android.room.participant.Participant
 import io.livekit.android.room.track.Track
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import org.koin.compose.koinInject
 
 @Composable
 fun MeetingScreen(
     roomName: String,
     onLeave: () -> Unit,
-    instanceManager: InstanceManager = koinInject()
+    instanceManager: InstanceManager = koinInject(),
+    pipStateHolder: PipStateHolder = koinInject()
 ) {
     val roomApi = instanceManager.roomApi.collectAsState().value ?: return
     val roomManager = instanceManager.roomManager.collectAsState().value ?: return
+    val authManager = instanceManager.authManager.collectAsState().value
+    val currentUser by (authManager?.currentUser ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val isInPipMode by pipStateHolder.isInPipMode.collectAsState()
+
+    // Track meeting state for PiP
+    DisposableEffect(Unit) {
+        pipStateHolder.setInMeeting(true)
+        onDispose {
+            pipStateHolder.setInMeeting(false)
+        }
+    }
 
     val connectionState by roomManager.connectionState.collectAsState()
     val isMicEnabled by roomManager.isMicEnabled.collectAsState()
@@ -112,7 +134,7 @@ fun MeetingScreen(
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted && roomInfo != null) {
-            CallService.start(context, roomName, roomInfo!!.livekitHost, roomInfo!!.token)
+            CallService.start(context, roomName, roomInfo!!.livekitHost, roomInfo!!.token, currentUser?.avatarUrl)
         }
     }
 
@@ -196,193 +218,239 @@ fun MeetingScreen(
             ConnectionState.RECONNECTING -> {
                 val room = roomManager.room
                 if (room != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(padding)
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize()
+                    // Video grid (recomposes when participantVersion changes)
+                    val participants = remember(participantVersion) {
+                        buildList {
+                            room.localParticipant.let { add(it) }
+                            addAll(room.remoteParticipants.values)
+                        }
+                    }
+
+                    val isAdmin = roomInfo?.let { info ->
+                        room.localParticipant.identity?.value == info.adminId
+                    } ?: false
+                    val roomId = roomInfo?.id ?: ""
+
+                    if (isInPipMode) {
+                        // PiP mode: show single participant filling the screen
+                        val pipParticipant = participants.firstOrNull {
+                            it.identity != room.localParticipant.identity
+                        } ?: participants.firstOrNull()
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
                         ) {
-                            // Room header
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = roomName,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                if (connectionState == ConnectionState.RECONNECTING) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(14.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "Reconnecting...",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Video grid (recomposes when participantVersion changes)
-                            val participants = remember(participantVersion) {
-                                buildList {
-                                    room.localParticipant.let { add(it) }
-                                    addAll(room.remoteParticipants.values)
-                                }
-                            }
-
-                            val columns = when {
-                                participants.size <= 1 -> 1
-                                participants.size <= 4 -> 2
-                                else -> 3
-                            }
-
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(columns),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(
-                                    participants,
-                                    key = { it.identity?.value ?: it.hashCode() }
-                                ) { participant ->
-                                    ParticipantTile(participant = participant)
-                                }
-                            }
-
-                            // Controls bar
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Mic toggle
-                                SmallFloatingActionButton(
-                                    onClick = { scope.launch { roomManager.toggleMicrophone() } },
-                                    containerColor = if (isMicEnabled)
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    else MaterialTheme.colorScheme.error
-                                ) {
-                                    Icon(
-                                        if (isMicEnabled) Icons.Default.Mic
-                                        else Icons.Default.MicOff,
-                                        contentDescription = "Toggle Microphone"
+                            if (pipParticipant != null) {
+                                val videoTrack = pipParticipant.getTrackPublication(Track.Source.CAMERA)
+                                    ?.track as? io.livekit.android.room.track.VideoTrack
+                                if (videoTrack != null) {
+                                    VideoTrackView(
+                                        videoTrack = videoTrack,
+                                        modifier = Modifier.fillMaxSize()
                                     )
-                                }
-
-                                // Camera toggle
-                                SmallFloatingActionButton(
-                                    onClick = { scope.launch { roomManager.toggleCamera() } },
-                                    containerColor = if (isCameraEnabled)
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    else MaterialTheme.colorScheme.error
-                                ) {
-                                    Icon(
-                                        if (isCameraEnabled) Icons.Default.Videocam
-                                        else Icons.Default.VideocamOff,
-                                        contentDescription = "Toggle Camera"
-                                    )
-                                }
-
-                                // Switch camera
-                                SmallFloatingActionButton(
-                                    onClick = { roomManager.switchCamera() },
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                ) {
-                                    Icon(
-                                        Icons.Default.Cameraswitch,
-                                        contentDescription = "Switch Camera"
-                                    )
-                                }
-
-                                // Screen share toggle
-                                SmallFloatingActionButton(
-                                    onClick = { scope.launch { roomManager.toggleScreenShare() } },
-                                    containerColor = if (isScreenShareEnabled)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                ) {
-                                    Icon(
-                                        if (isScreenShareEnabled) Icons.Default.StopScreenShare
-                                        else Icons.Default.ScreenShare,
-                                        contentDescription = "Toggle Screen Share"
-                                    )
-                                }
-
-                                // Chat toggle
-                                SmallFloatingActionButton(
-                                    onClick = { showChat = !showChat },
-                                    containerColor = if (showChat)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.Chat,
-                                        contentDescription = "Toggle Chat"
-                                    )
-                                }
-
-                                // Leave call
-                                FloatingActionButton(
-                                    onClick = {
-                                        CallService.stop(context)
-                                        onLeave()
-                                    },
-                                    containerColor = MaterialTheme.colorScheme.error,
-                                    contentColor = MaterialTheme.colorScheme.onError,
-                                    elevation = FloatingActionButtonDefaults.elevation(
-                                        defaultElevation = 0.dp
-                                    )
-                                ) {
-                                    Icon(
-                                        Icons.Default.CallEnd,
-                                        contentDescription = "Leave Call"
+                                } else {
+                                    Text(
+                                        text = (pipParticipant.name ?: "").take(1).uppercase(),
+                                        style = MaterialTheme.typography.displayLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                         }
-
-                        // Chat panel - slides in from the right
-                        AnimatedVisibility(
-                            visible = showChat,
-                            enter = slideInHorizontally(initialOffsetX = { it }),
-                            exit = slideOutHorizontally(targetOffsetX = { it }),
-                            modifier = Modifier.align(Alignment.CenterEnd)
+                    } else {
+                        // Normal mode
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding)
                         ) {
-                            ChatPanel(
-                                messages = chatMessages,
-                                chatInput = chatInput,
-                                onChatInputChange = { chatInput = it },
-                                onSend = {
-                                    if (chatInput.isNotBlank()) {
-                                        scope.launch {
-                                            roomManager.sendChatMessage(chatInput.trim())
-                                            chatInput = ""
+                            Column(
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                // Room header
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = roomName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    if (connectionState == ConnectionState.RECONNECTING) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(14.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Reconnecting...",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
                                         }
                                     }
-                                },
-                                onClose = { showChat = false }
-                            )
+                                }
+
+                                val columns = when {
+                                    participants.size <= 1 -> 1
+                                    participants.size <= 4 -> 2
+                                    else -> 3
+                                }
+
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(columns),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(
+                                        participants,
+                                        key = { it.identity?.value ?: it.hashCode() }
+                                    ) { participant ->
+                                        val isLocalParticipant = participant.identity == room.localParticipant.identity
+                                        ParticipantTile(
+                                            participant = participant,
+                                            isAdmin = isAdmin,
+                                            isLocalParticipant = isLocalParticipant,
+                                            roomId = roomId,
+                                            roomApi = roomApi,
+                                            snackbarHostState = snackbarHostState,
+                                            scope = scope
+                                        )
+                                    }
+                                }
+
+                                // Controls bar
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Mic toggle
+                                    SmallFloatingActionButton(
+                                        onClick = { scope.launch { roomManager.toggleMicrophone() } },
+                                        containerColor = if (isMicEnabled)
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                        else MaterialTheme.colorScheme.error
+                                    ) {
+                                        Icon(
+                                            if (isMicEnabled) Icons.Default.Mic
+                                            else Icons.Default.MicOff,
+                                            contentDescription = "Toggle Microphone"
+                                        )
+                                    }
+
+                                    // Camera toggle
+                                    SmallFloatingActionButton(
+                                        onClick = { scope.launch { roomManager.toggleCamera() } },
+                                        containerColor = if (isCameraEnabled)
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                        else MaterialTheme.colorScheme.error
+                                    ) {
+                                        Icon(
+                                            if (isCameraEnabled) Icons.Default.Videocam
+                                            else Icons.Default.VideocamOff,
+                                            contentDescription = "Toggle Camera"
+                                        )
+                                    }
+
+                                    // Switch camera
+                                    SmallFloatingActionButton(
+                                        onClick = { roomManager.switchCamera() },
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Cameraswitch,
+                                            contentDescription = "Switch Camera"
+                                        )
+                                    }
+
+                                    // Screen share toggle
+                                    SmallFloatingActionButton(
+                                        onClick = { scope.launch { roomManager.toggleScreenShare() } },
+                                        containerColor = if (isScreenShareEnabled)
+                                            MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant
+                                    ) {
+                                        Icon(
+                                            if (isScreenShareEnabled) Icons.Default.StopScreenShare
+                                            else Icons.Default.ScreenShare,
+                                            contentDescription = "Toggle Screen Share"
+                                        )
+                                    }
+
+                                    // Chat toggle
+                                    SmallFloatingActionButton(
+                                        onClick = { showChat = !showChat },
+                                        containerColor = if (showChat)
+                                            MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant
+                                    ) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.Chat,
+                                            contentDescription = "Toggle Chat"
+                                        )
+                                    }
+
+                                    // Leave call
+                                    FloatingActionButton(
+                                        onClick = {
+                                            CallService.stop(context)
+                                            onLeave()
+                                        },
+                                        containerColor = MaterialTheme.colorScheme.error,
+                                        contentColor = MaterialTheme.colorScheme.onError,
+                                        elevation = FloatingActionButtonDefaults.elevation(
+                                            defaultElevation = 0.dp
+                                        )
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CallEnd,
+                                            contentDescription = "Leave Call"
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Chat panel - slides in from the right
+                            AnimatedVisibility(
+                                visible = showChat,
+                                enter = slideInHorizontally(initialOffsetX = { it }),
+                                exit = slideOutHorizontally(targetOffsetX = { it }),
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            ) {
+                                ChatPanel(
+                                    messages = chatMessages,
+                                    chatInput = chatInput,
+                                    onChatInputChange = { chatInput = it },
+                                    onSend = {
+                                        if (chatInput.isNotBlank()) {
+                                            scope.launch {
+                                                roomManager.sendChatMessage(chatInput.trim())
+                                                chatInput = ""
+                                            }
+                                        }
+                                    },
+                                    onClose = { showChat = false }
+                                )
+                            }
                         }
                     }
                 }
@@ -420,21 +488,78 @@ fun MeetingScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ParticipantTile(participant: Participant) {
+private fun ParticipantTile(
+    participant: Participant,
+    isAdmin: Boolean = false,
+    isLocalParticipant: Boolean = false,
+    roomId: String = "",
+    roomApi: RoomApi? = null,
+    snackbarHostState: SnackbarHostState? = null,
+    scope: kotlinx.coroutines.CoroutineScope? = null
+) {
     val videoTrack = participant.getTrackPublication(Track.Source.CAMERA)
         ?.track as? io.livekit.android.room.track.VideoTrack
 
     val identity = participant.identity?.value ?: "Unknown"
     val name = participant.name?.ifBlank { identity } ?: identity
-    val isMuted = participant.isSpeaking.not()
+
+    // Parse avatar URL from participant metadata
+    val avatarUrl = remember(participant.metadata) {
+        participant.metadata?.let { meta ->
+            try {
+                val obj = JSONObject(meta)
+                if (obj.has("avatarUrl")) obj.getString("avatarUrl") else null
+            } catch (_: Exception) { null }
+        }
+    }
+
+    var showMenu by remember { mutableStateOf(false) }
+    var showKickConfirm by remember { mutableStateOf(false) }
+    val showAdminMenu = isAdmin && !isLocalParticipant && roomApi != null
+
+    if (showKickConfirm) {
+        AlertDialog(
+            onDismissRequest = { showKickConfirm = false },
+            title = { Text("Kick Participant") },
+            text = { Text("Are you sure you want to kick $name from the room?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showKickConfirm = false
+                    scope?.launch {
+                        try {
+                            roomApi?.kickParticipant(roomId, identity)
+                        } catch (e: Exception) {
+                            snackbarHostState?.showSnackbar(e.message ?: "Failed to kick participant")
+                        }
+                    }
+                }) {
+                    Text("Kick", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showKickConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .then(
+                if (showAdminMenu) {
+                    Modifier.combinedClickable(
+                        onClick = {},
+                        onLongClick = { showMenu = true }
+                    )
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         if (videoTrack != null) {
@@ -442,8 +567,17 @@ private fun ParticipantTile(participant: Participant) {
                 videoTrack = videoTrack,
                 modifier = Modifier.fillMaxSize()
             )
+        } else if (!avatarUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = avatarUrl,
+                contentDescription = "$name avatar",
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
         } else {
-            // Avatar placeholder
+            // Initials placeholder
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -477,6 +611,74 @@ private fun ParticipantTile(participant: Participant) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+
+        // Admin dropdown menu
+        if (showAdminMenu) {
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Mute") },
+                    onClick = {
+                        showMenu = false
+                        scope?.launch {
+                            try {
+                                roomApi?.muteParticipant(roomId, identity)
+                            } catch (e: Exception) {
+                                snackbarHostState?.showSnackbar(e.message ?: "Failed to mute")
+                            }
+                        }
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Disable Video") },
+                    onClick = {
+                        showMenu = false
+                        scope?.launch {
+                            try {
+                                roomApi?.disableParticipantVideo(roomId, identity)
+                            } catch (e: Exception) {
+                                snackbarHostState?.showSnackbar(e.message ?: "Failed to disable video")
+                            }
+                        }
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Bring to Stage") },
+                    onClick = {
+                        showMenu = false
+                        scope?.launch {
+                            try {
+                                roomApi?.bringToStage(roomId, identity)
+                            } catch (e: Exception) {
+                                snackbarHostState?.showSnackbar(e.message ?: "Failed")
+                            }
+                        }
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Remove from Stage") },
+                    onClick = {
+                        showMenu = false
+                        scope?.launch {
+                            try {
+                                roomApi?.removeFromStage(roomId, identity)
+                            } catch (e: Exception) {
+                                snackbarHostState?.showSnackbar(e.message ?: "Failed")
+                            }
+                        }
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Kick", color = MaterialTheme.colorScheme.error) },
+                    onClick = {
+                        showMenu = false
+                        showKickConfirm = true
+                    }
+                )
+            }
         }
     }
 }

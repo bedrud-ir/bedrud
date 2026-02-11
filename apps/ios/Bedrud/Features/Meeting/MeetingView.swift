@@ -5,10 +5,12 @@ struct MeetingView: View {
     let joinResponse: JoinRoomResponse
 
     @StateObject private var roomManager = RoomManager()
+    @EnvironmentObject private var instanceManager: InstanceManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var showError = false
     @State private var showChat = false
+    @State private var wasConnected = false
 
     var body: some View {
         ZStack {
@@ -38,6 +40,13 @@ struct MeetingView: View {
         #endif
         .task {
             await connectToRoom()
+        }
+        .onChange(of: roomManager.connectionState) { _, newState in
+            if newState == .connected {
+                wasConnected = true
+            } else if wasConnected && newState == .disconnected {
+                dismiss()
+            }
         }
         .alert("Connection Error", isPresented: $showError) {
             Button("Leave") { dismiss() }
@@ -80,6 +89,14 @@ struct MeetingView: View {
 
     // MARK: - Video Grid
 
+    private var isAdmin: Bool {
+        roomManager.localParticipant?.identity == joinResponse.adminId
+    }
+
+    private var roomAPI: RoomAPI? {
+        instanceManager.roomAPI
+    }
+
     private var videoGrid: some View {
         GeometryReader { geometry in
             let allParticipants = buildParticipantList()
@@ -88,12 +105,17 @@ struct MeetingView: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(allParticipants) { participant in
-                        ParticipantTileView(participant: participant)
-                            .frame(height: tileHeight(
-                                totalCount: allParticipants.count,
-                                containerSize: geometry.size
-                            ))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        ParticipantTileView(
+                            participant: participant,
+                            isAdmin: isAdmin,
+                            roomId: joinResponse.id,
+                            roomAPI: roomAPI
+                        )
+                        .frame(height: tileHeight(
+                            totalCount: allParticipants.count,
+                            containerSize: geometry.size
+                        ))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
                 .padding(8)
@@ -157,7 +179,8 @@ struct MeetingView: View {
             try await roomManager.connect(
                 url: joinResponse.livekitHost,
                 token: joinResponse.token,
-                roomName: joinResponse.name
+                roomName: joinResponse.name,
+                avatarUrl: instanceManager.authManager?.currentUser?.avatarUrl
             )
         } catch {
             showError = true
@@ -169,6 +192,15 @@ struct MeetingView: View {
 
 struct ParticipantTileView: View {
     let participant: ParticipantInfo
+    var isAdmin: Bool = false
+    var roomId: String = ""
+    var roomAPI: RoomAPI?
+
+    @State private var showKickConfirm = false
+
+    private var showAdminMenu: Bool {
+        isAdmin && !participant.isLocal && roomAPI != nil
+    }
 
     var body: some View {
         ZStack {
@@ -176,6 +208,18 @@ struct ParticipantTileView: View {
 
             if let videoTrack = participant.videoTrack, participant.isCameraEnabled {
                 SwiftUIVideoView(videoTrack, layoutMode: .fill)
+            } else if let avatarUrl = participant.avatarUrl, let url = URL(string: avatarUrl) {
+                AsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 56, height: 56)
+                        .clipShape(Circle())
+                } placeholder: {
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.tertiary)
+                }
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "person.circle.fill")
@@ -223,6 +267,50 @@ struct ParticipantTileView: View {
                 }
                 .padding(8)
             }
+        }
+        .contextMenu {
+            if showAdminMenu {
+                Button {
+                    Task { try? await roomAPI?.muteParticipant(roomId: roomId, identity: participant.identity) }
+                } label: {
+                    Label("Mute", systemImage: "mic.slash")
+                }
+
+                Button {
+                    Task { try? await roomAPI?.disableParticipantVideo(roomId: roomId, identity: participant.identity) }
+                } label: {
+                    Label("Disable Video", systemImage: "video.slash")
+                }
+
+                Button {
+                    Task { try? await roomAPI?.bringToStage(roomId: roomId, identity: participant.identity) }
+                } label: {
+                    Label("Bring to Stage", systemImage: "arrow.up.to.line")
+                }
+
+                Button {
+                    Task { try? await roomAPI?.removeFromStage(roomId: roomId, identity: participant.identity) }
+                } label: {
+                    Label("Remove from Stage", systemImage: "arrow.down.to.line")
+                }
+
+                Button(role: .destructive) {
+                    showKickConfirm = true
+                } label: {
+                    Label("Kick", systemImage: "person.fill.xmark")
+                }
+            }
+        }
+        .confirmationDialog(
+            "Kick \(participant.name)?",
+            isPresented: $showKickConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Kick", role: .destructive) {
+                Task { try? await roomAPI?.kickParticipant(roomId: roomId, identity: participant.identity) }
+            }
+        } message: {
+            Text("This will remove \(participant.name) from the room.")
         }
     }
 }

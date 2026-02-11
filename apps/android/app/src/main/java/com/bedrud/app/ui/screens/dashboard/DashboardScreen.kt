@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -73,6 +74,7 @@ fun DashboardContent(
     var isLoading by remember { mutableStateOf(true) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var showJoinDialog by remember { mutableStateOf(false) }
+    var roomToEdit by remember { mutableStateOf<UserRoomResponse?>(null) }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -128,6 +130,29 @@ fun DashboardContent(
             onJoin = { roomName ->
                 showJoinDialog = false
                 onJoinRoom(roomName)
+            }
+        )
+    }
+
+    roomToEdit?.let { room ->
+        RoomSettingsDialog(
+            room = room,
+            onDismiss = { roomToEdit = null },
+            onSave = { settings ->
+                scope.launch {
+                    try {
+                        val response = roomApi.updateRoomSettings(room.id, settings)
+                        if (response.isSuccessful) {
+                            roomToEdit = null
+                            loadRooms()
+                            snackbarHostState.showSnackbar("Settings saved")
+                        } else {
+                            snackbarHostState.showSnackbar("Failed to save settings")
+                        }
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar(e.message ?: "Failed to save settings")
+                    }
+                }
             }
         )
     }
@@ -215,7 +240,13 @@ fun DashboardContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(rooms, key = { it.id }) { room ->
-                    RoomCard(room = room, onJoin = { onJoinRoom(room.name) })
+                    RoomCard(
+                        room = room,
+                        onJoin = { onJoinRoom(room.name) },
+                        onSettings = if (room.relationship == "owner") {
+                            { roomToEdit = room }
+                        } else null
+                    )
                 }
             }
         }
@@ -225,7 +256,8 @@ fun DashboardContent(
 @Composable
 private fun RoomCard(
     room: UserRoomResponse,
-    onJoin: () -> Unit
+    onJoin: () -> Unit,
+    onSettings: (() -> Unit)? = null
 ) {
     ElevatedCard(
         onClick = onJoin,
@@ -265,6 +297,16 @@ private fun RoomCard(
                         text = "Max: ${room.maxParticipants}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (onSettings != null) {
+                IconButton(onClick = onSettings) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Room Settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

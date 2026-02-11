@@ -65,6 +65,7 @@ class CallService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        val avatarUrl = intent.getStringExtra(EXTRA_AVATAR_URL)
 
         // Grab the current RoomManager before any instance switch
         val rm = instanceManager.roomManager.value ?: run {
@@ -99,7 +100,7 @@ class CallService : Service() {
         serviceScope?.cancel()
         serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         serviceScope?.launch {
-            rm.connect(url, token, roomName)
+            rm.connect(url, token, roomName, avatarUrl)
         }
 
         // Set callback for server-side disconnects
@@ -238,17 +239,19 @@ class CallService : Service() {
         private const val EXTRA_ROOM_NAME = "room_name"
         private const val EXTRA_URL = "url"
         private const val EXTRA_TOKEN = "token"
+        private const val EXTRA_AVATAR_URL = "avatar_url"
         private const val ACTION_HANG_UP = "com.bedrud.app.HANG_UP"
         private const val ACTION_TOGGLE_MUTE = "com.bedrud.app.TOGGLE_MUTE"
 
         var isRunning = false
             private set
 
-        fun start(context: Context, roomName: String, url: String, token: String) {
+        fun start(context: Context, roomName: String, url: String, token: String, avatarUrl: String? = null) {
             val intent = Intent(context, CallService::class.java).apply {
                 putExtra(EXTRA_ROOM_NAME, roomName)
                 putExtra(EXTRA_URL, url)
                 putExtra(EXTRA_TOKEN, token)
+                avatarUrl?.let { putExtra(EXTRA_AVATAR_URL, it) }
             }
             context.startForegroundService(intent)
         }

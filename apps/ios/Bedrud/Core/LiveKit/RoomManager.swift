@@ -37,6 +37,7 @@ struct ParticipantInfo: Identifiable {
     var isScreenSharing: Bool
     var videoTrack: VideoTrack?
     var screenShareTrack: VideoTrack?
+    var avatarUrl: String?
 }
 
 // MARK: - Room Manager
@@ -67,6 +68,7 @@ final class RoomManager: ObservableObject {
     private var callProvider: CXProvider?
     private var currentCallUUID: UUID?
     private var providerDelegate: CallProviderDelegate?
+    private var isEndingFromCallKit = false
     #endif
 
     // MARK: - Connection State
@@ -105,7 +107,7 @@ final class RoomManager: ObservableObject {
 
     // MARK: - Connect
 
-    func connect(url: String, token: String, roomName: String) async throws {
+    func connect(url: String, token: String, roomName: String, avatarUrl: String? = nil) async throws {
         connectionState = .connecting
         error = nil
 
@@ -134,6 +136,14 @@ final class RoomManager: ObservableObject {
         do {
             try await room.connect(url: url, token: token, roomOptions: roomOptions)
             connectionState = .connected
+
+            // Set avatar metadata on local participant
+            if let avatarUrl, !avatarUrl.isEmpty {
+                let metadata = try? JSONSerialization.data(withJSONObject: ["avatarUrl": avatarUrl])
+                if let metadata, let metadataString = String(data: metadata, encoding: .utf8) {
+                    try? await room.localParticipant.set(metadata: metadataString)
+                }
+            }
 
             #if os(iOS)
             callProvider?.reportOutgoingCall(with: callUUID, connectedAt: Date())
@@ -247,8 +257,11 @@ final class RoomManager: ObservableObject {
 
     #if os(iOS)
     func handleEndCall() {
+        isEndingFromCallKit = true
+        currentCallUUID = nil
         Task {
             await disconnect()
+            isEndingFromCallKit = false
         }
     }
 
@@ -268,6 +281,18 @@ final class RoomManager: ObservableObject {
         let handler = RoomDelegateHandler(manager: self)
         self.roomDelegateHandler = handler
         room.add(delegate: handler)
+    }
+
+    func handleRoomDisconnected() {
+        guard connectionState == .connected || connectionState == .reconnecting else { return }
+        connectionState = .disconnected
+        #if os(iOS)
+        endCallKitCall()
+        #endif
+    }
+
+    func handleRoomReconnecting() {
+        connectionState = .reconnecting
     }
 
     // MARK: - Participant Updates
@@ -290,7 +315,8 @@ final class RoomManager: ObservableObject {
             isMicrophoneEnabled: participant.isMicrophoneEnabled(),
             isScreenSharing: participant.isScreenShareEnabled(),
             videoTrack: cameraTrack,
-            screenShareTrack: screenTrack
+            screenShareTrack: screenTrack,
+            avatarUrl: Self.parseAvatarUrl(from: participant.metadata)
         )
 
         isMicrophoneEnabled = participant.isMicrophoneEnabled()
@@ -317,9 +343,19 @@ final class RoomManager: ObservableObject {
                 isMicrophoneEnabled: participant.isMicrophoneEnabled(),
                 isScreenSharing: participant.isScreenShareEnabled(),
                 videoTrack: cameraTrack,
-                screenShareTrack: screenTrack
+                screenShareTrack: screenTrack,
+                avatarUrl: Self.parseAvatarUrl(from: participant.metadata)
             )
         }
+    }
+
+    private static func parseAvatarUrl(from metadata: String?) -> String? {
+        guard let metadata, !metadata.isEmpty,
+              let data = metadata.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let url = json["avatarUrl"] as? String, !url.isEmpty
+        else { return nil }
+        return url
     }
 }
 
@@ -333,7 +369,11 @@ private final class CallProviderDelegate: NSObject, CXProviderDelegate {
         self.manager = manager
     }
 
-    func providerDidReset(_ provider: CXProvider) {}
+    func providerDidReset(_ provider: CXProvider) {
+        Task { @MainActor in
+            manager?.handleEndCall()
+        }
+    }
 
     func provider(_ provider: CXProvider, perform action: CXStartCallAction) {
         action.fulfill()
@@ -354,11 +394,11 @@ private final class CallProviderDelegate: NSObject, CXProviderDelegate {
     }
 
     func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) {
-        // LiveKit handles audio session automatically
+        AudioManager.shared.onDidActivateSession(audioSession)
     }
 
     func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) {
-        // LiveKit handles audio session automatically
+        AudioManager.shared.onDidDeactivateSession(audioSession)
     }
 }
 #endif
@@ -376,11 +416,14 @@ private final class RoomDelegateHandler: RoomDelegate, @unchecked Sendable {
         Task { @MainActor in
             switch connectionState {
             case .disconnected:
+                manager?.handleRoomDisconnected()
                 manager?.updateLocalParticipant()
                 manager?.updateRemoteParticipants()
             case .connected:
                 manager?.updateLocalParticipant()
                 manager?.updateRemoteParticipants()
+            case .reconnecting:
+                manager?.handleRoomReconnecting()
             default:
                 break
             }
