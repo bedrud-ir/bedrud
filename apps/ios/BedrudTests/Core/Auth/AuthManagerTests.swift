@@ -269,4 +269,212 @@ final class AuthManagerTests: XCTestCase {
         let result = try await manager.refreshAccessToken()
         XCTAssertNil(result)
     }
+
+    // MARK: - isLoading State
+
+    func testLoginSetsIsLoadingDuringRequest() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let responseJSON = """
+            {
+                "tokens": {"access_token": "at", "refresh_token": "rt"},
+                "user": {"id": "u1", "email": "a@b.com", "name": "Alice", "avatar_url": null, "is_admin": false}
+            }
+            """
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, responseJSON.data(using: .utf8)!)
+        }
+
+        let manager = makeAuthManager()
+        XCTAssertFalse(manager.isLoading)
+
+        _ = try await manager.login(email: "a@b.com", password: "pass")
+
+        // After completion, isLoading should be false
+        XCTAssertFalse(manager.isLoading)
+    }
+
+    func testRegisterSetsIsLoadingDuringRequest() async throws {
+        let token = fakeJWT(userId: "u1", email: "a@b.com")
+
+        MockURLProtocol.requestHandler = { request in
+            let responseJSON = #"{"access_token": "\#(token)", "refresh_token": "rt"}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, responseJSON.data(using: .utf8)!)
+        }
+
+        let manager = makeAuthManager()
+        XCTAssertFalse(manager.isLoading)
+
+        _ = try await manager.register(email: "a@b.com", password: "pass", name: "Alice")
+
+        XCTAssertFalse(manager.isLoading)
+    }
+
+    func testGuestLoginSetsIsLoadingDuringRequest() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let responseJSON = """
+            {
+                "tokens": {"access_token": "gt", "refresh_token": "gr"},
+                "user": {"id": "g1", "email": "", "name": "Guest", "avatar_url": null, "is_admin": false}
+            }
+            """
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, responseJSON.data(using: .utf8)!)
+        }
+
+        let manager = makeAuthManager()
+        _ = try await manager.guestLogin(name: "Guest")
+        XCTAssertFalse(manager.isLoading)
+    }
+
+    // MARK: - isLoading Reset on Failure
+
+    func testLoginResetsIsLoadingOnError() async {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        let manager = makeAuthManager()
+        do {
+            _ = try await manager.login(email: "a@b.com", password: "wrong")
+            XCTFail("Should throw")
+        } catch {
+            XCTAssertFalse(manager.isLoading)
+        }
+    }
+
+    // MARK: - User Caching in Keychain
+
+    func testLoginCachesUserDataInKeychain() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let responseJSON = """
+            {
+                "tokens": {"access_token": "at", "refresh_token": "rt"},
+                "user": {"id": "u1", "email": "a@b.com", "name": "Alice", "avatar_url": null, "is_admin": false}
+            }
+            """
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, responseJSON.data(using: .utf8)!)
+        }
+
+        let manager = makeAuthManager()
+        _ = try await manager.login(email: "a@b.com", password: "pass")
+
+        // Verify user data is cached
+        let cachedUserData = keychain["test-instance_user_data"]
+        XCTAssertNotNil(cachedUserData)
+
+        // Verify we can decode it
+        let data = cachedUserData!.data(using: .utf8)!
+        let cachedUser = try JSONDecoder().decode(User.self, from: data)
+        XCTAssertEqual(cachedUser.id, "u1")
+        XCTAssertEqual(cachedUser.name, "Alice")
+    }
+
+    // MARK: - loginWithTokens Caches User
+
+    func testLoginWithTokensCachesUserData() {
+        let manager = makeAuthManager()
+        let tokens = AuthTokens(accessToken: "a", refreshToken: "r")
+        let user = User(id: "u1", email: "a@b.com", name: "Alice", avatarUrl: nil, isAdmin: false, provider: nil)
+
+        manager.loginWithTokens(tokens: tokens, user: user)
+
+        let cachedUserData = keychain["test-instance_user_data"]
+        XCTAssertNotNil(cachedUserData)
+    }
+
+    // MARK: - Instance ID Scoping
+
+    func testTokensAreScopedToInstanceId() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let responseJSON = """
+            {
+                "tokens": {"access_token": "at", "refresh_token": "rt"},
+                "user": {"id": "u1", "email": "a@b.com", "name": "Alice", "avatar_url": null, "is_admin": false}
+            }
+            """
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, responseJSON.data(using: .utf8)!)
+        }
+
+        let manager1 = makeAuthManager(instanceId: "instance-1")
+        let manager2 = makeAuthManager(instanceId: "instance-2")
+
+        _ = try await manager1.login(email: "a@b.com", password: "pass")
+
+        // Manager 1 should have tokens
+        XCTAssertNotNil(keychain["instance-1_access_token"])
+        XCTAssertNotNil(keychain["instance-1_refresh_token"])
+
+        // Manager 2 should NOT have tokens
+        XCTAssertNil(keychain["instance-2_access_token"])
+        XCTAssertNil(keychain["instance-2_refresh_token"])
+
+        // Manager 2 should not be authenticated
+        XCTAssertFalse(manager2.isAuthenticated)
+    }
+
+    // MARK: - Login Error Does Not Set Auth State
+
+    func testLoginFailureDoesNotSetAuthenticated() async {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        let manager = makeAuthManager()
+        do {
+            _ = try await manager.login(email: "a@b.com", password: "wrong")
+            XCTFail("Should throw")
+        } catch {
+            XCTAssertFalse(manager.isAuthenticated)
+            XCTAssertNil(manager.currentUser)
+        }
+    }
+
+    // MARK: - Register Returns User with Admin from JWT
+
+    func testRegisterReturnsAdminUser() async throws {
+        let token = fakeJWT(userId: "u1", email: "admin@test.com", accesses: ["admin", "moderator"])
+
+        MockURLProtocol.requestHandler = { request in
+            let responseJSON = #"{"access_token": "\#(token)", "refresh_token": "rt"}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, responseJSON.data(using: .utf8)!)
+        }
+
+        let manager = makeAuthManager()
+        let user = try await manager.register(email: "admin@test.com", password: "pass", name: "Admin")
+
+        XCTAssertTrue(user.isAdmin)
+    }
+
+    func testRegisterReturnsNonAdminUser() async throws {
+        let token = fakeJWT(userId: "u1", email: "user@test.com", accesses: ["user"])
+
+        MockURLProtocol.requestHandler = { request in
+            let responseJSON = #"{"access_token": "\#(token)", "refresh_token": "rt"}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, responseJSON.data(using: .utf8)!)
+        }
+
+        let manager = makeAuthManager()
+        let user = try await manager.register(email: "user@test.com", password: "pass", name: "User")
+
+        XCTAssertFalse(user.isAdmin)
+    }
+
+    // MARK: - Logout Idempotent
+
+    func testLogoutWhenNotAuthenticatedIsNoop() async {
+        let manager = makeAuthManager()
+        XCTAssertFalse(manager.isAuthenticated)
+
+        await manager.logout()
+
+        XCTAssertFalse(manager.isAuthenticated)
+        XCTAssertNil(manager.currentUser)
+    }
 }
