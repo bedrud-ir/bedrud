@@ -150,14 +150,23 @@ final class RoomManager: ObservableObject {
         let room = LiveKit.Room()
         self.room = room
 
-        let roomOptions = RoomOptions(
-            defaultCameraCaptureOptions: CameraCaptureOptions(
-                dimensions: Dimensions(width: 1280, height: 720)
-            ),
-            adaptiveStream: true,
-            dynacast: true,
-            suspendLocalVideoTracksInBackground: false
-        )
+        let roomOptions: RoomOptions = {
+            #if targetEnvironment(simulator)
+            return RoomOptions(
+                adaptiveStream: true,
+                dynacast: true
+            )
+            #else
+            return RoomOptions(
+                defaultCameraCaptureOptions: CameraCaptureOptions(
+                    dimensions: Dimensions(width: 1280, height: 720)
+                ),
+                adaptiveStream: true,
+                dynacast: true,
+                suspendLocalVideoTracksInBackground: false
+            )
+            #endif
+        }()
 
         do {
             try await room.connect(url: url, token: token, roomOptions: roomOptions)
@@ -244,18 +253,28 @@ final class RoomManager: ObservableObject {
 
     func toggleCamera() async throws {
         guard let localParticipant = room?.localParticipant else { return }
+        #if targetEnvironment(simulator)
+        error = "Camera is not available in the simulator"
+        return
+        #else
         let newState = !isCameraEnabled
         try await localParticipant.setCamera(enabled: newState)
         isCameraEnabled = newState
         updateLocalParticipant()
+        #endif
     }
 
     func toggleScreenShare() async throws {
         guard let localParticipant = room?.localParticipant else { return }
+        #if targetEnvironment(simulator)
+        error = "Screen sharing is not available in the simulator"
+        return
+        #else
         let newState = !isScreenShareEnabled
         try await localParticipant.setScreenShare(enabled: newState)
         isScreenShareEnabled = newState
         updateLocalParticipant()
+        #endif
     }
 
     // MARK: - Chat
