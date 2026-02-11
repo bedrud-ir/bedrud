@@ -10,7 +10,11 @@ struct SettingsView: View {
                 notificationsSection
                 aboutSection
             }
+            #if os(iOS)
             .listStyle(.insetGrouped)
+            #else
+            .listStyle(.inset)
+            #endif
             .navigationTitle("Settings")
         }
     }

@@ -14,9 +14,11 @@ struct JoinByURLSheet: View {
             Form {
                 Section {
                     TextField("Paste meeting link", text: $urlText)
+                        .autocorrectionDisabled()
+                        #if os(iOS)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                        #endif
                 } footer: {
                     Text("Example: server.com/c/room-name")
                         .font(.caption)
@@ -49,15 +51,24 @@ struct JoinByURLSheet: View {
                 }
             }
             .navigationTitle("Join by URL")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
             }
+            #if os(iOS)
             .fullScreenCover(item: $joinResponse) { response in
                 MeetingView(joinResponse: response)
             }
+            #else
+            .sheet(item: $joinResponse) { response in
+                MeetingView(joinResponse: response)
+                    .frame(minWidth: 800, minHeight: 600)
+            }
+            #endif
         }
     }
 

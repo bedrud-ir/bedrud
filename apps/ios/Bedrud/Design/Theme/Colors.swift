@@ -1,5 +1,33 @@
 import SwiftUI
 
+// MARK: - Cross-Platform System Colors
+
+extension Color {
+    static var systemBackground: Color {
+        #if os(iOS)
+        Color(.systemBackground)
+        #else
+        Color(.windowBackgroundColor)
+        #endif
+    }
+
+    static var secondarySystemBackground: Color {
+        #if os(iOS)
+        Color(.secondarySystemBackground)
+        #else
+        Color(.controlBackgroundColor)
+        #endif
+    }
+
+    static var tertiarySystemBackground: Color {
+        #if os(iOS)
+        Color(.tertiarySystemBackground)
+        #else
+        Color(.underPageBackgroundColor)
+        #endif
+    }
+}
+
 // MARK: - Bedrud Color Palette
 //
 // Colors mapped from the web CSS HSL variables.
@@ -122,8 +150,7 @@ private extension Color {
     /// Returns self if the named color exists in the asset catalog, otherwise creates
     /// an adaptive color from the provided light/dark values.
     func orFallback(light: Color, dark: Color) -> Color {
-        // We always use the programmatic fallback since no asset catalog is included.
-        // When an asset catalog is added, named colors will take precedence.
+        #if os(iOS)
         return Color(uiColor: UIColor { traitCollection in
             switch traitCollection.userInterfaceStyle {
             case .dark:
@@ -132,5 +159,11 @@ private extension Color {
                 return UIColor(light)
             }
         })
+        #elseif os(macOS)
+        return Color(nsColor: NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return isDark ? NSColor(dark) : NSColor(light)
+        })
+        #endif
     }
 }

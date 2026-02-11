@@ -22,22 +22,22 @@ struct InstanceListView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Circle()
-                                .fill(Color(hex: instance.iconColorHex) ?? BedrudColors.primary)
+                                .fill(Color(hex: instance.iconColorHex) ?? Color.accentColor)
                                 .frame(width: 36, height: 36)
                                 .overlay(
                                     Text(String(instance.displayName.prefix(1)).uppercased())
-                                        .font(BedrudTypography.headline)
+                                        .font(.headline)
                                         .foregroundStyle(.white)
                                 )
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(instance.displayName)
-                                    .font(BedrudTypography.body)
-                                    .foregroundStyle(BedrudColors.foreground)
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
 
                                 Text(instance.serverURL)
-                                    .font(BedrudTypography.caption)
-                                    .foregroundStyle(BedrudColors.mutedForeground)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                                     .lineLimit(1)
                             }
 
@@ -45,7 +45,7 @@ struct InstanceListView: View {
 
                             if instance.id == activeId {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(BedrudColors.primary)
+                                    .foregroundStyle(Color.accentColor)
                             }
                         }
                     }
@@ -60,7 +60,7 @@ struct InstanceListView: View {
             }
             .navigationTitle("Servers")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Button {
                         showAddInstance = true
                     } label: {

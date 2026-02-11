@@ -74,12 +74,13 @@ struct ControlBar: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .buttonStyle(.plain)
 
             Spacer()
         }
         .padding(.vertical, 12)
         .padding(.bottom, 8)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondarySystemBackground)
     }
 
     // MARK: - Control Button
@@ -105,6 +106,7 @@ struct ControlBar: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .buttonStyle(.plain)
     }
 }
 

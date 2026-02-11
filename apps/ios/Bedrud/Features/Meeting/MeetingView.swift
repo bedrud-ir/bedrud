@@ -13,17 +13,31 @@ struct MeetingView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemBackground)
+            Color.systemBackground
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 meetingTopBar
+
+                #if os(macOS)
+                HStack(spacing: 0) {
+                    videoGrid
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    if showChat {
+                        Divider()
+                        chatPanel
+                            .frame(width: 280)
+                    }
+                }
+                #else
                 videoGrid
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 if showChat {
                     chatPanel
                 }
+                #endif
 
                 ControlBar(
                     roomManager: roomManager,
@@ -37,7 +51,9 @@ struct MeetingView: View {
                 )
             }
         }
+        #if os(iOS)
         .statusBar(hidden: true)
+        #endif
         .task {
             await connectToRoom()
         }
@@ -74,7 +90,7 @@ struct MeetingView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondarySystemBackground)
     }
 
     // MARK: - Video Grid
@@ -104,7 +120,9 @@ struct MeetingView: View {
 
     private var chatPanel: some View {
         VStack(spacing: 0) {
+            #if os(iOS)
             Divider()
+            #endif
 
             ScrollViewReader { proxy in
                 ScrollView {
@@ -116,7 +134,11 @@ struct MeetingView: View {
                     }
                     .padding(12)
                 }
+                #if os(iOS)
                 .frame(height: 220)
+                #else
+                .frame(maxHeight: .infinity)
+                #endif
                 .onChange(of: roomManager.chatMessages.count) { _, _ in
                     if let last = roomManager.chatMessages.last {
                         withAnimation {
@@ -147,7 +169,7 @@ struct MeetingView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Color(.secondarySystemBackground))
+            .background(Color.secondarySystemBackground)
         }
     }
 
@@ -222,7 +244,7 @@ struct ParticipantTileView: View {
 
     var body: some View {
         ZStack {
-            Color(.tertiarySystemBackground)
+            Color.tertiarySystemBackground
 
             if let videoTrack = participant.videoTrack, participant.isCameraEnabled {
                 SwiftUIVideoView(videoTrack, layoutMode: .fill)
@@ -293,7 +315,7 @@ private struct ChatBubbleView: View {
                 .foregroundStyle(message.isLocal ? .white : .primary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(message.isLocal ? Color.accentColor : Color(.tertiarySystemBackground))
+                .background(message.isLocal ? Color.accentColor : Color.tertiarySystemBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
 
             Text(message.timestamp, style: .time)

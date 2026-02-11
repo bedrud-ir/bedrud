@@ -29,5 +29,8 @@ struct BedrudApp: App {
             .environmentObject(settingsStore)
             .preferredColorScheme(settingsStore.appearance.colorScheme)
         }
+        #if os(macOS)
+        .defaultSize(width: 900, height: 650)
+        #endif
     }
 }

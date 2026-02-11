@@ -16,7 +16,11 @@ struct ProfileView: View {
                 accountSection
                 signOutSection
             }
+            #if os(iOS)
             .listStyle(.insetGrouped)
+            #else
+            .listStyle(.inset)
+            #endif
             .navigationTitle("Profile")
             .sheet(isPresented: $showInstanceSwitcher) {
                 InstanceSwitcherSheet()
@@ -41,7 +45,7 @@ struct ProfileView: View {
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(BedrudColors.primary)
+                                .background(Color.accentColor)
                                 .clipShape(Capsule())
                         }
                     }
@@ -75,7 +79,7 @@ struct ProfileView: View {
             .font(.title2.bold())
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(BedrudColors.primary)
+            .background(Color.accentColor)
     }
 
     private var serverSection: some View {
