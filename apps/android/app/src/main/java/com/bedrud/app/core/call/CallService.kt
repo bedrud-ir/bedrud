@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
@@ -106,7 +107,11 @@ class CallService : Service() {
             rm.isMicEnabled.collectLatest { micEnabled ->
                 val updatedNotification = buildNotification(roomName, isMuted = !micEnabled)
                 val nm = getSystemService(NotificationManager::class.java)
-                nm.notify(NOTIFICATION_ID, updatedNotification)
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    nm.notify(NOTIFICATION_ID, updatedNotification)
+                }
                 CallConnectionService.updateMuteState(!micEnabled)
             }
         }
