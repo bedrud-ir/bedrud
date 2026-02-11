@@ -25,6 +25,7 @@ access.log
 # IDE
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 .mypy_cache

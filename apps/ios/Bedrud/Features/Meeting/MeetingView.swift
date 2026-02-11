@@ -7,29 +7,24 @@ struct MeetingView: View {
     @StateObject private var roomManager = RoomManager()
     @Environment(\.dismiss) private var dismiss
 
-    @State private var showError: Bool = false
-    @State private var showChat: Bool = false
-    @State private var chatInput: String = ""
+    @State private var showError = false
+    @State private var showChat = false
+    @State private var chatInput = ""
 
     var body: some View {
         ZStack {
-            BedrudColors.background
+            Color(.systemBackground)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Top bar
                 meetingTopBar
-
-                // Video grid
                 videoGrid
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // Chat panel
                 if showChat {
                     chatPanel
                 }
 
-                // Control bar
                 ControlBar(
                     roomManager: roomManager,
                     onLeave: {
@@ -47,9 +42,7 @@ struct MeetingView: View {
             await connectToRoom()
         }
         .alert("Connection Error", isPresented: $showError) {
-            Button("Leave") {
-                dismiss()
-            }
+            Button("Leave") { dismiss() }
         } message: {
             Text(roomManager.error ?? "Failed to connect to the meeting.")
         }
@@ -61,32 +54,27 @@ struct MeetingView: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(joinResponse.name)
-                    .font(BedrudTypography.headline)
-                    .foregroundStyle(BedrudColors.foreground)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
 
                 Text(connectionStatusText)
-                    .font(BedrudTypography.caption)
+                    .font(.caption)
                     .foregroundStyle(connectionStatusColor)
             }
 
             Spacer()
 
-            // Participant count
-            HStack(spacing: 4) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 12))
-                Text("\(participantCount)")
-                    .font(BedrudTypography.caption)
-            }
-            .foregroundStyle(BedrudColors.mutedForeground)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(BedrudColors.muted)
-            .cornerRadius(16)
+            Label("\(participantCount)", systemImage: "person.2.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(.ultraThinMaterial)
+                .clipShape(Capsule())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(BedrudColors.card)
+        .background(Color(.secondarySystemBackground))
     }
 
     // MARK: - Video Grid
@@ -104,7 +92,7 @@ struct MeetingView: View {
                                 totalCount: allParticipants.count,
                                 containerSize: geometry.size
                             ))
-                            .cornerRadius(12)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
                 .padding(8)
@@ -118,41 +106,31 @@ struct MeetingView: View {
         VStack(spacing: 0) {
             Divider()
 
-            // Messages list
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
+                    LazyVStack(spacing: 10) {
                         ForEach(roomManager.chatMessages) { message in
-                            VStack(alignment: message.isLocal ? .trailing : .leading, spacing: 2) {
-                                Text(message.senderName)
-                                    .font(BedrudTypography.caption)
-                                    .foregroundStyle(BedrudColors.mutedForeground)
-                                Text(message.text)
-                                    .font(BedrudTypography.body)
-                                    .foregroundStyle(BedrudColors.foreground)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(message.isLocal ? BedrudColors.primary.opacity(0.2) : BedrudColors.muted)
-                                    .cornerRadius(8)
-                            }
-                            .frame(maxWidth: .infinity, alignment: message.isLocal ? .trailing : .leading)
-                            .id(message.id)
+                            ChatBubbleView(message: message)
+                                .id(message.id)
                         }
                     }
                     .padding(12)
                 }
-                .frame(height: 200)
+                .frame(height: 220)
                 .onChange(of: roomManager.chatMessages.count) { _, _ in
                     if let last = roomManager.chatMessages.last {
-                        proxy.scrollTo(last.id)
+                        withAnimation {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
                     }
                 }
             }
 
-            // Input bar
-            HStack(spacing: 8) {
+            Divider()
+
+            HStack(spacing: 10) {
                 TextField("Message...", text: $chatInput)
-                    .textFieldStyle(BedrudTextFieldStyle())
+                    .textFieldStyle(.roundedBorder)
 
                 Button {
                     guard !chatInput.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -162,13 +140,14 @@ struct MeetingView: View {
                     }
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(BedrudColors.primary)
+                        .font(.title2)
+                        .foregroundStyle(.tint)
                 }
+                .disabled(chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(BedrudColors.card)
+            .background(Color(.secondarySystemBackground))
         }
     }
 
@@ -180,27 +159,19 @@ struct MeetingView: View {
 
     private var connectionStatusText: String {
         switch roomManager.connectionState {
-        case .disconnected:
-            return "Disconnected"
-        case .connecting:
-            return "Connecting..."
-        case .connected:
-            return "Connected"
-        case .reconnecting:
-            return "Reconnecting..."
-        case .failed(let reason):
-            return "Failed: \(reason)"
+        case .disconnected: "Disconnected"
+        case .connecting: "Connecting..."
+        case .connected: "Connected"
+        case .reconnecting: "Reconnecting..."
+        case .failed(let reason): "Failed: \(reason)"
         }
     }
 
     private var connectionStatusColor: Color {
         switch roomManager.connectionState {
-        case .connected:
-            return .green
-        case .connecting, .reconnecting:
-            return .orange
-        case .disconnected, .failed:
-            return BedrudColors.destructive
+        case .connected: .green
+        case .connecting, .reconnecting: .orange
+        case .disconnected, .failed: .red
         }
     }
 
@@ -216,26 +187,18 @@ struct MeetingView: View {
     private func gridColumns(for count: Int, in size: CGSize) -> [GridItem] {
         let columnCount: Int
         switch count {
-        case 0...1:
-            columnCount = 1
-        case 2...4:
-            columnCount = 2
-        default:
-            columnCount = size.width > size.height ? 3 : 2
+        case 0...1: columnCount = 1
+        case 2...4: columnCount = 2
+        default: columnCount = size.width > size.height ? 3 : 2
         }
         return Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount)
     }
 
     private func tileHeight(totalCount: Int, containerSize: CGSize) -> CGFloat {
         switch totalCount {
-        case 0...1:
-            return containerSize.height - 16
-        case 2:
-            return (containerSize.height - 24) / 2
-        case 3...4:
-            return (containerSize.height - 24) / 2
-        default:
-            return (containerSize.height - 32) / 3
+        case 0...1: containerSize.height - 16
+        case 2...4: (containerSize.height - 24) / 2
+        default: (containerSize.height - 32) / 3
         }
     }
 
@@ -243,7 +206,8 @@ struct MeetingView: View {
         do {
             try await roomManager.connect(
                 url: joinResponse.livekitHost,
-                token: joinResponse.token
+                token: joinResponse.token,
+                roomName: joinResponse.name
             )
         } catch {
             showError = true
@@ -258,47 +222,43 @@ struct ParticipantTileView: View {
 
     var body: some View {
         ZStack {
-            // Background
-            BedrudColors.muted
+            Color(.tertiarySystemBackground)
 
             if let videoTrack = participant.videoTrack, participant.isCameraEnabled {
-                // LiveKit SwiftUI video view
                 SwiftUIVideoView(videoTrack, layoutMode: .fill)
             } else {
-                // Avatar placeholder
                 VStack(spacing: 8) {
                     Image(systemName: "person.circle.fill")
                         .font(.system(size: 48))
-                        .foregroundStyle(BedrudColors.mutedForeground)
+                        .foregroundStyle(.tertiary)
 
                     Text(participant.name)
-                        .font(BedrudTypography.body)
-                        .foregroundStyle(BedrudColors.foreground)
+                        .font(.body)
+                        .foregroundStyle(.primary)
                 }
             }
 
-            // Overlay: name and status
+            // Overlay: name tag + status indicators
             VStack {
                 Spacer()
 
                 HStack {
-                    // Name tag
                     HStack(spacing: 4) {
                         Text(participant.isLocal ? "You" : participant.name)
-                            .font(BedrudTypography.caption)
+                            .font(.caption)
                             .foregroundStyle(.white)
                             .lineLimit(1)
 
                         if !participant.isMicrophoneEnabled {
                             Image(systemName: "mic.slash.fill")
                                 .font(.system(size: 10))
-                                .foregroundStyle(BedrudColors.destructive)
+                                .foregroundStyle(.red)
                         }
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(.black.opacity(0.6))
-                    .cornerRadius(6)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
 
                     Spacer()
 
@@ -308,12 +268,39 @@ struct ParticipantTileView: View {
                             .foregroundStyle(.white)
                             .padding(4)
                             .background(.black.opacity(0.6))
-                            .cornerRadius(4)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
                     }
                 }
                 .padding(8)
             }
         }
+    }
+}
+
+// MARK: - Chat Bubble View
+
+private struct ChatBubbleView: View {
+    let message: ChatMessage
+
+    var body: some View {
+        VStack(alignment: message.isLocal ? .trailing : .leading, spacing: 2) {
+            Text(message.senderName)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            Text(message.text)
+                .font(.body)
+                .foregroundStyle(message.isLocal ? .white : .primary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(message.isLocal ? Color.accentColor : Color(.tertiarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+
+            Text(message.timestamp, style: .time)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: message.isLocal ? .trailing : .leading)
     }
 }
 
