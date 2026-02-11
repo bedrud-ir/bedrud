@@ -116,6 +116,7 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 "id": room.ID, "name": room.Name, "token": token, "createdBy": room.CreatedBy, "adminId": adminId, "isActive": room.IsActive,
+"isPublic": room.IsPublic, "maxParticipants": room.MaxParticipants, "expiresAt": room.ExpiresAt,
 "settings": room.Settings, "livekitHost": h.livekitHost, "mode": room.Mode,
 })
 }

@@ -51,7 +51,6 @@ final class APIClient {
         self.decoder.dateDecodingStrategy = .iso8601
 
         self.encoder = JSONEncoder()
-        self.encoder.keyEncodingStrategy = .convertToSnakeCase
         self.encoder.dateEncodingStrategy = .iso8601
     }
 

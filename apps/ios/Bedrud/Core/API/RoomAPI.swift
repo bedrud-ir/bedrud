@@ -24,9 +24,9 @@ struct JoinRoomResponse: Decodable {
     let createdBy: String
     let adminId: String
     let isActive: Bool
-    let isPublic: Bool
-    let maxParticipants: Int
-    let expiresAt: String
+    let isPublic: Bool?
+    let maxParticipants: Int?
+    let expiresAt: String?
     let settings: RoomSettings
     let mode: String
 }
@@ -36,8 +36,8 @@ struct UserRoomResponse: Decodable, Identifiable {
     let name: String
     let createdBy: String
     let isActive: Bool
-    let maxParticipants: Int
-    let expiresAt: String
+    let maxParticipants: Int?
+    let expiresAt: String?
     let settings: RoomSettings
     let relationship: String?
     let mode: String
