@@ -1,5 +1,7 @@
 import Foundation
+import AVFoundation
 import LiveKit
+import CallKit
 import Combine
 
 // MARK: - Chat Message
@@ -54,6 +56,13 @@ final class RoomManager: ObservableObject {
     private var room: LiveKit.Room?
     private var cancellables = Set<AnyCancellable>()
 
+    // MARK: - CallKit
+
+    private let callController = CXCallController()
+    private var callProvider: CXProvider?
+    private var currentCallUUID: UUID?
+    private var providerDelegate: CallProviderDelegate?
+
     // MARK: - Connection State
 
     enum ConnectionState: Equatable {
@@ -64,16 +73,44 @@ final class RoomManager: ObservableObject {
         case failed(String)
     }
 
+    // MARK: - Init
+
+    init() {
+        setupCallProvider()
+    }
+
+    private func setupCallProvider() {
+        let config = CXProviderConfiguration()
+        config.supportsVideo = true
+        config.maximumCallsPerCallGroup = 1
+        config.supportedHandleTypes = [.generic]
+        config.iconTemplateImageData = nil
+
+        let provider = CXProvider(configuration: config)
+        let delegate = CallProviderDelegate(manager: self)
+        provider.setDelegate(delegate, queue: .main)
+        self.callProvider = provider
+        self.providerDelegate = delegate
+    }
+
     // MARK: - Connect
 
-    func connect(url: String, token: String) async throws {
+    func connect(url: String, token: String, roomName: String) async throws {
         connectionState = .connecting
         error = nil
+
+        // Report outgoing call to CallKit
+        let callUUID = UUID()
+        currentCallUUID = callUUID
+        let handle = CXHandle(type: .generic, value: roomName)
+        let startAction = CXStartCallAction(call: callUUID, handle: handle)
+        startAction.isVideo = true
+        let transaction = CXTransaction(action: startAction)
+        try? await callController.request(transaction)
 
         let room = LiveKit.Room()
         self.room = room
 
-        // Configure room options
         let roomOptions = RoomOptions(
             defaultCameraCaptureOptions: CameraCaptureOptions(
                 dimensions: Dimensions(width: 1280, height: 720)
@@ -86,15 +123,18 @@ final class RoomManager: ObservableObject {
             try await room.connect(url: url, token: token, roomOptions: roomOptions)
             connectionState = .connected
 
-            // Set up event listeners
-            setupRoomDelegation(room)
+            // Tell CallKit the call connected
+            if let provider = callProvider {
+                provider.reportOutgoingCall(with: callUUID, connectedAt: Date())
+            }
 
-            // Update local participant
+            setupRoomDelegation(room)
             updateLocalParticipant()
             updateRemoteParticipants()
         } catch {
             connectionState = .failed(error.localizedDescription)
             self.error = error.localizedDescription
+            endCallKitCall()
             throw error
         }
     }
@@ -112,6 +152,15 @@ final class RoomManager: ObservableObject {
         isScreenShareEnabled = false
         chatMessages = []
         cancellables.removeAll()
+        endCallKitCall()
+    }
+
+    private func endCallKitCall() {
+        guard let uuid = currentCallUUID else { return }
+        let endAction = CXEndCallAction(call: uuid)
+        let transaction = CXTransaction(action: endAction)
+        callController.request(transaction) { _ in }
+        currentCallUUID = nil
     }
 
     // MARK: - Media Controls
@@ -122,6 +171,13 @@ final class RoomManager: ObservableObject {
         try await localParticipant.setMicrophone(enabled: newState)
         isMicrophoneEnabled = newState
         updateLocalParticipant()
+
+        // Update CallKit mute state
+        if let uuid = currentCallUUID {
+            let muteAction = CXSetMutedCallAction(call: uuid, muted: !newState)
+            let transaction = CXTransaction(action: muteAction)
+            try? await callController.request(transaction)
+        }
     }
 
     func toggleCamera() async throws {
@@ -163,6 +219,23 @@ final class RoomManager: ObservableObject {
 
     func appendChatMessage(_ message: ChatMessage) {
         chatMessages.append(message)
+    }
+
+    // MARK: - CallKit Actions (from provider delegate)
+
+    func handleEndCall() {
+        Task {
+            await disconnect()
+        }
+    }
+
+    func handleSetMuted(_ muted: Bool) {
+        Task {
+            guard let localParticipant = room?.localParticipant else { return }
+            _ = try? await localParticipant.setMicrophone(enabled: !muted)
+            isMicrophoneEnabled = !muted
+            updateLocalParticipant()
+        }
     }
 
     // MARK: - Room Delegation
@@ -224,9 +297,47 @@ final class RoomManager: ObservableObject {
     }
 }
 
+// MARK: - CallKit Provider Delegate
+
+private final class CallProviderDelegate: NSObject, CXProviderDelegate {
+    private weak var manager: RoomManager?
+
+    init(manager: RoomManager) {
+        self.manager = manager
+    }
+
+    func providerDidReset(_ provider: CXProvider) {}
+
+    func provider(_ provider: CXProvider, perform action: CXStartCallAction) {
+        action.fulfill()
+    }
+
+    func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
+        Task { @MainActor in
+            manager?.handleEndCall()
+        }
+        action.fulfill()
+    }
+
+    func provider(_ provider: CXProvider, perform action: CXSetMutedCallAction) {
+        Task { @MainActor in
+            manager?.handleSetMuted(action.isMuted)
+        }
+        action.fulfill()
+    }
+
+    func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) {
+        // LiveKit handles audio session automatically
+    }
+
+    func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) {
+        // LiveKit handles audio session automatically
+    }
+}
+
 // MARK: - Room Delegate Handler
 
-private final class RoomDelegateHandler: RoomDelegate {
+private final class RoomDelegateHandler: RoomDelegate, @unchecked Sendable {
     private weak var manager: RoomManager?
 
     init(manager: RoomManager) {
