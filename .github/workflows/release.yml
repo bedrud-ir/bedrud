@@ -216,11 +216,19 @@ jobs:
             cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
           fi
 
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: apps/ios/.spm-cache
+          key: ios-spm-${{ hashFiles('apps/ios/Bedrud.xcodeproj/project.pbxproj') }}
+          restore-keys: ios-spm-
+
       - name: Resolve Swift packages
         run: |
           xcodebuild -resolvePackageDependencies \
             -project Bedrud.xcodeproj \
-            -scheme Bedrud
+            -scheme Bedrud \
+            -clonedSourcePackagesDirPath .spm-cache
 
       # Run tests
       - name: Run tests
@@ -229,6 +237,7 @@ jobs:
             -project Bedrud.xcodeproj \
             -scheme Bedrud \
             -destination "platform=iOS Simulator,name=iPhone 16 Pro" \
+            -clonedSourcePackagesDirPath .spm-cache \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO
 
@@ -241,6 +250,7 @@ jobs:
             -configuration Release \
             -archivePath build/Bedrud.xcarchive \
             -destination "generic/platform=iOS" \
+            -clonedSourcePackagesDirPath .spm-cache \
             CODE_SIGN_STYLE=Automatic \
             -allowProvisioningUpdates
 

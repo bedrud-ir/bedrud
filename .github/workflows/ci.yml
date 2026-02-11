@@ -25,6 +25,8 @@ jobs:
           go-version: "1.24"
           cache-dependency-path: server/go.sum
       - run: go mod download
+      # Create placeholder frontend dir for //go:embed
+      - run: mkdir -p frontend && touch frontend/.gitkeep
       - run: go vet ./...
       - run: go build ./...
 
@@ -42,6 +44,7 @@ jobs:
           go-version: "1.24"
           cache-dependency-path: server/go.sum
       - run: go mod download
+      - run: mkdir -p frontend && touch frontend/.gitkeep
       - run: go test -race -count=1 ./...
 
   # ── Web (Svelte) ──────────────────────────────────────────────
@@ -86,19 +89,31 @@ jobs:
         working-directory: apps/ios
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: apps/ios/.spm-cache
+          key: ios-spm-${{ hashFiles('apps/ios/Bedrud.xcodeproj/project.pbxproj') }}
+          restore-keys: ios-spm-
+
       - name: Resolve Swift packages
         run: |
           xcodebuild -resolvePackageDependencies \
             -project Bedrud.xcodeproj \
-            -scheme Bedrud
+            -scheme Bedrud \
+            -clonedSourcePackagesDirPath .spm-cache
+
       - name: Build for testing
         run: |
           xcodebuild build-for-testing \
             -project Bedrud.xcodeproj \
             -scheme Bedrud \
             -destination "platform=iOS Simulator,name=iPhone 16 Pro" \
+            -clonedSourcePackagesDirPath .spm-cache \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO
+
       - name: Run tests
         run: |
           xcodebuild test-without-building \

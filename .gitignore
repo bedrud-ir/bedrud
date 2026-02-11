@@ -30,3 +30,4 @@ access.log
 *.swo
 .mypy_cache
 **/xcuserdata/
+.spm-cache/
