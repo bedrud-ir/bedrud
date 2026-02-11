@@ -38,7 +38,6 @@
 		9A018D690E3ECFC71466E924 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5DC38BA66A83A8B0393440E /* DashboardView.swift */; };
 		9D2A35400CFC38D5379F072B /* AuthManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00779BA1EF734670B61814A9 /* AuthManagerTests.swift */; };
 		9DD9228BAED8291EE2E4C6A1 /* BedrudURLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB99C992E1618621B8C4342 /* BedrudURLParser.swift */; };
-		A1B2C3D4E5F60718293A4B5C /* RoomSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E7F8091A2B3C4D5E6F7081 /* RoomSettingsSheet.swift */; };
 		A5BC8228753FCBCA447CB6F7 /* InstanceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10333B7D66F07EDB60FB9A6A /* InstanceListView.swift */; };
 		ADC8AE133B1FB887209B01F4 /* InstanceSwitcherSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDE8842881927790317E4C9A /* InstanceSwitcherSheet.swift */; };
 		B106F69FD2C3BEA48B64B009 /* AddInstanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41C482BB82228D6C2A85419 /* AddInstanceView.swift */; };
@@ -54,7 +53,6 @@
 		D811D389C9D1DE20B39833D1 /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E271E4E77D423D6A5EF80E9 /* APIClientTests.swift */; };
 		E3EB262E8F8D65834C44E88B /* RoomTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A233845A03A36E91FAF00F /* RoomTests.swift */; };
 		E4C62D2D0D273FD5A7733239 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = BEC5F99592BFF9A5EACB8A8F /* LiveKit */; };
-		E8D3F1A6C5B29470381E6D0F /* PiPView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C4E91D2F3A8B6E0D1C5F42 /* PiPView.swift */; };
 		E9157BA87BD7724510D0BBB3 /* AuthAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D2CB613BB065F6075FF4165 /* AuthAPITests.swift */; };
 		F2501B4FA1F61A5CF1701E76 /* InstanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD2743F142DE2E36BD54E7F /* InstanceTests.swift */; };
 		F6035727B829577C5351AF64 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366CCCCDA13F7A96C09C3362 /* AuthManager.swift */; };
@@ -86,7 +84,7 @@
 		368B52DCC407760034A0BC2B /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		3B49FC1C1923E5053EF89591 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		3E180B8B3E6F5D75BFF638D0 /* MeetingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingView.swift; sourceTree = "<group>"; };
-		3E3F0F986721CF96D744AE42 /* BedrudTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BedrudTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3E3F0F986721CF96D744AE42 /* BedrudTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BedrudTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		422042B98B806A109F0F3411 /* ServerIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerIconView.swift; sourceTree = "<group>"; };
 		4EA81758239498886B3AD762 /* RoomManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomManagerTests.swift; sourceTree = "<group>"; };
 		520C9E6B8C13EADD0A2DFF43 /* InstanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceStore.swift; sourceTree = "<group>"; };
@@ -109,7 +107,6 @@
 		A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlBar.swift; sourceTree = "<group>"; };
 		A5B91D0C9733B860CE754153 /* MigrationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationManagerTests.swift; sourceTree = "<group>"; };
 		B40C6C896508CCD958042818 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
-		B7C4E91D2F3A8B6E0D1C5F42 /* PiPView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiPView.swift; sourceTree = "<group>"; };
 		B8610AD1B6C8E8134846C810 /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
 		BDB914F4168E2359F730AEE9 /* BedrudApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrudApp.swift; sourceTree = "<group>"; };
 		BE2D007CFF5AB38E2A5FFA32 /* Room.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Room.swift; sourceTree = "<group>"; };
@@ -120,7 +117,6 @@
 		CE51CC3D64BD7B14CC122D99 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		D1CE43F0236D070A0335B02C /* InstanceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceManager.swift; sourceTree = "<group>"; };
 		D5DC38BA66A83A8B0393440E /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
-		D6E7F8091A2B3C4D5E6F7081 /* RoomSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomSettingsSheet.swift; sourceTree = "<group>"; };
 		DE9F55D47CA1E808F074DAAE /* MockURLProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockURLProtocol.swift; sourceTree = "<group>"; };
 		E96000CD15CF09126D920C87 /* ColorsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorsTests.swift; sourceTree = "<group>"; };
 		F3E54D5E71E44DA494FA8838 /* RoomAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomAPITests.swift; sourceTree = "<group>"; };
@@ -275,7 +271,6 @@
 			children = (
 				D5DC38BA66A83A8B0393440E /* DashboardView.swift */,
 				737FCA2593FDFB10DC8A4CCB /* RoomCardView.swift */,
-				D6E7F8091A2B3C4D5E6F7081 /* RoomSettingsSheet.swift */,
 			);
 			path = Dashboard;
 			sourceTree = "<group>";
@@ -381,7 +376,6 @@
 			children = (
 				A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */,
 				3E180B8B3E6F5D75BFF638D0 /* MeetingView.swift */,
-				B7C4E91D2F3A8B6E0D1C5F42 /* PiPView.swift */,
 			);
 			path = Meeting;
 			sourceTree = "<group>";
@@ -488,7 +482,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2620;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					8A17502D47729CA04CD12B4F = {
 						ProvisioningStyle = Automatic;
@@ -541,7 +535,6 @@
 				89ADB6DBA890981360F3C631 /* LoginView.swift in Sources */,
 				2F0C20FCFE03954BABE1C10D /* MainTabView.swift in Sources */,
 				7EA06B438FC56EDBDC2CBA21 /* MeetingView.swift in Sources */,
-				E8D3F1A6C5B29470381E6D0F /* PiPView.swift in Sources */,
 				4E2B9228AC08F5EAE06194B1 /* MigrationManager.swift in Sources */,
 				0DA7CCA1C3216360ADE5F4E0 /* PasskeyManager.swift in Sources */,
 				B46570D732734DFD8A339D64 /* ProfileView.swift in Sources */,
@@ -549,7 +542,6 @@
 				75C7F65BFA1E322EBAFCF411 /* Room.swift in Sources */,
 				781216EDEE045E662B438CB6 /* RoomAPI.swift in Sources */,
 				57282EA6094F9EBBFBF149C3 /* RoomCardView.swift in Sources */,
-				A1B2C3D4E5F60718293A4B5C /* RoomSettingsSheet.swift in Sources */,
 				83504CB2672E23103A521965 /* RoomManager.swift in Sources */,
 				93EFD3B6450C7CFF054DE63D /* ServerIconView.swift in Sources */,
 				08CC50664BB694120B0C567D /* SettingsStore.swift in Sources */,
@@ -602,6 +594,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RZRG93WW23;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Bedrud needs camera access for video calls";
@@ -632,6 +625,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RZRG93WW23;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Bedrud needs camera access for video calls";
@@ -707,10 +701,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = RZRG93WW23;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -724,7 +716,6 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -766,10 +757,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = RZRG93WW23;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -790,7 +779,6 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;

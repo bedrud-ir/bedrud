@@ -37,7 +37,6 @@ struct ParticipantInfo: Identifiable {
     var isScreenSharing: Bool
     var videoTrack: VideoTrack?
     var screenShareTrack: VideoTrack?
-    var avatarUrl: String?
 }
 
 // MARK: - Room Manager
@@ -61,21 +60,13 @@ final class RoomManager: ObservableObject {
     private var roomDelegateHandler: RoomDelegateHandler?
     private var cancellables = Set<AnyCancellable>()
 
-    // MARK: - CallKit (iOS device only)
+    // MARK: - CallKit (iOS only)
 
     #if os(iOS)
-    private var callController: CXCallController?
+    private let callController = CXCallController()
     private var callProvider: CXProvider?
     private var currentCallUUID: UUID?
     private var providerDelegate: CallProviderDelegate?
-    private var isEndingFromCallKit = false
-    private let useCallKit: Bool = {
-        #if targetEnvironment(simulator)
-        return false
-        #else
-        return true
-        #endif
-    }()
     #endif
 
     // MARK: - Connection State
@@ -98,14 +89,6 @@ final class RoomManager: ObservableObject {
 
     #if os(iOS)
     private func setupCallProvider() {
-        guard useCallKit else { return }
-
-        // Disable LiveKit's automatic audio session management so CallKit controls it
-        AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
-        try? AudioManager.shared.setEngineAvailability(.none)
-
-        callController = CXCallController()
-
         let config = CXProviderConfiguration()
         config.supportsVideo = true
         config.maximumCallsPerCallGroup = 1
@@ -122,75 +105,43 @@ final class RoomManager: ObservableObject {
 
     // MARK: - Connect
 
-    func connect(url: String, token: String, roomName: String, avatarUrl: String? = nil) async throws {
-        // Prevent double-connect
-        switch connectionState {
-        case .connecting, .connected, .reconnecting: return
-        case .disconnected, .failed: break
-        }
-
+    func connect(url: String, token: String, roomName: String) async throws {
         connectionState = .connecting
         error = nil
 
         #if os(iOS)
-        // Report outgoing call to CallKit (real device only)
-        var callUUID: UUID?
-        if useCallKit, let callController {
-            let uuid = UUID()
-            currentCallUUID = uuid
-            callUUID = uuid
-            let handle = CXHandle(type: .generic, value: roomName)
-            let startAction = CXStartCallAction(call: uuid, handle: handle)
-            startAction.isVideo = true
-            let transaction = CXTransaction(action: startAction)
-            try? await callController.request(transaction)
-        }
+        // Report outgoing call to CallKit
+        let callUUID = UUID()
+        currentCallUUID = callUUID
+        let handle = CXHandle(type: .generic, value: roomName)
+        let startAction = CXStartCallAction(call: callUUID, handle: handle)
+        startAction.isVideo = true
+        let transaction = CXTransaction(action: startAction)
+        try? await callController.request(transaction)
         #endif
 
         let room = LiveKit.Room()
         self.room = room
 
-        let roomOptions: RoomOptions = {
-            #if targetEnvironment(simulator)
-            return RoomOptions(
-                adaptiveStream: true,
-                dynacast: true
-            )
-            #else
-            return RoomOptions(
-                defaultCameraCaptureOptions: CameraCaptureOptions(
-                    dimensions: Dimensions(width: 1280, height: 720)
-                ),
-                adaptiveStream: true,
-                dynacast: true,
-                suspendLocalVideoTracksInBackground: false
-            )
-            #endif
-        }()
+        let roomOptions = RoomOptions(
+            defaultCameraCaptureOptions: CameraCaptureOptions(
+                dimensions: Dimensions(width: 1280, height: 720)
+            ),
+            adaptiveStream: true,
+            dynacast: true
+        )
 
         do {
             try await room.connect(url: url, token: token, roomOptions: roomOptions)
             connectionState = .connected
 
             #if os(iOS)
-            if let callUUID {
-                callProvider?.reportOutgoingCall(with: callUUID, connectedAt: Date())
-            }
+            callProvider?.reportOutgoingCall(with: callUUID, connectedAt: Date())
             #endif
 
             setupRoomDelegation(room)
             updateLocalParticipant()
             updateRemoteParticipants()
-
-            // Set avatar metadata on local participant (fire-and-forget, must not block delegation setup)
-            if let avatarUrl, !avatarUrl.isEmpty {
-                Task {
-                    let metadata = try? JSONSerialization.data(withJSONObject: ["avatarUrl": avatarUrl])
-                    if let metadata, let metadataString = String(data: metadata, encoding: .utf8) {
-                        try? await room.localParticipant.set(metadata: metadataString)
-                    }
-                }
-            }
         } catch {
             connectionState = .failed(error.localizedDescription)
             self.error = error.localizedDescription
@@ -216,16 +167,13 @@ final class RoomManager: ObservableObject {
         chatMessages = []
         cancellables.removeAll()
         #if os(iOS)
-        if useCallKit && !isEndingFromCallKit {
-            endCallKitCall()
-        }
-        currentCallUUID = nil
+        endCallKitCall()
         #endif
     }
 
     #if os(iOS)
     private func endCallKitCall() {
-        guard let callController, let uuid = currentCallUUID else { return }
+        guard let uuid = currentCallUUID else { return }
         let endAction = CXEndCallAction(call: uuid)
         let transaction = CXTransaction(action: endAction)
         callController.request(transaction) { _ in }
@@ -243,7 +191,7 @@ final class RoomManager: ObservableObject {
         updateLocalParticipant()
 
         #if os(iOS)
-        if useCallKit, let callController, let uuid = currentCallUUID {
+        if let uuid = currentCallUUID {
             let muteAction = CXSetMutedCallAction(call: uuid, muted: !newState)
             let transaction = CXTransaction(action: muteAction)
             try? await callController.request(transaction)
@@ -253,28 +201,18 @@ final class RoomManager: ObservableObject {
 
     func toggleCamera() async throws {
         guard let localParticipant = room?.localParticipant else { return }
-        #if targetEnvironment(simulator)
-        error = "Camera is not available in the simulator"
-        return
-        #else
         let newState = !isCameraEnabled
         try await localParticipant.setCamera(enabled: newState)
         isCameraEnabled = newState
         updateLocalParticipant()
-        #endif
     }
 
     func toggleScreenShare() async throws {
         guard let localParticipant = room?.localParticipant else { return }
-        #if targetEnvironment(simulator)
-        error = "Screen sharing is not available in the simulator"
-        return
-        #else
         let newState = !isScreenShareEnabled
         try await localParticipant.setScreenShare(enabled: newState)
         isScreenShareEnabled = newState
         updateLocalParticipant()
-        #endif
     }
 
     // MARK: - Chat
@@ -309,10 +247,8 @@ final class RoomManager: ObservableObject {
 
     #if os(iOS)
     func handleEndCall() {
-        isEndingFromCallKit = true
         Task {
             await disconnect()
-            isEndingFromCallKit = false
         }
     }
 
@@ -354,8 +290,7 @@ final class RoomManager: ObservableObject {
             isMicrophoneEnabled: participant.isMicrophoneEnabled(),
             isScreenSharing: participant.isScreenShareEnabled(),
             videoTrack: cameraTrack,
-            screenShareTrack: screenTrack,
-            avatarUrl: Self.parseAvatarUrl(from: participant.metadata)
+            screenShareTrack: screenTrack
         )
 
         isMicrophoneEnabled = participant.isMicrophoneEnabled()
@@ -382,19 +317,9 @@ final class RoomManager: ObservableObject {
                 isMicrophoneEnabled: participant.isMicrophoneEnabled(),
                 isScreenSharing: participant.isScreenShareEnabled(),
                 videoTrack: cameraTrack,
-                screenShareTrack: screenTrack,
-                avatarUrl: Self.parseAvatarUrl(from: participant.metadata)
+                screenShareTrack: screenTrack
             )
         }
-    }
-
-    private static func parseAvatarUrl(from metadata: String?) -> String? {
-        guard let metadata, !metadata.isEmpty,
-              let data = metadata.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let url = json["avatarUrl"] as? String, !url.isEmpty
-        else { return nil }
-        return url
     }
 }
 
@@ -408,11 +333,7 @@ private final class CallProviderDelegate: NSObject, CXProviderDelegate {
         self.manager = manager
     }
 
-    func providerDidReset(_ provider: CXProvider) {
-        Task { @MainActor in
-            manager?.handleEndCall()
-        }
-    }
+    func providerDidReset(_ provider: CXProvider) {}
 
     func provider(_ provider: CXProvider, perform action: CXStartCallAction) {
         action.fulfill()
@@ -433,12 +354,11 @@ private final class CallProviderDelegate: NSObject, CXProviderDelegate {
     }
 
     func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) {
-        try? audioSession.setCategory(.playAndRecord, mode: .voiceChat, options: [.mixWithOthers])
-        try? AudioManager.shared.setEngineAvailability(.default)
+        // LiveKit handles audio session automatically
     }
 
     func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) {
-        try? AudioManager.shared.setEngineAvailability(.none)
+        // LiveKit handles audio session automatically
     }
 }
 #endif
