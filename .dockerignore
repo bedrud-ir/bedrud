@@ -1,0 +1,27 @@
+# Dependencies & build artifacts
+node_modules
+apps/web/build
+apps/web/.svelte-kit
+server/dist
+server/frontend
+dist
+
+# Mobile apps (not needed for server image)
+apps/android
+apps/ios
+
+# Python agents
+agents
+tools
+.venv
+__pycache__
+
+# Dev & IDE
+.git
+.github
+.idea
+.vscode
+.claude
+*.md
+.env
+.DS_Store
