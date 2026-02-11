@@ -11,11 +11,12 @@ import io.livekit.android.room.track.DataPublishReliability
 import io.livekit.android.room.participant.LocalParticipant
 import io.livekit.android.room.participant.RemoteParticipant
 import io.livekit.android.room.track.CameraPosition
-import io.livekit.android.room.track.LocalAudioTrack
 import io.livekit.android.room.track.LocalVideoTrack
 import io.livekit.android.room.track.Track
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +43,8 @@ class RoomManager(private val application: Application) {
     private var _room: Room? = null
     val room: Room? get() = _room
 
+    private var eventScope: CoroutineScope? = null
+
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
@@ -54,22 +57,26 @@ class RoomManager(private val application: Application) {
     private val _isScreenShareEnabled = MutableStateFlow(false)
     val isScreenShareEnabled: StateFlow<Boolean> = _isScreenShareEnabled.asStateFlow()
 
-    private val _remoteParticipants = MutableStateFlow<List<RemoteParticipant>>(emptyList())
-    val remoteParticipants: StateFlow<List<RemoteParticipant>> = _remoteParticipants.asStateFlow()
+    // Incremented on every participant change to trigger recomposition
+    private val _participantVersion = MutableStateFlow(0)
+    val participantVersion: StateFlow<Int> = _participantVersion.asStateFlow()
 
     private val _chatMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
 
+    private val _roomName = MutableStateFlow<String?>(null)
+    val roomName: StateFlow<String?> = _roomName.asStateFlow()
+
+    var onDisconnected: (() -> Unit)? = null
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    /**
-     * Connect to a LiveKit room with the given server URL and access token.
-     */
-    suspend fun connect(url: String, token: String) {
+    suspend fun connect(url: String, token: String, roomName: String? = null) {
         try {
             _connectionState.value = ConnectionState.CONNECTING
             _error.value = null
+            _roomName.value = roomName
 
             val room = LiveKit.create(application)
             _room = room
@@ -78,22 +85,49 @@ class RoomManager(private val application: Application) {
 
             _connectionState.value = ConnectionState.CONNECTED
 
-            // Listen for data messages (chat)
-            CoroutineScope(Dispatchers.Main).launch {
+            // Enable mic and camera after connecting
+            try {
+                room.localParticipant.setMicrophoneEnabled(true)
+                _isMicEnabled.value = true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to enable microphone", e)
+                _isMicEnabled.value = false
+            }
+
+            try {
+                room.localParticipant.setCameraEnabled(true)
+                _isCameraEnabled.value = true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to enable camera", e)
+                _isCameraEnabled.value = false
+            }
+
+            // Notify initial participant state
+            _participantVersion.value++
+
+            // Listen for room events
+            eventScope?.cancel()
+            eventScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+            eventScope?.launch {
                 room.events.collect { event ->
                     when (event) {
-                        is RoomEvent.DataReceived -> {
-                            try {
-                                val json = JSONObject(String(event.data, Charsets.UTF_8))
-                                if (json.optString("type") == "chat") {
-                                    val msg = ChatMessage(
-                                        senderName = json.optString("senderName", "Unknown"),
-                                        text = json.optString("message", ""),
-                                        isLocal = false
-                                    )
-                                    _chatMessages.value = _chatMessages.value + msg
-                                }
-                            } catch (_: Exception) {}
+                        is RoomEvent.DataReceived -> handleDataReceived(event)
+                        is RoomEvent.ParticipantConnected -> _participantVersion.value++
+                        is RoomEvent.ParticipantDisconnected -> _participantVersion.value++
+                        is RoomEvent.TrackSubscribed -> _participantVersion.value++
+                        is RoomEvent.TrackUnsubscribed -> _participantVersion.value++
+                        is RoomEvent.TrackPublished -> _participantVersion.value++
+                        is RoomEvent.TrackUnpublished -> _participantVersion.value++
+                        is RoomEvent.Reconnecting -> {
+                            _connectionState.value = ConnectionState.RECONNECTING
+                        }
+                        is RoomEvent.Reconnected -> {
+                            _connectionState.value = ConnectionState.CONNECTED
+                            _participantVersion.value++
+                        }
+                        is RoomEvent.Disconnected -> {
+                            _connectionState.value = ConnectionState.DISCONNECTED
+                            onDisconnected?.invoke()
                         }
                         else -> {}
                     }
@@ -112,46 +146,69 @@ class RoomManager(private val application: Application) {
         }
     }
 
-    /**
-     * Disconnect from the current room and clean up resources.
-     */
+    private fun handleDataReceived(event: RoomEvent.DataReceived) {
+        try {
+            val json = JSONObject(String(event.data, Charsets.UTF_8))
+            val isChat = event.topic == "chat" || json.optString("type") == "chat"
+            if (isChat) {
+                val senderName = json.optString("senderName", "").ifBlank {
+                    event.participant?.name
+                        ?: event.participant?.identity?.value
+                        ?: "Unknown"
+                }
+                val msg = ChatMessage(
+                    senderName = senderName,
+                    text = json.optString("message", ""),
+                    isLocal = false
+                )
+                _chatMessages.value = _chatMessages.value + msg
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse data message", e)
+        }
+    }
+
     fun disconnect() {
+        eventScope?.cancel()
+        eventScope = null
         _room?.disconnect()
         _room?.release()
         _room = null
         _connectionState.value = ConnectionState.DISCONNECTED
+        _roomName.value = null
         _isMicEnabled.value = true
         _isCameraEnabled.value = true
         _isScreenShareEnabled.value = false
-        _remoteParticipants.value = emptyList()
+        _participantVersion.value = 0
         _chatMessages.value = emptyList()
         _error.value = null
         Log.d(TAG, "Disconnected from room")
     }
 
-    /**
-     * Toggle the local microphone on/off.
-     */
     suspend fun toggleMicrophone() {
         val localParticipant = _room?.localParticipant ?: return
         val enabled = !_isMicEnabled.value
-        localParticipant.setMicrophoneEnabled(enabled)
-        _isMicEnabled.value = enabled
+        try {
+            localParticipant.setMicrophoneEnabled(enabled)
+            _isMicEnabled.value = enabled
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to toggle microphone", e)
+            _error.value = "Failed to toggle microphone"
+        }
     }
 
-    /**
-     * Toggle the local camera on/off.
-     */
     suspend fun toggleCamera() {
         val localParticipant = _room?.localParticipant ?: return
         val enabled = !_isCameraEnabled.value
-        localParticipant.setCameraEnabled(enabled)
-        _isCameraEnabled.value = enabled
+        try {
+            localParticipant.setCameraEnabled(enabled)
+            _isCameraEnabled.value = enabled
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to toggle camera", e)
+            _error.value = "Failed to toggle camera"
+        }
     }
 
-    /**
-     * Switch between front and back cameras.
-     */
     fun switchCamera() {
         val localParticipant = _room?.localParticipant ?: return
         val videoTrack = localParticipant.getTrackPublication(Track.Source.CAMERA)
@@ -167,19 +224,18 @@ class RoomManager(private val application: Application) {
         videoTrack.restartTrack(options)
     }
 
-    /**
-     * Toggle screen sharing on/off.
-     */
     suspend fun toggleScreenShare() {
         val localParticipant = _room?.localParticipant ?: return
         val enabled = !_isScreenShareEnabled.value
-        localParticipant.setScreenShareEnabled(enabled)
-        _isScreenShareEnabled.value = enabled
+        try {
+            localParticipant.setScreenShareEnabled(enabled)
+            _isScreenShareEnabled.value = enabled
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to toggle screen share", e)
+            _error.value = "Screen share is not available: ${e.message}"
+        }
     }
 
-    /**
-     * Send a chat message via LiveKit data messages.
-     */
     suspend fun sendChatMessage(text: String) {
         val room = _room ?: return
         val localParticipant = room.localParticipant
@@ -189,18 +245,20 @@ class RoomManager(private val application: Application) {
             put("message", text)
             put("senderName", name)
         }
-        localParticipant.publishData(
-            json.toString().toByteArray(Charsets.UTF_8),
-            DataPublishReliability.RELIABLE
-        )
-        // Add to local messages
-        val msg = ChatMessage(senderName = name, text = text, isLocal = true)
-        _chatMessages.value = _chatMessages.value + msg
+        try {
+            localParticipant.publishData(
+                data = json.toString().toByteArray(Charsets.UTF_8),
+                reliability = DataPublishReliability.RELIABLE,
+                topic = "chat"
+            )
+            val msg = ChatMessage(senderName = name, text = text, isLocal = true)
+            _chatMessages.value = _chatMessages.value + msg
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send chat message", e)
+            _error.value = "Failed to send message"
+        }
     }
 
-    /**
-     * Get the local participant, if connected.
-     */
     fun getLocalParticipant(): LocalParticipant? {
         return _room?.localParticipant
     }

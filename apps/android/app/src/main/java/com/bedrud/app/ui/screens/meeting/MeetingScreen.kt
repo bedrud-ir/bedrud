@@ -67,6 +67,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import com.bedrud.app.core.call.CallService
 import com.bedrud.app.core.instance.InstanceManager
 import com.bedrud.app.core.livekit.ChatMessage
 import com.bedrud.app.core.livekit.ConnectionState
@@ -86,6 +88,7 @@ fun MeetingScreen(
 ) {
     val roomApi = instanceManager.roomApi.collectAsState().value ?: return
     val roomManager = instanceManager.roomManager.collectAsState().value ?: return
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -95,6 +98,7 @@ fun MeetingScreen(
     val isScreenShareEnabled by roomManager.isScreenShareEnabled.collectAsState()
     val error by roomManager.error.collectAsState()
 
+    val participantVersion by roomManager.participantVersion.collectAsState()
     val chatMessages by roomManager.chatMessages.collectAsState()
     var showChat by remember { mutableStateOf(false) }
     var chatInput by remember { mutableStateOf("") }
@@ -108,9 +112,7 @@ fun MeetingScreen(
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted && roomInfo != null) {
-            scope.launch {
-                roomManager.connect(roomInfo!!.livekitHost, roomInfo!!.token)
-            }
+            CallService.start(context, roomName, roomInfo!!.livekitHost, roomInfo!!.token)
         }
     }
 
@@ -142,7 +144,17 @@ fun MeetingScreen(
     // Cleanup on dispose
     DisposableEffect(Unit) {
         onDispose {
-            roomManager.disconnect()
+            CallService.stop(context)
+        }
+    }
+
+    // Handle server-side disconnect: when connection drops after being connected, leave
+    var wasConnected by remember { mutableStateOf(false) }
+    LaunchedEffect(connectionState) {
+        if (connectionState == ConnectionState.CONNECTED) {
+            wasConnected = true
+        } else if (wasConnected && connectionState == ConnectionState.DISCONNECTED) {
+            onLeave()
         }
     }
 
@@ -225,10 +237,12 @@ fun MeetingScreen(
                                 }
                             }
 
-                            // Video grid
-                            val participants = buildList {
-                                room.localParticipant.let { add(it) }
-                                addAll(room.remoteParticipants.values)
+                            // Video grid (recomposes when participantVersion changes)
+                            val participants = remember(participantVersion) {
+                                buildList {
+                                    room.localParticipant.let { add(it) }
+                                    addAll(room.remoteParticipants.values)
+                                }
                             }
 
                             val columns = when {
@@ -331,7 +345,7 @@ fun MeetingScreen(
                                 // Leave call
                                 FloatingActionButton(
                                     onClick = {
-                                        roomManager.disconnect()
+                                        CallService.stop(context)
                                         onLeave()
                                     },
                                     containerColor = MaterialTheme.colorScheme.error,
@@ -396,10 +410,9 @@ fun MeetingScreen(
                             modifier = Modifier.padding(horizontal = 32.dp)
                         )
                         Spacer(modifier = Modifier.height(24.dp))
-                        com.bedrud.app.ui.components.BedrudButton(
-                            text = "Go Back",
-                            onClick = onLeave
-                        )
+                        androidx.compose.material3.FilledTonalButton(onClick = onLeave) {
+                            Text("Go Back")
+                        }
                     }
                 }
             }
