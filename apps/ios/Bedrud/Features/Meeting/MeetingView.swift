@@ -9,7 +9,6 @@ struct MeetingView: View {
 
     @State private var showError = false
     @State private var showChat = false
-    @State private var chatInput = ""
 
     var body: some View {
         ZStack {
@@ -19,25 +18,8 @@ struct MeetingView: View {
             VStack(spacing: 0) {
                 meetingTopBar
 
-                #if os(macOS)
-                HStack(spacing: 0) {
-                    videoGrid
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                    if showChat {
-                        Divider()
-                        chatPanel
-                            .frame(width: 280)
-                    }
-                }
-                #else
                 videoGrid
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                if showChat {
-                    chatPanel
-                }
-                #endif
 
                 ControlBar(
                     roomManager: roomManager,
@@ -61,6 +43,9 @@ struct MeetingView: View {
             Button("Leave") { dismiss() }
         } message: {
             Text(roomManager.error ?? "Failed to connect to the meeting.")
+        }
+        .sheet(isPresented: $showChat) {
+            ChatSheetView(roomManager: roomManager)
         }
     }
 
@@ -113,63 +98,6 @@ struct MeetingView: View {
                 }
                 .padding(8)
             }
-        }
-    }
-
-    // MARK: - Chat Panel
-
-    private var chatPanel: some View {
-        VStack(spacing: 0) {
-            #if os(iOS)
-            Divider()
-            #endif
-
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        ForEach(roomManager.chatMessages) { message in
-                            ChatBubbleView(message: message)
-                                .id(message.id)
-                        }
-                    }
-                    .padding(12)
-                }
-                #if os(iOS)
-                .frame(height: 220)
-                #else
-                .frame(maxHeight: .infinity)
-                #endif
-                .onChange(of: roomManager.chatMessages.count) { _, _ in
-                    if let last = roomManager.chatMessages.last {
-                        withAnimation {
-                            proxy.scrollTo(last.id, anchor: .bottom)
-                        }
-                    }
-                }
-            }
-
-            Divider()
-
-            HStack(spacing: 10) {
-                TextField("Message...", text: $chatInput)
-                    .textFieldStyle(.roundedBorder)
-
-                Button {
-                    guard !chatInput.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                    Task {
-                        await roomManager.sendChatMessage(chatInput)
-                        chatInput = ""
-                    }
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.tint)
-                }
-                .disabled(chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color.secondarySystemBackground)
         }
     }
 
@@ -299,30 +227,118 @@ struct ParticipantTileView: View {
     }
 }
 
-// MARK: - Chat Bubble View
+// MARK: - Chat Sheet View
 
-private struct ChatBubbleView: View {
-    let message: ChatMessage
+struct ChatSheetView: View {
+    @ObservedObject var roomManager: RoomManager
+    @State private var chatInput = ""
+    @FocusState private var isInputFocused: Bool
 
     var body: some View {
-        VStack(alignment: message.isLocal ? .trailing : .leading, spacing: 2) {
-            Text(message.senderName)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+        NavigationStack {
+            VStack(spacing: 0) {
+                if roomManager.chatMessages.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Messages", systemImage: "bubble.left.and.bubble.right")
+                    } description: {
+                        Text("Send a message to start the conversation.")
+                    }
+                } else {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(spacing: 4) {
+                                ForEach(Array(roomManager.chatMessages.enumerated()), id: \.element.id) { index, message in
+                                    chatRow(message, at: index)
+                                        .id(message.id)
+                                }
+                            }
+                            .padding()
+                        }
+                        .onChange(of: roomManager.chatMessages.count) { _, _ in
+                            if let last = roomManager.chatMessages.last {
+                                withAnimation {
+                                    proxy.scrollTo(last.id, anchor: .bottom)
+                                }
+                            }
+                        }
+                    }
+                }
 
-            Text(message.text)
-                .font(.body)
-                .foregroundStyle(message.isLocal ? .white : .primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(message.isLocal ? Color.accentColor : Color.tertiarySystemBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                Divider()
 
-            Text(message.timestamp, style: .time)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+                HStack(spacing: 10) {
+                    TextField("Message...", text: $chatInput)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($isInputFocused)
+                        .onSubmit { sendMessage() }
+
+                    Button(action: sendMessage) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title2)
+                    }
+                    .disabled(chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+            }
+            .navigationTitle("Chat")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .onAppear { isInputFocused = true }
         }
-        .frame(maxWidth: .infinity, alignment: message.isLocal ? .trailing : .leading)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func sendMessage() {
+        let text = chatInput.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        chatInput = ""
+        Task { await roomManager.sendChatMessage(text) }
+    }
+
+    // MARK: - Chat Row
+
+    private func chatRow(_ message: ChatMessage, at index: Int) -> some View {
+        let messages = roomManager.chatMessages
+        let prev: ChatMessage? = index > 0 ? messages[index - 1] : nil
+        let showSender = !message.isLocal && prev?.senderName != message.senderName
+        let showTime = shouldShowTime(current: message, previous: prev)
+
+        return VStack(spacing: 2) {
+            if showTime {
+                Text(message.timestamp, style: .time)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, index == 0 ? 0 : 8)
+                    .padding(.bottom, 4)
+            }
+
+            VStack(alignment: message.isLocal ? .trailing : .leading, spacing: 2) {
+                if showSender {
+                    Text(message.senderName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
+                }
+
+                Text(message.text)
+                    .font(.body)
+                    .foregroundStyle(message.isLocal ? .white : .primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(message.isLocal ? Color.accentColor : Color.secondarySystemBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+            .frame(maxWidth: .infinity, alignment: message.isLocal ? .trailing : .leading)
+        }
+    }
+
+    private func shouldShowTime(current: ChatMessage, previous: ChatMessage?) -> Bool {
+        guard let previous else { return true }
+        return current.timestamp.timeIntervalSince(previous.timestamp) > 120
     }
 }
 

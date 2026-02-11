@@ -57,6 +57,7 @@ final class RoomManager: ObservableObject {
     // MARK: - LiveKit Room
 
     private var room: LiveKit.Room?
+    private var roomDelegateHandler: RoomDelegateHandler?
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - CallKit (iOS only)
@@ -156,6 +157,7 @@ final class RoomManager: ObservableObject {
     func disconnect() async {
         await room?.disconnect()
         room = nil
+        roomDelegateHandler = nil
         connectionState = .disconnected
         participants = []
         localParticipant = nil
@@ -226,8 +228,11 @@ final class RoomManager: ObservableObject {
             "senderName": name
         ]
 
-        if let data = try? JSONSerialization.data(withJSONObject: json) {
-            try? await localParticipant.publish(data: data, options: DataPublishOptions(reliable: true))
+        do {
+            let data = try JSONSerialization.data(withJSONObject: json)
+            try await localParticipant.publish(data: data, options: DataPublishOptions(topic: "chat", reliable: true))
+        } catch {
+            print("Failed to send chat message: \(error)")
         }
 
         let msg = ChatMessage(senderName: name, text: text, isLocal: true)
@@ -260,7 +265,9 @@ final class RoomManager: ObservableObject {
     // MARK: - Room Delegation
 
     private func setupRoomDelegation(_ room: LiveKit.Room) {
-        room.add(delegate: RoomDelegateHandler(manager: self))
+        let handler = RoomDelegateHandler(manager: self)
+        self.roomDelegateHandler = handler
+        room.add(delegate: handler)
     }
 
     // MARK: - Participant Updates
