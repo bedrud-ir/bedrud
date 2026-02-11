@@ -21,7 +21,6 @@ RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /bedrud ./cmd/bedrud/m
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
 COPY --from=backend /bedrud /usr/local/bin/bedrud
-COPY server/config.yaml /etc/bedrud/config.yaml
 EXPOSE 8090 7880
 ENTRYPOINT ["bedrud"]
-CMD ["run", "--config", "/etc/bedrud/config.yaml"]
+CMD ["run"]

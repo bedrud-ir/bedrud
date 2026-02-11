@@ -68,17 +68,29 @@ jobs:
           - goos: linux
             goarch: amd64
             suffix: linux_amd64
+            cgo: "1"
+            cc: gcc
           - goos: linux
             goarch: arm64
             suffix: linux_arm64
+            cgo: "1"
+            cc: aarch64-linux-gnu-gcc
           - goos: darwin
             goarch: amd64
             suffix: darwin_amd64
+            cgo: "0"
+            cc: ""
           - goos: darwin
             goarch: arm64
             suffix: darwin_arm64
+            cgo: "0"
+            cc: ""
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install cross-compiler
+        if: matrix.goarch == 'arm64' && matrix.goos == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -104,9 +116,10 @@ jobs:
       - name: Build server binary
         working-directory: server
         env:
-          CGO_ENABLED: ${{ matrix.goos == 'linux' && '1' || '0' }}
+          CGO_ENABLED: ${{ matrix.cgo }}
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CC: ${{ matrix.cc }}
         run: |
           go build -ldflags="-s -w" -o ../dist/bedrud ./cmd/bedrud/main.go
 
