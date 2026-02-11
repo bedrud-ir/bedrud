@@ -1,5 +1,13 @@
 import SwiftUI
 
+#if os(iOS)
+import UIKit
+private typealias PlatformImage = UIImage
+#elseif os(macOS)
+import AppKit
+private typealias PlatformImage = NSImage
+#endif
+
 /// Displays a server's favicon fetched from common paths, falling back to a
 /// coloured rounded-rect with the first letter of the display name.
 struct ServerIconView: View {
@@ -8,15 +16,21 @@ struct ServerIconView: View {
     let fallbackColor: Color
     var size: CGFloat = 36
 
-    @State private var iconImage: UIImage?
+    @State private var iconImage: PlatformImage?
     @State private var probed = false
 
     var body: some View {
         Group {
             if let iconImage {
+                #if os(iOS)
                 Image(uiImage: iconImage)
                     .resizable()
                     .scaledToFill()
+                #elseif os(macOS)
+                Image(nsImage: iconImage)
+                    .resizable()
+                    .scaledToFill()
+                #endif
             } else {
                 Text(String(displayName.prefix(1)).uppercased())
                     .font(.system(size: size * 0.42, weight: .semibold))
@@ -53,10 +67,9 @@ struct ServerIconView: View {
                 guard let http = response as? HTTPURLResponse,
                       http.statusCode == 200,
                       !data.isEmpty,
-                      UIImage(data: data) != nil
+                      PlatformImage(data: data) != nil
                 else { continue }
-                // Valid image — keep it
-                iconImage = UIImage(data: data)
+                iconImage = PlatformImage(data: data)
                 return
             } catch {
                 continue

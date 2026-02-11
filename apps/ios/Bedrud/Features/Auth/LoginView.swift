@@ -49,9 +49,11 @@ struct LoginView: View {
             Section {
                 TextField("Email", text: $email)
                     .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
                     .autocorrectionDisabled()
+                    #if os(iOS)
+                    .keyboardType(.emailAddress)
                     .textInputAutocapitalization(.never)
+                    #endif
 
                 SecureField("Password", text: $password)
                     .textContentType(.password)
@@ -124,8 +126,10 @@ struct LoginView: View {
             }
         }
         .formStyle(.grouped)
+        #if os(iOS)
         .scrollDismissesKeyboard(.interactively)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
         .navigationDestination(isPresented: $showRegister) {
             RegisterView()
         }
@@ -155,10 +159,14 @@ struct LoginView: View {
     private func performPasskeyLogin() {
         guard let passkeyManager else { return }
 
+        #if os(iOS)
         guard let window = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
             .first?.windows.first
         else { return }
+        #elseif os(macOS)
+        guard let window = NSApplication.shared.keyWindow else { return }
+        #endif
 
         isPasskeyLoading = true
         errorMessage = nil

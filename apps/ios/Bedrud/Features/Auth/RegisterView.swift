@@ -53,9 +53,11 @@ struct RegisterView: View {
 
                 TextField("Email", text: $email)
                     .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
                     .autocorrectionDisabled()
+                    #if os(iOS)
+                    .keyboardType(.emailAddress)
                     .textInputAutocapitalization(.never)
+                    #endif
             }
 
             // Password
@@ -149,8 +151,10 @@ struct RegisterView: View {
             }
         }
         .formStyle(.grouped)
+        #if os(iOS)
         .scrollDismissesKeyboard(.interactively)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
 
     // MARK: - Actions
@@ -181,10 +185,14 @@ struct RegisterView: View {
     private func performPasskeySignup() {
         guard !name.isEmpty, !email.isEmpty, let passkeyManager else { return }
 
+        #if os(iOS)
         guard let window = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
             .first?.windows.first
         else { return }
+        #elseif os(macOS)
+        guard let window = NSApplication.shared.keyWindow else { return }
+        #endif
 
         isPasskeyLoading = true
         errorMessage = nil

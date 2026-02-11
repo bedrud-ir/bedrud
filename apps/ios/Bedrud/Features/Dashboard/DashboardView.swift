@@ -67,11 +67,17 @@ struct DashboardView: View {
                     }
                 }
             }
+            #if os(iOS)
             .listStyle(.insetGrouped)
+            #else
+            .listStyle(.inset)
+            #endif
             .navigationTitle("Rooms")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Button {
                         showCreateRoom = true
                     } label: {
@@ -113,9 +119,16 @@ struct DashboardView: View {
             } message: {
                 Text("This room and all its data will be permanently deleted.")
             }
+            #if os(iOS)
             .fullScreenCover(item: $selectedRoom) { joinResponse in
                 MeetingView(joinResponse: joinResponse)
             }
+            #else
+            .sheet(item: $selectedRoom) { joinResponse in
+                MeetingView(joinResponse: joinResponse)
+                    .frame(minWidth: 800, minHeight: 600)
+            }
+            #endif
         }
     }
 
@@ -147,6 +160,9 @@ struct DashboardView: View {
             onJoin: { Task { await joinRoom(room) } },
             onDelete: { roomToDelete = room }
         )
+        #if os(macOS)
+        .padding(.vertical, 4)
+        #endif
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 roomToDelete = room

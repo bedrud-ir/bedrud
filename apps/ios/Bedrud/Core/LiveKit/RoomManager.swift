@@ -1,8 +1,11 @@
 import Foundation
-import AVFoundation
 import LiveKit
-import CallKit
 import Combine
+
+#if os(iOS)
+import AVFoundation
+import CallKit
+#endif
 
 // MARK: - Chat Message
 
@@ -56,12 +59,14 @@ final class RoomManager: ObservableObject {
     private var room: LiveKit.Room?
     private var cancellables = Set<AnyCancellable>()
 
-    // MARK: - CallKit
+    // MARK: - CallKit (iOS only)
 
+    #if os(iOS)
     private let callController = CXCallController()
     private var callProvider: CXProvider?
     private var currentCallUUID: UUID?
     private var providerDelegate: CallProviderDelegate?
+    #endif
 
     // MARK: - Connection State
 
@@ -76,9 +81,12 @@ final class RoomManager: ObservableObject {
     // MARK: - Init
 
     init() {
+        #if os(iOS)
         setupCallProvider()
+        #endif
     }
 
+    #if os(iOS)
     private func setupCallProvider() {
         let config = CXProviderConfiguration()
         config.supportsVideo = true
@@ -92,6 +100,7 @@ final class RoomManager: ObservableObject {
         self.callProvider = provider
         self.providerDelegate = delegate
     }
+    #endif
 
     // MARK: - Connect
 
@@ -99,6 +108,7 @@ final class RoomManager: ObservableObject {
         connectionState = .connecting
         error = nil
 
+        #if os(iOS)
         // Report outgoing call to CallKit
         let callUUID = UUID()
         currentCallUUID = callUUID
@@ -107,6 +117,7 @@ final class RoomManager: ObservableObject {
         startAction.isVideo = true
         let transaction = CXTransaction(action: startAction)
         try? await callController.request(transaction)
+        #endif
 
         let room = LiveKit.Room()
         self.room = room
@@ -123,10 +134,9 @@ final class RoomManager: ObservableObject {
             try await room.connect(url: url, token: token, roomOptions: roomOptions)
             connectionState = .connected
 
-            // Tell CallKit the call connected
-            if let provider = callProvider {
-                provider.reportOutgoingCall(with: callUUID, connectedAt: Date())
-            }
+            #if os(iOS)
+            callProvider?.reportOutgoingCall(with: callUUID, connectedAt: Date())
+            #endif
 
             setupRoomDelegation(room)
             updateLocalParticipant()
@@ -134,7 +144,9 @@ final class RoomManager: ObservableObject {
         } catch {
             connectionState = .failed(error.localizedDescription)
             self.error = error.localizedDescription
+            #if os(iOS)
             endCallKitCall()
+            #endif
             throw error
         }
     }
@@ -152,9 +164,12 @@ final class RoomManager: ObservableObject {
         isScreenShareEnabled = false
         chatMessages = []
         cancellables.removeAll()
+        #if os(iOS)
         endCallKitCall()
+        #endif
     }
 
+    #if os(iOS)
     private func endCallKitCall() {
         guard let uuid = currentCallUUID else { return }
         let endAction = CXEndCallAction(call: uuid)
@@ -162,6 +177,7 @@ final class RoomManager: ObservableObject {
         callController.request(transaction) { _ in }
         currentCallUUID = nil
     }
+    #endif
 
     // MARK: - Media Controls
 
@@ -172,12 +188,13 @@ final class RoomManager: ObservableObject {
         isMicrophoneEnabled = newState
         updateLocalParticipant()
 
-        // Update CallKit mute state
+        #if os(iOS)
         if let uuid = currentCallUUID {
             let muteAction = CXSetMutedCallAction(call: uuid, muted: !newState)
             let transaction = CXTransaction(action: muteAction)
             try? await callController.request(transaction)
         }
+        #endif
     }
 
     func toggleCamera() async throws {
@@ -221,8 +238,9 @@ final class RoomManager: ObservableObject {
         chatMessages.append(message)
     }
 
-    // MARK: - CallKit Actions (from provider delegate)
+    // MARK: - CallKit Actions (iOS only)
 
+    #if os(iOS)
     func handleEndCall() {
         Task {
             await disconnect()
@@ -237,6 +255,7 @@ final class RoomManager: ObservableObject {
             updateLocalParticipant()
         }
     }
+    #endif
 
     // MARK: - Room Delegation
 
@@ -297,8 +316,9 @@ final class RoomManager: ObservableObject {
     }
 }
 
-// MARK: - CallKit Provider Delegate
+// MARK: - CallKit Provider Delegate (iOS only)
 
+#if os(iOS)
 private final class CallProviderDelegate: NSObject, CXProviderDelegate {
     private weak var manager: RoomManager?
 
@@ -334,6 +354,7 @@ private final class CallProviderDelegate: NSObject, CXProviderDelegate {
         // LiveKit handles audio session automatically
     }
 }
+#endif
 
 // MARK: - Room Delegate Handler
 

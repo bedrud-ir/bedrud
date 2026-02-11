@@ -22,7 +22,7 @@ struct RoomCardView: View {
                         .fill(room.isActive ? .green : .gray)
                         .frame(width: 12, height: 12)
                         .overlay(
-                            Circle().stroke(Color(.systemBackground), lineWidth: 2)
+                            Circle().stroke(Color.systemBackground, lineWidth: 2)
                         )
                         .offset(x: 3, y: 3)
                 }
@@ -202,5 +202,9 @@ private struct RoomPreview: View {
             onDelete: {}
         )
     }
+    #if os(iOS)
     .listStyle(.insetGrouped)
+    #else
+    .listStyle(.inset)
+    #endif
 }

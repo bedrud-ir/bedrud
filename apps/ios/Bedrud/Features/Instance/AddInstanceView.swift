@@ -105,9 +105,11 @@ struct AddInstanceView: View {
                         .padding(.trailing, 4)
 
                     TextField("meet.example.com", text: $serverHost)
-                        .keyboardType(.URL)
                         .autocorrectionDisabled()
+                        #if os(iOS)
+                        .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
+                        #endif
                         .onChange(of: serverHost) { _, _ in
                             errorMessage = nil
                         }
@@ -168,8 +170,10 @@ struct AddInstanceView: View {
             }
         }
         .formStyle(.grouped)
+        #if os(iOS)
         .scrollDismissesKeyboard(.interactively)
         .toolbar(.hidden, for: .navigationBar)
+        #endif
         .navigationDestination(isPresented: $navigateToLogin) {
             LoginView()
         }
