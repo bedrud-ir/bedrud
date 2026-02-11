@@ -94,6 +94,8 @@ struct MeetingView: View {
             let allParticipants = buildParticipantList()
             let columns = gridColumns(for: allParticipants.count, in: geometry.size)
 
+            let pipParticipantId = allParticipants.first { $0.isCameraEnabled && $0.videoTrack != nil }?.id
+
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(allParticipants) { participant in
@@ -101,7 +103,8 @@ struct MeetingView: View {
                             participant: participant,
                             isAdmin: isAdmin,
                             roomId: joinResponse.id,
-                            roomAPI: roomAPI
+                            roomAPI: roomAPI,
+                            isPiPEnabled: participant.id == pipParticipantId
                         )
                         .frame(height: tileHeight(
                             totalCount: allParticipants.count,
@@ -187,6 +190,7 @@ struct ParticipantTileView: View {
     var isAdmin: Bool = false
     var roomId: String = ""
     var roomAPI: RoomAPI?
+    var isPiPEnabled: Bool = false
 
     @State private var showKickConfirm = false
 
@@ -199,7 +203,15 @@ struct ParticipantTileView: View {
             Color.tertiarySystemBackground
 
             if let videoTrack = participant.videoTrack, participant.isCameraEnabled {
+                #if os(iOS)
+                if isPiPEnabled {
+                    PiPView(track: videoTrack)
+                } else {
+                    SwiftUIVideoView(videoTrack, layoutMode: .fill)
+                }
+                #else
                 SwiftUIVideoView(videoTrack, layoutMode: .fill)
+                #endif
             } else if let avatarUrl = participant.avatarUrl, let url = URL(string: avatarUrl) {
                 AsyncImage(url: url) { image in
                     image
