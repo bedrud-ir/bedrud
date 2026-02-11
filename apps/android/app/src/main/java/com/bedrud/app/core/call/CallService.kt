@@ -8,9 +8,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.media.AudioAttributes
-import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
@@ -33,8 +30,6 @@ class CallService : Service() {
     private val instanceManager: InstanceManager by inject()
     private var roomManager: RoomManager? = null
     private var serviceScope: CoroutineScope? = null
-    private var audioManager: AudioManager? = null
-    private var audioFocusRequest: AudioFocusRequest? = null
     private var callStartTime: Long = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -90,9 +85,6 @@ class CallService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
 
-        // Request audio focus
-        requestAudioFocus()
-
         // Place system call via ConnectionService
         CallConnectionService.placeCall(this, roomName)
 
@@ -131,7 +123,6 @@ class CallService : Service() {
         roomManager?.disconnect()
         roomManager = null
 
-        abandonAudioFocus()
         CallConnectionService.endCall()
 
         serviceScope?.cancel()
@@ -201,35 +192,6 @@ class CallService : Service() {
             .addAction(hangUpAction)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
-    }
-
-    private fun requestAudioFocus() {
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        val attrs = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-            .build()
-        audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(attrs)
-            .setOnAudioFocusChangeListener { focusChange ->
-                when (focusChange) {
-                    AudioManager.AUDIOFOCUS_LOSS -> {
-                        Log.d(TAG, "Audio focus lost, stopping call")
-                        stopSelf()
-                    }
-                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                        Log.d(TAG, "Audio focus lost transiently")
-                    }
-                }
-            }
-            .build()
-        audioManager?.requestAudioFocus(audioFocusRequest!!)
-    }
-
-    private fun abandonAudioFocus() {
-        audioFocusRequest?.let { audioManager?.abandonAudioFocusRequest(it) }
-        audioFocusRequest = null
-        audioManager = null
     }
 
     companion object {

@@ -130,10 +130,12 @@ struct DashboardView: View {
             #if os(iOS)
             .fullScreenCover(item: $selectedRoom) { joinResponse in
                 MeetingView(joinResponse: joinResponse)
+                    .environmentObject(instanceManager)
             }
             #else
             .sheet(item: $selectedRoom) { joinResponse in
                 MeetingView(joinResponse: joinResponse)
+                    .environmentObject(instanceManager)
                     .frame(minWidth: 800, minHeight: 600)
             }
             #endif
