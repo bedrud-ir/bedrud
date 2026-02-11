@@ -34,7 +34,7 @@ struct RoomCardView: View {
                         .lineLimit(1)
 
                     HStack(spacing: 6) {
-                        Label("\(room.maxParticipants)", systemImage: "person.2")
+                        Label("\(room.maxParticipants ?? 0)", systemImage: "person.2")
 
                         if room.settings.e2ee {
                             Text("\u{00B7}")
@@ -64,7 +64,7 @@ struct RoomCardView: View {
             Section {
                 Label(room.mode.capitalized, systemImage: modeIcon)
                 Label(room.isActive ? "Active" : "Inactive", systemImage: room.isActive ? "circle.fill" : "circle")
-                Label("Max \(room.maxParticipants) participants", systemImage: "person.2")
+                Label("Max \(room.maxParticipants ?? 0) participants", systemImage: "person.2")
             }
 
             // Settings section
@@ -148,7 +148,7 @@ private struct RoomPreview: View {
                 HStack(spacing: 8) {
                     Label(room.mode.capitalized, systemImage: modeIcon)
                     Text("\u{00B7}")
-                    Label("\(room.maxParticipants)", systemImage: "person.2")
+                    Label("\(room.maxParticipants ?? 0)", systemImage: "person.2")
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
