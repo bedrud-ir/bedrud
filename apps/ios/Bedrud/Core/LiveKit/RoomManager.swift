@@ -61,14 +61,21 @@ final class RoomManager: ObservableObject {
     private var roomDelegateHandler: RoomDelegateHandler?
     private var cancellables = Set<AnyCancellable>()
 
-    // MARK: - CallKit (iOS only)
+    // MARK: - CallKit (iOS device only)
 
     #if os(iOS)
-    private let callController = CXCallController()
+    private var callController: CXCallController?
     private var callProvider: CXProvider?
     private var currentCallUUID: UUID?
     private var providerDelegate: CallProviderDelegate?
     private var isEndingFromCallKit = false
+    private let useCallKit: Bool = {
+        #if targetEnvironment(simulator)
+        return false
+        #else
+        return true
+        #endif
+    }()
     #endif
 
     // MARK: - Connection State
@@ -91,9 +98,13 @@ final class RoomManager: ObservableObject {
 
     #if os(iOS)
     private func setupCallProvider() {
+        guard useCallKit else { return }
+
         // Disable LiveKit's automatic audio session management so CallKit controls it
         AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
         try? AudioManager.shared.setEngineAvailability(.none)
+
+        callController = CXCallController()
 
         let config = CXProviderConfiguration()
         config.supportsVideo = true
@@ -112,18 +123,28 @@ final class RoomManager: ObservableObject {
     // MARK: - Connect
 
     func connect(url: String, token: String, roomName: String, avatarUrl: String? = nil) async throws {
+        // Prevent double-connect
+        switch connectionState {
+        case .connecting, .connected, .reconnecting: return
+        case .disconnected, .failed: break
+        }
+
         connectionState = .connecting
         error = nil
 
         #if os(iOS)
-        // Report outgoing call to CallKit
-        let callUUID = UUID()
-        currentCallUUID = callUUID
-        let handle = CXHandle(type: .generic, value: roomName)
-        let startAction = CXStartCallAction(call: callUUID, handle: handle)
-        startAction.isVideo = true
-        let transaction = CXTransaction(action: startAction)
-        try? await callController.request(transaction)
+        // Report outgoing call to CallKit (real device only)
+        var callUUID: UUID?
+        if useCallKit, let callController {
+            let uuid = UUID()
+            currentCallUUID = uuid
+            callUUID = uuid
+            let handle = CXHandle(type: .generic, value: roomName)
+            let startAction = CXStartCallAction(call: uuid, handle: handle)
+            startAction.isVideo = true
+            let transaction = CXTransaction(action: startAction)
+            try? await callController.request(transaction)
+        }
         #endif
 
         let room = LiveKit.Room()
@@ -134,7 +155,8 @@ final class RoomManager: ObservableObject {
                 dimensions: Dimensions(width: 1280, height: 720)
             ),
             adaptiveStream: true,
-            dynacast: true
+            dynacast: true,
+            suspendLocalVideoTracksInBackground: false
         )
 
         do {
@@ -142,7 +164,9 @@ final class RoomManager: ObservableObject {
             connectionState = .connected
 
             #if os(iOS)
-            callProvider?.reportOutgoingCall(with: callUUID, connectedAt: Date())
+            if let callUUID {
+                callProvider?.reportOutgoingCall(with: callUUID, connectedAt: Date())
+            }
             #endif
 
             setupRoomDelegation(room)
@@ -183,7 +207,7 @@ final class RoomManager: ObservableObject {
         chatMessages = []
         cancellables.removeAll()
         #if os(iOS)
-        if !isEndingFromCallKit {
+        if useCallKit && !isEndingFromCallKit {
             endCallKitCall()
         }
         currentCallUUID = nil
@@ -192,7 +216,7 @@ final class RoomManager: ObservableObject {
 
     #if os(iOS)
     private func endCallKitCall() {
-        guard let uuid = currentCallUUID else { return }
+        guard let callController, let uuid = currentCallUUID else { return }
         let endAction = CXEndCallAction(call: uuid)
         let transaction = CXTransaction(action: endAction)
         callController.request(transaction) { _ in }
@@ -210,7 +234,7 @@ final class RoomManager: ObservableObject {
         updateLocalParticipant()
 
         #if os(iOS)
-        if let uuid = currentCallUUID {
+        if useCallKit, let callController, let uuid = currentCallUUID {
             let muteAction = CXSetMutedCallAction(call: uuid, muted: !newState)
             let transaction = CXTransaction(action: muteAction)
             try? await callController.request(transaction)

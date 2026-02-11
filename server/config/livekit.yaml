@@ -5,6 +5,12 @@ rtc:
   port_range_end: 60000
   use_external_ip: true
 
+turn:
+  enabled: true
+  domain: localhost
+  udp_port: 3478
+  tls_port: 5349
+
 keys:
   devkey: devsecret
 

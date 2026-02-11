@@ -178,6 +178,13 @@ cors:
 
 	// 3. Create LiveKit Config
 	// Use explicit node_ip and disable external discovery to avoid LXC network issues
+	// TURN is enabled so WebRTC works through VPNs and restrictive firewalls
+	turnDomain := hostForLK
+	turnTLSConfig := ""
+	if enableTLS {
+		turnTLSConfig = fmt.Sprintf("  cert_file: \"%s\"\n  key_file: \"%s\"\n", certFile, keyFile)
+	}
+
 	lkContent := fmt.Sprintf(`port: %s
 bind_addresses:
   - 127.0.0.1
@@ -188,10 +195,15 @@ rtc:
   udp_port: %s
   use_external_ip: false
   node_ip: %s
-logging:
+turn:
+  enabled: true
+  domain: %s
+  udp_port: 3478
+  tls_port: 5349
+%slogging:
   json: true
   level: debug
-`, lkPort, apiKey, apiSecret, lkTcpPort, lkUdpPort, ip)
+`, lkPort, apiKey, apiSecret, lkTcpPort, lkUdpPort, ip, turnDomain, turnTLSConfig)
 
 	_ = os.WriteFile("/etc/bedrud/livekit.yaml", []byte(lkContent), 0644)
 
