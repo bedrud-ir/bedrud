@@ -10,7 +10,6 @@ struct MeetingView: View {
 
     @State private var showError = false
     @State private var showChat = false
-    @State private var wasConnected = false
 
     var body: some View {
         ZStack {
@@ -40,13 +39,6 @@ struct MeetingView: View {
         #endif
         .task {
             await connectToRoom()
-        }
-        .onChange(of: roomManager.connectionState) { _, newState in
-            if newState == .connected {
-                wasConnected = true
-            } else if wasConnected && newState == .disconnected {
-                dismiss()
-            }
         }
         .alert("Connection Error", isPresented: $showError) {
             Button("Leave") { dismiss() }

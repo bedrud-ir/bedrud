@@ -91,6 +91,10 @@ final class RoomManager: ObservableObject {
 
     #if os(iOS)
     private func setupCallProvider() {
+        // Disable LiveKit's automatic audio session management so CallKit controls it
+        AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
+        try? AudioManager.shared.setEngineAvailability(.none)
+
         let config = CXProviderConfiguration()
         config.supportsVideo = true
         config.maximumCallsPerCallGroup = 1
@@ -137,14 +141,6 @@ final class RoomManager: ObservableObject {
             try await room.connect(url: url, token: token, roomOptions: roomOptions)
             connectionState = .connected
 
-            // Set avatar metadata on local participant
-            if let avatarUrl, !avatarUrl.isEmpty {
-                let metadata = try? JSONSerialization.data(withJSONObject: ["avatarUrl": avatarUrl])
-                if let metadata, let metadataString = String(data: metadata, encoding: .utf8) {
-                    try? await room.localParticipant.set(metadata: metadataString)
-                }
-            }
-
             #if os(iOS)
             callProvider?.reportOutgoingCall(with: callUUID, connectedAt: Date())
             #endif
@@ -152,6 +148,16 @@ final class RoomManager: ObservableObject {
             setupRoomDelegation(room)
             updateLocalParticipant()
             updateRemoteParticipants()
+
+            // Set avatar metadata on local participant (fire-and-forget, must not block delegation setup)
+            if let avatarUrl, !avatarUrl.isEmpty {
+                Task {
+                    let metadata = try? JSONSerialization.data(withJSONObject: ["avatarUrl": avatarUrl])
+                    if let metadata, let metadataString = String(data: metadata, encoding: .utf8) {
+                        try? await room.localParticipant.set(metadata: metadataString)
+                    }
+                }
+            }
         } catch {
             connectionState = .failed(error.localizedDescription)
             self.error = error.localizedDescription
@@ -177,7 +183,10 @@ final class RoomManager: ObservableObject {
         chatMessages = []
         cancellables.removeAll()
         #if os(iOS)
-        endCallKitCall()
+        if !isEndingFromCallKit {
+            endCallKitCall()
+        }
+        currentCallUUID = nil
         #endif
     }
 
@@ -258,7 +267,6 @@ final class RoomManager: ObservableObject {
     #if os(iOS)
     func handleEndCall() {
         isEndingFromCallKit = true
-        currentCallUUID = nil
         Task {
             await disconnect()
             isEndingFromCallKit = false
@@ -281,18 +289,6 @@ final class RoomManager: ObservableObject {
         let handler = RoomDelegateHandler(manager: self)
         self.roomDelegateHandler = handler
         room.add(delegate: handler)
-    }
-
-    func handleRoomDisconnected() {
-        guard connectionState == .connected || connectionState == .reconnecting else { return }
-        connectionState = .disconnected
-        #if os(iOS)
-        endCallKitCall()
-        #endif
-    }
-
-    func handleRoomReconnecting() {
-        connectionState = .reconnecting
     }
 
     // MARK: - Participant Updates
@@ -394,11 +390,12 @@ private final class CallProviderDelegate: NSObject, CXProviderDelegate {
     }
 
     func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) {
-        AudioManager.shared.onDidActivateSession(audioSession)
+        try? audioSession.setCategory(.playAndRecord, mode: .voiceChat, options: [.mixWithOthers])
+        try? AudioManager.shared.setEngineAvailability(.default)
     }
 
     func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) {
-        AudioManager.shared.onDidDeactivateSession(audioSession)
+        try? AudioManager.shared.setEngineAvailability(.none)
     }
 }
 #endif
@@ -416,14 +413,11 @@ private final class RoomDelegateHandler: RoomDelegate, @unchecked Sendable {
         Task { @MainActor in
             switch connectionState {
             case .disconnected:
-                manager?.handleRoomDisconnected()
                 manager?.updateLocalParticipant()
                 manager?.updateRemoteParticipants()
             case .connected:
                 manager?.updateLocalParticipant()
                 manager?.updateRemoteParticipants()
-            case .reconnecting:
-                manager?.handleRoomReconnecting()
             default:
                 break
             }

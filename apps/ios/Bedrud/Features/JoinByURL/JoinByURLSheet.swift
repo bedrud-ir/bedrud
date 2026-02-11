@@ -62,10 +62,12 @@ struct JoinByURLSheet: View {
             #if os(iOS)
             .fullScreenCover(item: $joinResponse) { response in
                 MeetingView(joinResponse: response)
+                    .environmentObject(instanceManager)
             }
             #else
             .sheet(item: $joinResponse) { response in
                 MeetingView(joinResponse: response)
+                    .environmentObject(instanceManager)
                     .frame(minWidth: 800, minHeight: 600)
             }
             #endif

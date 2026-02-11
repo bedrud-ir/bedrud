@@ -84,6 +84,7 @@ import com.bedrud.app.core.livekit.ConnectionState
 import com.bedrud.app.models.JoinRoomRequest
 import com.bedrud.app.models.JoinRoomResponse
 import io.livekit.android.compose.ui.VideoTrackView
+import io.livekit.android.room.Room
 import io.livekit.android.room.participant.Participant
 import io.livekit.android.room.track.Track
 import kotlinx.coroutines.launch
@@ -249,7 +250,8 @@ fun MeetingScreen(
                                 if (videoTrack != null) {
                                     VideoTrackView(
                                         videoTrack = videoTrack,
-                                        modifier = Modifier.fillMaxSize()
+                                        modifier = Modifier.fillMaxSize(),
+                                        passedRoom = room
                                     )
                                 } else {
                                     Text(
@@ -330,7 +332,8 @@ fun MeetingScreen(
                                             roomId = roomId,
                                             roomApi = roomApi,
                                             snackbarHostState = snackbarHostState,
-                                            scope = scope
+                                            scope = scope,
+                                            room = room
                                         )
                                     }
                                 }
@@ -497,7 +500,8 @@ private fun ParticipantTile(
     roomId: String = "",
     roomApi: RoomApi? = null,
     snackbarHostState: SnackbarHostState? = null,
-    scope: kotlinx.coroutines.CoroutineScope? = null
+    scope: kotlinx.coroutines.CoroutineScope? = null,
+    room: Room? = null
 ) {
     val videoTrack = participant.getTrackPublication(Track.Source.CAMERA)
         ?.track as? io.livekit.android.room.track.VideoTrack
@@ -565,7 +569,8 @@ private fun ParticipantTile(
         if (videoTrack != null) {
             VideoTrackView(
                 videoTrack = videoTrack,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                passedRoom = room
             )
         } else if (!avatarUrl.isNullOrBlank()) {
             AsyncImage(
