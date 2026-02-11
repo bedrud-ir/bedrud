@@ -27,7 +27,9 @@ jobs:
     outputs:
       channel: ${{ steps.channel.outputs.channel }}
       tag: ${{ steps.channel.outputs.tag }}
-      prerelease: "true"
+      docker_tag: ${{ steps.channel.outputs.docker_tag }}
+      title: ${{ steps.channel.outputs.title }}
+      sha_short: ${{ steps.channel.outputs.sha_short }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,23 +38,32 @@ jobs:
       - name: Determine channel
         id: channel
         run: |
+          SHA_SHORT=$(git rev-parse --short=7 HEAD)
+          echo "sha_short=$SHA_SHORT" >> "$GITHUB_OUTPUT"
+
           if [ "${{ github.event_name }}" = "schedule" ]; then
+            DATE=$(date -u +%Y%m%d)
             echo "channel=nightly" >> "$GITHUB_OUTPUT"
-            echo "tag=nightly" >> "$GITHUB_OUTPUT"
+            echo "tag=nightly-${DATE}" >> "$GITHUB_OUTPUT"
+            echo "docker_tag=nightly" >> "$GITHUB_OUTPUT"
+            echo "title=Nightly ${DATE}" >> "$GITHUB_OUTPUT"
           else
             echo "channel=dev" >> "$GITHUB_OUTPUT"
-            echo "tag=dev" >> "$GITHUB_OUTPUT"
+            echo "tag=dev-${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+            echo "docker_tag=dev" >> "$GITHUB_OUTPUT"
+            echo "title=Dev ${SHA_SHORT}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Check for changes (nightly only)
         if: github.event_name == 'schedule'
         run: |
-          LAST_TAG=$(git tag -l "nightly" | head -1)
+          # Find most recent nightly tag
+          LAST_TAG=$(git tag -l "nightly-*" --sort=-v:refname | head -1)
           if [ -n "$LAST_TAG" ]; then
             LAST_SHA=$(git rev-list -n 1 "$LAST_TAG" 2>/dev/null || echo "")
             HEAD_SHA=$(git rev-parse HEAD)
             if [ "$LAST_SHA" = "$HEAD_SHA" ]; then
-              echo "No changes since last nightly — skipping"
+              echo "No changes since last nightly ($LAST_TAG) — skipping"
               exit 1
             fi
           fi
@@ -156,8 +167,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
+            type=raw,value=${{ needs.prepare.outputs.docker_tag }}
             type=raw,value=${{ needs.prepare.outputs.tag }}
-            type=sha,prefix=${{ needs.prepare.outputs.tag }}-
 
       - uses: docker/build-push-action@v6
         with:
@@ -225,11 +236,13 @@ jobs:
 
   # ── Publish release ─────────────────────────────────────────
   release:
-    name: Publish ${{ needs.prepare.outputs.channel }} Release
+    name: Publish ${{ needs.prepare.outputs.title }}
     runs-on: ubuntu-latest
     needs: [prepare, server-binary, docker, android, web]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/download-artifact@v4
         with:
@@ -252,24 +265,69 @@ jobs:
 
           ls -la release-assets/
 
-      - name: Delete existing release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate changelog
+        id: changelog
         run: |
           TAG="${{ needs.prepare.outputs.tag }}"
-          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          CHANNEL="${{ needs.prepare.outputs.channel }}"
+          SHA_SHORT="${{ needs.prepare.outputs.sha_short }}"
+
+          # Find previous tag of same channel
+          if [ "$CHANNEL" = "nightly" ]; then
+            PREV_TAG=$(git tag -l "nightly-*" --sort=-v:refname | head -1)
+          else
+            PREV_TAG=$(git tag -l "dev-*" --sort=-v:refname | head -1)
+          fi
+
+          {
+            echo "body<<CHANGELOG_EOF"
+
+            if [ "$CHANNEL" = "nightly" ]; then
+              echo "## Nightly Build"
+              echo ""
+              echo "Automated nightly build from \`main\` at \`$SHA_SHORT\`."
+            else
+              echo "## Dev Build"
+              echo ""
+              echo "Built from [\`$SHA_SHORT\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})."
+            fi
+
+            echo ""
+            echo "### Changes"
+            echo ""
+
+            if [ -n "$PREV_TAG" ]; then
+              git log --pretty=format:"- %s (\`%h\`)" "$PREV_TAG"..HEAD 2>/dev/null || \
+                echo "- First $CHANNEL release"
+            else
+              echo "- First $CHANNEL release"
+            fi
+
+            echo ""
+            echo ""
+            echo "### Artifacts"
+            echo ""
+            echo "| Platform | Asset |"
+            echo "|----------|-------|"
+            echo "| Linux x86_64 | \`bedrud_linux_amd64.tar.xz\` |"
+            echo "| Linux ARM64 | \`bedrud_linux_arm64.tar.xz\` |"
+            echo "| macOS x86_64 | \`bedrud_darwin_amd64.tar.xz\` |"
+            echo "| macOS ARM64 | \`bedrud_darwin_arm64.tar.xz\` |"
+            echo "| Android | \`bedrud-debug.apk\` |"
+            echo "| Web | \`bedrud-web.tar.xz\` |"
+            echo "| Docker | \`ghcr.io/${{ github.repository }}:$TAG\` |"
+            echo ""
+            echo "> This is an automated pre-release. Use [tagged releases](https://github.com/${{ github.repository }}/releases?q=v&expanded=true) for production."
+
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
-          name: "${{ needs.prepare.outputs.channel == 'nightly' && 'Nightly' || 'Dev' }} – ${{ github.sha }}"
+          name: ${{ needs.prepare.outputs.title }}
           prerelease: true
           target_commitish: ${{ github.sha }}
-          body: |
-            **${{ needs.prepare.outputs.channel == 'nightly' && 'Nightly' || 'Dev' }} build** from `${{ github.sha }}`
-
-            Built from [`main`](https://github.com/${{ github.repository }}/tree/main) at ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
-
-            > This is an automated pre-release. Use tagged releases for production.
+          body: ${{ steps.changelog.outputs.body }}
           files: release-assets/*
