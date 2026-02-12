@@ -16,7 +16,9 @@ struct BedrudApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if instanceManager.isAuthenticated {
+                if !settingsStore.hasCompletedOnboarding {
+                    OnboardingView()
+                } else if instanceManager.isAuthenticated {
                     MainTabView()
                 } else {
                     NavigationStack {

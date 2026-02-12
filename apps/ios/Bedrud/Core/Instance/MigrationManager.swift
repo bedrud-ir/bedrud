@@ -14,7 +14,7 @@ enum MigrationManager {
     static func migrateIfNeeded(
         store: InstanceStore,
         defaults: UserDefaults = .standard,
-        keychain: Keychain = Keychain(service: "com.bedrud.ios")
+        keychain: Keychain = Keychain(service: "org.bedrud.ios")
     ) {
         guard !defaults.bool(forKey: migrationDoneKey) else { return }
         defer { defaults.set(true, forKey: migrationDoneKey) }

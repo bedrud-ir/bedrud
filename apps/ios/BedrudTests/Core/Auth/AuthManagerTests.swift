@@ -11,7 +11,7 @@ final class AuthManagerTests: XCTestCase {
     override func setUp() {
         super.setUp()
         let id = UUID().uuidString
-        serviceName = "com.bedrud.tests.auth.\(id)"
+        serviceName = "org.bedrud.tests.auth.\(id)"
         keychain = Keychain(service: serviceName)
         session = URLSession.mock()
     }

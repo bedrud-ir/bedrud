@@ -120,7 +120,7 @@ final class AuthAPITests: XCTestCase {
     // MARK: - getMe
 
     func testGetMeSendsAuthenticatedRequest() async throws {
-        let keychain = Keychain(service: "com.bedrud.tests.authapi.me.\(UUID().uuidString)")
+        let keychain = Keychain(service: "org.bedrud.tests.authapi.me.\(UUID().uuidString)")
         defer { try? keychain.removeAll() }
 
         let authAPI2 = AuthAPI(client: client)

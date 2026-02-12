@@ -17,7 +17,7 @@ final class AuthFlowIntegrationTests: XCTestCase {
         super.setUp()
         let id = UUID().uuidString
         session = URLSession.mock()
-        keychain = Keychain(service: "com.bedrud.tests.integration.auth.\(id)")
+        keychain = Keychain(service: "org.bedrud.tests.integration.auth.\(id)")
         client = APIClient(baseURL: "https://test.com/api", session: session)
         authAPI = AuthAPI(client: client)
         authManager = AuthManager(instanceId: "integration-test", authAPI: authAPI, keychain: keychain)
