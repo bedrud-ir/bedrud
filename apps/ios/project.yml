@@ -33,7 +33,9 @@ targets:
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: false
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         INFOPLIST_KEY_UILaunchScreen_Generation: true
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortraitUpsideDown"
+        INFOPLIST_KEY_UIRequiresFullScreen: true
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.social-networking"
         INFOPLIST_KEY_NSCameraUsageDescription: "Bedrud needs camera access for video calls"
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Bedrud needs microphone access for audio in calls"
         SWIFT_VERSION: "5.9"
