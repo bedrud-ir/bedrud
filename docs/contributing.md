@@ -62,7 +62,7 @@ Every PR runs these checks automatically:
 
 ## Reporting Issues
 
-File issues on [GitHub Issues](https://github.com/niceda/bedrud/issues) with:
+File issues on [GitHub Issues](https://github.com/bedrud-ir/bedrud/issues) with:
 
 - Steps to reproduce
 - Expected vs actual behavior
@@ -87,4 +87,4 @@ Documentation pages are organized by topic. The navigation is defined in `mkdocs
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [Apache License 2.0](https://github.com/niceda/bedrud/blob/main/LICENSE).
+By contributing, you agree that your contributions will be licensed under the [Apache License 2.0](https://github.com/bedrud-ir/bedrud/blob/main/LICENSE).

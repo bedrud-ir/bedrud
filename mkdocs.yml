@@ -1,8 +1,8 @@
 site_name: Bedrud Docs
 site_description: Documentation for Bedrud — self-hosted video meeting platform
-site_url: https://niceda.github.io/bedrud/
-repo_url: https://github.com/niceda/bedrud
-repo_name: niceda/bedrud
+site_url: https://bedrud-ir.github.io/bedrud/
+repo_url: https://github.com/bedrud-ir/bedrud
+repo_name: bedrud-ir/bedrud
 edit_uri: edit/main/docs/
 
 theme:

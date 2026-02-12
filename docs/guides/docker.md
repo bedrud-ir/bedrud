@@ -113,10 +113,10 @@ Docker images are published to GitHub Container Registry on every release:
 
 ```bash
 # Latest release
-docker pull ghcr.io/niceda/bedrud:latest
+docker pull ghcr.io/bedrud-ir/bedrud:latest
 
 # Specific version
-docker pull ghcr.io/niceda/bedrud:v1.0.0
+docker pull ghcr.io/bedrud-ir/bedrud:v1.0.0
 ```
 
 ## Docker Compose Example
@@ -124,7 +124,7 @@ docker pull ghcr.io/niceda/bedrud:v1.0.0
 ```yaml
 services:
   bedrud:
-    image: ghcr.io/niceda/bedrud:latest
+    image: ghcr.io/bedrud-ir/bedrud:latest
     ports:
       - "8090:8090"
       - "7880:7880"

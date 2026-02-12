@@ -28,41 +28,11 @@ A single `bedrud` binary contains:
 
 ## Quick Links
 
-<div class="grid cards" markdown>
-
--   **Getting Started**
-
-    ---
-
-    Set up your development environment and run Bedrud locally.
-
-    [:octicons-arrow-right-24: Quick Start](getting-started/quickstart.md)
-
--   **Installation**
-
-    ---
-
-    Deploy Bedrud to a production server with TLS and systemd.
-
-    [:octicons-arrow-right-24: Installation Guide](getting-started/installation.md)
-
--   **Architecture**
-
-    ---
-
-    Understand how the server, clients, and media layer fit together.
-
-    [:octicons-arrow-right-24: Architecture Overview](architecture/overview.md)
-
--   **API Reference**
-
-    ---
-
-    REST API endpoints for authentication, rooms, and administration.
-
-    [:octicons-arrow-right-24: API Docs](api/authentication.md)
-
-</div>
+- **[Quick Start](getting-started/quickstart.md)** — Set up your development environment and run Bedrud locally
+- **[Installation Guide](getting-started/installation.md)** — Deploy to a production server with TLS and systemd
+- **[Architecture Overview](architecture/overview.md)** — Understand how the server, clients, and media layer fit together
+- **[API Reference](api/authentication.md)** — REST API endpoints for authentication, rooms, and administration
+- **[Contributing](contributing.md)** — How to contribute to the project
 
 ## Repository Structure
 
@@ -84,4 +54,4 @@ bedrud/
 
 ## License
 
-Bedrud is licensed under the [Apache License 2.0](https://github.com/niceda/bedrud/blob/main/LICENSE).
+Bedrud is licensed under the [Apache License 2.0](https://github.com/bedrud-ir/bedrud/blob/main/LICENSE).
