@@ -8,6 +8,11 @@ final class PasskeyManager: NSObject, ObservableObject {
     private let authAPI: AuthAPI
     private let authManager: AuthManager
 
+    // Retain delegate and presentation provider while authorization is in-flight.
+    // ASAuthorizationController holds these weakly, so they must be kept alive here.
+    private var activeDelegate: PasskeyDelegate?
+    private var activePresentationProvider: PasskeyPresentationProvider?
+
     @Published private(set) var isProcessing: Bool = false
     @Published private(set) var error: String?
 
@@ -41,13 +46,19 @@ final class PasskeyManager: NSObject, ObservableObject {
         )
 
         // Step 3: Perform the authorization
-        let controller = ASAuthorizationController(authorizationRequests: [assertionRequest])
         let delegate = PasskeyDelegate()
+        let presentationProvider = PasskeyPresentationProvider(anchor: anchor)
+        activeDelegate = delegate
+        activePresentationProvider = presentationProvider
+
+        let controller = ASAuthorizationController(authorizationRequests: [assertionRequest])
         controller.delegate = delegate
-        controller.presentationContextProvider = PasskeyPresentationProvider(anchor: anchor)
+        controller.presentationContextProvider = presentationProvider
         controller.performRequests()
 
         let authorization = try await delegate.result()
+        activeDelegate = nil
+        activePresentationProvider = nil
 
         // Step 4: Extract credential data
         guard let credential = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion else {
@@ -107,13 +118,19 @@ final class PasskeyManager: NSObject, ObservableObject {
         )
 
         // Step 3: Perform the authorization
-        let controller = ASAuthorizationController(authorizationRequests: [registrationRequest])
         let delegate = PasskeyDelegate()
+        let presentationProvider = PasskeyPresentationProvider(anchor: anchor)
+        activeDelegate = delegate
+        activePresentationProvider = presentationProvider
+
+        let controller = ASAuthorizationController(authorizationRequests: [registrationRequest])
         controller.delegate = delegate
-        controller.presentationContextProvider = PasskeyPresentationProvider(anchor: anchor)
+        controller.presentationContextProvider = presentationProvider
         controller.performRequests()
 
         let authorization = try await delegate.result()
+        activeDelegate = nil
+        activePresentationProvider = nil
 
         // Step 4: Extract credential data
         guard let credential = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration else {
@@ -162,13 +179,19 @@ final class PasskeyManager: NSObject, ObservableObject {
         )
 
         // Step 3: Perform the authorization
-        let controller = ASAuthorizationController(authorizationRequests: [registrationRequest])
         let delegate = PasskeyDelegate()
+        let presentationProvider = PasskeyPresentationProvider(anchor: anchor)
+        activeDelegate = delegate
+        activePresentationProvider = presentationProvider
+
+        let controller = ASAuthorizationController(authorizationRequests: [registrationRequest])
         controller.delegate = delegate
-        controller.presentationContextProvider = PasskeyPresentationProvider(anchor: anchor)
+        controller.presentationContextProvider = presentationProvider
         controller.performRequests()
 
         let authorization = try await delegate.result()
+        activeDelegate = nil
+        activePresentationProvider = nil
 
         // Step 4: Extract credential data
         guard let credential = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration else {
