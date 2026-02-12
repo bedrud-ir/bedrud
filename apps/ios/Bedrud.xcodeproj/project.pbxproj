@@ -17,6 +17,7 @@
 		2F0C20FCFE03954BABE1C10D /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 759F54A028619F2A1B50C78D /* MainTabView.swift */; };
 		2F47E14CFAB22E6B6096DDCA /* AuthAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 294DD059C1708CFB35405442 /* AuthAPI.swift */; };
 		3540B67712A8FE53FC791AEC /* ControlBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */; };
+		3B287EA5C890CBC9047A8CB5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B080B86DF4B5B96E3ECF763D /* Assets.xcassets */; };
 		3D688C3585690B68CE9B2A01 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252B460A7E099456B30AFB5F /* SettingsView.swift */; };
 		480D6DBB2FE4DE07CBD210FF /* AuthFlowIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168AAA8F06ECD0BADAB21943 /* AuthFlowIntegrationTests.swift */; };
 		4909358E206090A049000858 /* InstanceSwitchingIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8205A17567970D89665B7572 /* InstanceSwitchingIntegrationTests.swift */; };
@@ -120,6 +121,7 @@
 		A41C482BB82228D6C2A85419 /* AddInstanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddInstanceView.swift; sourceTree = "<group>"; };
 		A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlBar.swift; sourceTree = "<group>"; };
 		A5B91D0C9733B860CE754153 /* MigrationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationManagerTests.swift; sourceTree = "<group>"; };
+		B080B86DF4B5B96E3ECF763D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B40C6C896508CCD958042818 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		B8610AD1B6C8E8134846C810 /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
 		BDB914F4168E2359F730AEE9 /* BedrudApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrudApp.swift; sourceTree = "<group>"; };
@@ -271,6 +273,7 @@
 		6CE2E8BB92C184DDE4CAB395 /* Bedrud */ = {
 			isa = PBXGroup;
 			children = (
+				B080B86DF4B5B96E3ECF763D /* Assets.xcassets */,
 				BDB914F4168E2359F730AEE9 /* BedrudApp.swift */,
 				B37F67BE41A30EDC2EDF3274 /* Core */,
 				DDCAAB780C8E67889749D7C0 /* Design */,
@@ -501,6 +504,7 @@
 			buildConfigurationList = E161C7EA8C9D855CFE607B07 /* Build configuration list for PBXNativeTarget "Bedrud" */;
 			buildPhases = (
 				1223EEBDC6FD75AFD9872BD0 /* Sources */,
+				5625E7B3BC2B9393D5DAD614 /* Resources */,
 				CFE98B149651586F2751C290 /* Frameworks */,
 			);
 			buildRules = (
@@ -573,6 +577,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5625E7B3BC2B9393D5DAD614 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3B287EA5C890CBC9047A8CB5 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		1223EEBDC6FD75AFD9872BD0 /* Sources */ = {
