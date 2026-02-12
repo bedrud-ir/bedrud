@@ -2,7 +2,7 @@
 
 **Self-hosted video meeting platform** — a single binary that packages the web UI, REST API, and media server into one deployable unit.
 
-[![CI](https://github.com/niceda/bedrud/actions/workflows/ci.yml/badge.svg)](https://github.com/niceda/bedrud/actions/workflows/ci.yml)
+[![CI](https://github.com/bedrud-ir/bedrud/actions/workflows/ci.yml/badge.svg)](https://github.com/bedrud-ir/bedrud/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 ## Features
@@ -118,7 +118,7 @@ Available agents: `music_agent`, `radio_agent`, `video_stream_agent`.
 
 ## Documentation
 
-Full documentation is available at the [Bedrud Docs](https://niceda.github.io/bedrud/) site, or browse the `docs/` directory.
+Full documentation is available at the [Bedrud Docs](https://bedrud-ir.github.io/bedrud/) site, or browse the `docs/` directory.
 
 ## Makefile Reference
 

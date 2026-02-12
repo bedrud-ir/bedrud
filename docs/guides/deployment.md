@@ -120,7 +120,7 @@ docker run -d \
 A Docker image is also published to GitHub Container Registry on every release:
 
 ```bash
-docker pull ghcr.io/niceda/bedrud:latest
+docker pull ghcr.io/bedrud-ir/bedrud:latest
 ```
 
 ---

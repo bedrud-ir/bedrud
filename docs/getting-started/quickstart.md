@@ -17,7 +17,7 @@ Get Bedrud running locally for development in under 5 minutes.
 ## 1. Clone the Repository
 
 ```bash
-git clone https://github.com/niceda/bedrud.git
+git clone https://github.com/bedrud-ir/bedrud.git
 cd bedrud
 ```
 

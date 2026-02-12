@@ -1,0 +1,112 @@
+version: 2
+
+updates:
+  # Go server dependencies
+  - package-ecosystem: "gomod"
+    directory: "/server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(server)"
+    groups:
+      go-all:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
+
+  # Web frontend (npm/bun)
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(web)"
+    groups:
+      npm-all:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
+
+  # Android (Gradle)
+  - package-ecosystem: "gradle"
+    directory: "/apps/android"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(android)"
+    groups:
+      gradle-all:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
+
+  # Python agents
+  - package-ecosystem: "pip"
+    directory: "/agents/music_agent"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(agents)"
+    groups:
+      pip-agents:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: "pip"
+    directory: "/agents/radio_agent"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(agents)"
+    groups:
+      pip-agents:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: "pip"
+    directory: "/agents/video_stream_agent"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(agents)"
+    groups:
+      pip-agents:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 3
+
+  # Deployment CLI
+  - package-ecosystem: "pip"
+    directory: "/tools/cli"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(cli)"
+    groups:
+      pip-cli:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 3
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(ci)"
+    groups:
+      actions-all:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
