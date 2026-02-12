@@ -12,9 +12,9 @@ final class MigrationManagerTests: XCTestCase {
     override func setUp() {
         super.setUp()
         let id = UUID().uuidString
-        let suiteName = "com.bedrud.tests.migration.\(id)"
+        let suiteName = "org.bedrud.tests.migration.\(id)"
         defaults = UserDefaults(suiteName: suiteName)!
-        serviceName = "com.bedrud.tests.migration.\(id)"
+        serviceName = "org.bedrud.tests.migration.\(id)"
         keychain = Keychain(service: serviceName)
         store = InstanceStore(defaults: defaults)
     }

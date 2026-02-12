@@ -272,7 +272,7 @@ final class APIClientTests: XCTestCase {
     // MARK: - authFetch with Token
 
     func testAuthFetchSendsBearerToken() async throws {
-        let keychain = Keychain(service: "com.bedrud.tests.apiclient.\(UUID().uuidString)")
+        let keychain = Keychain(service: "org.bedrud.tests.apiclient.\(UUID().uuidString)")
         defer { try? keychain.removeAll() }
 
         let mockSession = URLSession.mock()

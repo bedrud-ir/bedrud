@@ -24,7 +24,7 @@ final class AuthManager: ObservableObject {
 
     // MARK: - Init
 
-    init(instanceId: String, authAPI: AuthAPI, keychain: Keychain = Keychain(service: "com.bedrud.ios")) {
+    init(instanceId: String, authAPI: AuthAPI, keychain: Keychain = Keychain(service: "org.bedrud.ios")) {
         self.instanceId = instanceId
         self.authAPI = authAPI
         self.keychain = keychain

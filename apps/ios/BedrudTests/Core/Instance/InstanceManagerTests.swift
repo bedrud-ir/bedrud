@@ -9,7 +9,7 @@ final class InstanceManagerTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        let suiteName = "com.bedrud.tests.instancemanager.\(UUID().uuidString)"
+        let suiteName = "org.bedrud.tests.instancemanager.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)!
         store = InstanceStore(defaults: defaults)
         manager = InstanceManager(store: store)

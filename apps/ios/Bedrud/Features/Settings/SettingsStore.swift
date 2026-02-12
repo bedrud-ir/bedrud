@@ -40,9 +40,14 @@ final class SettingsStore: ObservableObject {
         didSet { defaults.set(notificationsEnabled, forKey: Keys.notifications) }
     }
 
+    @Published var hasCompletedOnboarding: Bool {
+        didSet { defaults.set(hasCompletedOnboarding, forKey: Keys.onboarding) }
+    }
+
     private enum Keys {
         static let appearance = "bedrud_appearance"
         static let notifications = "bedrud_notifications_enabled"
+        static let onboarding = "bedrud_has_completed_onboarding"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -51,5 +56,6 @@ final class SettingsStore: ObservableObject {
         let rawAppearance = defaults.string(forKey: Keys.appearance) ?? AppAppearance.system.rawValue
         self.appearance = AppAppearance(rawValue: rawAppearance) ?? .system
         self.notificationsEnabled = defaults.object(forKey: Keys.notifications) as? Bool ?? true
+        self.hasCompletedOnboarding = defaults.bool(forKey: Keys.onboarding)
     }
 }

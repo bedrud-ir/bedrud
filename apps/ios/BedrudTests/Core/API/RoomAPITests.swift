@@ -15,7 +15,7 @@ final class RoomAPITests: XCTestCase {
         let id = UUID().uuidString
         session = URLSession.mock()
         client = APIClient(baseURL: "https://test.com/api", session: session)
-        keychain = Keychain(service: "com.bedrud.tests.roomapi.\(id)")
+        keychain = Keychain(service: "org.bedrud.tests.roomapi.\(id)")
 
         let authAPI = AuthAPI(client: client)
         authManager = AuthManager(instanceId: "test", authAPI: authAPI, keychain: keychain)

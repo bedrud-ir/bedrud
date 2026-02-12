@@ -15,7 +15,7 @@ final class InstanceSwitchingIntegrationTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        let suiteName = "com.bedrud.tests.integration.instance.\(UUID().uuidString)"
+        let suiteName = "org.bedrud.tests.integration.instance.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)!
         store = InstanceStore(defaults: defaults)
     }
@@ -120,7 +120,7 @@ final class InstanceSwitchingIntegrationTests: XCTestCase {
     // MARK: - Auth State Isolation Between Instances
 
     func testAuthStateIsolatedBetweenInstances() {
-        let keychain = Keychain(service: "com.bedrud.tests.integration.authiso.\(UUID().uuidString)")
+        let keychain = Keychain(service: "org.bedrud.tests.integration.authiso.\(UUID().uuidString)")
         defer { try? keychain.removeAll() }
 
         let a = Instance(id: "i1", serverURL: "https://a.com", displayName: "A")

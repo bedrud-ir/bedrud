@@ -7,7 +7,7 @@ final class SettingsStoreTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        let suiteName = "com.bedrud.tests.settings.\(UUID().uuidString)"
+        let suiteName = "org.bedrud.tests.settings.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)!
     }
 

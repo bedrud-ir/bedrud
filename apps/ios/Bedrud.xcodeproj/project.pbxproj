@@ -13,6 +13,7 @@
 		0DA7CCA1C3216360ADE5F4E0 /* PasskeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CCE93B4C02339996B64264 /* PasskeyManager.swift */; };
 		1EACFAC0C3CD699360386D3A /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = 19DC913469ED0B94598228EB /* KeychainAccess */; };
 		22D00C5EC4F618B726B3296F /* JoinByURLSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151B1685AB0FFDBC9D9AD93C /* JoinByURLSheet.swift */; };
+		293664A0CBE05DBE8282748B /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686CD4E8B87636710EEE65F1 /* OnboardingView.swift */; };
 		2F0C20FCFE03954BABE1C10D /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 759F54A028619F2A1B50C78D /* MainTabView.swift */; };
 		2F47E14CFAB22E6B6096DDCA /* AuthAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 294DD059C1708CFB35405442 /* AuthAPI.swift */; };
 		3540B67712A8FE53FC791AEC /* ControlBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */; };
@@ -37,6 +38,7 @@
 		89E186C327424B2B315B8725 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 368B52DCC407760034A0BC2B /* Typography.swift */; };
 		91E36BB5D44FDD15414BD1B4 /* BedrudApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB914F4168E2359F730AEE9 /* BedrudApp.swift */; };
 		93EFD3B6450C7CFF054DE63D /* ServerIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422042B98B806A109F0F3411 /* ServerIconView.swift */; };
+		9474091B2C2199C0A2DD9057 /* OnboardingPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AA9B4570F8090FCDEE946FC /* OnboardingPageView.swift */; };
 		9A018D690E3ECFC71466E924 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5DC38BA66A83A8B0393440E /* DashboardView.swift */; };
 		9C802F68F927B3D96EBE19FA /* PasskeyTypesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12FB732DC12EF9FD729C8300 /* PasskeyTypesTests.swift */; };
 		9D2A35400CFC38D5379F072B /* AuthManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00779BA1EF734670B61814A9 /* AuthManagerTests.swift */; };
@@ -98,7 +100,9 @@
 		520C9E6B8C13EADD0A2DFF43 /* InstanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceStore.swift; sourceTree = "<group>"; };
 		5290E738195A622BCEECE8CF /* Instance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Instance.swift; sourceTree = "<group>"; };
 		6401AD5304E923D8392A4F17 /* UserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserTests.swift; sourceTree = "<group>"; };
+		686CD4E8B87636710EEE65F1 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		68FAEA904DCF6A780C534E57 /* MigrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationManager.swift; sourceTree = "<group>"; };
+		6AA9B4570F8090FCDEE946FC /* OnboardingPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPageView.swift; sourceTree = "<group>"; };
 		6CB99C992E1618621B8C4342 /* BedrudURLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrudURLParser.swift; sourceTree = "<group>"; };
 		6D443E4AB708CDA4B91B730F /* SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
 		737FCA2593FDFB10DC8A4CCB /* RoomCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCardView.swift; sourceTree = "<group>"; };
@@ -180,6 +184,15 @@
 				151B1685AB0FFDBC9D9AD93C /* JoinByURLSheet.swift */,
 			);
 			path = JoinByURL;
+			sourceTree = "<group>";
+		};
+		1C32C2729D39E991BD7632E6 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				6AA9B4570F8090FCDEE946FC /* OnboardingPageView.swift */,
+				686CD4E8B87636710EEE65F1 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 		284E2A7679D750B9F11FFE7B /* Models */ = {
@@ -412,6 +425,7 @@
 				19CE301723243A65C97ED364 /* JoinByURL */,
 				E0A8606F3C134CB16D283B76 /* Main */,
 				DC4489C73A8AD76D4FD27EAB /* Meeting */,
+				1C32C2729D39E991BD7632E6 /* Onboarding */,
 				5030537536E98F0565F1AB8E /* Profile */,
 				F2440D8140B885E1584EA15A /* Settings */,
 			);
@@ -584,6 +598,8 @@
 				2F0C20FCFE03954BABE1C10D /* MainTabView.swift in Sources */,
 				7EA06B438FC56EDBDC2CBA21 /* MeetingView.swift in Sources */,
 				4E2B9228AC08F5EAE06194B1 /* MigrationManager.swift in Sources */,
+				9474091B2C2199C0A2DD9057 /* OnboardingPageView.swift in Sources */,
+				293664A0CBE05DBE8282748B /* OnboardingView.swift in Sources */,
 				0DA7CCA1C3216360ADE5F4E0 /* PasskeyManager.swift in Sources */,
 				B46570D732734DFD8A339D64 /* ProfileView.swift in Sources */,
 				D45812B4E3826A072A13BC57 /* RegisterView.swift in Sources */,
@@ -660,7 +676,8 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.bedrud.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = org.bedrud.ios;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = org.bedrud.macos;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -691,7 +708,8 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.bedrud.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = org.bedrud.ios;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = org.bedrud.macos;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -711,7 +729,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.bedrud.ios.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = org.bedrud.ios.tests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -848,7 +866,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.bedrud.ios.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = org.bedrud.ios.tests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
