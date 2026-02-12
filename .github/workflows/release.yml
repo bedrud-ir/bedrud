@@ -306,6 +306,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: "{server-*,android-*,web-*,ios-*}"
 
       - name: Collect release assets
         run: |
