@@ -275,7 +275,7 @@ private fun RoomCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = room.name,
+                    text = room.name.ifEmpty { room.id },
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
