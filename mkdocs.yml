@@ -1,0 +1,79 @@
+site_name: Bedrud Docs
+site_description: Documentation for Bedrud — self-hosted video meeting platform
+site_url: https://niceda.github.io/bedrud/
+repo_url: https://github.com/niceda/bedrud
+repo_name: niceda/bedrud
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - tables
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: getting-started/quickstart.md
+      - Installation: getting-started/installation.md
+      - Configuration: getting-started/configuration.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Server (Go): architecture/server.md
+      - Web Frontend: architecture/web.md
+      - Android App: architecture/android.md
+      - iOS App: architecture/ios.md
+      - Bot Agents: architecture/agents.md
+  - Guides:
+      - Development Workflow: guides/development.md
+      - Makefile Reference: guides/makefile.md
+      - Deployment: guides/deployment.md
+      - Appliance Mode: guides/appliance.md
+      - Docker: guides/docker.md
+  - API Reference:
+      - Authentication: api/authentication.md
+      - Rooms: api/rooms.md
+      - Admin: api/admin.md
+      - Passkeys: api/passkeys.md
+  - Contributing: contributing.md
