@@ -9,7 +9,6 @@ import io.livekit.android.room.Room
 import io.livekit.android.room.RoomException
 import io.livekit.android.room.track.DataPublishReliability
 import io.livekit.android.room.participant.LocalParticipant
-import io.livekit.android.room.participant.RemoteParticipant
 import io.livekit.android.room.track.CameraPosition
 import io.livekit.android.room.track.LocalVideoTrack
 import io.livekit.android.room.track.Track
@@ -130,6 +129,11 @@ class RoomManager(private val application: Application) {
                         is RoomEvent.TrackUnsubscribed -> _participantVersion.value++
                         is RoomEvent.TrackPublished -> _participantVersion.value++
                         is RoomEvent.TrackUnpublished -> _participantVersion.value++
+                        // When a track is muted/unmuted (e.g. camera turned off/on),
+                        // increment participantVersion so UI recomposes and can switch
+                        // between video and avatar.
+                        is RoomEvent.TrackMuted -> _participantVersion.value++
+                        is RoomEvent.TrackUnmuted -> _participantVersion.value++
                         is RoomEvent.Reconnecting -> {
                             _connectionState.value = ConnectionState.RECONNECTING
                         }
@@ -173,7 +177,7 @@ class RoomManager(private val application: Application) {
                     text = json.optString("message", ""),
                     isLocal = false
                 )
-                _chatMessages.value = _chatMessages.value + msg
+                _chatMessages.value += msg
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse data message", e)
