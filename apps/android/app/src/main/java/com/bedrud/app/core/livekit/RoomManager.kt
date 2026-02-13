@@ -268,7 +268,7 @@ class RoomManager(private val application: Application) {
                 topic = "chat"
             )
             val msg = ChatMessage(senderName = name, text = text, isLocal = true)
-            _chatMessages.value = _chatMessages.value + msg
+            _chatMessages.value += msg
         } catch (e: Exception) {
             Log.e(TAG, "Failed to send chat message", e)
             _error.value = "Failed to send message"
