@@ -245,9 +245,12 @@ fun MeetingScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             if (pipParticipant != null) {
-                                val videoTrack = pipParticipant.getTrackPublication(Track.Source.CAMERA)
+                                val cameraPublication = pipParticipant.getTrackPublication(Track.Source.CAMERA)
+                                val videoTrack = cameraPublication
                                     ?.track as? io.livekit.android.room.track.VideoTrack
-                                if (videoTrack != null) {
+                                val isVideoMuted = cameraPublication?.muted == true
+
+                                if (videoTrack != null && !isVideoMuted) {
                                     VideoTrackView(
                                         videoTrack = videoTrack,
                                         modifier = Modifier.fillMaxSize(),
@@ -503,8 +506,10 @@ private fun ParticipantTile(
     scope: kotlinx.coroutines.CoroutineScope? = null,
     room: Room? = null
 ) {
-    val videoTrack = participant.getTrackPublication(Track.Source.CAMERA)
+    val cameraPublication = participant.getTrackPublication(Track.Source.CAMERA)
+    val videoTrack = cameraPublication
         ?.track as? io.livekit.android.room.track.VideoTrack
+    val isVideoMuted = cameraPublication?.muted == true
 
     val identity = participant.identity?.value ?: "Unknown"
     val name = participant.name?.ifBlank { identity } ?: identity
@@ -566,7 +571,7 @@ private fun ParticipantTile(
             ),
         contentAlignment = Alignment.Center
     ) {
-        if (videoTrack != null) {
+        if (videoTrack != null && !isVideoMuted) {
             VideoTrackView(
                 videoTrack = videoTrack,
                 modifier = Modifier.fillMaxSize(),
