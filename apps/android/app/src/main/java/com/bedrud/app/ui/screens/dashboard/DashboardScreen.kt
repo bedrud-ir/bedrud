@@ -259,6 +259,17 @@ private fun RoomCard(
     onJoin: () -> Unit,
     onSettings: (() -> Unit)? = null
 ) {
+    fun formattedRoomTitle(): String {
+        if (room.name.isNotEmpty()) return room.name
+
+        val parts = room.id.split("-")
+        return if (parts.size >= 2) {
+            "${parts[0]}-${parts[1]}"
+        } else {
+            room.id
+        }
+    }
+
     ElevatedCard(
         onClick = onJoin,
         shape = RoundedCornerShape(16.dp),
@@ -275,7 +286,7 @@ private fun RoomCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = room.name.ifEmpty { room.id },
+                    text = formattedRoomTitle(),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
