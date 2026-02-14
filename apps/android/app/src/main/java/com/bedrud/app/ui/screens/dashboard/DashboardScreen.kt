@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,7 +48,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -96,9 +94,7 @@ fun DashboardContent(
         }
     }
 
-    LaunchedEffect(Unit) {
-        loadRooms()
-    }
+    LaunchedEffect(Unit) { loadRooms() }
 
     if (showCreateDialog) {
         CreateRoomDialog(
@@ -106,9 +102,10 @@ fun DashboardContent(
             onCreate = { name ->
                 scope.launch {
                     try {
-                        val response = roomApi.createRoom(
-                            CreateRoomRequest(name = name.ifBlank { null })
-                        )
+                        val response =
+                            roomApi.createRoom(
+                                CreateRoomRequest(name = name.ifBlank { null })
+                            )
                         if (response.isSuccessful) {
                             val room = response.body()!!
                             showCreateDialog = false
@@ -179,16 +176,12 @@ fun DashboardContent(
                     onClick = { showJoinDialog = true },
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                ) {
-                    Icon(Icons.Default.Link, contentDescription = "Join Room")
-                }
+                ) { Icon(Icons.Default.Link, contentDescription = "Join Room") }
                 FloatingActionButton(
                     onClick = { showCreateDialog = true },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Create Room")
-                }
+                ) { Icon(Icons.Default.Add, contentDescription = "Create Room") }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -199,9 +192,7 @@ fun DashboardContent(
                     .fillMaxSize()
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            ) { CircularProgressIndicator() }
         } else if (rooms.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -232,10 +223,11 @@ fun DashboardContent(
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -243,9 +235,10 @@ fun DashboardContent(
                     RoomCard(
                         room = room,
                         onJoin = { onJoinRoom(room.name) },
-                        onSettings = if (room.relationship == "owner") {
-                            { roomToEdit = room }
-                        } else null
+                        onSettings =
+                            if (room.relationship == "owner") {
+                                { roomToEdit = room }
+                            } else null
                     )
                 }
             }
@@ -254,11 +247,7 @@ fun DashboardContent(
 }
 
 @Composable
-private fun RoomCard(
-    room: UserRoomResponse,
-    onJoin: () -> Unit,
-    onSettings: (() -> Unit)? = null
-) {
+private fun RoomCard(room: UserRoomResponse, onJoin: () -> Unit, onSettings: (() -> Unit)? = null) {
     fun formattedRoomTitle(): String {
         if (room.name.isNotEmpty()) return room.name
 
@@ -273,9 +262,10 @@ private fun RoomCard(
     ElevatedCard(
         onClick = onJoin,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        colors =
+            CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
     ) {
         Row(
             modifier = Modifier
@@ -296,8 +286,9 @@ private fun RoomCard(
                     Text(
                         text = if (room.isActive) "Active" else "Inactive",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (room.isActive) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        color =
+                            if (room.isActive) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = room.mode,
@@ -322,18 +313,13 @@ private fun RoomCard(
                 }
             }
 
-            FilledTonalButton(onClick = onJoin) {
-                Text("Join")
-            }
+            FilledTonalButton(onClick = onJoin) { Text("Join") }
         }
     }
 }
 
 @Composable
-private fun CreateRoomDialog(
-    onDismiss: () -> Unit,
-    onCreate: (String) -> Unit
-) {
+private fun CreateRoomDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
     var roomName by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -356,24 +342,13 @@ private fun CreateRoomDialog(
                 )
             }
         },
-        confirmButton = {
-            TextButton(onClick = { onCreate(roomName) }) {
-                Text("Create")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
+        confirmButton = { TextButton(onClick = { onCreate(roomName) }) { Text("Create") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
 @Composable
-private fun JoinRoomDialog(
-    onDismiss: () -> Unit,
-    onJoin: (String) -> Unit
-) {
+private fun JoinRoomDialog(onDismiss: () -> Unit, onJoin: (String) -> Unit) {
     var roomName by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -399,23 +374,18 @@ private fun JoinRoomDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val name = roomName.trim()
-                        .removePrefix("https://bedrud.com/m/")
-                        .removePrefix("http://bedrud.com/m/")
-                        .trim('/')
+                    val name =
+                        roomName.trim()
+                            .removePrefix("https://bedrud.com/m/")
+                            .removePrefix("http://bedrud.com/m/")
+                            .trim('/')
                     if (name.isNotBlank()) {
                         onJoin(name)
                     }
                 },
                 enabled = roomName.isNotBlank()
-            ) {
-                Text("Join")
-            }
+            ) { Text("Join") }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
