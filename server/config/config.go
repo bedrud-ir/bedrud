@@ -207,6 +207,12 @@ func Get() *Config {
 	return config
 }
 
+// SetForTest sets the global config for testing purposes only.
+// This bypasses the sync.Once in Load and should only be used in tests.
+func SetForTest(cfg *Config) {
+	config = cfg
+}
+
 // GetDSN returns the PostgreSQL connection string
 func (c *DatabaseConfig) GetDSN() string {
 	return "postgresql://" + c.User + ":" + c.Password + "@" + c.Host + ":" + c.Port + "/" + c.DBName + "?sslmode=" + c.SSLMode

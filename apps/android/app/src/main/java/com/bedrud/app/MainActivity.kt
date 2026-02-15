@@ -52,16 +52,6 @@ class MainActivity : ComponentActivity() {
         // Parse deep link from initial intent
         handleDeepLink(intent)
 
-        // Set up auto-enter PiP on API 31+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            setPictureInPictureParams(
-                PictureInPictureParams.Builder()
-                    .setAspectRatio(Rational(16, 9))
-                    .setAutoEnterEnabled(true)
-                    .build()
-            )
-        }
-
         setContent {
             val appearance by settingsStore.appearance.collectAsState()
             val darkTheme = when (appearance) {
