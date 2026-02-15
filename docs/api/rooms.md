@@ -33,24 +33,54 @@ POST /api/room/create
 {
   "name": "team-standup",
   "isPublic": true,
-  "chatEnabled": true,
-  "videoEnabled": true
+  "mode": "standard",
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  }
 }
 ```
+
+> **Note:** The `name` field is **optional**. If omitted or empty, the server will
+> auto-generate a random URL-safe name in the format `xxx-xxxx-xxx` (e.g. `bkf-qmzl-rja`).
+
+**Room Name Rules:**
+
+Room names appear in the URL as `https://bedrud.xyz/m/NAME`, so they must be URL-safe:
+
+| Rule | Description |
+|------|-------------|
+| **Allowed characters** | Lowercase letters (`a-z`), digits (`0-9`), and hyphens (`-`) |
+| **Minimum length** | 3 characters |
+| **Maximum length** | 63 characters |
+| **No special characters** | `#`, `@`, `_`, `.`, `/`, `\`, `<`, `>`, `&`, `%`, `+`, `=`, `;`, `:`, `'`, `"`, `?`, `!`, spaces, etc. are **not allowed** |
+| **No leading/trailing hyphens** | `-room` and `room-` are invalid |
+| **No consecutive hyphens** | `room--name` is invalid |
+| **Lowercase only** | Uppercase letters are rejected; input is auto-lowercased |
+| **Unique** | Each room name must be unique |
 
 **Response (200):**
 
 ```json
 {
-  "room": {
-    "id": "uuid",
-    "name": "team-standup",
-    "adminId": "user-uuid",
-    "isPublic": true,
-    "chatEnabled": true,
-    "videoEnabled": true,
-    "participants": []
-  }
+  "id": "uuid",
+  "name": "team-standup",
+  "createdBy": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 0,
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
 }
 ```
 
@@ -58,10 +88,15 @@ POST /api/room/create
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | Yes | Unique room name |
+| `name` | string | No | URL-safe room name (auto-generated if omitted) |
 | `isPublic` | boolean | No | Whether the room appears in public listings |
-| `chatEnabled` | boolean | No | Whether text chat is enabled |
-| `videoEnabled` | boolean | No | Whether video is enabled |
+| `mode` | string | No | `"standard"` (video) or `"clubhouse"` (audio-only) |
+| `maxParticipants` | number | No | Maximum number of participants |
+| `settings.allowChat` | boolean | No | Whether text chat is enabled |
+| `settings.allowVideo` | boolean | No | Whether video is enabled |
+| `settings.allowAudio` | boolean | No | Whether audio is enabled |
+| `settings.requireApproval` | boolean | No | Whether participants need admin approval |
+| `settings.e2ee` | boolean | No | Whether end-to-end encryption is enabled |
 
 ---
 
@@ -87,12 +122,18 @@ POST /api/room/join
 
 ```json
 {
+  "id": "uuid",
+  "name": "team-standup",
   "token": "eyJ...",
-  "room": {
-    "id": "uuid",
-    "name": "team-standup",
-    "adminId": "user-uuid"
-  }
+  "createdBy": "user-uuid",
+  "adminId": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 20,
+  "expiresAt": "2026-02-16T12:00:00Z",
+  "settings": { ... },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
 }
 ```
 
@@ -109,7 +150,7 @@ await room.connect(livekitUrl, token);
 
 ### List Rooms
 
-Get a list of rooms the user can join.
+Get a list of rooms the user has created.
 
 ```
 GET /api/room/list
@@ -120,17 +161,19 @@ GET /api/room/list
 **Response (200):**
 
 ```json
-{
-  "rooms": [
-    {
-      "id": "uuid",
-      "name": "team-standup",
-      "adminId": "user-uuid",
-      "isPublic": true,
-      "participantCount": 3
-    }
-  ]
-}
+[
+  {
+    "id": "uuid",
+    "name": "team-standup",
+    "createdBy": "user-uuid",
+    "isActive": true,
+    "maxParticipants": 20,
+    "expiresAt": "2026-02-16T12:00:00Z",
+    "settings": { ... },
+    "mode": "standard",
+    "relationship": "creator"
+  }
+]
 ```
 
 ---
@@ -149,7 +192,7 @@ POST /api/room/:roomId/kick/:identity
 
 ```json
 {
-  "message": "participant kicked"
+  "status": "success"
 }
 ```
 
@@ -169,7 +212,7 @@ POST /api/room/:roomId/mute/:identity
 
 ```json
 {
-  "message": "participant muted"
+  "status": "success"
 }
 ```
 
@@ -189,7 +232,7 @@ POST /api/room/:roomId/video/:identity/off
 
 ```json
 {
-  "message": "participant video disabled"
+  "status": "success"
 }
 ```
 
@@ -212,16 +255,33 @@ Room admin actions (kick, mute, video off) are only available to the user who cr
 
 ## Error Responses
 
+All errors follow a consistent format:
+
 ```json
 {
-  "error": "room not found"
+  "error": "human-readable error message"
 }
 ```
 
+### Create Room Errors
+
+| Status | Error Message | Description |
+|--------|---------------|-------------|
+| 400 | `"Invalid request body"` | Malformed JSON |
+| 400 | `"room name must contain only lowercase letters, numbers, and hyphens"` | Name contains special characters (`#`, `@`, `_`, etc.) |
+| 400 | `"room name must be at least 3 characters"` | Name too short |
+| 400 | `"room name must be at most 63 characters"` | Name too long |
+| 409 | `"a room with this name already exists"` | Duplicate name |
+| 500 | `"Failed to create media room"` | LiveKit server error |
+| 500 | `"Failed to create room"` | Database error |
+
+### General Errors
+
 | Status | Meaning |
 |--------|---------|
-| 400 | Bad request (missing room name, invalid data) |
+| 400 | Bad request (missing/invalid data) |
 | 401 | Not authenticated |
 | 403 | Not authorized (non-admin trying admin action) |
 | 404 | Room not found |
+| 409 | Conflict (duplicate resource) |
 | 500 | Internal server error |

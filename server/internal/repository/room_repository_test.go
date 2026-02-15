@@ -3,6 +3,8 @@ package repository
 import (
 	"bedrud/internal/models"
 	"bedrud/internal/testutil"
+	"errors"
+	"strings"
 	"testing"
 )
 
@@ -431,7 +433,7 @@ func TestRoomRepository_GetRoomParticipantsWithUsers(t *testing.T) {
 	}
 }
 
-// ====== BUG DETECTION: Duplicate room name ======
+// ====== Duplicate room name returns ErrRoomNameTaken ======
 
 func TestRoomRepository_CreateRoom_DuplicateName(t *testing.T) {
 	db := testutil.SetupTestDB(t)
@@ -446,29 +448,88 @@ func TestRoomRepository_CreateRoom_DuplicateName(t *testing.T) {
 
 	_, err = repo.CreateRoom("user-1", "dup-room", false, "standard", models.RoomSettings{})
 	if err == nil {
-		t.Fatal("BUG: expected error when creating room with duplicate name (uniqueIndex on name)")
+		t.Fatal("expected error when creating room with duplicate name")
+	}
+	if !errors.Is(err, models.ErrRoomNameTaken) {
+		t.Fatalf("expected ErrRoomNameTaken, got: %v", err)
 	}
 }
 
-// ====== BUG DETECTION: Empty room name ======
+// ====== Empty room name auto-generates ======
 
-func TestRoomRepository_CreateRoom_EmptyName(t *testing.T) {
+func TestRoomRepository_CreateRoom_EmptyNameAutoGenerates(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
 	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	// Empty name should ideally be rejected, but the current code doesn't validate.
-	// This test documents the current behavior.
 	room, err := repo.CreateRoom("user-1", "", false, "standard", models.RoomSettings{})
 	if err != nil {
-		t.Logf("CreateRoom with empty name returned error (good): %v", err)
-		return
+		t.Fatalf("CreateRoom with empty name should auto-generate, got error: %v", err)
 	}
-	// If it succeeds, document this as a potential bug
-	t.Logf("WARNING: CreateRoom accepted empty name, room ID: %s", room.ID)
-	if room.Name != "" {
-		t.Fatalf("expected empty name, got '%s'", room.Name)
+	if room.Name == "" {
+		t.Fatal("expected auto-generated name, got empty string")
+	}
+	// Verify generated name is valid
+	if err := models.ValidateRoomName(room.Name); err != nil {
+		t.Fatalf("auto-generated name '%s' failed validation: %v", room.Name, err)
+	}
+	t.Logf("Auto-generated room name: %s", room.Name)
+}
+
+// ====== Name validation rejects special characters ======
+
+func TestRoomRepository_CreateRoom_SpecialCharsRejected(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	repo := NewRoomRepository(db)
+
+	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+
+	invalidNames := []string{
+		"room#1",
+		"room@name",
+		"room name",
+		"room/path",
+		"room.dot",
+		"room_under",
+	}
+	for _, name := range invalidNames {
+		_, err := repo.CreateRoom("user-1", name, false, "standard", models.RoomSettings{})
+		if err == nil {
+			t.Fatalf("expected error for invalid name '%s'", name)
+		}
+	}
+}
+
+// ====== Name is lowercased and trimmed ======
+
+func TestRoomRepository_CreateRoom_NameNormalized(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	repo := NewRoomRepository(db)
+
+	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+
+	room, err := repo.CreateRoom("user-1", "  My-Room  ", false, "standard", models.RoomSettings{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if room.Name != "my-room" {
+		t.Fatalf("expected normalized name 'my-room', got '%s'", room.Name)
+	}
+}
+
+// ====== Name too long is rejected ======
+
+func TestRoomRepository_CreateRoom_NameTooLong(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	repo := NewRoomRepository(db)
+
+	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+
+	longName := strings.Repeat("a", 64)
+	_, err := repo.CreateRoom("user-1", longName, false, "standard", models.RoomSettings{})
+	if !errors.Is(err, models.ErrRoomNameTooLong) {
+		t.Fatalf("expected ErrRoomNameTooLong, got: %v", err)
 	}
 }
 
