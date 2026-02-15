@@ -3,6 +3,7 @@ package repository
 import (
 	"bedrud/internal/models"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,11 +18,39 @@ func NewRoomRepository(db *gorm.DB) *RoomRepository {
 	return &RoomRepository{db: db}
 }
 
-// CreateRoom creates a new room with default admin permissions for creator
+// CreateRoom creates a new room with default admin permissions for creator.
+// If name is empty, a random URL-safe name is generated.
+// The name is validated to contain only lowercase letters, numbers, and hyphens.
 func (r *RoomRepository) CreateRoom(createdBy string, name string, isPublic bool, mode string, settings models.RoomSettings) (*models.Room, error) {
+	// Normalize the name: trim whitespace and lowercase
+	name = strings.TrimSpace(strings.ToLower(name))
+
+	// Auto-generate name if not provided
+	if name == "" {
+		generated, err := models.GenerateRandomRoomName()
+		if err != nil {
+			return nil, errors.New("failed to generate room name")
+		}
+		name = generated
+	}
+
+	// Validate the room name
+	if err := models.ValidateRoomName(name); err != nil {
+		return nil, err
+	}
+
+	// Check for duplicate name before creating
+	existing, err := r.GetRoomByName(name)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, models.ErrRoomNameTaken
+	}
+
 	var room *models.Room
 
-	err := r.db.Transaction(func(tx *gorm.DB) error {
+	err = r.db.Transaction(func(tx *gorm.DB) error {
 		// Create room first
 		newRoom := &models.Room{
 			ID:        uuid.New().String(),

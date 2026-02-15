@@ -1,6 +1,79 @@
 package models
 
-import "time"
+import (
+	"crypto/rand"
+	"errors"
+	"fmt"
+	"math/big"
+	"regexp"
+	"time"
+)
+
+// Room name constraints
+const (
+	RoomNameMinLength = 3
+	RoomNameMaxLength = 63
+)
+
+// Sentinel errors for room operations
+var (
+	ErrRoomNameInvalid  = errors.New("room name must contain only lowercase letters, numbers, and hyphens")
+	ErrRoomNameTooShort = fmt.Errorf("room name must be at least %d characters", RoomNameMinLength)
+	ErrRoomNameTooLong  = fmt.Errorf("room name must be at most %d characters", RoomNameMaxLength)
+	ErrRoomNameTaken    = errors.New("a room with this name already exists")
+)
+
+// validRoomNameRegex allows only lowercase alphanumeric and hyphens,
+// no leading/trailing hyphens, no consecutive hyphens.
+var validRoomNameRegex = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// ValidateRoomName checks that a room name is safe for use in URLs.
+// Allowed: lowercase letters (a-z), digits (0-9), and hyphens (-).
+// No leading/trailing hyphens, no consecutive hyphens, no special characters.
+func ValidateRoomName(name string) error {
+	if len(name) < RoomNameMinLength {
+		return ErrRoomNameTooShort
+	}
+	if len(name) > RoomNameMaxLength {
+		return ErrRoomNameTooLong
+	}
+	if !validRoomNameRegex.MatchString(name) {
+		return ErrRoomNameInvalid
+	}
+	return nil
+}
+
+// GenerateRandomRoomName creates a URL-safe random room name in the format "xxx-xxxx-xxx"
+// using cryptographically secure random values.
+func GenerateRandomRoomName() (string, error) {
+	const chars = "abcdefghijklmnopqrstuvwxyz"
+	part := func(length int) (string, error) {
+		result := make([]byte, length)
+		for i := range result {
+			idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
+			if err != nil {
+				return "", err
+			}
+			result[i] = chars[idx.Int64()]
+		}
+		return string(result), nil
+	}
+
+	p1, err := part(3)
+	if err != nil {
+		return "", err
+	}
+	p2, err := part(4)
+	if err != nil {
+		return "", err
+	}
+	p3, err := part(3)
+	if err != nil {
+		return "", err
+	}
+
+	return p1 + "-" + p2 + "-" + p3, nil
+}
 
 type Room struct {
 	ID              string       `json:"id" gorm:"primaryKey;type:varchar(36)"`

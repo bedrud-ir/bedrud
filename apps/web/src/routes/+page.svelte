@@ -101,13 +101,14 @@
     }
 
     async function createMeeting(mode: string = "standard") {
-        if (!newMeetingName.trim() || creatingMeeting) return;
+        if (creatingMeeting) return;
 
         creatingMeeting = true;
         creatingMode = mode;
+        error = null;
         try {
             await createRoomAPI({
-                name: newMeetingName,
+                name: newMeetingName.trim() || undefined,
                 mode,
                 settings: {
                     allowChat: true,
@@ -121,11 +122,9 @@
             await fetchRooms();
             debugStore.log(`Meeting created: ${mode}`, "info", "Home");
         } catch (e: any) {
-            debugStore.log(
-                `Failed to create meeting: ${e.message}`,
-                "error",
-                "Home",
-            );
+            const msg = e?.message || "Failed to create meeting";
+            error = msg;
+            debugStore.log(`Failed to create meeting: ${msg}`, "error", "Home");
         } finally {
             creatingMeeting = false;
             creatingMode = null;
@@ -144,11 +143,13 @@
 
     function generateRandomName() {
         const chars = "abcdefghijklmnopqrstuvwxyz";
+        const randomChar = () => {
+            const array = new Uint8Array(1);
+            crypto.getRandomValues(array);
+            return chars[array[0] % chars.length];
+        };
         const part = (len: number) =>
-            Array.from(
-                { length: len },
-                () => chars[Math.floor(Math.random() * chars.length)],
-            ).join("");
+            Array.from({ length: len }, randomChar).join("");
         newMeetingName = `${part(3)}-${part(4)}-${part(3)}`;
     }
 </script>
@@ -291,8 +292,7 @@
                                             size="sm"
                                             onclick={() =>
                                                 createMeeting("standard")}
-                                            disabled={creatingMeeting ||
-                                                !newMeetingName.trim()}
+                                            disabled={creatingMeeting}
                                             class="h-9 px-4 rounded-md text-[11px] font-bold uppercase tracking-tight gap-2"
                                         >
                                             {#if creatingMeeting && creatingMode === "standard"}
@@ -309,8 +309,7 @@
                                             size="sm"
                                             onclick={() =>
                                                 createMeeting("clubhouse")}
-                                            disabled={creatingMeeting ||
-                                                !newMeetingName.trim()}
+                                            disabled={creatingMeeting}
                                             class="h-9 px-4 rounded-md text-[11px] font-bold uppercase tracking-tight gap-2"
                                         >
                                             {#if creatingMeeting && creatingMode === "clubhouse"}
@@ -327,6 +326,15 @@
                             </div>
                         </Card.Content>
                     </Card.Root>
+
+                    {#if error}
+                        <div
+                            class="mt-3 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium"
+                            in:fade={{ duration: 200 }}
+                        >
+                            {error}
+                        </div>
+                    {/if}
                 </section>
 
                 <!-- INVENTORY / MEETINGS -->
