@@ -40,6 +40,10 @@ help:
 	@echo ""
 	@echo "Test:"
 	@echo "  test-back            Run backend tests"
+	@echo ""
+	@echo "Documentation:"
+	@echo "  doc                  Build MkDocs documentation"
+	@echo "  doc-serve            Serve MkDocs documentation locally"
 
 # Initialize all dependencies
 init:
@@ -144,9 +148,16 @@ build-ios-sim:
 		-configuration Debug \
 		-destination "platform=iOS Simulator,name=iPhone 17 Pro"
 
+# Documentation:
+doc:
+	cd tools/cli && uv run python bedrud.py doc build
+
+doc-serve:
+	cd tools/cli && uv run python bedrud.py doc serve
+
 # Deploy using CLI tool
 deploy:
-	cd tools/cli && python bedrud.py $(ARGS)
+	cd tools/cli && uv run python bedrud.py deploy $(ARGS)
 
 # Run backend tests
 test-back:

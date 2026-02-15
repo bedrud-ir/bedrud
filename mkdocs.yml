@@ -76,4 +76,13 @@ nav:
       - Rooms: api/rooms.md
       - Admin: api/admin.md
       - Passkeys: api/passkeys.md
+  - Backend:
+      - Overview: backend/index.md
+      - Code Structure: backend/structure.md
+      - Database & Models: backend/database.md
+      - API & Handlers: backend/api-handlers.md
+      - Authentication: backend/authentication.md
+      - LiveKit Integration: backend/livekit.md
+      - Deployment Logic: backend/deployment.md
+      - Advanced Architecture: backend/advanced.md
   - Contributing: contributing.md
