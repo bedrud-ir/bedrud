@@ -1,4 +1,4 @@
-.PHONY: help init dev dev-web dev-server dev-livekit dev-ios dev-android build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim deploy
+.PHONY: help init dev dev-web dev-server dev-livekit dev-ios dev-android build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim deploy test-back
 
 # Show available targets
 help:
@@ -29,6 +29,9 @@ help:
 	@echo "  build-ios            Build iOS archive (Release)"
 	@echo "  export-ios           Export IPA from archive"
 	@echo "  build-ios-sim        Build for iOS Simulator (Debug)"
+	@echo ""
+	@echo "Test:"
+	@echo "  test-back            Run backend tests"
 	@echo ""
 	@echo "Deploy:"
 	@echo "  deploy ARGS=...      Run deploy CLI tool"
@@ -139,3 +142,7 @@ build-ios-sim:
 # Deploy using CLI tool
 deploy:
 	cd tools/cli && python bedrud.py $(ARGS)
+
+# Run backend tests
+test-back:
+	cd server && go test -v -count=1 ./...
