@@ -1,0 +1,24 @@
+name: Performance Issue
+description: Performance improvement task
+title: "[PERF]: "
+labels:
+  - performance
+
+body:
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Current Metrics
+
+  - type: textarea
+    id: target
+    attributes:
+      label: Target Metrics

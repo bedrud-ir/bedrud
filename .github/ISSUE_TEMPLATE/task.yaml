@@ -1,0 +1,53 @@
+name: Task
+description: General engineering task
+title: "[TASK]: "
+labels:
+  - task
+
+body:
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What needs to be done
+      placeholder: Implement authentication middleware
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Background / Context
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+
+  - type: textarea
+    id: technical
+    attributes:
+      label: Technical Requirements
+
+  - type: checkboxes
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      options:
+        - label: Implementation completed
+        - label: Tests added
+        - label: Documentation updated
+        - label: Code reviewed
+
+  - type: input
+    id: priority
+    attributes:
+      label: Priority
+      placeholder: High / Medium / Low
+
+  - type: input
+    id: estimate
+    attributes:
+      label: Estimate
+      placeholder: 2h / 1d / 3 story points
