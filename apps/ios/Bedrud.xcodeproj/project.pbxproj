@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -86,7 +86,7 @@
 		12FB732DC12EF9FD729C8300 /* PasskeyTypesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyTypesTests.swift; sourceTree = "<group>"; };
 		151B1685AB0FFDBC9D9AD93C /* JoinByURLSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinByURLSheet.swift; sourceTree = "<group>"; };
 		168AAA8F06ECD0BADAB21943 /* AuthFlowIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFlowIntegrationTests.swift; sourceTree = "<group>"; };
-		239A6FD6D471F9DE50554636 /* Bedrud.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Bedrud.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		239A6FD6D471F9DE50554636 /* Bedrud.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bedrud.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		252B460A7E099456B30AFB5F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		294DD059C1708CFB35405442 /* AuthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAPI.swift; sourceTree = "<group>"; };
 		32B3F8119935AF0B9C4F3FEE /* InstanceStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceStoreTests.swift; sourceTree = "<group>"; };
@@ -568,7 +568,6 @@
 				20EF951375AA5DBDEB94E036 /* XCRemoteSwiftPackageReference "KeychainAccess" */,
 				3A1930D541681DDB35BB37BB /* XCRemoteSwiftPackageReference "client-sdk-swift" */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -674,11 +673,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 64P2KSLV35;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Bedrud;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Bedrud needs camera access for video calls";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Bedrud needs microphone access for audio in calls";
@@ -706,11 +708,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Bedrud;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Bedrud needs camera access for video calls";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Bedrud needs microphone access for audio in calls";
