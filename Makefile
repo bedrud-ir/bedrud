@@ -1,4 +1,4 @@
-.PHONY: help init dev dev-web dev-server dev-livekit dev-ios dev-android build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim deploy test-back
+.PHONY: help init dev dev-web dev-server dev-livekit dev-ios dev-android build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim deploy test-back push-dev push-prod run-front-dev local-build local-run
 
 # Show available targets
 help:
@@ -19,6 +19,14 @@ help:
 	@echo "  build-back           Build backend only"
 	@echo "  build-dist           Build production linux/amd64 tarball"
 	@echo ""
+	@echo "Local (Single Binary):"
+	@echo "  local-build          Build frontend+backend into one binary"
+	@echo "  local-run            Build + run locally (SQLite, embedded LiveKit)"
+	@echo ""
+	@echo "Push/Deploy:"
+	@echo "  push-dev             Build backend → deploy to BEDRUD-DEV (b.a16.at)"
+	@echo "  push-prod            Build frontend+backend → deploy to BEDRUD-PROD (bedrud.xyz)"
+	@echo ""
 	@echo "Android:"
 	@echo "  build-android-debug  Build debug APK"
 	@echo "  build-android        Build release APK"
@@ -32,9 +40,6 @@ help:
 	@echo ""
 	@echo "Test:"
 	@echo "  test-back            Run backend tests"
-	@echo ""
-	@echo "Deploy:"
-	@echo "  deploy ARGS=...      Run deploy CLI tool"
 
 # Initialize all dependencies
 init:
@@ -80,7 +85,7 @@ build-back:
 
 # Build both frontend and backend
 build: build-front
-	rm -rf server/frontend
+	find server/frontend -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
 	mkdir -p server/frontend
 	cp -r apps/web/build/* server/frontend/
 	$(MAKE) build-back
@@ -146,3 +151,34 @@ deploy:
 # Run backend tests
 test-back:
 	cd server && go test -v -count=1 ./...
+
+# Run frontend dev proxy
+run-front-dev:
+	@python3 $(CURDIR)/deploy/dev/dev_server.py
+
+# ---- Push targets ------------------------------------------------------------
+
+# Push backend-only to dev server (b.a16.at)
+push-dev:
+	@bash $(CURDIR)/deploy/push.sh dev
+
+# Push frontend+backend to prod server (bedrud.xyz)
+push-prod:
+	@bash $(CURDIR)/deploy/push.sh prod
+
+# ---- Local single-binary targets ---------------------------------------------
+
+# Build a single binary with frontend embedded
+local-build: build-front
+	find server/frontend -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
+	mkdir -p server/frontend
+	cp -r apps/web/build/* server/frontend/
+	cd server && go build -o dist/bedrud ./cmd/bedrud/main.go
+	@echo "\n✅ Single binary ready: server/dist/bedrud"
+	@echo "   Run with: CONFIG_PATH=server/config.local.yaml server/dist/bedrud run"
+
+# Build and run the single binary locally (SQLite + embedded LiveKit)
+local-run: local-build
+	@echo "\n🚀 Starting Bedrud (single binary, SQLite, embedded LiveKit)..."
+	@echo "   Open http://localhost:8090\n"
+	CONFIG_PATH=$(CURDIR)/server/config.local.yaml $(CURDIR)/server/dist/bedrud run

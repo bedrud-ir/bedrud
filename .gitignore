@@ -31,3 +31,5 @@ access.log
 .mypy_cache
 **/xcuserdata/
 .spm-cache/
+
+deploy

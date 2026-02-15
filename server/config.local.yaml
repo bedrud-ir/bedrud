@@ -1,0 +1,43 @@
+server:
+  port: "8090"
+  host: "0.0.0.0"
+  readTimeout: 30
+  writeTimeout: 30
+
+database:
+  type: "sqlite"
+  path: "./bedrud-local.db"
+
+logger:
+  level: "debug"
+  outputPath: "" # Log to stdout
+
+livekit:
+  host: "http://localhost:8090/livekit"
+  internalHost: "http://127.0.0.1:7880"
+  apiKey: "devkey"
+  apiSecret: "devsecret"
+
+auth:
+  jwtSecret: "local-dev-secret-key-change-me"
+  sessionSecret: "local-dev-session-secret"
+  tokenDuration: 24
+  frontendURL: "http://localhost:8090"
+  google:
+    clientId: ""
+    clientSecret: ""
+    redirectUrl: "http://localhost:8090/api/auth/google/callback"
+  github:
+    clientId: ""
+    clientSecret: ""
+    redirectUrl: "http://localhost:8090/api/auth/github/callback"
+  twitter:
+    clientId: ""
+    clientSecret: ""
+    redirectUrl: "http://localhost:8090/api/auth/twitter/callback"
+
+cors:
+  allowedOrigins: "http://localhost:8090,http://localhost:5173"
+  allowedHeaders: "Origin, Content-Type, Accept, Authorization"
+  allowedMethods: "GET, POST, PUT, DELETE, OPTIONS"
+  allowCredentials: true
