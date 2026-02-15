@@ -32,3 +32,4 @@ dist/
 data/
 !frontend
 frontend/*
+!frontend/.gitkeep
