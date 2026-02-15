@@ -1,0 +1,29 @@
+name: Epic
+description: Large initiative containing multiple tasks
+title: "[EPIC]: "
+labels:
+  - epic
+
+body:
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Child Tasks
+
+  - type: textarea
+    id: success
+    attributes:
+      label: Success Criteria

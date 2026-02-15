@@ -1,0 +1,39 @@
+name: Feature Request
+description: Request a new feature
+title: "[FEATURE]: "
+labels:
+  - feature
+
+body:
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low

@@ -1,0 +1,25 @@
+name: Spike / Research
+description: Investigation or research task
+title: "[SPIKE]: "
+labels:
+  - spike
+  - research
+
+body:
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Research Question
+    validations:
+      required: true
+
+  - type: textarea
+    id: goals
+    attributes:
+      label: Goals
+
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Expected Deliverables

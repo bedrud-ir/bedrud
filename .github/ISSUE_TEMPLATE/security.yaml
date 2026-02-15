@@ -1,0 +1,29 @@
+name: Security Issue
+description: Security improvement or vulnerability
+title: "[SECURITY]: "
+labels:
+  - security
+
+body:
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low
+
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Mitigation Plan
