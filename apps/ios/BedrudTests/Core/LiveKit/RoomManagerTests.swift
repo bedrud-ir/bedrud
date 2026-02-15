@@ -223,4 +223,123 @@ final class RoomManagerTests: XCTestCase {
         XCTAssertTrue(manager.participants.isEmpty)
         XCTAssertNil(manager.localParticipant)
     }
+
+    // MARK: - State Toggle Tests
+
+    func testToggleMicrophoneUpdatesState() {
+        let manager = RoomManager()
+        XCTAssertFalse(manager.isMicrophoneEnabled)
+
+        manager.isMicrophoneEnabled = true
+        XCTAssertTrue(manager.isMicrophoneEnabled)
+
+        manager.isMicrophoneEnabled = false
+        XCTAssertFalse(manager.isMicrophoneEnabled)
+    }
+
+    func testToggleCameraUpdatesState() {
+        let manager = RoomManager()
+        XCTAssertFalse(manager.isCameraEnabled)
+
+        manager.isCameraEnabled = true
+        XCTAssertTrue(manager.isCameraEnabled)
+
+        manager.isCameraEnabled = false
+        XCTAssertFalse(manager.isCameraEnabled)
+    }
+
+    func testToggleScreenShareUpdatesState() {
+        let manager = RoomManager()
+        XCTAssertFalse(manager.isScreenShareEnabled)
+
+        manager.isScreenShareEnabled = true
+        XCTAssertTrue(manager.isScreenShareEnabled)
+
+        manager.isScreenShareEnabled = false
+        XCTAssertFalse(manager.isScreenShareEnabled)
+    }
+
+    // MARK: - Chat Message Tests (Direct append, not sendChatMessage which requires room)
+
+    func testAppendLocalMessage() {
+        let manager = RoomManager()
+
+        manager.appendChatMessage(ChatMessage(senderName: "You", text: "Hello world", isLocal: true))
+
+        XCTAssertEqual(manager.chatMessages.count, 1)
+        XCTAssertEqual(manager.chatMessages[0].text, "Hello world")
+        XCTAssertTrue(manager.chatMessages[0].isLocal)
+    }
+
+    func testChatMessagesAreAppendedInOrder() {
+        let manager = RoomManager()
+
+        manager.appendChatMessage(ChatMessage(senderName: "You", text: "First", isLocal: true))
+        manager.appendChatMessage(ChatMessage(senderName: "You", text: "Second", isLocal: true))
+        manager.appendChatMessage(ChatMessage(senderName: "You", text: "Third", isLocal: true))
+        manager.appendChatMessage(ChatMessage(senderName: "Alice", text: "Remote", isLocal: false))
+
+        XCTAssertEqual(manager.chatMessages.count, 4)
+        XCTAssertEqual(manager.chatMessages[0].text, "First")
+        XCTAssertEqual(manager.chatMessages[1].text, "Second")
+        XCTAssertEqual(manager.chatMessages[2].text, "Third")
+        XCTAssertEqual(manager.chatMessages[3].text, "Remote")
+    }
+
+    func testAppendMessageWithEmptyText() {
+        let manager = RoomManager()
+        let initialCount = manager.chatMessages.count
+
+        // Empty messages are still valid and get appended
+        manager.appendChatMessage(ChatMessage(senderName: "You", text: "", isLocal: true))
+
+        XCTAssertEqual(manager.chatMessages.count, initialCount + 1)
+        XCTAssertEqual(manager.chatMessages.last?.text, "")
+    }
+
+    // MARK: - ConnectionState Read Tests (connectionState setter is private)
+
+    func testConnectionStateDefaultsToDisconnected() {
+        let manager = RoomManager()
+        XCTAssertEqual(manager.connectionState, .disconnected)
+    }
+
+    func testConnectionStateAfterDisconnectIsDisconnected() async {
+        let manager = RoomManager()
+
+        // Set some state
+        manager.isMicrophoneEnabled = true
+
+        // After disconnect, connection state should be disconnected
+        await manager.disconnect()
+
+        XCTAssertEqual(manager.connectionState, .disconnected)
+    }
+
+    // MARK: - Error State Read Tests (error setter is private)
+
+    func testErrorIsNilAfterDisconnect() async {
+        let manager = RoomManager()
+        await manager.disconnect()
+
+        XCTAssertNil(manager.error)
+    }
+
+    // MARK: - Multiple Toggles
+
+    func testMultipleToggleOperations() {
+        let manager = RoomManager()
+
+        // Rapid toggles
+        manager.isMicrophoneEnabled = true
+        manager.isCameraEnabled = true
+        manager.isMicrophoneEnabled = false
+        manager.isScreenShareEnabled = true
+        manager.isCameraEnabled = false
+        manager.isScreenShareEnabled = false
+
+        XCTAssertFalse(manager.isMicrophoneEnabled)
+        XCTAssertFalse(manager.isCameraEnabled)
+        XCTAssertFalse(manager.isScreenShareEnabled)
+    }
 }

@@ -104,21 +104,51 @@ jobs:
             -scheme Bedrud \
             -clonedSourcePackagesDirPath .spm-cache
 
-      - name: Build for testing
+      - name: Build for testing with coverage
         run: |
           xcodebuild build-for-testing \
             -project Bedrud.xcodeproj \
             -scheme Bedrud \
-            -destination "platform=iOS Simulator,name=iPhone 16 Pro" \
+            -destination "platform=iOS Simulator,name=iPhone 17 Pro" \
             -clonedSourcePackagesDirPath .spm-cache \
+            -enableCodeCoverage YES \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO
 
-      - name: Run tests
+      - name: Run tests with coverage
         run: |
           xcodebuild test-without-building \
             -project Bedrud.xcodeproj \
             -scheme Bedrud \
-            -destination "platform=iOS Simulator,name=iPhone 16 Pro" \
+            -destination "platform=iOS Simulator,name=iPhone 17 Pro" \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults.xcresult \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO
+
+      - name: Generate coverage report
+        run: |
+          xcrun xccov view --report TestResults.xcresult | tee coverage-report.txt
+
+      - name: Calculate coverage percentage
+        id: coverage
+        run: |
+          # Extract line coverage from xccov report
+          COVERAGE=$(xcrun xccov view --report --json TestResults.xcresult | jq -r '.targets[0].lineCoverage * 100 | floor')
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+
+          # Create summary
+          echo "## iOS Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Line Coverage: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Files with low coverage (<50%)" >> $GITHUB_STEP_SUMMARY
+          xcrun xccov view --report --json TestResults.xcresult | \
+            jq -r '.targets[].files[] | select(.lineCoverage < 0.5) | "\(.path): \(.lineCoverage * 100 | floor)% coverage"' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-coverage-report
+          path: apps/ios/coverage-report.txt
+          retention-days: 30

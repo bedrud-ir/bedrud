@@ -233,4 +233,196 @@ final class InstanceManagerTests: XCTestCase {
         XCTAssertEqual(store.activeInstanceId, "i1")
         XCTAssertNotNil(manager.apiClient)
     }
+
+    // MARK: - Health Check Edge Cases
+
+    func testCheckHealthWithInvalidURL() async {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        let session = URLSession.mock()
+        let client = APIClient(baseURL: "https://invalid-url-test.com/api", session: session)
+        do {
+            let _: HealthResponse = try await client.fetch("/health")
+            XCTFail("Should throw")
+        } catch {
+            // Either invalidURL or httpError is acceptable
+            if let apiError = error as? APIError {
+                switch apiError {
+                case .invalidURL, .httpError:
+                    break
+                default:
+                    XCTFail("Expected invalidURL or httpError, got \(error)")
+                }
+            }
+        }
+    }
+
+    func testCheckHealthWithTimeout() async {
+        MockURLProtocol.requestHandler = { _ in
+            throw URLError(.timedOut)
+        }
+
+        let session = URLSession.mock()
+        let client = APIClient(baseURL: "https://test.com/api", session: session)
+        do {
+            let _: HealthResponse = try await client.fetch("/health")
+            XCTFail("Should throw")
+        } catch {
+            if let apiError = error as? APIError {
+                if case .networkError = apiError {
+                    // Expected
+                } else {
+                    XCTFail("Expected networkError, got \(error)")
+                }
+            }
+        }
+    }
+
+    func testCheckHealthReturns500() async {
+        MockURLProtocol.requestHandler = { request in
+            let errorJSON = #"{"error":"Internal server error"}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!
+            return (response, errorJSON.data(using: .utf8)!)
+        }
+
+        let session = URLSession.mock()
+        let client = APIClient(baseURL: "https://test.com/api", session: session)
+        do {
+            let _: HealthResponse = try await client.fetch("/health")
+            XCTFail("Should throw")
+        } catch {
+            if let apiError = error as? APIError {
+                if case .httpError(let code, let message) = apiError {
+                    XCTAssertEqual(code, 500)
+                    XCTAssertEqual(message, "Internal server error")
+                } else {
+                    XCTFail("Expected httpError, got \(error)")
+                }
+            }
+        }
+    }
+
+    func testAddInstanceWithMalformedHealthResponse() async {
+        MockURLProtocol.requestHandler = { request in
+            let invalidJSON = #"{"invalid":"response"}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, invalidJSON.data(using: .utf8)!)
+        }
+
+        let session = URLSession.mock()
+        let client = APIClient(baseURL: "https://test.com/api", session: session)
+        do {
+            let _: HealthResponse = try await client.fetch("/health")
+            XCTFail("Should throw")
+        } catch {
+            if let apiError = error as? APIError {
+                if case .decodingError = apiError {
+                    // Expected
+                } else {
+                    XCTFail("Expected decodingError, got \(error)")
+                }
+            }
+        }
+    }
+
+    // MARK: - Instance Management Edge Cases
+
+    func testAddInstanceWithDuplicateName() {
+        let a = Instance(id: "i1", serverURL: "https://a.com", displayName: "A")
+        let b = Instance(id: "i2", serverURL: "https://b.com", displayName: "A") // Same name
+
+        store.addInstance(a)
+        store.addInstance(b)
+
+        XCTAssertEqual(store.instances.count, 2)
+        // Both should be added - names don't need to be unique
+        XCTAssertEqual(store.instances[0].displayName, "A")
+        XCTAssertEqual(store.instances[1].displayName, "A")
+    }
+
+    func testRemoveInstanceWhileAuthenticatedClearsTokens() async {
+        // Note: InstanceManager doesn't accept a custom keychain parameter
+        // This test verifies that removing an instance triggers logout which clears tokens
+        let instance = Instance(id: "i1", serverURL: "https://a.com", displayName: "A")
+        store.addInstance(instance)
+        manager = InstanceManager(store: store)
+
+        // Login
+        let tokens = AuthTokens(accessToken: "at", refreshToken: "rt")
+        let user = User(id: "u1", email: "a@b.com", name: "Alice", avatarUrl: nil, isAdmin: false, provider: nil)
+        manager.authManager?.loginWithTokens(tokens: tokens, user: user)
+
+        // Verify user is authenticated
+        XCTAssertTrue(manager.isAuthenticated)
+
+        // Remove instance
+        await manager.removeInstance("i1")
+
+        // After removal, should not be authenticated
+        XCTAssertFalse(manager.isAuthenticated)
+    }
+
+    func testRemoveNonExistentInstance() async {
+        let a = Instance(id: "i1", serverURL: "https://a.com", displayName: "A")
+        store.addInstance(a)
+        manager = InstanceManager(store: store)
+
+        XCTAssertEqual(store.instances.count, 1)
+
+        // Try to remove non-existent instance
+        await manager.removeInstance("i2")
+
+        // Should not error, and instance i1 should still exist
+        XCTAssertEqual(store.instances.count, 1)
+        XCTAssertEqual(store.instances[0].id, "i1")
+    }
+
+    // MARK: - Rapid Instance Switching
+
+    func testRapidInstanceSwitching() {
+        let a = Instance(id: "i1", serverURL: "https://a.com", displayName: "A")
+        let b = Instance(id: "i2", serverURL: "https://b.com", displayName: "B")
+        let c = Instance(id: "i3", serverURL: "https://c.com", displayName: "C")
+
+        store.addInstance(a)
+        store.addInstance(b)
+        store.addInstance(c)
+
+        manager = InstanceManager(store: store)
+
+        // Rapid switching
+        manager.switchTo("i2")
+        XCTAssertEqual(store.activeInstanceId, "i2")
+
+        manager.switchTo("i3")
+        XCTAssertEqual(store.activeInstanceId, "i3")
+
+        manager.switchTo("i1")
+        XCTAssertEqual(store.activeInstanceId, "i1")
+
+        manager.switchTo("i2")
+        XCTAssertEqual(store.activeInstanceId, "i2")
+
+        // Verify final state
+        XCTAssertEqual(store.activeInstanceId, "i2")
+    }
+
+    // MARK: - Empty Instance List
+
+    func testManagerWithEmptyInstanceList() {
+        // Create manager with empty store
+        manager = InstanceManager(store: store)
+
+        XCTAssertNil(manager.apiClient)
+        XCTAssertNil(manager.authAPI)
+        XCTAssertNil(manager.authManager)
+        XCTAssertNil(manager.roomAPI)
+        XCTAssertNil(manager.passkeyManager)
+        XCTAssertFalse(manager.isAuthenticated)
+        XCTAssertTrue(store.instances.isEmpty)
+        XCTAssertNil(store.activeInstanceId)
+    }
 }

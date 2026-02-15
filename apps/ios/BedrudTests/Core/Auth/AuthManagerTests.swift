@@ -477,4 +477,162 @@ final class AuthManagerTests: XCTestCase {
         XCTAssertFalse(manager.isAuthenticated)
         XCTAssertNil(manager.currentUser)
     }
+
+    // MARK: - Token Refresh Edge Cases
+
+    func testRefreshTokenFailsWhenServerReturns401() async {
+        keychain["test-instance_refresh_token"] = "expired-refresh"
+
+        MockURLProtocol.requestHandler = { request in
+            if request.url!.absoluteString.contains("/auth/refresh") {
+                let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+                return (response, Data())
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        let manager = makeAuthManager()
+        do {
+            _ = try await manager.refreshAccessToken()
+            XCTFail("Should throw")
+        } catch {
+            // Expected - refresh failed with 401
+        }
+    }
+
+    func testRefreshTokenFailsWhenServerReturns500() async {
+        keychain["test-instance_refresh_token"] = "refresh"
+
+        MockURLProtocol.requestHandler = { request in
+            if request.url!.absoluteString.contains("/auth/refresh") {
+                let response = HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!
+                return (response, Data())
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        let manager = makeAuthManager()
+        do {
+            _ = try await manager.refreshAccessToken()
+            XCTFail("Should throw")
+        } catch {
+            // Expected - refresh failed with 500
+        }
+    }
+
+    func testGetValidAccessTokenHandlesNetworkErrorDuringRefresh() async {
+        let expiredToken = fakeJWT(exp: Date().timeIntervalSince1970 - 100)
+        keychain["test-instance_access_token"] = expiredToken
+        keychain["test-instance_refresh_token"] = "refresh"
+
+        MockURLProtocol.requestHandler = { _ in
+            throw URLError(.notConnectedToInternet)
+        }
+
+        let manager = makeAuthManager()
+        do {
+            _ = try await manager.getValidAccessToken()
+            XCTFail("Should throw")
+        } catch {
+            // Expected - network error during refresh
+        }
+    }
+
+    // MARK: - Restore Session Edge Cases
+
+    func testRestoreSessionWithCorruptedUserData() {
+        keychain["test-instance_access_token"] = fakeJWT()
+        keychain["test-instance_refresh_token"] = "refresh"
+        keychain["test-instance_user_data"] = "invalid json data {"
+
+        // Mock /auth/me to succeed and provide valid user data
+        MockURLProtocol.requestHandler = { request in
+            let meJSON = #"{"id":"u1","email":"a@b.com","name":"Alice","avatar_url":null,"is_admin":false,"provider":null}"#
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, meJSON.data(using: .utf8)!)
+        }
+
+        let manager = makeAuthManager()
+        // Should still restore session successfully via /auth/me
+        XCTAssertTrue(manager.isAuthenticated)
+        XCTAssertNotNil(manager.currentUser)
+        XCTAssertEqual(manager.currentUser?.id, "u1")
+    }
+
+    func testRestoreSessionWithMalformedJWT() {
+        // Invalid JWT format (not enough segments)
+        keychain["test-instance_access_token"] = "invalid.token"
+        keychain["test-instance_refresh_token"] = "refresh"
+
+        // Mock /auth/me to return 401 (invalid session)
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        let manager = makeAuthManager()
+        // With malformed JWT and failed refresh, should not be authenticated
+        XCTAssertFalse(manager.isAuthenticated)
+        XCTAssertNil(manager.currentUser)
+    }
+
+    func testJWTWithMissingExpField() async throws {
+        // Create a JWT without exp field
+        var payload: [String: Any] = [
+            "userId": "u1",
+            "email": "a@b.com",
+            "iat": Date().timeIntervalSince1970
+        ]
+        let payloadData = try! JSONSerialization.data(withJSONObject: payload)
+        let payloadBase64 = payloadData.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        let token = "header.\(payloadBase64).signature"
+
+        keychain["test-instance_access_token"] = token
+        keychain["test-instance_refresh_token"] = "refresh"
+
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        let manager = makeAuthManager()
+        // With exp defaulting to 0, token should be considered expired
+        // Since refresh will fail (401), should not be authenticated
+        XCTAssertFalse(manager.isAuthenticated)
+    }
+
+    // MARK: - Concurrent Operations
+
+    func testConcurrentLoginCalls() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let responseJSON = """
+            {
+                "tokens": {"access_token": "at", "refresh_token": "rt"},
+                "user": {"id": "u1", "email": "a@b.com", "name": "Alice", "avatar_url": null, "is_admin": false}
+            }
+            """
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, responseJSON.data(using: .utf8)!)
+        }
+
+        let manager = makeAuthManager()
+        XCTAssertFalse(manager.isLoading)
+
+        // Execute concurrent logins
+        async let login1 = manager.login(email: "a@b.com", password: "pass")
+        async let login2 = manager.login(email: "a@b.com", password: "pass")
+
+        let user1 = try await login1
+        let user2 = try await login2
+
+        // Both should complete successfully
+        XCTAssertEqual(user1.id, "u1")
+        XCTAssertEqual(user2.id, "u1")
+        XCTAssertFalse(manager.isLoading)
+    }
 }
