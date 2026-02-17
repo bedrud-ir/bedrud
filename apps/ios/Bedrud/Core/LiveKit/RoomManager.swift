@@ -140,6 +140,13 @@ final class RoomManager: ObservableObject {
             #endif
 
             setupRoomDelegation(room)
+
+            // Default to voice-only: camera off, mic on
+            try? await room.localParticipant.setCamera(enabled: false)
+            isCameraEnabled = false
+            try? await room.localParticipant.setMicrophone(enabled: true)
+            isMicrophoneEnabled = true
+
             updateLocalParticipant()
             updateRemoteParticipants()
         } catch {

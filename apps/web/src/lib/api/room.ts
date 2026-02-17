@@ -33,7 +33,7 @@ export interface UserRoomResponse {
   expiresAt: string; // Assuming backend sends time.Time as string
   settings: RoomSettings;
   relationship: string; // "creator" or "participant"
-  mode: string; // "standard" or "clubhouse"
+  mode: string; // Room mode (e.g. "standard")
 }
 
 export function listRoomsAPI(): Promise<UserRoomResponse[]> {

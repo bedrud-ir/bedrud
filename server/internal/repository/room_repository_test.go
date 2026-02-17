@@ -261,7 +261,7 @@ func TestRoomRepository_BringToStage_RemoveFromStage(t *testing.T) {
 	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "stage-room", false, "clubhouse", models.RoomSettings{})
+	room, _ := repo.CreateRoom("user-1", "stage-room", false, "standard", models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	// user-2 should not be on stage
@@ -354,7 +354,7 @@ func TestRoomRepository_GetAllRooms(t *testing.T) {
 	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
 	_, _ = repo.CreateRoom("user-1", "room-1", false, "standard", models.RoomSettings{})
-	_, _ = repo.CreateRoom("user-1", "room-2", true, "clubhouse", models.RoomSettings{})
+	_, _ = repo.CreateRoom("user-1", "room-2", true, "standard", models.RoomSettings{})
 
 	rooms, err := repo.GetAllRooms()
 	if err != nil {
@@ -656,25 +656,6 @@ func TestRoomRepository_CleanupExpiredRooms_NoExpired(t *testing.T) {
 	err := repo.CleanupExpiredRooms()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-// ====== Room Modes ======
-
-func TestRoomRepository_CreateRoom_ClubhouseMode(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	repo := NewRoomRepository(db)
-
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
-
-	room, err := repo.CreateRoom("user-1", "clubhouse-room", false, "clubhouse", models.RoomSettings{
-		AllowAudio: true,
-	})
-	if err != nil {
-		t.Fatalf("failed to create clubhouse room: %v", err)
-	}
-	if room.Mode != "clubhouse" {
-		t.Fatalf("expected mode 'clubhouse', got '%s'", room.Mode)
 	}
 }
 
@@ -1038,7 +1019,7 @@ func TestRoomRepository_RemoveFromStage_CreatorCanBeRemoved(t *testing.T) {
 
 	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "stage-remove", false, "clubhouse", models.RoomSettings{})
+	room, _ := repo.CreateRoom("user-1", "stage-remove", false, "standard", models.RoomSettings{})
 
 	// Remove creator from stage (should work but might be undesirable)
 	_ = repo.RemoveFromStage(room.ID, "user-1")
@@ -1083,7 +1064,7 @@ func TestRoomRepository_GetRoom_ReturnsCompleteData(t *testing.T) {
 
 	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	_, err := repo.CreateRoom("user-1", "complete-data-room", true, "clubhouse", models.RoomSettings{
+	_, err := repo.CreateRoom("user-1", "complete-data-room", true, "standard", models.RoomSettings{
 		AllowChat:  true,
 		AllowAudio: true,
 		E2EE:       true,
@@ -1108,8 +1089,8 @@ func TestRoomRepository_GetRoom_ReturnsCompleteData(t *testing.T) {
 	if !found.IsPublic {
 		t.Fatal("expected IsPublic true")
 	}
-	if found.Mode != "clubhouse" {
-		t.Fatalf("expected mode 'clubhouse', got '%s'", found.Mode)
+	if found.Mode != "standard" {
+		t.Fatalf("expected mode 'standard', got '%s'", found.Mode)
 	}
 	if found.ID == "" {
 		t.Fatal("expected non-empty ID (UUID)")

@@ -33,6 +33,6 @@ export interface Room {
   expiresAt: string;
   settings: RoomSettings;
   relationship?: string; // "creator" or "participant"
-  mode: string; // "standard" or "clubhouse"
+  mode: string; // Room mode (e.g. "standard")
   participants?: RoomParticipant[];
 }

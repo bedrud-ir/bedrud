@@ -50,7 +50,7 @@ class RoomManager(private val application: Application) {
     private val _isMicEnabled = MutableStateFlow(true)
     val isMicEnabled: StateFlow<Boolean> = _isMicEnabled.asStateFlow()
 
-    private val _isCameraEnabled = MutableStateFlow(true)
+    private val _isCameraEnabled = MutableStateFlow(false)
     val isCameraEnabled: StateFlow<Boolean> = _isCameraEnabled.asStateFlow()
 
     private val _isScreenShareEnabled = MutableStateFlow(false)
@@ -106,8 +106,8 @@ class RoomManager(private val application: Application) {
             }
 
             try {
-                room.localParticipant.setCameraEnabled(true)
-                _isCameraEnabled.value = true
+                room.localParticipant.setCameraEnabled(false)
+                _isCameraEnabled.value = false
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to enable camera", e)
                 _isCameraEnabled.value = false
@@ -193,7 +193,7 @@ class RoomManager(private val application: Application) {
         _connectionState.value = ConnectionState.DISCONNECTED
         _roomName.value = null
         _isMicEnabled.value = true
-        _isCameraEnabled.value = true
+        _isCameraEnabled.value = false
         _isScreenShareEnabled.value = false
         _participantVersion.value = 0
         _chatMessages.value = emptyList()
