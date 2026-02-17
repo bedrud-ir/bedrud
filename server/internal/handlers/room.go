@@ -100,10 +100,6 @@ func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	if req.Mode == "clubhouse" {
-		req.Settings.AllowVideo = false
-	}
-
 	claims := c.Locals("user").(*auth.Claims)
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomCreate: true})
 	_, err := h.client.CreateRoom(ctx, &livekit.CreateRoomRequest{Name: req.Name, MaxParticipants: uint32(req.MaxParticipants)})

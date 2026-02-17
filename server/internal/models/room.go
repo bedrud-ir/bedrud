@@ -87,7 +87,7 @@ type Room struct {
 	AdminID         string       `json:"adminId" gorm:"type:varchar(36);not null"` // Room creator/admin
 	IsPublic        bool         `json:"isPublic" gorm:"not null;default:false"`
 	Settings        RoomSettings `json:"settings" gorm:"embedded;embeddedPrefix:settings_"`
-	Mode            string       `json:"mode" gorm:"not null;default:'standard';type:varchar(20)"` // 'standard' or 'clubhouse'
+	Mode            string       `json:"mode" gorm:"not null;default:'standard';type:varchar(20)"` // Room mode (e.g. 'standard')
 }
 
 // RoomSettings represents the global settings for a room

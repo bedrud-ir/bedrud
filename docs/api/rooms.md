@@ -90,7 +90,7 @@ Room names appear in the URL as `https://bedrud.xyz/m/NAME`, so they must be URL
 |-------|------|----------|-------------|
 | `name` | string | No | URL-safe room name (auto-generated if omitted) |
 | `isPublic` | boolean | No | Whether the room appears in public listings |
-| `mode` | string | No | `"standard"` (video) or `"clubhouse"` (audio-only) |
+| `mode` | string | No | Room mode (e.g. `"standard"`) |
 | `maxParticipants` | number | No | Maximum number of participants |
 | `settings.allowChat` | boolean | No | Whether text chat is enabled |
 | `settings.allowVideo` | boolean | No | Whether video is enabled |

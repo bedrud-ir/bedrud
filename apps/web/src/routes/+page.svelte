@@ -10,7 +10,7 @@
     import LogOut from "lucide-svelte/icons/log-out";
     import Plus from "lucide-svelte/icons/plus";
     import Video from "lucide-svelte/icons/video";
-    import Mic from "lucide-svelte/icons/mic";
+
     import Sparkles from "lucide-svelte/icons/sparkles";
     import ShieldCheck from "lucide-svelte/icons/shield-check";
     import ShieldAlert from "lucide-svelte/icons/shield-alert";
@@ -57,7 +57,6 @@
     let error = $state<string | null>(null);
     let newMeetingName = $state("");
     let creatingMeeting = $state(false);
-    let creatingMode = $state<string | null>(null);
     let useE2EE = $state(false);
 
     let isUserLoggedIn = $derived(!!$userStore);
@@ -100,16 +99,15 @@
         }
     }
 
-    async function createMeeting(mode: string = "standard") {
+    async function createMeeting() {
         if (creatingMeeting) return;
 
         creatingMeeting = true;
-        creatingMode = mode;
         error = null;
         try {
             await createRoomAPI({
                 name: newMeetingName.trim() || undefined,
-                mode,
+                mode: "standard",
                 settings: {
                     allowChat: true,
                     allowVideo: true,
@@ -120,14 +118,13 @@
             });
             newMeetingName = "";
             await fetchRooms();
-            debugStore.log(`Meeting created: ${mode}`, "info", "Home");
+            debugStore.log("Meeting created", "info", "Home");
         } catch (e: any) {
             const msg = e?.message || "Failed to create meeting";
             error = msg;
             debugStore.log(`Failed to create meeting: ${msg}`, "error", "Home");
         } finally {
             creatingMeeting = false;
-            creatingMode = null;
         }
     }
 
@@ -235,8 +232,7 @@
                             />
                         </h2>
                         <p class="text-sm text-muted-foreground">
-                            Start a collaborative video room or a drop-in audio
-                            space.
+                            Start a collaborative video room.
                         </p>
                     </div>
 
@@ -286,42 +282,23 @@
 
                                     <div class="h-4 w-px bg-border"></div>
 
-                                    <div class="flex gap-2">
-                                        <Button
-                                            variant="default"
-                                            size="sm"
-                                            onclick={() =>
-                                                createMeeting("standard")}
-                                            disabled={creatingMeeting}
-                                            class="h-9 px-4 rounded-md text-[11px] font-bold uppercase tracking-tight gap-2"
-                                        >
-                                            {#if creatingMeeting && creatingMode === "standard"}
-                                                <Loader2
-                                                    class="h-3 w-3 animate-spin"
-                                                />
-                                            {:else}
-                                                <Video class="h-3 w-3" />
-                                                Video
-                                            {/if}
-                                        </Button>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onclick={() =>
-                                                createMeeting("clubhouse")}
-                                            disabled={creatingMeeting}
-                                            class="h-9 px-4 rounded-md text-[11px] font-bold uppercase tracking-tight gap-2"
-                                        >
-                                            {#if creatingMeeting && creatingMode === "clubhouse"}
-                                                <Loader2
-                                                    class="h-3 w-3 animate-spin"
-                                                />
-                                            {:else}
-                                                <Mic class="h-3 w-3" />
-                                                Audio
-                                            {/if}
-                                        </Button>
-                                    </div>
+                                    <Button
+                                        variant="default"
+                                        size="sm"
+                                        onclick={() =>
+                                            createMeeting()}
+                                        disabled={creatingMeeting}
+                                        class="h-9 px-4 rounded-md text-[11px] font-bold uppercase tracking-tight gap-2"
+                                    >
+                                        {#if creatingMeeting}
+                                            <Loader2
+                                                class="h-3 w-3 animate-spin"
+                                            />
+                                        {:else}
+                                            <Video class="h-3 w-3" />
+                                            Video
+                                        {/if}
+                                    </Button>
                                 </div>
                             </div>
                         </Card.Content>
@@ -423,15 +400,9 @@
                                             <div
                                                 class="p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors"
                                             >
-                                                {#if room.mode === "clubhouse"}
-                                                    <Mic
-                                                        class="h-4 w-4 text-indigo-500"
-                                                    />
-                                                {:else}
-                                                    <Video
-                                                        class="h-4 w-4 text-emerald-500"
-                                                    />
-                                                {/if}
+                                                <Video
+                                                    class="h-4 w-4 text-emerald-500"
+                                                />
                                             </div>
                                             <Card.Title
                                                 class="text-base font-bold tracking-tight break-all"
@@ -482,9 +453,7 @@
                                         class="bg-muted/30 p-3 pt-3 flex justify-end group-hover:bg-primary/5 transition-colors"
                                     >
                                         <Button
-                                            href={room.mode === "clubhouse"
-                                                ? `/c/${room.name}`
-                                                : `/m/${room.name}`}
+                                            href={`/m/${room.name}`}
                                             disabled={!room.isActive}
                                             variant="ghost"
                                             size="sm"
@@ -557,7 +526,7 @@
                                 class="text-muted-foreground font-medium text-lg leading-tight"
                                 in:fade={{ duration: 400, delay: 200 }}
                             >
-                                Secure video rooms and drop-in audio spaces.
+                                Secure video rooms.
                                 Minimal, open source, and built for privacy.
                             </p>
                         {/if}

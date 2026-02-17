@@ -156,7 +156,6 @@
     // Guest state
     let showGuestForm = $state(false);
     let guestName = $state("");
-    let showRedirectModal = $state(false);
     let guestAvatar = $state<string | null>(null);
     let isGuestJoining = $state(false);
     let showPermissionRequest = $state(false);
@@ -1188,14 +1187,6 @@
 
             roomDetails = joinRoomResp;
             log(`Room Admin ID: ${roomDetails.adminId}`);
-
-            // If it's a clubhouse room, show redirect modal
-            if (roomDetails.mode === "clubhouse") {
-                log("Clubhouse mode detected, showing redirect modal");
-                showRedirectModal = true;
-                isLoading = false;
-                return;
-            }
 
             if (
                 !joinRoomResp ||
@@ -2782,57 +2773,6 @@
     bind:this={avatarInput}
     onchange={handleAvatarChange}
 />
-<!-- Redirect Modal for Clubhouse Rooms -->
-{#if showRedirectModal}
-    <div
-        class="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-xl"
-    >
-        <Card.Root
-            class="w-[450px] border-none shadow-2xl bg-white/95 dark:bg-slate-900/95 overflow-hidden transform"
-        >
-            <div class="h-2 bg-indigo-600 w-full"></div>
-            <Card.Header class="text-center pt-10 pb-6 px-8">
-                <div
-                    class="mx-auto w-20 h-20 bg-indigo-50 dark:bg-indigo-500/10 rounded-[30%] flex items-center justify-center mb-6"
-                >
-                    <Mic
-                        class="h-10 w-10 text-indigo-600 dark:text-indigo-400"
-                    />
-                </div>
-                <Card.Title
-                    class="text-3xl font-black text-slate-900 dark:text-white leading-tight"
-                >
-                    Voice-Only <br />Room Detected
-                </Card.Title>
-                <Card.Description
-                    class="text-slate-500 dark:text-slate-400 text-lg mt-4 font-medium leading-relaxed"
-                >
-                    This meeting is using <span
-                        class="text-indigo-600 dark:text-indigo-400 font-bold uppercase"
-                        >Clubhouse Mode</span
-                    >. Please use the dedicated audio-only interface for the
-                    best experience.
-                </Card.Description>
-            </Card.Header>
-            <Card.Footer class="flex flex-col gap-4 p-8 pt-0">
-                <Button
-                    href={`/c/${$page.params.meetId}`}
-                    class="w-full h-14 text-lg font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-xl shadow-indigo-500/20 active:scale-95 transition-all uppercase gap-3"
-                >
-                    Switch to Audio Mode
-                </Button>
-                <Button
-                    variant="ghost"
-                    onclick={() => goto("/")}
-                    class="w-full h-12 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-bold rounded-2xl transition-all"
-                >
-                    Back to Home
-                </Button>
-            </Card.Footer>
-        </Card.Root>
-    </div>
-{/if}
-
 <EncryptionModal
     isOpen={isEncryptionModalOpen}
     isEncrypted={isE2EEEnabled}

@@ -5,7 +5,6 @@
     import { Button } from "$lib/components/ui/button";
     import {
         Video,
-        Mic,
         ChevronRight,
         Loader2,
         ArrowLeft,
@@ -28,7 +27,7 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get("mode");
-        if (mode === "standard" || mode === "clubhouse") {
+        if (mode === "standard") {
             handleCreate(mode);
         }
     });
@@ -53,7 +52,7 @@
                 mode,
                 settings: {
                     allowChat: true,
-                    allowVideo: mode === "standard",
+                    allowVideo: true,
                     allowAudio: true,
                     requireApproval: false,
                     e2ee: false,
@@ -65,9 +64,7 @@
                 "info",
                 "New",
             );
-            goto(
-                mode === "clubhouse" ? `/c/${randomName}` : `/m/${randomName}`,
-            );
+            goto(`/m/${randomName}`);
         } catch (e: any) {
             error = e.message || "Failed to launch";
             isLoading = false;
@@ -132,23 +129,6 @@
                     <ChevronRight class="h-4 w-4 text-muted-foreground/30" />
                 </button>
 
-                <button
-                    class="w-full flex items-center gap-4 p-4 rounded-2xl border bg-card hover:bg-accent/50 transition-colors text-left"
-                    onclick={() => handleCreate("clubhouse")}
-                >
-                    <div
-                        class="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"
-                    >
-                        <Mic class="h-5 w-5" />
-                    </div>
-                    <div class="flex-1">
-                        <div class="font-bold">Audio Space</div>
-                        <div class="text-xs text-muted-foreground">
-                            Clubhouse style
-                        </div>
-                    </div>
-                    <ChevronRight class="h-4 w-4 text-muted-foreground/30" />
-                </button>
             </div>
         {/if}
     </div>

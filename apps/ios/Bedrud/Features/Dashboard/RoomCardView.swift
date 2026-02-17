@@ -113,7 +113,6 @@ struct RoomCardView: View {
         switch room.mode.lowercased() {
         case "meeting":   return "video"
         case "webinar":   return "person.wave.2"
-        case "clubhouse": return "mic"
         default:          return "rectangle.stack"
         }
     }
