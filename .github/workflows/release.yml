@@ -42,7 +42,7 @@ jobs:
             cgo: "0"
             cc: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install cross-compiler
         if: matrix.goarch == 'arm64' && matrix.goos == 'linux'
@@ -52,7 +52,7 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.24"
           cache-dependency-path: server/go.sum
@@ -89,7 +89,7 @@ jobs:
           tar -cJf bedrud_${{ matrix.suffix }}.tar.xz bedrud
           rm bedrud
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: server-${{ matrix.suffix }}
           path: dist/bedrud_${{ matrix.suffix }}.tar.xz
@@ -99,7 +99,7 @@ jobs:
     name: Docker Image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: docker/setup-buildx-action@v3
 
@@ -137,14 +137,14 @@ jobs:
       run:
         working-directory: apps/android
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
 
       # Decode signing key from secrets
       - name: Decode keystore
@@ -174,12 +174,12 @@ jobs:
             echo "⚠ Skipping release build — no signing key configured"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: android-debug-apk
           path: apps/android/app/build/outputs/apk/debug/app-debug.apk
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: ${{ hashFiles('apps/android/keystore.properties') != '' }}
         with:
           name: android-release-apk
@@ -193,7 +193,7 @@ jobs:
       run:
         working-directory: apps/ios
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Import signing certificate and provisioning profile
       - name: Install Apple certificate and provisioning profile
@@ -230,7 +230,7 @@ jobs:
           fi
 
       - name: Cache Swift packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: apps/ios/.spm-cache
           key: ios-spm-${{ hashFiles('apps/ios/Bedrud.xcodeproj/project.pbxproj') }}
@@ -280,7 +280,7 @@ jobs:
             echo "⚠ Skipping IPA export — no signing certificate configured"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: ${{ hashFiles('apps/ios/build/export/Bedrud.ipa') != '' }}
         with:
           name: ios-ipa
@@ -301,9 +301,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [server-binary, docker, android, ios]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: artifacts
           pattern: "{server-*,android-*,web-*,ios-*}"

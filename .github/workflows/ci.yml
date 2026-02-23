@@ -19,8 +19,8 @@ jobs:
       run:
         working-directory: server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.24"
           cache-dependency-path: server/go.sum
@@ -38,8 +38,8 @@ jobs:
       run:
         working-directory: server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.24"
           cache-dependency-path: server/go.sum
@@ -55,7 +55,7 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -71,12 +71,12 @@ jobs:
       run:
         working-directory: apps/android
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
       - run: ./gradlew lint
       - run: ./gradlew testDebugUnitTest
 
@@ -88,10 +88,10 @@ jobs:
       run:
         working-directory: apps/ios
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Cache Swift packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: apps/ios/.spm-cache
           key: ios-spm-${{ hashFiles('apps/ios/Bedrud.xcodeproj/project.pbxproj') }}
@@ -147,7 +147,7 @@ jobs:
             jq -r '.targets[].files[] | select(.lineCoverage < 0.5) | "\(.path): \(.lineCoverage * 100 | floor)% coverage"' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ios-coverage-report
           path: apps/ios/coverage-report.txt
