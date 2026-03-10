@@ -32,6 +32,28 @@ struct MeetingView: View {
                     showChat: $showChat
                 )
             }
+
+            // PTT transmitting overlay
+            if roomManager.isPttActive {
+                VStack {
+                    Spacer()
+                    HStack(spacing: 8) {
+                        Image(systemName: "waveform.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.title3)
+                        Text("Transmitting...")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .padding(.bottom, 112)
+                }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            }
         }
         #if os(iOS)
         .statusBar(hidden: true)
