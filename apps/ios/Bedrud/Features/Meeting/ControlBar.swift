@@ -69,7 +69,9 @@ struct ControlBar: View {
             .simultaneousGesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in
-                        Task { await roomManager.startPtt() }
+                        if !roomManager.isPttActive {
+                            Task { await roomManager.startPtt() }
+                        }
                     }
                     .onEnded { _ in
                         roomManager.stopPtt()
