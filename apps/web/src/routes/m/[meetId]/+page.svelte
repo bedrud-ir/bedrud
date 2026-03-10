@@ -62,6 +62,8 @@
     import ParticipantAvatar from "$lib/components/meeting/ParticipantAvatar.svelte";
     import MicButton from "$lib/components/meeting/MicButton.svelte";
     import CameraButton from "$lib/components/meeting/CameraButton.svelte";
+    import PttButton from '$lib/components/meeting/PttButton.svelte';
+    import PttOverlay from '$lib/components/meeting/PttOverlay.svelte';
     import { themeStore, type Theme } from "$lib/stores/theme.store";
     import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
     import { Input } from "$lib/components/ui/input";
@@ -2066,6 +2068,12 @@
                                 <MicOff class="h-4 w-4 sm:h-5 sm:w-5" />
                             {/if}
                         </Button>
+                        <PttButton
+                            {isPttActive}
+                            onStart={startPtt}
+                            onStop={stopPtt}
+                            class="h-10 w-10 sm:h-11 sm:w-11 rounded-full shrink-0"
+                        />
                         <Button
                             variant={videoEnabled ? "ghost" : "destructive"}
                             size="icon"
@@ -2211,6 +2219,12 @@
                         <ScreenShare class="h-4 w-4" />
                     </Button>
 
+                    <PttButton
+                        {isPttActive}
+                        onStart={startPtt}
+                        onStop={stopPtt}
+                    />
+
                     <div class="w-px h-8 bg-border"></div>
 
                     <Button
@@ -2253,6 +2267,7 @@
                 </div>
             </div>
         {/if}
+        <PttOverlay visible={isPttActive} />
     </div>
 {/if}
 <!-- Message Notification Toast -->
