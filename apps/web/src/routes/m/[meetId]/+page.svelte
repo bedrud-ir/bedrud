@@ -2593,6 +2593,7 @@
                                         placeholder="Press a key..."
                                         onkeydown={(e) => {
                                             e.preventDefault();
+                                            if (!e.code) return;
                                             pttKey = e.code;
                                             localStorage.setItem('ptt_key', e.code);
                                         }}
