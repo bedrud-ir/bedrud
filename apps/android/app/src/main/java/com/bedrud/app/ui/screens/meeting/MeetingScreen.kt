@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.ScreenShare
 import androidx.compose.material.icons.filled.StopScreenShare
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material3.AlertDialog
@@ -70,6 +71,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.awaitPointerEvent
+import androidx.compose.ui.input.pointer.awaitPointerEventScope
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -119,6 +125,7 @@ fun MeetingScreen(
     val isMicEnabled by roomManager.isMicEnabled.collectAsState()
     val isCameraEnabled by roomManager.isCameraEnabled.collectAsState()
     val isScreenShareEnabled by roomManager.isScreenShareEnabled.collectAsState()
+    val isPttActive by roomManager.isPttActive.collectAsState()
     val error by roomManager.error.collectAsState()
 
     val participantVersion by roomManager.participantVersion.collectAsState()
@@ -402,6 +409,34 @@ fun MeetingScreen(
                                         )
                                     }
 
+                                    // Push to Talk
+                                    SmallFloatingActionButton(
+                                        onClick = { /* tap does nothing — hold activates PTT */ },
+                                        containerColor = if (isPttActive)
+                                            MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant,
+                                        modifier = Modifier.pointerInput(Unit) {
+                                            awaitPointerEventScope {
+                                                while (true) {
+                                                    val event = awaitPointerEvent()
+                                                    if (event.type == PointerEventType.Press) {
+                                                        roomManager.startPtt()
+                                                    } else if (event.type == PointerEventType.Release) {
+                                                        roomManager.stopPtt()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            if (isPttActive) Icons.Default.GraphicEq else Icons.Default.Mic,
+                                            contentDescription = "Push to Talk",
+                                            tint = if (isPttActive)
+                                                MaterialTheme.colorScheme.onPrimary
+                                            else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
                                     // Chat toggle
                                     SmallFloatingActionButton(
                                         onClick = { showChat = !showChat },
@@ -456,6 +491,38 @@ fun MeetingScreen(
                                     },
                                     onClose = { showChat = false }
                                 )
+                            }
+
+                            // PTT overlay
+                            if (isPttActive) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 120.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .background(
+                                                MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.85f),
+                                                RoundedCornerShape(50)
+                                            )
+                                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(10.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF4CAF50))
+                                        )
+                                        Text(
+                                            text = "Transmitting...",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.inverseOnSurface
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
