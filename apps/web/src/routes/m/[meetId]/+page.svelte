@@ -145,7 +145,7 @@
             const isTyping =
                 el instanceof HTMLInputElement ||
                 el instanceof HTMLTextAreaElement ||
-                (el as HTMLElement)?.isContentEditable;
+                (el instanceof HTMLElement && el.isContentEditable);
             if (isTyping) return;
             if (e.code === pttKey) {
                 e.preventDefault();
@@ -1425,6 +1425,7 @@
     }
 
     onDestroy(() => {
+        if (pttReleaseTimer) clearTimeout(pttReleaseTimer);
         if (room) {
             // Clean up all audio elements created for remote participants
             document.querySelectorAll('audio[id^="audio-"]').forEach((el) => {
