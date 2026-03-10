@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { AudioLines } from 'lucide-svelte';
-	import { Button } from '$lib/components/ui/button';
+    import { AudioLines } from 'lucide-svelte';
+    import { Button } from '$lib/components/ui/button';
 
-	interface Props {
-		isPttActive: boolean;
-		onStart: () => void;
-		onStop: () => void;
-		class?: string;
-	}
+    interface Props {
+        isPttActive: boolean;
+        onStart: () => void;
+        onStop: () => void;
+        class?: string;
+    }
 
-	let { isPttActive, onStart, onStop, class: className = '' }: Props = $props();
+    let { isPttActive, onStart, onStop, class: className = '' }: Props = $props();
 </script>
 
 <Button
