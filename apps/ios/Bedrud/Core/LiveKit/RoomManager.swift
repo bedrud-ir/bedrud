@@ -51,6 +51,7 @@ final class RoomManager: ObservableObject {
     @Published var isMicrophoneEnabled: Bool = false
     @Published var isCameraEnabled: Bool = false
     @Published var isScreenShareEnabled: Bool = false
+    @Published private(set) var isPttActive: Bool = false
     @Published private(set) var error: String?
     @Published private(set) var chatMessages: [ChatMessage] = []
 
@@ -59,6 +60,7 @@ final class RoomManager: ObservableObject {
     private var room: LiveKit.Room?
     private var roomDelegateHandler: RoomDelegateHandler?
     private var cancellables = Set<AnyCancellable>()
+    private var pttReleaseTask: Task<Void, Never>?
 
     // MARK: - CallKit (iOS only)
 
@@ -172,6 +174,9 @@ final class RoomManager: ObservableObject {
         isCameraEnabled = false
         isScreenShareEnabled = false
         chatMessages = []
+        pttReleaseTask?.cancel()
+        pttReleaseTask = nil
+        isPttActive = false
         cancellables.removeAll()
         #if os(iOS)
         endCallKitCall()
@@ -220,6 +225,29 @@ final class RoomManager: ObservableObject {
         try await localParticipant.setScreenShare(enabled: newState)
         isScreenShareEnabled = newState
         updateLocalParticipant()
+    }
+
+    // MARK: - Push to Talk
+
+    func startPtt() async {
+        guard !isPttActive else { return }
+        isPttActive = true
+        guard let localParticipant = room?.localParticipant else { return }
+        try? await localParticipant.setMicrophone(enabled: true)
+    }
+
+    func stopPtt() {
+        pttReleaseTask?.cancel()
+        pttReleaseTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            guard !Task.isCancelled, let self else { return }
+            await MainActor.run {
+                self.isPttActive = false
+            }
+            guard let localParticipant = self.room?.localParticipant else { return }
+            // Restore toggle state
+            try? await localParticipant.setMicrophone(enabled: self.isMicrophoneEnabled)
+        }
     }
 
     // MARK: - Chat

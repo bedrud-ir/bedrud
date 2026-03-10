@@ -325,6 +325,37 @@ final class RoomManagerTests: XCTestCase {
         XCTAssertNil(manager.error)
     }
 
+    // MARK: - PTT
+
+    func testPttInitialStateIsFalse() {
+        let manager = RoomManager()
+        XCTAssertFalse(manager.isPttActive)
+    }
+
+    func testStartPttSetsPttActiveTrue() async {
+        let manager = RoomManager()
+        // No room connected — only the flag should change
+        await manager.startPtt()
+        XCTAssertTrue(manager.isPttActive)
+    }
+
+    func testStopPttSetsPttActiveFalseAfterDelay() async throws {
+        let manager = RoomManager()
+        await manager.startPtt()
+        XCTAssertTrue(manager.isPttActive)
+        manager.stopPtt()
+        // Wait longer than 250ms release delay
+        try await Task.sleep(nanoseconds: 400_000_000)
+        XCTAssertFalse(manager.isPttActive)
+    }
+
+    func testStartPttIsIdempotent() async {
+        let manager = RoomManager()
+        await manager.startPtt()
+        await manager.startPtt() // second call is a no-op
+        XCTAssertTrue(manager.isPttActive)
+    }
+
     // MARK: - Multiple Toggles
 
     func testMultipleToggleOperations() {
