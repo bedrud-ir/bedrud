@@ -62,8 +62,8 @@
     import ParticipantAvatar from "$lib/components/meeting/ParticipantAvatar.svelte";
     import MicButton from "$lib/components/meeting/MicButton.svelte";
     import CameraButton from "$lib/components/meeting/CameraButton.svelte";
-    import PttButton from '$lib/components/meeting/PttButton.svelte';
-    import PttOverlay from '$lib/components/meeting/PttOverlay.svelte';
+    import PttButton from "$lib/components/meeting/PttButton.svelte";
+    import PttOverlay from "$lib/components/meeting/PttOverlay.svelte";
     import { themeStore, type Theme } from "$lib/stores/theme.store";
     import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
     import { Input } from "$lib/components/ui/input";
