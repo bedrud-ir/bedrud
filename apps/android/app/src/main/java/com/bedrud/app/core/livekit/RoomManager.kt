@@ -14,8 +14,10 @@ import io.livekit.android.room.track.LocalVideoTrack
 import io.livekit.android.room.track.Track
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -71,7 +73,16 @@ class RoomManager(private val application: Application) {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _isPttActive = MutableStateFlow(false)
+    val isPttActive: StateFlow<Boolean> = _isPttActive.asStateFlow()
+
+    private var managerScope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var pttReleaseJob: Job? = null
+
     suspend fun connect(url: String, token: String, roomName: String? = null, avatarUrl: String? = null) {
+        // Recreate managerScope so PTT works after reconnection
+        managerScope.cancel()
+        managerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         try {
             _connectionState.value = ConnectionState.CONNECTING
             _error.value = null
@@ -197,6 +208,9 @@ class RoomManager(private val application: Application) {
         _isScreenShareEnabled.value = false
         _participantVersion.value = 0
         _chatMessages.value = emptyList()
+        pttReleaseJob?.cancel()
+        pttReleaseJob = null
+        _isPttActive.value = false
         _error.value = null
         Log.d(TAG, "Disconnected from room")
     }
@@ -210,6 +224,31 @@ class RoomManager(private val application: Application) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to toggle microphone", e)
             _error.value = "Failed to toggle microphone"
+        }
+    }
+
+    fun startPtt() {
+        if (_isPttActive.value) return
+        _isPttActive.value = true
+        managerScope.launch {
+            try {
+                _room?.localParticipant?.setMicrophoneEnabled(true)
+            } catch (e: Exception) {
+                Log.e(TAG, "PTT start: failed to enable mic", e)
+            }
+        }
+    }
+
+    fun stopPtt() {
+        pttReleaseJob?.cancel()
+        pttReleaseJob = managerScope.launch {
+            delay(250)
+            _isPttActive.value = false
+            try {
+                _room?.localParticipant?.setMicrophoneEnabled(_isMicEnabled.value)
+            } catch (e: Exception) {
+                Log.e(TAG, "PTT stop: failed to restore mic", e)
+            }
         }
     }
 

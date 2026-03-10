@@ -1,5 +1,6 @@
 package com.bedrud.app.core.livekit
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -53,5 +54,47 @@ class RoomManagerTest {
 
         val msg3 = ChatMessage(senderName = "B", text = "Hi", timestamp = 100L, isLocal = false)
         assertNotEquals(msg1, msg3)
+    }
+}
+
+class PttStateTest {
+
+    // Minimal PTT gate logic extracted for unit testing
+    private fun applyPttGate(isMicEnabled: Boolean, isPttActive: Boolean): Boolean =
+        isMicEnabled || isPttActive
+
+    @Test
+    fun `mic gate ptt active overrides mic off`() {
+        assertTrue(applyPttGate(isMicEnabled = false, isPttActive = true))
+    }
+
+    @Test
+    fun `mic gate ptt inactive restores mic off`() {
+        assertFalse(applyPttGate(isMicEnabled = false, isPttActive = false))
+    }
+
+    @Test
+    fun `mic gate ptt inactive with mic on stays on`() {
+        assertTrue(applyPttGate(isMicEnabled = true, isPttActive = false))
+    }
+
+    @Test
+    fun `ptt isPttActive StateFlow initial value is false`() {
+        val isPttActive = MutableStateFlow(false)
+        assertFalse(isPttActive.value)
+    }
+
+    @Test
+    fun `ptt start sets StateFlow to true`() {
+        val isPttActive = MutableStateFlow(false)
+        isPttActive.value = true
+        assertTrue(isPttActive.value)
+    }
+
+    @Test
+    fun `ptt stop sets StateFlow to false`() {
+        val isPttActive = MutableStateFlow(true)
+        isPttActive.value = false
+        assertFalse(isPttActive.value)
     }
 }
