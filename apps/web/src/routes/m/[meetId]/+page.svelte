@@ -2576,6 +2576,32 @@
                                     {/each}
                                 </div>
                             </div>
+
+                            <div class="pt-4 md:pt-6 border-t border-border">
+                                <h3
+                                    class="text-base md:text-lg font-bold text-foreground mb-3"
+                                >
+                                    Push to Talk
+                                </h3>
+                                <div class="flex items-center justify-between">
+                                    <label for="ptt-key" class="text-sm font-medium">Push to Talk key</label>
+                                    <input
+                                        id="ptt-key"
+                                        class="w-32 rounded border px-2 py-1 text-sm font-mono"
+                                        value={pttKey}
+                                        readonly
+                                        placeholder="Press a key..."
+                                        onkeydown={(e) => {
+                                            e.preventDefault();
+                                            pttKey = e.code;
+                                            localStorage.setItem('ptt_key', e.code);
+                                        }}
+                                    />
+                                </div>
+                                <p class="text-[11px] text-muted-foreground font-medium mt-2">
+                                    Click the input and press any key to set your Push to Talk key.
+                                </p>
+                            </div>
                         </div>
                     {:else if settingsTab === "audio"}
                         <div class="max-w-md mx-auto space-y-6 md:space-y-8">
