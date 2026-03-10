@@ -90,6 +90,16 @@
     let participants = $state<any[]>([]);
     let localParticipant = $state<LocalParticipant | null>(null);
     let audioEnabled = $state(true);
+
+    // Push to Talk
+    let isPttActive = $state(false);
+    let pttKey = $state<string>(
+        typeof localStorage !== 'undefined'
+            ? (localStorage.getItem('ptt_key') ?? 'Space')
+            : 'Space'
+    );
+    let pttReleaseTimer: ReturnType<typeof setTimeout> | null = null;
+
     let noiseSuppressionLevel = $state<
         "low" | "moderate" | "high" | "very-high"
     >("moderate");
@@ -123,15 +133,38 @@
 
     onMount(() => {
         screenWidth = window.innerWidth;
-        const handleResize = () => {
-            screenWidth = window.innerWidth;
-        };
-        window.addEventListener("resize", handleResize);
+        const handleResize = () => { screenWidth = window.innerWidth; };
+        window.addEventListener('resize', handleResize);
 
         // Initialize LiveKit log suppression
         initLiveKitLogging();
 
-        const tracks = [Track.Source.Camera, Track.Source.Microphone];
+        function handleKeydown(e: KeyboardEvent) {
+            if (e.repeat) return;
+            const el = document.activeElement;
+            const isTyping =
+                el instanceof HTMLInputElement ||
+                el instanceof HTMLTextAreaElement ||
+                (el as HTMLElement)?.isContentEditable;
+            if (isTyping) return;
+            if (e.code === pttKey) {
+                e.preventDefault();
+                startPtt();
+            }
+        }
+
+        function handleKeyup(e: KeyboardEvent) {
+            if (e.code === pttKey) stopPtt();
+        }
+
+        window.addEventListener('keydown', handleKeydown);
+        window.addEventListener('keyup', handleKeyup);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('keydown', handleKeydown);
+            window.removeEventListener('keyup', handleKeyup);
+        };
     });
 
     let currentUser = $derived($userStore);
@@ -347,6 +380,31 @@
                 console.error("Failed to toggle microphone:", error);
             }
         }
+    }
+
+    async function startPtt() {
+        if (isPttActive) return;
+        isPttActive = true;
+        if (!room?.localParticipant) return;
+        try {
+            await room.localParticipant.setMicrophoneEnabled(true);
+        } catch (_) {}
+    }
+
+    function stopPtt() {
+        if (!isPttActive) return;
+        if (pttReleaseTimer) clearTimeout(pttReleaseTimer);
+        pttReleaseTimer = setTimeout(async () => {
+            isPttActive = false;
+            pttReleaseTimer = null;
+            if (!room?.localParticipant) return;
+            // Restore toggle state — only mute if mic was toggled off
+            if (!audioEnabled) {
+                try {
+                    await room.localParticipant.setMicrophoneEnabled(false);
+                } catch (_) {}
+            }
+        }, 250);
     }
 
     async function toggleVideo() {
