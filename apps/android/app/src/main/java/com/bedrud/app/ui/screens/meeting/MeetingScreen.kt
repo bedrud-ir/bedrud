@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.ScreenShare
 import androidx.compose.material.icons.filled.StopScreenShare
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material3.AlertDialog
@@ -429,7 +430,7 @@ fun MeetingScreen(
                                         }
                                     ) {
                                         Icon(
-                                            if (isPttActive) Icons.Default.GraphicEq else Icons.Default.Mic,
+                                            if (isPttActive) Icons.Default.GraphicEq else Icons.Default.RecordVoiceOver,
                                             contentDescription = "Push to Talk",
                                             tint = if (isPttActive)
                                                 MaterialTheme.colorScheme.onPrimary
