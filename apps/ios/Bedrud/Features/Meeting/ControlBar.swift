@@ -47,6 +47,37 @@ struct ControlBar: View {
 
             Spacer()
 
+            // Push to Talk
+            Button {} label: {
+                VStack(spacing: 4) {
+                    Image(systemName: roomManager.isPttActive ? "waveform.circle.fill" : "waveform")
+                        .font(.system(size: 18))
+                        .foregroundStyle(roomManager.isPttActive ? .green : .primary)
+                        .frame(width: 48, height: 48)
+                        .background(
+                            roomManager.isPttActive
+                                ? Color.green.opacity(0.2)
+                                : Color.primary.opacity(0.12)
+                        )
+                        .clipShape(Circle())
+                    Text("PTT")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        Task { await roomManager.startPtt() }
+                    }
+                    .onEnded { _ in
+                        roomManager.stopPtt()
+                    }
+            )
+
+            Spacer()
+
             // Chat
             controlButton(
                 icon: "bubble.left.fill",
