@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/go-co-op/gocron v1.37.0
 	github.com/go-passkeys/go-passkeys v0.4.1
-	github.com/gofiber/fiber/v2 v2.52.11
+	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/gofiber/swagger v1.1.1
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
