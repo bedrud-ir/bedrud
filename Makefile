@@ -47,6 +47,8 @@ help:
 
 # Initialize all dependencies
 init:
+	@mkdir -p server/internal/livekit/bin
+	@test -f server/internal/livekit/bin/livekit-server || echo "placeholder" > server/internal/livekit/bin/livekit-server
 	cd apps/web && bun install
 	cd server && go mod tidy && go mod download
 
