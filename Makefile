@@ -47,10 +47,35 @@ help:
 
 # Initialize all dependencies
 init:
+	@echo "➜ Setting up Bedrud development environment..."
+	@# 1. Install LiveKit server binary if not in PATH
+	@if ! command -v livekit-server >/dev/null 2>&1; then \
+		echo "➜ Downloading LiveKit server..."; \
+		ARCH=$$(uname -m); \
+		if [ "$$ARCH" = "x86_64" ]; then LK_ARCH="amd64"; \
+		elif [ "$$ARCH" = "aarch64" ]; then LK_ARCH="arm64"; \
+		else echo "❌ Unsupported architecture: $$ARCH" && exit 1; fi; \
+		curl -sL $$(curl -s https://api.github.com/repos/livekit/livekit/releases/latest | grep "browser_download_url.*linux_$${LK_ARCH}.tar.gz" | cut -d '"' -f 4) -o /tmp/livekit.tar.gz && \
+		tar -xzf /tmp/livekit.tar.gz -C /tmp && \
+		mkdir -p ~/.local/bin && \
+		mv /tmp/livekit-server ~/.local/bin/ && \
+		rm -f /tmp/livekit.tar.gz && \
+		echo "✅ LiveKit server installed to ~/.local/bin/livekit-server"; \
+	else \
+		echo "✅ LiveKit server already installed"; \
+	fi
+	@# 2. Create backend config if missing
+	@if [ ! -f server/config.yaml ]; then \
+		cp server/config.local.yaml server/config.yaml; \
+		echo "✅ Created server/config.yaml from local template"; \
+	fi
+	@# 3. Create LiveKit embed placeholder for Go compilation
 	@mkdir -p server/internal/livekit/bin
 	@test -f server/internal/livekit/bin/livekit-server || echo "placeholder" > server/internal/livekit/bin/livekit-server
+	@# 4. Install frontend and backend dependencies
 	cd apps/web && bun install
 	cd server && go mod tidy && go mod download
+	@echo "\n✅ Bedrud is ready! Run 'make dev' to start."
 
 # Run livekit + server + web concurrently (Ctrl+C kills all)
 dev:
