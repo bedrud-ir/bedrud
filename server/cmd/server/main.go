@@ -1,4 +1,21 @@
+/*
+ * Copyright 2026 Bedrud Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package main
+
 
 import (
 	"bedrud/config"
@@ -23,9 +40,12 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/swagger"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"net/http/httputil"
+	"net/url"
 )
 
 // @title           Bedrud Backend API
@@ -129,6 +149,28 @@ func main() {
 			})
 		},
 	})
+	
+	// Proxy LiveKit traffic if we are using internal host
+	if strings.Contains(strings.ToLower(cfg.LiveKit.InternalHost), "127.0.0.1") ||
+		strings.Contains(strings.ToLower(cfg.LiveKit.InternalHost), "localhost") {
+		target, _ := url.Parse("http://127.0.0.1:7880")
+		rp := httputil.NewSingleHostReverseProxy(target)
+
+		// Custom director to handle path stripping and logging
+		oldDirector := rp.Director
+		rp.Director = func(req *http.Request) {
+			oldDirector(req)
+			originalPath := req.URL.Path
+			req.URL.Path = strings.TrimPrefix(originalPath, "/livekit")
+			if req.URL.Path == "" {
+				req.URL.Path = "/"
+			}
+			req.Host = target.Host
+			log.Debug().Str("original", originalPath).Str("proxied", req.URL.Path).Msg("Proxying LiveKit request (WS supported)")
+		}
+
+		app.Use("/livekit", adaptor.HTTPHandler(rp))
+	}
 
 	// ===============================
 	// Repositories

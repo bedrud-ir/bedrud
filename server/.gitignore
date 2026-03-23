@@ -33,3 +33,6 @@ data/
 !frontend
 frontend/*
 !frontend/.gitkeep
+# Ignore embedded LiveKit binaries
+internal/livekit/bin/
+internal/livekit/LICENSE

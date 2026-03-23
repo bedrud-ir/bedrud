@@ -4,8 +4,8 @@ rtc:
   port_range_end: 60000
   use_external_ip: false
 turn:
-  enabled: true
-  domain: localhost
+  enabled: false
+  domain: 127.0.0.1
   udp_port: 3478
   tls_port: 5349
 keys:

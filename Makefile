@@ -69,7 +69,7 @@ dev-server:
 
 # Run local LiveKit server
 dev-livekit:
-	livekit-server --config server/livekit.yaml --dev
+	LIVEKIT_BIND_IP=0.0.0.0 livekit-server --config server/livekit.yaml --dev
 
 # Open iOS project in Xcode
 dev-ios:
