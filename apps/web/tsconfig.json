@@ -1,19 +1,29 @@
 {
-	"extends": "./.svelte-kit/tsconfig.json",
-	"compilerOptions": {
-		"allowJs": true,
-		"checkJs": true,
-		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
-		"resolveJsonModule": true,
-		"skipLibCheck": true,
-		"sourceMap": true,
-		"strict": true,
-		"moduleResolution": "bundler"
-	}
-	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
-	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
-	//
-	// If you want to overwrite includes/excludes, make sure to copy over the relevant includes/excludes
-	// from the referenced tsconfig.json - TypeScript does not merge them in
+  "include": ["**/*.ts", "**/*.tsx"],
+  "compilerOptions": {
+    "target": "ES2022",
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "baseUrl": ".",
+    "paths": {
+      "#/*": ["./src/*"],
+      "@/*": ["./src/*"]
+    },
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    /* Linting */
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  }
 }
