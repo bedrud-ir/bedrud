@@ -1,17 +1,24 @@
-.PHONY: help init dev dev-web dev-server dev-livekit dev-ios dev-android build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim deploy test-back push-dev push-prod run-front-dev local-build local-run
+.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim deploy test-back push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open
 
 # Show available targets
 help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Development:"
-	@echo "  init                 Install all dependencies (web + server)"
+	@echo "  init                 Install all dependencies (web + server + air)"
 	@echo "  dev                  Run livekit + server + web concurrently"
-	@echo "  dev-web              Run frontend dev server"
+	@echo "  dev-web              Run frontend dev server (proxies /api → :8090)"
 	@echo "  dev-server           Run backend server"
+	@echo "  dev-server-hot       Run backend with Air (hot reload on file changes)"
+	@echo "  dev-api              Run backend only, no LiveKit (fast API iteration)"
 	@echo "  dev-livekit          Run local LiveKit server"
 	@echo "  dev-ios              Open iOS project in Xcode"
 	@echo "  dev-android          Open Android project in Android Studio"
+	@echo ""
+	@echo "API Docs:"
+	@echo "  swagger-gen          Regenerate Swagger docs from annotations (requires swag)"
+	@echo "  swagger-open         Open Swagger UI in browser (http://localhost:8090/api/swagger)"
+	@echo "  scalar-open          Open Scalar UI in browser (http://localhost:8090/api/scalar)"
 	@echo ""
 	@echo "Build:"
 	@echo "  build                Build frontend + backend (embedded)"
@@ -72,17 +79,25 @@ init:
 	@# 3. Create LiveKit embed placeholder for Go compilation
 	@mkdir -p server/internal/livekit/bin
 	@test -f server/internal/livekit/bin/livekit-server || echo "placeholder" > server/internal/livekit/bin/livekit-server
-	@# 4. Install frontend and backend dependencies
+	@# 4. Install air for hot reload if not present
+	@if ! command -v air >/dev/null 2>&1; then \
+		echo "➜ Installing air (Go hot reload)..."; \
+		go install github.com/air-verse/air@latest; \
+		echo "✅ air installed"; \
+	else \
+		echo "✅ air already installed"; \
+	fi
+	@# 5. Install frontend and backend dependencies
 	cd apps/web && bun install
 	cd server && go mod tidy && go mod download
 	@echo "\n✅ Bedrud is ready! Run 'make dev' to start."
 
-# Run livekit + server + web concurrently (Ctrl+C kills all)
+# Run livekit + server (hot reload) + web concurrently (Ctrl+C kills all)
 dev:
 	@trap 'kill 0' INT TERM; \
 	$(MAKE) dev-livekit & \
 	sleep 1; \
-	$(MAKE) dev-server & \
+	$(MAKE) dev-server-hot & \
 	$(MAKE) dev-web & \
 	wait
 
@@ -92,6 +107,17 @@ dev-web:
 
 # Run backend server
 dev-server:
+	cd server && go run ./cmd/server/main.go
+
+# Run backend with Air hot reload (auto-restarts on .go file changes)
+dev-server-hot:
+	@if ! command -v air >/dev/null 2>&1; then \
+		echo "❌ air not found. Run 'make init' to install it."; exit 1; \
+	fi
+	cd server && air
+
+# Run backend only (no LiveKit) — fast iteration on API endpoints
+dev-api:
 	cd server && go run ./cmd/server/main.go
 
 # Run local LiveKit server
@@ -185,6 +211,24 @@ doc-serve:
 # Deploy using CLI tool
 deploy:
 	cd tools/cli && uv run python bedrud.py deploy $(ARGS)
+
+# ---- API docs targets --------------------------------------------------------
+
+# Regenerate Swagger docs from Go annotations (requires: go install github.com/swaggo/swag/cmd/swag@latest)
+swagger-gen:
+	@if ! command -v swag >/dev/null 2>&1; then \
+		echo "❌ swag not found. Install with: go install github.com/swaggo/swag/cmd/swag@latest"; exit 1; \
+	fi
+	cd server && swag init -g cmd/server/main.go -o docs --parseDependency
+	@echo "✅ Swagger docs regenerated in server/docs/"
+
+# Open Swagger UI in browser (server must be running)
+swagger-open:
+	@open http://localhost:8090/api/swagger || xdg-open http://localhost:8090/api/swagger
+
+# Open Scalar UI in browser (server must be running)
+scalar-open:
+	@open http://localhost:8090/api/scalar || xdg-open http://localhost:8090/api/scalar
 
 # Run backend tests
 test-back:

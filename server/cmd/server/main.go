@@ -211,6 +211,22 @@ func main() {
 		DocExpansion: "list",
 	}))
 
+	api.Get("/scalar", func(c *fiber.Ctx) error {
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+		return c.SendString(`<!doctype html>
+<html>
+<head>
+  <title>Bedrud API — Scalar</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body>
+  <script id="api-reference" data-url="/api/swagger/doc.json"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+</html>`)
+	})
+
 	// ------------------------------
 	authHandler := handlers.NewAuthHandler(authService, cfg)
 	api.Post("/auth/register", authHandler.Register)
