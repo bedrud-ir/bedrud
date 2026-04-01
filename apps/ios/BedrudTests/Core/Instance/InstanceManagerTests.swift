@@ -306,6 +306,8 @@ final class InstanceManagerTests: XCTestCase {
     }
 
     func testAddInstanceWithMalformedHealthResponse() async {
+        // HealthResponse has all-optional fields, so unknown-key JSON decodes successfully
+        // with nil values rather than throwing a decoding error (Swift Codable ignores unknown keys).
         MockURLProtocol.requestHandler = { request in
             let invalidJSON = #"{"invalid":"response"}"#
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
@@ -315,16 +317,11 @@ final class InstanceManagerTests: XCTestCase {
         let session = URLSession.mock()
         let client = APIClient(baseURL: "https://test.com/api", session: session)
         do {
-            let _: HealthResponse = try await client.fetch("/health")
-            XCTFail("Should throw")
+            let health: HealthResponse = try await client.fetch("/health")
+            XCTAssertNil(health.status)
+            XCTAssertNil(health.version)
         } catch {
-            if let apiError = error as? APIError {
-                if case .decodingError = apiError {
-                    // Expected
-                } else {
-                    XCTFail("Expected decodingError, got \(error)")
-                }
-            }
+            XCTFail("Unexpected error: \(error)")
         }
     }
 
