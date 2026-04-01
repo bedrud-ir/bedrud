@@ -239,11 +239,13 @@ func Run(configPath string) error {
 
 			ln, err := tls.Listen("tcp", ":443", tlsConfig)
 			if err != nil {
-				log.Fatal().Err(err).Msg("Failed to listen on :443 for ACME")
+				log.Error().Err(err).Msg("Failed to listen on :443 for ACME — falling back to plain HTTP")
+				// fall through to the plain-HTTP / manual-TLS block below
+			} else {
+				log.Info().Msg("➜ Bedrud is running on HTTPS 443 with Let's Encrypt")
+				_ = app.Listener(ln)
+				return
 			}
-			log.Info().Msg("➜ Bedrud is running on HTTPS 443 with Let's Encrypt")
-			_ = app.Listener(ln)
-			return
 		}
 
 		addr := cfg.Server.Host + ":" + cfg.Server.Port
