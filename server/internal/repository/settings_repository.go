@@ -17,7 +17,7 @@ func NewSettingsRepository(db *gorm.DB) *SettingsRepository {
 
 func (r *SettingsRepository) GetSettings() (*models.SystemSettings, error) {
 	var s models.SystemSettings
-	err := r.db.FirstOrCreate(&s, models.SystemSettings{ID: 1}).Error
+	err := r.db.Attrs(models.SystemSettings{RegistrationEnabled: true}).FirstOrCreate(&s, models.SystemSettings{ID: 1}).Error
 	return &s, err
 }
 
