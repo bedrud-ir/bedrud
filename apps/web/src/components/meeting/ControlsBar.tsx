@@ -9,6 +9,7 @@ interface Props {
   onLeave: () => void
   chatOpen: boolean
   participantsOpen: boolean
+  unreadCount?: number
 }
 
 // Shared icon-button style
@@ -32,13 +33,14 @@ const divider: React.CSSProperties = {
   flexShrink: 0,
 }
 
-export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatOpen, participantsOpen }: Props) {
+export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatOpen, participantsOpen, unreadCount = 0 }: Props) {
   const { localParticipant } = useLocalParticipant()
   const micEnabled = localParticipant?.isMicrophoneEnabled ?? false
   const camEnabled = localParticipant?.isCameraEnabled ?? false
 
   const pttActiveRef   = useRef(false)
   const pttInitMicRef  = useRef(false)
+  const [pttInitMic, setPttInitMic] = useState(false)
   const [pttVisible, setPttVisible] = useState(false)
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatO
       if (!localParticipant) return
       pttActiveRef.current  = true
       pttInitMicRef.current = localParticipant.isMicrophoneEnabled
+      setPttInitMic(localParticipant.isMicrophoneEnabled)
       localParticipant.setMicrophoneEnabled(!pttInitMicRef.current)
       setPttVisible(true)
       e.preventDefault()
@@ -85,7 +88,7 @@ export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatO
           }}
         >
           <Mic size={13} />
-          {pttInitMicRef.current ? 'Push-to-Mute active' : 'Push-to-Talk active'}
+          {pttInitMic ? 'Push-to-Mute active' : 'Push-to-Talk active'}
         </div>
       )}
 
@@ -166,11 +169,23 @@ export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatO
 
           <button
             onClick={onToggleChat}
-            style={iconBtn(chatOpen)}
+            style={{ ...iconBtn(chatOpen), position: 'relative' }}
             title="Chat"
             aria-label={chatOpen ? 'Close chat' : 'Open chat'}
           >
             <MessageSquare size={17} />
+            {unreadCount > 0 && !chatOpen && (
+              <span style={{
+                position: 'absolute', top: 6, right: 6,
+                minWidth: 14, height: 14, borderRadius: 7,
+                background: '#6366f1', color: 'white',
+                fontSize: 9, fontWeight: 700, lineHeight: '14px',
+                textAlign: 'center', padding: '0 3px',
+                pointerEvents: 'none',
+              }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
 
           <button
