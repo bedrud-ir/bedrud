@@ -241,12 +241,12 @@ jobs:
 
           | Platform | Asset |
           |----------|-------|
-          | Linux x86_64 | \`bedrud_linux_amd64.tar.xz\` |
-          | Linux ARM64 | \`bedrud_linux_arm64.tar.xz\` |
-          | macOS x86_64 | \`bedrud_darwin_amd64.tar.xz\` |
-          | macOS ARM64 | \`bedrud_darwin_arm64.tar.xz\` |
-          | Android (debug) | \`bedrud-debug.apk\` |
-          | Web | \`bedrud-web.tar.xz\` |
+          | Linux x86_64 | [bedrud_linux_amd64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_linux_amd64.tar.xz) |
+          | Linux ARM64 | [bedrud_linux_arm64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_linux_arm64.tar.xz) |
+          | macOS x86_64 | [bedrud_darwin_amd64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_darwin_amd64.tar.xz) |
+          | macOS ARM64 | [bedrud_darwin_arm64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_darwin_arm64.tar.xz) |
+          | Android (debug) | [bedrud-debug.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-debug.apk) |
+          | Web | [bedrud-web.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-web.tar.xz) |
 
           > This is an automated beta pre-release. It will be deleted when the PR is closed or merged.
           NOTES_EOF
@@ -270,11 +270,15 @@ jobs:
         env:
           RELEASE_URL: ${{ steps.create_release.outputs.release_url }}
           SHA_SHORT: ${{ needs.prepare.outputs.sha_short }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         with:
           script: |
             const marker = '<!-- pr-beta-release -->';
             const releaseUrl = process.env.RELEASE_URL;
             const sha = process.env.SHA_SHORT;
+            const base = `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/download/${process.env.RELEASE_TAG}`;
+
+            const asset = (name) => `[${name}](${base}/${name})`;
 
             const body = [
               marker,
@@ -286,12 +290,12 @@ jobs:
               ``,
               `| Platform | Asset |`,
               `|----------|-------|`,
-              `| Linux x86_64 | \`bedrud_linux_amd64.tar.xz\` |`,
-              `| Linux ARM64 | \`bedrud_linux_arm64.tar.xz\` |`,
-              `| macOS x86_64 | \`bedrud_darwin_amd64.tar.xz\` |`,
-              `| macOS ARM64 | \`bedrud_darwin_arm64.tar.xz\` |`,
-              `| Android (debug APK) | \`bedrud-debug.apk\` |`,
-              `| Web bundle | \`bedrud-web.tar.xz\` |`,
+              `| Linux x86_64 | ${asset('bedrud_linux_amd64.tar.xz')} |`,
+              `| Linux ARM64 | ${asset('bedrud_linux_arm64.tar.xz')} |`,
+              `| macOS x86_64 | ${asset('bedrud_darwin_amd64.tar.xz')} |`,
+              `| macOS ARM64 | ${asset('bedrud_darwin_arm64.tar.xz')} |`,
+              `| Android (debug APK) | ${asset('bedrud-debug.apk')} |`,
+              `| Web bundle | ${asset('bedrud-web.tar.xz')} |`,
               ``,
               `> Updated on each push. Deleted when the PR is closed.`,
             ].join('\n');
