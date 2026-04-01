@@ -119,9 +119,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to run database migrations")
 	}
 
-	// Initialize scheduler
-	scheduler.Initialize()
-	defer scheduler.Stop()
+	// Scheduler is initialized after repositories are set up (see below)
 
 	// Initialize Goth providers (after session store is initialized)
 	auth.Init(cfg)
@@ -180,6 +178,9 @@ func main() {
 	roomRepo := repository.NewRoomRepository(database.GetDB())
 	settingsRepo := repository.NewSettingsRepository(database.GetDB())
 	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
+
+	scheduler.Initialize(roomRepo, cfg.LiveKit)
+	defer scheduler.Stop()
 
 	// ===============================
 	// Services

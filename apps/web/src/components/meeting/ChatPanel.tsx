@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { useChat, useLocalParticipant } from '@livekit/components-react'
+import { useChat, useLocalParticipant, useRoomContext } from '@livekit/components-react'
+import { RoomEvent } from 'livekit-client'
 import { X, Send, MessageSquare } from 'lucide-react'
 
 interface Props {
   onClose: () => void
+}
+
+interface SystemMessage {
+  type: 'system'
+  event: 'kick' | 'ban'
+  actor: string
+  target: string
+  ts: number
 }
 
 const panel: React.CSSProperties = {
@@ -18,12 +27,29 @@ const panel: React.CSSProperties = {
 export function ChatPanel({ onClose }: Props) {
   const { chatMessages, send, isSending } = useChat()
   const { localParticipant } = useLocalParticipant()
+  const room = useRoomContext()
   const [draft, setDraft] = useState('')
+  const [systemMessages, setSystemMessages] = useState<SystemMessage[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Listen for system data messages (kick/ban events)
+  useEffect(() => {
+    const handler = (payload: Uint8Array, _participant: unknown, _kind: unknown, topic?: string) => {
+      if (topic !== 'system') return
+      try {
+        const msg = JSON.parse(new TextDecoder().decode(payload)) as SystemMessage
+        if (msg.type === 'system') {
+          setSystemMessages((prev) => [...prev, { ...msg, ts: Date.now() }])
+        }
+      } catch { /* ignore malformed */ }
+    }
+    room.on(RoomEvent.DataReceived, handler)
+    return () => { room.off(RoomEvent.DataReceived, handler) }
+  }, [room])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages])
+  }, [chatMessages, systemMessages])
 
   async function handleSend(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -32,6 +58,20 @@ export function ChatPanel({ onClose }: Props) {
     await send(text)
     setDraft('')
   }
+
+  // Merge chat and system messages by timestamp for ordered display
+  type DisplayItem =
+    | { kind: 'chat'; msg: (typeof chatMessages)[number]; idx: number }
+    | { kind: 'system'; msg: SystemMessage }
+
+  const items: DisplayItem[] = [
+    ...chatMessages.map((msg, idx) => ({ kind: 'chat' as const, msg, idx })),
+    ...systemMessages.map((msg) => ({ kind: 'system' as const, msg })),
+  ].sort((a, b) => {
+    const ta = a.kind === 'chat' ? a.msg.timestamp : a.msg.ts
+    const tb = b.kind === 'chat' ? b.msg.timestamp : b.msg.ts
+    return ta - tb
+  })
 
   return (
     <aside className="meet-panel" style={panel}>
@@ -63,7 +103,7 @@ export function ChatPanel({ onClose }: Props) {
 
       {/* Messages */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {chatMessages.length === 0 ? (
+        {items.length === 0 ? (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -81,10 +121,31 @@ export function ChatPanel({ onClose }: Props) {
             </p>
           </div>
         ) : (
-          chatMessages.map((msg, i) => {
+          items.map((item, i) => {
+            if (item.kind === 'system') {
+              const label = item.msg.event === 'kick' ? 'was kicked by' : 'was banned by'
+              return (
+                <div key={`sys-${i}`} style={{
+                  display: 'flex', justifyContent: 'center',
+                  padding: '2px 0',
+                }}>
+                  <span style={{
+                    fontSize: 11, color: 'rgba(255,255,255,0.3)',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 20, padding: '3px 10px',
+                    fontStyle: 'italic',
+                  }}>
+                    {item.msg.target} {label} {item.msg.actor}
+                  </span>
+                </div>
+              )
+            }
+
+            const msg = item.msg
             const isLocal = msg.from?.identity === localParticipant?.identity
             return (
-              <div key={i} style={{
+              <div key={`chat-${item.idx}`} style={{
                 display: 'flex', flexDirection: 'column',
                 alignItems: isLocal ? 'flex-end' : 'flex-start',
                 gap: 3,
