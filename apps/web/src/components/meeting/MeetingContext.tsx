@@ -70,7 +70,9 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
         if (msg.type === 'system') {
           setSystemMessages((prev) => [...prev, { ...msg, ts: Date.now() }])
         }
-      } catch { /* ignore malformed */ }
+      } catch (e) {
+        console.warn('[MeetingContext] failed to parse system message:', e)
+      }
     }
     room.on(RoomEvent.DataReceived, handler)
     return () => { room.off(RoomEvent.DataReceived, handler) }
