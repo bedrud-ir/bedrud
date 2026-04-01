@@ -358,7 +358,7 @@ interface MeetingControlsProps {
 }
 
 function MeetingControls({ chatOpen, participantsOpen, onToggleChat, onToggleParticipants, onNavigate }: MeetingControlsProps) {
-  const { isCreator, roomId } = useMeetingContext()
+  const { isCreator, roomId, unreadCount } = useMeetingContext()
   const room = useRoomContext()
   const [endDialogOpen, setEndDialogOpen] = useState(false)
   const [isEnding, setIsEnding] = useState(false)
@@ -388,6 +388,7 @@ function MeetingControls({ chatOpen, participantsOpen, onToggleChat, onTogglePar
         onLeave={handleLeaveRequest}
         chatOpen={chatOpen}
         participantsOpen={participantsOpen}
+        unreadCount={unreadCount}
       />
       <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
         <DialogContent className="sm:max-w-sm" style={{ background: '#0f0f1e', border: '1px solid rgba(255,255,255,0.08)' }}>
