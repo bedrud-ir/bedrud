@@ -555,7 +555,6 @@ func Init(cfg *config.Config) {
 	if cfg.Auth.Github.ClientID != "" && cfg.Auth.Github.ClientSecret != "" {
 		log.Debug().Msg("Initializing GitHub provider")
 		log.Debug().Msg("Client ID: " + cfg.Auth.Github.ClientID)
-		log.Debug().Msg("Client Secret: " + cfg.Auth.Github.ClientSecret)
 		log.Debug().Msg("Redirect URL: " + cfg.Auth.Github.RedirectURL)
 		providers = append(providers, github.New(
 			cfg.Auth.Github.ClientID,
