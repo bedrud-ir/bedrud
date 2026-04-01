@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import type { Participant } from 'livekit-client'
-import { Track } from 'livekit-client'
+import { Track, ParticipantEvent } from 'livekit-client'
 import { useParticipantInfo, useIsSpeaking, VideoTrack } from '@livekit/components-react'
 import { MicOff, Maximize2 } from 'lucide-react'
 
@@ -31,7 +31,28 @@ function getPalette(name: string) {
 export function ParticipantTile({ participant, totalCount, index, onSpotlight }: Props) {
   const { name, identity } = useParticipantInfo({ participant })
   const isSpeaking = useIsSpeaking(participant)
-  const cameraTrack = participant.getTrackPublication(Track.Source.Camera)
+
+  const [cameraTrack, setCameraTrack] = useState(
+    () => participant.getTrackPublication(Track.Source.Camera)
+  )
+  useEffect(() => {
+    const refresh = () => setCameraTrack(participant.getTrackPublication(Track.Source.Camera))
+    participant.on(ParticipantEvent.TrackPublished, refresh)
+    participant.on(ParticipantEvent.TrackUnpublished, refresh)
+    participant.on(ParticipantEvent.TrackMuted, refresh)
+    participant.on(ParticipantEvent.TrackUnmuted, refresh)
+    participant.on(ParticipantEvent.TrackSubscribed, refresh)
+    participant.on(ParticipantEvent.TrackUnsubscribed, refresh)
+    return () => {
+      participant.off(ParticipantEvent.TrackPublished, refresh)
+      participant.off(ParticipantEvent.TrackUnpublished, refresh)
+      participant.off(ParticipantEvent.TrackMuted, refresh)
+      participant.off(ParticipantEvent.TrackUnmuted, refresh)
+      participant.off(ParticipantEvent.TrackSubscribed, refresh)
+      participant.off(ParticipantEvent.TrackUnsubscribed, refresh)
+    }
+  }, [participant])
+
   const hasCameraVideo = Boolean(cameraTrack?.isSubscribed && !cameraTrack.isMuted)
   const displayName = name ?? identity ?? '?'
   const initial = displayName.charAt(0).toUpperCase()
