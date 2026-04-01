@@ -57,19 +57,12 @@ jobs:
           go-version: "1.24"
           cache-dependency-path: server/go.sum
 
-      # Build frontend
-      - name: Build frontend
+      # Build and embed frontend into server
+      - name: Build and embed frontend
         working-directory: apps/web
         run: |
           bun install --frozen-lockfile
-          bun run build
-
-      # Embed frontend into server
-      - name: Embed frontend
-        run: |
-          rm -rf server/frontend
-          mkdir -p server/frontend
-          cp -r apps/web/build/* server/frontend/
+          bun run build:embed
 
       # Build server binary
       - name: Build server binary

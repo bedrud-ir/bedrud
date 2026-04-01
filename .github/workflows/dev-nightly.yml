@@ -227,7 +227,7 @@ jobs:
       - name: Package web build
         run: |
           mkdir -p ../../dist
-          tar -cJf ../../dist/web.tar.xz -C build .
+          tar -cJf ../../dist/web.tar.xz -C dist/client .
 
       - uses: actions/upload-artifact@v4
         with:
