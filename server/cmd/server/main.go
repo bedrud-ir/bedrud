@@ -254,6 +254,7 @@ func main() {
 	// Room routes
 	api.Post("/room/create", middleware.Protected(), roomHandler.CreateRoom)
 	api.Post("/room/join", middleware.Protected(), roomHandler.JoinRoom)
+	api.Post("/room/guest-join", roomHandler.GuestJoinRoom)
 	api.Get("/room/list", middleware.Protected(), roomHandler.ListRooms)
 	api.Post("/room/:roomId/kick/:identity", middleware.Protected(), roomHandler.KickParticipant)
 	api.Post("/room/:roomId/mute/:identity", middleware.Protected(), roomHandler.MuteParticipant)

@@ -57,7 +57,7 @@ function MeetingPage() {
         .catch((err: Error) => setJoinError(err.message))
     } else if (guestName !== null && guestName !== '') {
       // Guest with confirmed name
-      api.post<JoinResponse>('/api/guest/join-room', { roomName: meetId, guestName })
+      api.post<JoinResponse>('/api/room/guest-join', { roomName: meetId, guestName })
         .then(setJoinData)
         .catch((err: Error) => setJoinError(err.message))
     }
