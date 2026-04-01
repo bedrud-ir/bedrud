@@ -220,8 +220,26 @@ func (h *RoomHandler) ListRooms(c *fiber.Ctx) error {
 	return c.JSON(rooms)
 }
 
+func (h *RoomHandler) sendSystemMessage(ctx context.Context, roomName, event, actor, target string) {
+	type sysMsg struct {
+		Type   string `json:"type"`
+		Event  string `json:"event"`
+		Actor  string `json:"actor"`
+		Target string `json:"target"`
+	}
+	b, _ := json.Marshal(sysMsg{Type: "system", Event: event, Actor: actor, Target: target})
+	topic := "system"
+	_, _ = h.client.SendData(ctx, &livekit.SendDataRequest{
+		Room:  roomName,
+		Data:  b,
+		Kind:  livekit.DataPacket_RELIABLE,
+		Topic: &topic,
+	})
+}
+
 func (h *RoomHandler) KickParticipant(c *fiber.Ctx) error {
 	roomID, identity := c.Params("roomId"), c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
 	room, _ := h.roomRepo.GetRoom(roomID)
 	if room == nil {
 		return c.SendStatus(404)
@@ -231,6 +249,7 @@ func (h *RoomHandler) KickParticipant(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	h.sendSystemMessage(ctx, room.Name, "kick", claims.UserID, identity)
 	return c.JSON(fiber.Map{"status": "success"})
 }
 
@@ -307,6 +326,7 @@ func (h *RoomHandler) BanParticipant(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	h.sendSystemMessage(ctx, room.Name, "ban", claims.UserID, identity)
 	_ = h.roomRepo.KickParticipant(room.ID, identity)
 	return c.JSON(fiber.Map{"status": "success"})
 }
@@ -485,6 +505,7 @@ func (h *RoomHandler) AdminGetRoomParticipants(c *fiber.Ctx) error {
 func (h *RoomHandler) AdminKickParticipant(c *fiber.Ctx) error {
 	roomID := c.Params("roomId")
 	identity := c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
 	room, _ := h.roomRepo.GetRoom(roomID)
 	if room == nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
@@ -494,6 +515,7 @@ func (h *RoomHandler) AdminKickParticipant(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	h.sendSystemMessage(ctx, room.Name, "kick", claims.UserID, identity)
 	return c.JSON(fiber.Map{"status": "success"})
 }
 

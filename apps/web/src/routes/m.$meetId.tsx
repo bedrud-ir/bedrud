@@ -7,7 +7,7 @@ import {
   useParticipants,
   useRoomContext,
 } from '@livekit/components-react'
-import { ConnectionState } from 'livekit-client'
+import { ConnectionState, DisconnectReason, RoomEvent } from 'livekit-client'
 import { useAuthStore } from '#/lib/auth.store'
 import { api } from '#/lib/api'
 import { ParticipantGrid } from '@/components/meeting/ParticipantGrid'
@@ -187,6 +187,35 @@ function MeetingPage() {
   }
 
   const { id, token, livekitHost: wsUrl, name: roomName, adminId } = joinData
+  const [wasKicked, setWasKicked] = useState(false)
+
+  if (wasKicked) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, background: '#07070f',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%',
+          background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <PhoneOff size={22} style={{ color: '#f87171' }} />
+        </div>
+        <p style={{ color: 'white', fontSize: 16, fontWeight: 600 }}>You were removed</p>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>A moderator removed you from this room.</p>
+        <button
+          onClick={() => navigate({ to: '/dashboard' })}
+          style={{
+            marginTop: 8, padding: '8px 20px', borderRadius: 10, border: 'none',
+            background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', fontSize: 13, cursor: 'pointer',
+          }}
+        >
+          Back to dashboard
+        </button>
+      </div>
+    )
+  }
 
   return (
     <LiveKitRoom token={token} serverUrl={wsUrl} connect audio video={false}>
@@ -194,6 +223,7 @@ function MeetingPage() {
       {/* LiveKitRoom renders as display:contents — this div is the actual viewport container */}
       <div className="fixed inset-0 overflow-hidden" style={{ background: '#07070f' }}>
       <MeetingProvider roomId={id} roomName={roomName} adminId={adminId ?? ''}>
+        <KickDetector onKicked={() => setWasKicked(true)} />
         {/* Ambient depth gradients */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <div style={{
@@ -398,4 +428,21 @@ function MeetingControls({ chatOpen, participantsOpen, onToggleChat, onTogglePar
       </Dialog>
     </>
   )
+}
+
+// ── Kick detector ─────────────────────────────────────────────
+function KickDetector({ onKicked }: { onKicked: () => void }) {
+  const room = useRoomContext()
+
+  useEffect(() => {
+    const handler = (reason?: DisconnectReason) => {
+      if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
+        onKicked()
+      }
+    }
+    room.on(RoomEvent.Disconnected, handler)
+    return () => { room.off(RoomEvent.Disconnected, handler) }
+  }, [room, onKicked])
+
+  return null
 }

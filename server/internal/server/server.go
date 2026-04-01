@@ -84,7 +84,8 @@ func Run(configPath string) error {
 	}
 	defer database.Close()
 	database.RunMigrations()
-	scheduler.Initialize()
+	roomRepo := repository.NewRoomRepository(database.GetDB())
+	scheduler.Initialize(roomRepo, cfg.LiveKit)
 	defer scheduler.Stop()
 	auth.Init(cfg)
 
@@ -123,7 +124,6 @@ func Run(configPath string) error {
 	api := app.Group("/api")
 	userRepo := repository.NewUserRepository(database.GetDB())
 	passkeyRepo := repository.NewPasskeyRepository(database.GetDB())
-	roomRepo := repository.NewRoomRepository(database.GetDB())
 	settingsRepo := repository.NewSettingsRepository(database.GetDB())
 	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
 	authService := auth.NewAuthService(userRepo, passkeyRepo)

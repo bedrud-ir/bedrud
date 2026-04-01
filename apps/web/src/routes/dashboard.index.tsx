@@ -157,6 +157,7 @@ function DashboardPage() {
   const user = useUserStore((s) => s.user)
   const [createOpen, setCreateOpen] = useState(false)
   const [filter, setFilter] = useState<'all' | 'active' | 'private'>('all')
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const { data: rooms, isLoading } = useQuery({
     queryKey: ['rooms'],
@@ -172,8 +173,14 @@ function DashboardPage() {
   }
 
   async function handleDelete(roomId: string) {
-    await api.delete(`/api/room/${roomId}`)
-    queryClient.invalidateQueries({ queryKey: ['rooms'] })
+    try {
+      await api.delete(`/api/room/${roomId}`)
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete room'
+      setDeleteError(msg)
+      setTimeout(() => setDeleteError(null), 4000)
+    }
   }
 
   async function handleCreate(data: {
@@ -267,6 +274,16 @@ function DashboardPage() {
               {f}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* ── Delete error banner ────────────────────────────────────────── */}
+      {deleteError && (
+        <div
+          className="rounded-xl px-4 py-3 text-sm"
+          style={{ background: '#ef444420', border: '1px solid #ef444440', color: '#f87171' }}
+        >
+          {deleteError}
         </div>
       )}
 

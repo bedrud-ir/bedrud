@@ -51,6 +51,7 @@ function formatBitrate(bps: number) {
 function TrackBadge({ track }: { track: Track }) {
   const isAudio = track.type === 'AUDIO'
   const Icon = track.source === 'SCREEN_SHARE' ? Monitor : isAudio ? Volume2 : Video
+  const bitrateLabel = track.muted ? 'muted' : isAudio ? 'live' : formatBitrate(track.bitrate)
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
@@ -61,10 +62,10 @@ function TrackBadge({ track }: { track: Track }) {
             ? { background: '#10b98115', color: '#10b981' }
             : { background: '#6366f115', color: '#818cf8' }
       }
-      title={`${track.source} · ${formatBitrate(track.bitrate)}`}
+      title={isAudio ? `${track.source} · audio (bitrate N/A)` : `${track.source} · ${formatBitrate(track.bitrate)}`}
     >
       <Icon className="h-3 w-3" />
-      {track.muted ? 'muted' : formatBitrate(track.bitrate)}
+      {bitrateLabel}
     </span>
   )
 }
@@ -130,6 +131,8 @@ function RoomDetailPage() {
   const room = data?.room
   const totalBitrate = participants.reduce((sum, p) =>
     sum + p.tracks.reduce((ts, t) => ts + (t.muted ? 0 : t.bitrate), 0), 0)
+  const isAudioOnly = participants.length > 0 && totalBitrate === 0 &&
+    participants.some(p => p.tracks.some(t => !t.muted && t.type === 'AUDIO'))
 
   // Stable colors for per-participant lines
   const LINE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#06b6d4', '#ec4899', '#f97316', '#a855f7', '#84cc16']
@@ -172,7 +175,7 @@ function RoomDetailPage() {
           {[
             { label: 'Participants', value: participants.length, icon: Users, color: '#6366f1' },
             { label: 'Publishers', value: participants.filter(p => p.isPublisher).length, icon: Activity, color: '#10b981' },
-            { label: 'Total bitrate', value: formatBitrate(totalBitrate), icon: Activity, color: '#f59e0b' },
+            { label: 'Total bitrate', value: isAudioOnly ? 'Audio' : formatBitrate(totalBitrate), icon: Activity, color: '#f59e0b' },
             { label: 'Visibility', value: room.isPublic ? 'Public' : 'Private', icon: room.isPublic ? Globe : Lock, color: room.isPublic ? '#06b6d4' : '#8b5cf6' },
           ].map(({ label, value, icon: Icon, color }) => (
             <div
