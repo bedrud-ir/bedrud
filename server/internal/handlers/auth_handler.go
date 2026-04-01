@@ -66,13 +66,6 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 						"error": "Invalid or expired invite token",
 					})
 				}
-				// Mark token used after successful registration (deferred below)
-				defer func() {
-					if tok != nil {
-						// Will be marked used once user is created; best-effort
-					}
-				}()
-				_ = tok // used below after user creation
 				c.Locals("pendingInviteToken", tok.ID)
 			}
 		}
