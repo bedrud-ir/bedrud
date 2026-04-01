@@ -41,6 +41,6 @@ struct Account: Codable, Equatable {
 }
 
 struct HealthResponse: Decodable {
-    let status: String
+    let status: String?
     let version: String?
 }

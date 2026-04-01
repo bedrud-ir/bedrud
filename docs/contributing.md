@@ -26,7 +26,7 @@ See the [Development Workflow](guides/development.md) for detailed setup instruc
 | Directory | Language | Description |
 |-----------|---------|-------------|
 | `server/` | Go | Backend API and embedded services |
-| `apps/web/` | TypeScript/Svelte | Web frontend |
+| `apps/web/` | TypeScript/React | Web frontend |
 | `apps/android/` | Kotlin | Android app |
 | `apps/ios/` | Swift | iOS app |
 | `agents/` | Python | Bot agents |
@@ -38,7 +38,7 @@ See the [Development Workflow](guides/development.md) for detailed setup instruc
 | Language | Standard |
 |---------|---------|
 | Go | `gofmt` |
-| TypeScript/Svelte | Prettier |
+| TypeScript/React | Prettier |
 | Kotlin | Android Studio defaults |
 | Swift | Xcode defaults |
 
