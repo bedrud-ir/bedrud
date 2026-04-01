@@ -81,11 +81,41 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew lint
       - run: ./gradlew testDebugUnitTest
-      - run: ./gradlew assembleDebug
-      - uses: actions/upload-artifact@v4
+      - run: ./gradlew assembleDebug bundleDebug
+
+      - name: Upload universal APK
+        uses: actions/upload-artifact@v4
         with:
-          name: android-debug-apk
-          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+          name: android-apk-universal
+          path: apps/android/app/build/outputs/apk/debug/app-universal-debug.apk
+          retention-days: 7
+
+      - name: Upload arm64-v8a APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-arm64-v8a
+          path: apps/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+          retention-days: 7
+
+      - name: Upload armeabi-v7a APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-armeabi-v7a
+          path: apps/android/app/build/outputs/apk/debug/app-armeabi-v7a-debug.apk
+          retention-days: 7
+
+      - name: Upload x86_64 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-x86_64
+          path: apps/android/app/build/outputs/apk/debug/app-x86_64-debug.apk
+          retention-days: 7
+
+      - name: Upload debug bundle (AAB)
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-bundle-debug
+          path: apps/android/app/build/outputs/bundle/debug/app-debug.aab
           retention-days: 7
 
   # ── iOS ───────────────────────────────────────────────────────
