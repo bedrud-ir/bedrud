@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRoomContext } from '@livekit/components-react'
+import { ConnectionState, RoomEvent } from 'livekit-client'
 import { ChevronDown, Check } from 'lucide-react'
 import {
   DropdownMenu,
@@ -41,12 +42,21 @@ export function DeviceSelector({ kind }: DeviceSelectorProps) {
     return () => navigator.mediaDevices.removeEventListener('devicechange', refreshDevices)
   }, [])
 
-  // Restore saved device once connected
+  // Restore saved device — wait until the room is connected to avoid silent failures
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEYS[kind])
-    if (saved) {
+    if (!saved) return
+
+    if (room.state === ConnectionState.Connected) {
       room.switchActiveDevice(kind, saved).catch(() => {})
+      return
     }
+
+    function onConnected() {
+      room.switchActiveDevice(kind, saved!).catch(() => {})
+    }
+    room.once(RoomEvent.Connected, onConnected)
+    return () => { room.off(RoomEvent.Connected, onConnected) }
   }, [room, kind])
 
   async function handleSelect(deviceId: string) {
