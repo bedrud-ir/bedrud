@@ -1,4 +1,5 @@
-import { createFileRoute, Link, Outlet, redirect, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { Radio, Shield, Users, Video, LayoutDashboard, ChevronRight, Settings } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAuthStore } from '#/lib/auth.store'
@@ -38,6 +39,23 @@ function NavLink({ to, label, icon: Icon, exact }: { to: string; label: string; 
 }
 
 function AdminLayout() {
+  const user = useUserStore((s) => s.user)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (user !== null && !user.isAdmin) {
+      navigate({ to: '/dashboard' })
+    }
+  }, [user, navigate])
+
+  if (user === null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Sidebar */}
