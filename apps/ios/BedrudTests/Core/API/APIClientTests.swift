@@ -417,7 +417,7 @@ final class APIClientTests: XCTestCase {
         }
     }
 
-    func testAuthFetchRetriesOn401() async {
+    func testAuthFetchRetriesOn401() async throws {
         let keychain = Keychain(service: "org.bedrud.tests.apiclient.\(UUID().uuidString)")
         defer { try? keychain.removeAll() }
 
