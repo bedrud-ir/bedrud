@@ -47,7 +47,7 @@ func TestUsersHandler_ListUsers_Empty(t *testing.T) {
 	app, _ := setupUsersTestApp(t)
 
 	req := httptest.NewRequest("GET", "/admin/users", nil)
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestUsersHandler_ListUsers_WithUsers(t *testing.T) {
 	_ = userRepo.CreateUser(&models.User{ID: "u2", Email: "u2@ex.com", Name: "User 2", Provider: "google", IsActive: false, Accesses: models.StringArray{"admin"}})
 
 	req := httptest.NewRequest("GET", "/admin/users", nil)
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
@@ -115,7 +115,7 @@ func TestUsersHandler_UpdateUserStatus_Success(t *testing.T) {
 	body, _ := json.Marshal(UserStatusUpdateRequest{Active: false})
 	req := httptest.NewRequest("PUT", "/admin/users/target-user/status", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -136,7 +136,7 @@ func TestUsersHandler_UpdateUserStatus_Reactivate(t *testing.T) {
 	body, _ := json.Marshal(UserStatusUpdateRequest{Active: true})
 	req := httptest.NewRequest("PUT", "/admin/users/inactive-user/status", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -154,7 +154,7 @@ func TestUsersHandler_UpdateUserStatus_NotFound(t *testing.T) {
 	body, _ := json.Marshal(UserStatusUpdateRequest{Active: false})
 	req := httptest.NewRequest("PUT", "/admin/users/nonexistent-id/status", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 
 	if resp.StatusCode != 404 {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
@@ -166,7 +166,7 @@ func TestUsersHandler_UpdateUserStatus_InvalidBody(t *testing.T) {
 
 	req := httptest.NewRequest("PUT", "/admin/users/some-id/status", bytes.NewReader([]byte("not json")))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 
 	if resp.StatusCode != 400 {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
