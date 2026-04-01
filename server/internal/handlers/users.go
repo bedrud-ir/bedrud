@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bedrud/internal/auth"
 	"bedrud/internal/models"
 	"bedrud/internal/repository"
 
@@ -114,6 +115,11 @@ func (h *UsersHandler) ListUsers(c *fiber.Ctx) error {
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /admin/users/{id}/status [put]
 func (h *UsersHandler) UpdateUserAccesses(c *fiber.Ctx) error {
+	claims, ok := c.Locals("user").(*auth.Claims)
+	if !ok || claims == nil || !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+
 	userID := c.Params("id")
 	var input struct {
 		Accesses []string `json:"accesses"`
