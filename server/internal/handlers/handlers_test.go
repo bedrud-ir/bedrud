@@ -20,7 +20,8 @@ func setupUsersTestApp(t *testing.T) (*fiber.App, *repository.UserRepository) {
 	t.Helper()
 	db := testutil.SetupTestDB(t)
 	userRepo := repository.NewUserRepository(db)
-	usersHandler := NewUsersHandler(userRepo)
+	roomRepo := repository.NewRoomRepository(db)
+	usersHandler := NewUsersHandler(userRepo, roomRepo)
 
 	app := fiber.New()
 	// Simulate Protected middleware by injecting claims

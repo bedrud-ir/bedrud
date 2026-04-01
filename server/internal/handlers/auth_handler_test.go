@@ -19,6 +19,8 @@ func setupAuthTestApp(t *testing.T) (*fiber.App, *auth.AuthService, *config.Conf
 	db := testutil.SetupTestDB(t)
 	userRepo := repository.NewUserRepository(db)
 	passkeyRepo := repository.NewPasskeyRepository(db)
+	settingsRepo := repository.NewSettingsRepository(db)
+	inviteTokenRepo := repository.NewInviteTokenRepository(db)
 	authService := auth.NewAuthService(userRepo, passkeyRepo)
 	cfg := &config.Config{
 		Auth: config.AuthConfig{
@@ -32,7 +34,7 @@ func setupAuthTestApp(t *testing.T) (*fiber.App, *auth.AuthService, *config.Conf
 	}
 	// Set global config so Login/GuestLogin (which call config.Get()) don't panic
 	config.SetForTest(cfg)
-	authHandler := NewAuthHandler(authService, cfg)
+	authHandler := NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)
 
 	app := fiber.New()
 
