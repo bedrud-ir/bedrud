@@ -164,12 +164,8 @@ function DashboardPage() {
     queryFn: () => api.get<Room[]>('/api/room/list'),
   })
 
-  async function handleJoin(roomName: string) {
-    const res = await api.post<{ name: string; token: string; livekitHost: string }>(
-      '/api/room/join',
-      { roomName }
-    )
-    navigate({ to: '/m/$meetId', params: { meetId: res.name } })
+  function handleJoin(roomName: string) {
+    navigate({ to: '/m/$meetId', params: { meetId: roomName } })
   }
 
   async function handleDelete(roomId: string) {
