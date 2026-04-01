@@ -144,13 +144,33 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      - name: Build APKs and bundle
+        run: ./gradlew assembleDebug bundleDebug
 
       - uses: actions/upload-artifact@v4
         with:
-          name: android-debug-apk
-          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+          name: android-apk-universal
+          path: apps/android/app/build/outputs/apk/debug/app-universal-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-arm64-v8a
+          path: apps/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-armeabi-v7a
+          path: apps/android/app/build/outputs/apk/debug/app-armeabi-v7a-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-x86_64
+          path: apps/android/app/build/outputs/apk/debug/app-x86_64-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-bundle
+          path: apps/android/app/build/outputs/bundle/debug/app-debug.aab
 
   # ── Web bundle ───────────────────────────────────────────────
   web:
@@ -201,8 +221,16 @@ jobs:
 
           find artifacts/server-* -name "*.tar.xz" -exec cp {} release-assets/ \;
 
-          [ -f artifacts/android-debug-apk/app-debug.apk ] && \
-            cp artifacts/android-debug-apk/app-debug.apk release-assets/bedrud-debug.apk
+          [ -f artifacts/android-apk-universal/app-universal-debug.apk ] && \
+            cp artifacts/android-apk-universal/app-universal-debug.apk release-assets/bedrud-android-universal.apk
+          [ -f artifacts/android-apk-arm64-v8a/app-arm64-v8a-debug.apk ] && \
+            cp artifacts/android-apk-arm64-v8a/app-arm64-v8a-debug.apk release-assets/bedrud-android-arm64-v8a.apk
+          [ -f artifacts/android-apk-armeabi-v7a/app-armeabi-v7a-debug.apk ] && \
+            cp artifacts/android-apk-armeabi-v7a/app-armeabi-v7a-debug.apk release-assets/bedrud-android-armeabi-v7a.apk
+          [ -f artifacts/android-apk-x86_64/app-x86_64-debug.apk ] && \
+            cp artifacts/android-apk-x86_64/app-x86_64-debug.apk release-assets/bedrud-android-x86_64.apk
+          [ -f artifacts/android-bundle/app-debug.aab ] && \
+            cp artifacts/android-bundle/app-debug.aab release-assets/bedrud-android.aab
 
           [ -f artifacts/web-bundle/web.tar.xz ] && \
             cp artifacts/web-bundle/web.tar.xz release-assets/bedrud-web.tar.xz
@@ -245,7 +273,11 @@ jobs:
           | Linux ARM64 | [bedrud_linux_arm64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_linux_arm64.tar.xz) |
           | macOS x86_64 | [bedrud_darwin_amd64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_darwin_amd64.tar.xz) |
           | macOS ARM64 | [bedrud_darwin_arm64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_darwin_arm64.tar.xz) |
-          | Android (debug) | [bedrud-debug.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-debug.apk) |
+          | Android (universal) | [bedrud-android-universal.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-universal.apk) |
+          | Android arm64-v8a | [bedrud-android-arm64-v8a.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-arm64-v8a.apk) |
+          | Android armeabi-v7a | [bedrud-android-armeabi-v7a.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-armeabi-v7a.apk) |
+          | Android x86\_64 | [bedrud-android-x86_64.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-x86_64.apk) |
+          | Android bundle (AAB) | [bedrud-android.aab](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android.aab) |
           | Web | [bedrud-web.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-web.tar.xz) |
 
           > This is an automated beta pre-release. It will be deleted when the PR is closed or merged.
@@ -294,7 +326,11 @@ jobs:
               `| Linux ARM64 | ${asset('bedrud_linux_arm64.tar.xz')} |`,
               `| macOS x86_64 | ${asset('bedrud_darwin_amd64.tar.xz')} |`,
               `| macOS ARM64 | ${asset('bedrud_darwin_arm64.tar.xz')} |`,
-              `| Android (debug APK) | ${asset('bedrud-debug.apk')} |`,
+              `| Android (universal) | ${asset('bedrud-android-universal.apk')} |`,
+              `| Android arm64-v8a | ${asset('bedrud-android-arm64-v8a.apk')} |`,
+              `| Android armeabi-v7a | ${asset('bedrud-android-armeabi-v7a.apk')} |`,
+              `| Android x86_64 | ${asset('bedrud-android-x86_64.apk')} |`,
+              `| Android bundle (AAB) | ${asset('bedrud-android.aab')} |`,
               `| Web bundle | ${asset('bedrud-web.tar.xz')} |`,
               ``,
               `> Updated on each push. Deleted when the PR is closed.`,
