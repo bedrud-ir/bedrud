@@ -39,6 +39,7 @@ function OAuthCallback() {
         name: payload.name,
         provider: payload.provider,
         isAdmin: payload.accesses?.includes('superadmin') ?? false,
+        accesses: payload.accesses ?? [],
       })
       navigate({ to: '/dashboard' })
     } catch {
