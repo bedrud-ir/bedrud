@@ -48,6 +48,7 @@ function MeetingPage() {
   // null = waiting to decide, '' = showing dialog, string = confirmed guest name
   const [guestName, setGuestName] = useState<string | null>(tokens ? '' : null)
   const [guestInput, setGuestInput] = useState('')
+  const [wasKicked, setWasKicked] = useState(false)
 
   useEffect(() => {
     if (tokens) {
@@ -187,7 +188,6 @@ function MeetingPage() {
   }
 
   const { id, token, livekitHost: wsUrl, name: roomName, adminId } = joinData
-  const [wasKicked, setWasKicked] = useState(false)
 
   if (wasKicked) {
     return (
