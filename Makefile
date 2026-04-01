@@ -1,4 +1,4 @@
-.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim deploy test-back push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open
+.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim deploy test-back push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open clean full-clean
 
 # Show available targets
 help:
@@ -47,6 +47,10 @@ help:
 	@echo ""
 	@echo "Test:"
 	@echo "  test-back            Run backend tests"
+	@echo ""
+	@echo "Clean:"
+	@echo "  clean                Remove build artifacts and binaries"
+	@echo "  full-clean           Remove artifacts + installed dependencies (node_modules, gradle cache)"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  doc                  Build MkDocs documentation"
@@ -264,3 +268,25 @@ local-run: local-build
 	@echo "\n🚀 Starting Bedrud (single binary, SQLite, embedded LiveKit)..."
 	@echo "   Open http://localhost:8090\n"
 	CONFIG_PATH=$(CURDIR)/server/config.local.yaml $(CURDIR)/server/dist/bedrud run
+
+# ---- Clean targets -----------------------------------------------------------
+
+# Remove build artifacts and compiled binaries
+clean:
+	@echo "➜ Removing build artifacts..."
+	@rm -rf dist/
+	@rm -rf server/dist/
+	@rm -rf apps/web/build/
+	@find server/frontend -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
+	@rm -rf apps/android/app/build/
+	@rm -rf apps/ios/build/
+	@echo "✅ Clean complete"
+
+# Remove artifacts + installed dependencies (node_modules, gradle cache, go cache)
+full-clean: clean
+	@echo "➜ Removing installed dependencies..."
+	@rm -rf apps/web/node_modules/
+	@rm -rf apps/android/.gradle/
+	@rm -rf apps/android/build/
+	@cd server && go clean -modcache 2>/dev/null || true
+	@echo "✅ Full clean complete (run 'make init' to reinstall dependencies)"
