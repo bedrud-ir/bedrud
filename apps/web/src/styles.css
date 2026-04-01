@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Use class-based dark mode — toggled by adding .dark to <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -24,6 +27,13 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Brand palette — used for gradients across the app */
+  --color-brand-indigo: #6366f1;
+  --color-brand-violet: #8b5cf6;
+  --color-brand-purple: #a855f7;
+  --color-brand-cyan: #06b6d4;
+  --color-brand-pink: #ec4899;
 }
 
 :root {
@@ -71,6 +81,14 @@
   --ring: 212.7 26.8% 83.9%;
 }
 
+/* ── View Transitions: theme switch circle animation ─────────────────────── */
+/* Disable the browser's default cross-fade; the JS clip-path handles it. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 @layer base {
   * {
     border-color: hsl(var(--border));
@@ -89,4 +107,64 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+}
+
+/* ── Meeting Room ───────────────────────────────────────────── */
+
+@keyframes meet-speaker-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px rgba(99, 102, 241, 0.8),
+      0 0 20px rgba(99, 102, 241, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(99, 102, 241, 1),
+      0 0 44px rgba(99, 102, 241, 0.5);
+  }
+}
+
+.meet-speaking {
+  animation: meet-speaker-glow 1.8s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes meet-speak-bar {
+  0%, 100% { transform: scaleY(0.25); }
+  50%       { transform: scaleY(1); }
+}
+
+@keyframes meet-panel-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.meet-panel {
+  animation: meet-panel-in 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes meet-tile-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.meet-tile {
+  animation: meet-tile-in 0.28s ease-out forwards;
+}
+
+@keyframes meet-ptt-pulse {
+  0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+  50%       { opacity: 0.85; transform: translateX(-50%) scale(1.02); }
+}
+
+.meet-ptt {
+  animation: meet-ptt-pulse 1s ease-in-out infinite;
+}
+
+@keyframes meet-connecting-spin {
+  to { transform: rotate(360deg); }
+}
+
+.meet-connecting {
+  animation: meet-connecting-spin 1.2s linear infinite;
 }

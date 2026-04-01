@@ -1,6 +1,9 @@
 import { useAuthStore } from './auth.store'
 
-const BASE_URL = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:8090'
+// In dev, leave BASE_URL empty so requests go to /api/... and Vite's proxy
+// forwards them to localhost:8090 — no CORS. In production, set VITE_API_URL
+// to the absolute server origin (e.g. https://api.bedrud.com).
+const BASE_URL = (import.meta.env['VITE_API_URL'] as string | undefined) ?? ''
 
 type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 
