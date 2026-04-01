@@ -82,13 +82,16 @@ jobs:
       - name: Package binary
         run: |
           cd dist
+          cp bedrud bedrud_${{ matrix.suffix }}
           tar -cJf bedrud_${{ matrix.suffix }}.tar.xz bedrud
           rm bedrud
 
       - uses: actions/upload-artifact@v4
         with:
           name: server-${{ matrix.suffix }}
-          path: dist/bedrud_${{ matrix.suffix }}.tar.xz
+          path: |
+            dist/bedrud_${{ matrix.suffix }}.tar.xz
+            dist/bedrud_${{ matrix.suffix }}
 
   # ── Docker image ──────────────────────────────────────────────
   docker:
@@ -309,6 +312,7 @@ jobs:
           mkdir -p release-assets
           # Server binaries
           find artifacts/server-* -name "*.tar.xz" -exec cp {} release-assets/ \;
+          find artifacts/server-* -not -name "*.tar.xz" -not -name "." -type f -exec cp {} release-assets/ \;
           # Android APKs
           [ -f artifacts/android-debug-apk/app-debug.apk ] && \
             cp artifacts/android-debug-apk/app-debug.apk release-assets/bedrud-debug.apk
