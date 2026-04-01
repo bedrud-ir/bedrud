@@ -1,8 +1,24 @@
+import { useMemo } from 'react'
 import type { Participant } from 'livekit-client'
 import { Track } from 'livekit-client'
-import { useParticipantInfo, VideoTrack } from '@livekit/components-react'
+import { useParticipantInfo, useIsSpeaking, VideoTrack } from '@livekit/components-react'
 import { MicOff, Minimize2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+
+const PALETTES = [
+  { avatar: 'linear-gradient(135deg,#6366f1,#8b5cf6)', glow: 'rgba(99,102,241,0.5)' },
+  { avatar: 'linear-gradient(135deg,#06b6d4,#3b82f6)', glow: 'rgba(6,182,212,0.5)' },
+  { avatar: 'linear-gradient(135deg,#ec4899,#f43f5e)', glow: 'rgba(236,72,153,0.5)' },
+  { avatar: 'linear-gradient(135deg,#f59e0b,#ef4444)', glow: 'rgba(245,158,11,0.5)' },
+  { avatar: 'linear-gradient(135deg,#10b981,#06b6d4)', glow: 'rgba(16,185,129,0.5)' },
+  { avatar: 'linear-gradient(135deg,#a855f7,#ec4899)', glow: 'rgba(168,85,247,0.5)' },
+  { avatar: 'linear-gradient(135deg,#0ea5e9,#6366f1)', glow: 'rgba(14,165,233,0.5)' },
+  { avatar: 'linear-gradient(135deg,#f43f5e,#fb923c)', glow: 'rgba(244,63,94,0.5)' },
+]
+
+function getPalette(name: string) {
+  const hash = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+  return PALETTES[Math.abs(hash) % PALETTES.length]
+}
 
 interface Props {
   participant: Participant
@@ -11,46 +27,97 @@ interface Props {
 
 export function SpotlightView({ participant, onClose }: Props) {
   const { name, identity } = useParticipantInfo({ participant })
+  const isSpeaking = useIsSpeaking(participant)
   const cameraTrack = participant.getTrackPublication(Track.Source.Camera)
-  const hasCameraVideo = Boolean(cameraTrack?.isSubscribed && !cameraTrack.isMuted && cameraTrack)
-  const displayName = name ?? identity
+  const hasCameraVideo = Boolean(cameraTrack?.isSubscribed && !cameraTrack.isMuted)
+  const displayName = name ?? identity ?? '?'
+  const palette = useMemo(() => getPalette(displayName), [displayName])
 
   return (
-    <div className="relative flex flex-1 items-center justify-center bg-black/90 p-6">
-      <div
-        className="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-muted shadow-2xl"
-        style={{ aspectRatio: '16/9' }}
-      >
+    <div style={{
+      position: 'relative',
+      width: '100%', height: '100%',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: '#030308',
+      padding: '20px 24px',
+    }}>
+      {/* Main content area — 16:9 with max width */}
+      <div style={{
+        position: 'relative',
+        width: '100%', height: '100%',
+        maxWidth: 'min(100%, calc(100vh * 16/9))',
+        overflow: 'hidden', borderRadius: 16,
+        background: hasCameraVideo
+          ? '#000'
+          : `radial-gradient(ellipse 80% 60% at 50% 35%, ${palette.glow.replace('0.5', '0.12')}, #0c0c1a 70%)`,
+        boxShadow: isSpeaking
+          ? `0 0 0 3px rgba(99,102,241,0.8), 0 0 60px rgba(99,102,241,0.3)`
+          : '0 0 0 1px rgba(255,255,255,0.06)',
+        transition: 'box-shadow 0.3s ease',
+      }}>
         {hasCameraVideo && cameraTrack ? (
           <VideoTrack
             trackRef={{ participant, source: Track.Source.Camera, publication: cameraTrack }}
-            className="h-full w-full object-cover"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-muted-foreground/20 text-4xl font-semibold">
-              {displayName?.charAt(0).toUpperCase()}
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 20,
+          }}>
+            <div style={{
+              width: 110, height: 110, borderRadius: '50%',
+              background: palette.avatar,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 42, fontWeight: 700, color: 'white',
+              boxShadow: `0 0 70px ${palette.glow}`,
+            }}>
+              {displayName.charAt(0).toUpperCase()}
             </div>
-            <span className="text-lg">{displayName}</span>
+            <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 18, fontWeight: 500 }}>
+              {displayName}
+            </span>
+            {isSpeaking && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {[0,1,2,3,4].map(i => (
+                  <span key={i} style={{
+                    display: 'inline-block', width: 4, height: 22, borderRadius: 2,
+                    background: '#6366f1', transformOrigin: 'bottom center',
+                    animation: `meet-speak-bar 0.7s ease-in-out ${i * 0.12}s infinite`,
+                  }} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Name badge */}
-        <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-lg bg-black/60 px-3 py-1.5 text-sm text-white backdrop-blur-sm">
-          <span>{displayName}</span>
-          {!participant.isMicrophoneEnabled && <MicOff className="h-4 w-4 text-red-400" />}
+        {/* Name + mute badge */}
+        <div style={{
+          position: 'absolute', bottom: 16, left: 16,
+          display: 'flex', alignItems: 'center', gap: 7,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
+          borderRadius: 8, padding: '5px 12px',
+        }}>
+          <span style={{ color: 'white', fontSize: 13, fontWeight: 500 }}>{displayName}</span>
+          {!participant.isMicrophoneEnabled && <MicOff size={13} style={{ color: '#f87171' }} />}
         </div>
 
-        {/* Exit button */}
-        <Button
-          variant="ghost"
-          size="icon"
+        {/* Exit spotlight */}
+        <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full bg-black/60 text-white hover:bg-black/80 hover:text-white"
+          style={{
+            position: 'absolute', top: 12, right: 12,
+            width: 34, height: 34, borderRadius: 9,
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'rgba(255,255,255,0.8)', cursor: 'pointer',
+          }}
           aria-label="Exit spotlight"
         >
-          <Minimize2 className="h-5 w-5" />
-        </Button>
+          <Minimize2 size={15} />
+        </button>
       </div>
     </div>
   )

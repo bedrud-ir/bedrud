@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { useChat, useLocalParticipant } from '@livekit/components-react'
-import { X, Send } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { cn } from '#/lib/utils'
+import { X, Send, MessageSquare } from 'lucide-react'
 
 interface Props {
   onClose: () => void
+}
+
+const panel: React.CSSProperties = {
+  position: 'absolute', right: 0, top: 0, bottom: 0,
+  width: 320, zIndex: 30,
+  display: 'flex', flexDirection: 'column',
+  background: 'rgba(10,10,22,0.94)',
+  backdropFilter: 'blur(24px)',
+  borderLeft: '1px solid rgba(255,255,255,0.07)',
 }
 
 export function ChatPanel({ onClose }: Props) {
@@ -30,70 +34,124 @@ export function ChatPanel({ onClose }: Props) {
   }
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-l bg-background">
-      <div className="flex h-14 shrink-0 items-center justify-between px-4">
-        <span className="font-semibold text-sm">Chat</span>
-        <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close chat">
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-      <Separator />
-
-      <ScrollArea className="flex-1 p-4">
-        {chatMessages.length === 0 ? (
-          <p className="mt-8 text-center text-xs text-muted-foreground">
-            No messages yet. Say hello!
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {chatMessages.map((msg, i) => {
-              const isLocal = msg.from?.identity === localParticipant?.identity
-              return (
-                <div
-                  key={i}
-                  className={cn('flex flex-col gap-0.5', isLocal ? 'items-end' : 'items-start')}
-                >
-                  {!isLocal && (
-                    <span className="px-1 text-xs text-muted-foreground">
-                      {msg.from?.name ?? msg.from?.identity}
-                    </span>
-                  )}
-                  <div
-                    className={cn(
-                      'max-w-[85%] rounded-2xl px-3 py-2 text-sm',
-                      isLocal
-                        ? 'rounded-br-sm bg-primary text-primary-foreground'
-                        : 'rounded-bl-sm bg-muted'
-                    )}
-                  >
-                    {msg.message}
-                  </div>
-                </div>
-              )
-            })}
-            <div ref={bottomRef} />
-          </div>
-        )}
-      </ScrollArea>
-
-      <Separator />
-      <form onSubmit={handleSend} className="flex items-center gap-2 p-3">
-        <Input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Type a message…"
-          className="flex-1"
-          disabled={isSending}
-        />
-        <Button
-          type="submit"
-          size="icon"
-          disabled={!draft.trim() || isSending}
-          aria-label="Send message"
+    <aside className="meet-panel" style={panel}>
+      {/* Header */}
+      <div style={{
+        height: 52, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <MessageSquare size={14} style={{ color: 'rgba(165,180,252,0.7)' }} />
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: 600 }}>Chat</span>
+        </div>
+        <button
+          onClick={onClose}
+          style={{
+            width: 28, height: 28, borderRadius: 7,
+            background: 'transparent', border: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'rgba(255,255,255,0.35)', cursor: 'pointer',
+            transition: 'background 0.15s, color 0.15s',
+          }}
+          aria-label="Close chat"
         >
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+          <X size={15} />
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {chatMessages.length === 0 ? (
+          <div style={{
+            flex: 1, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 10,
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%',
+              background: 'rgba(99,102,241,0.1)',
+              border: '1px solid rgba(99,102,241,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <MessageSquare size={18} style={{ color: 'rgba(99,102,241,0.5)' }} />
+            </div>
+            <p style={{ color: 'rgba(255,255,255,0.22)', fontSize: 12, textAlign: 'center' }}>
+              No messages yet.<br />Say hello!
+            </p>
+          </div>
+        ) : (
+          chatMessages.map((msg, i) => {
+            const isLocal = msg.from?.identity === localParticipant?.identity
+            return (
+              <div key={i} style={{
+                display: 'flex', flexDirection: 'column',
+                alignItems: isLocal ? 'flex-end' : 'flex-start',
+                gap: 3,
+              }}>
+                {!isLocal && (
+                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, paddingLeft: 4 }}>
+                    {msg.from?.name ?? msg.from?.identity}
+                  </span>
+                )}
+                <div style={{
+                  maxWidth: '82%',
+                  padding: '7px 12px',
+                  borderRadius: isLocal ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                  background: isLocal
+                    ? 'rgba(99,102,241,0.75)'
+                    : 'rgba(255,255,255,0.07)',
+                  border: isLocal
+                    ? '1px solid rgba(165,180,252,0.25)'
+                    : '1px solid rgba(255,255,255,0.06)',
+                  color: isLocal ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.75)',
+                  fontSize: 13, lineHeight: 1.45,
+                  wordBreak: 'break-word',
+                }}>
+                  {msg.message}
+                </div>
+              </div>
+            )
+          })
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px' }}>
+        <form onSubmit={handleSend} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Type a message…"
+            disabled={isSending}
+            style={{
+              flex: 1, height: 36,
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: 10, padding: '0 12px',
+              color: 'rgba(255,255,255,0.85)', fontSize: 13,
+              outline: 'none',
+            }}
+          />
+          <button
+            type="submit"
+            disabled={!draft.trim() || isSending}
+            style={{
+              width: 36, height: 36, borderRadius: 10, border: 'none',
+              background: draft.trim() ? 'rgba(99,102,241,0.8)' : 'rgba(255,255,255,0.06)',
+              color: draft.trim() ? 'white' : 'rgba(255,255,255,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: draft.trim() ? 'pointer' : 'default',
+              transition: 'background 0.15s, color 0.15s',
+              flexShrink: 0,
+            }}
+            aria-label="Send message"
+          >
+            <Send size={14} />
+          </button>
+        </form>
+      </div>
     </aside>
   )
 }
