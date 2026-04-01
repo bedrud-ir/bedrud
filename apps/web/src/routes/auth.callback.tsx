@@ -32,7 +32,7 @@ function OAuthCallback() {
     }
     try {
       const payload = jwtDecode<JWTPayload>(token)
-      setTokens({ accessToken: token, refreshToken: '' })
+      setTokens({ accessToken: token, refreshToken: null })
       setUser({
         id: payload.userId,
         email: payload.email,
