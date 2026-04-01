@@ -238,6 +238,39 @@ func (s *AuthService) GetUserByEmail(email string) (*models.User, error) {
 	return s.userRepo.GetUserByEmail(email)
 }
 
+// UpdateProfile updates the user's display name.
+func (s *AuthService) UpdateProfile(userID, name string) (*models.User, error) {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil || user == nil {
+		return nil, errors.New("user not found")
+	}
+	user.Name = name
+	if err := s.userRepo.UpdateUser(user); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// ChangePassword verifies the current password then sets a new one.
+func (s *AuthService) ChangePassword(userID, currentPassword, newPassword string) error {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil || user == nil {
+		return errors.New("user not found")
+	}
+	if user.Provider != "local" && user.Provider != "passkey" {
+		return errors.New("password change is only available for local accounts")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword)); err != nil {
+		return errors.New("current password is incorrect")
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	user.Password = string(hashed)
+	return s.userRepo.UpdateUser(user)
+}
+
 // @Summary Logout user
 // @Description Invalidate refresh token and logout user
 // @Tags auth

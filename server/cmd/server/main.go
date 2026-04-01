@@ -178,6 +178,8 @@ func main() {
 	userRepo := repository.NewUserRepository(database.GetDB())
 	passkeyRepo := repository.NewPasskeyRepository(database.GetDB())
 	roomRepo := repository.NewRoomRepository(database.GetDB())
+	settingsRepo := repository.NewSettingsRepository(database.GetDB())
+	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
 
 	// ===============================
 	// Services
@@ -228,7 +230,7 @@ func main() {
 	})
 
 	// ------------------------------
-	authHandler := handlers.NewAuthHandler(authService, cfg)
+	authHandler := handlers.NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)
 	api.Post("/auth/register", authHandler.Register)
 	api.Post("/auth/login", authHandler.Login)
 	api.Post("/auth/guest-login", authHandler.GuestLogin)
@@ -261,7 +263,8 @@ func main() {
 	api.Put("/room/:roomId/settings", middleware.Protected(), roomHandler.UpdateSettings)
 
 	// Initialize handlers
-	usersHandler := handlers.NewUsersHandler(userRepo)
+	usersHandler := handlers.NewUsersHandler(userRepo, roomRepo)
+	adminHandler := handlers.NewAdminHandler(settingsRepo, inviteTokenRepo)
 
 	// Admin routes
 	adminGroup := api.Group("/admin",
@@ -270,8 +273,23 @@ func main() {
 	)
 	adminGroup.Get("/users", usersHandler.ListUsers)
 	adminGroup.Put("/users/:id/status", usersHandler.UpdateUserStatus)
+	adminGroup.Put("/users/:id/accesses", usersHandler.UpdateUserAccesses)
 	adminGroup.Get("/rooms", roomHandler.AdminListRooms)
 	adminGroup.Post("/rooms/:roomId/token", roomHandler.AdminGenerateToken)
+	adminGroup.Delete("/rooms/:roomId", roomHandler.AdminCloseRoom)
+	adminGroup.Put("/rooms/:roomId", roomHandler.AdminUpdateRoom)
+	adminGroup.Get("/online-count", roomHandler.GetOnlineCount)
+	adminGroup.Get("/livekit/stats", roomHandler.AdminLiveKitStats)
+	adminGroup.Get("/users/:id", usersHandler.GetUserDetail)
+	adminGroup.Get("/rooms/:roomId/participants", roomHandler.AdminGetRoomParticipants)
+	adminGroup.Post("/rooms/:roomId/participants/:identity/kick", roomHandler.AdminKickParticipant)
+	adminGroup.Post("/rooms/:roomId/participants/:identity/mute", roomHandler.AdminMuteParticipant)
+	api.Get("/auth/settings", adminHandler.GetPublicSettings)
+	adminGroup.Get("/settings", adminHandler.GetSettings)
+	adminGroup.Put("/settings", adminHandler.UpdateSettings)
+	adminGroup.Get("/invite-tokens", adminHandler.ListInviteTokens)
+	adminGroup.Post("/invite-tokens", adminHandler.CreateInviteToken)
+	adminGroup.Delete("/invite-tokens/:id", adminHandler.DeleteInviteToken)
 
 	// ------------------------------
 	// Serve static files
