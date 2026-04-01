@@ -135,7 +135,11 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
 	claims := c.Locals("user").(*auth.Claims)
-	room, _ := h.roomRepo.GetRoomByName(req.RoomName)
+	room, err := h.roomRepo.GetRoomByName(req.RoomName)
+	if err != nil {
+		log.Error().Err(err).Str("room", req.RoomName).Msg("Failed to look up room")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to look up room"})
+	}
 	if room == nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
 	}
@@ -257,11 +261,15 @@ func (h *RoomHandler) DeleteRoom(c *fiber.Ctx) error {
 	roomID := c.Params("roomId")
 	claims := c.Locals("user").(*auth.Claims)
 
-	room, _ := h.roomRepo.GetRoom(roomID)
+	room, err := h.roomRepo.GetRoom(roomID)
+	if err != nil {
+		log.Error().Err(err).Str("roomId", roomID).Msg("Failed to look up room")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to look up room"})
+	}
 	if room == nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
 	}
-	if room.CreatedBy != claims.UserID {
+	if room.CreatedBy != claims.UserID && !containsAccess(claims.Accesses, "superadmin") {
 		return c.Status(403).JSON(fiber.Map{"error": "Only the room creator can delete this room"})
 	}
 
@@ -281,7 +289,11 @@ func (h *RoomHandler) DeleteRoom(c *fiber.Ctx) error {
 func (h *RoomHandler) MuteParticipant(c *fiber.Ctx) error {
 	roomID, identity := c.Params("roomId"), c.Params("identity")
 	claims := c.Locals("user").(*auth.Claims)
-	room, _ := h.roomRepo.GetRoom(roomID)
+	room, err := h.roomRepo.GetRoom(roomID)
+	if err != nil {
+		log.Error().Err(err).Str("roomId", roomID).Msg("Failed to look up room")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to look up room"})
+	}
 	if room == nil {
 		return c.SendStatus(404)
 	}
@@ -310,7 +322,11 @@ func (h *RoomHandler) MuteParticipant(c *fiber.Ctx) error {
 func (h *RoomHandler) BanParticipant(c *fiber.Ctx) error {
 	roomID, identity := c.Params("roomId"), c.Params("identity")
 	claims := c.Locals("user").(*auth.Claims)
-	room, _ := h.roomRepo.GetRoom(roomID)
+	room, err := h.roomRepo.GetRoom(roomID)
+	if err != nil {
+		log.Error().Err(err).Str("roomId", roomID).Msg("Failed to look up room")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to look up room"})
+	}
 	if room == nil {
 		return c.SendStatus(404)
 	}
@@ -322,9 +338,10 @@ func (h *RoomHandler) BanParticipant(c *fiber.Ctx) error {
 		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
 	}
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
-	_, err := h.client.RemoveParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	var removeErr error
+	_, removeErr = h.client.RemoveParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
+	if removeErr != nil {
+		return c.Status(500).JSON(fiber.Map{"error": removeErr.Error()})
 	}
 	h.sendSystemMessage(ctx, room.Name, "ban", claims.UserID, identity)
 	_ = h.roomRepo.KickParticipant(room.ID, identity)
