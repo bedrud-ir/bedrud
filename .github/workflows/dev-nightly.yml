@@ -81,33 +81,13 @@ jobs:
             suffix: linux_amd64
             cgo: "1"
             cc: gcc
-            lk_os: linux
             lk_arch: amd64
-            lk_ext: tar.gz
           - goos: linux
             goarch: arm64
             suffix: linux_arm64
             cgo: "1"
             cc: aarch64-linux-gnu-gcc
-            lk_os: linux
             lk_arch: arm64
-            lk_ext: tar.gz
-          - goos: darwin
-            goarch: amd64
-            suffix: darwin_amd64
-            cgo: "0"
-            cc: ""
-            lk_os: darwin
-            lk_arch: amd64
-            lk_ext: zip
-          - goos: darwin
-            goarch: arm64
-            suffix: darwin_arm64
-            cgo: "0"
-            cc: ""
-            lk_os: darwin
-            lk_arch: arm64
-            lk_ext: zip
     steps:
       - uses: actions/checkout@v4
 
@@ -139,19 +119,12 @@ jobs:
       - name: Download LiveKit binary
         env:
           LIVEKIT_VERSION: "1.10.1"
-          LK_OS: ${{ matrix.lk_os }}
           LK_ARCH: ${{ matrix.lk_arch }}
-          LK_EXT: ${{ matrix.lk_ext }}
         run: |
           mkdir -p server/internal/livekit/bin
-          LK_FILENAME="livekit_${LIVEKIT_VERSION}_${LK_OS}_${LK_ARCH}.${LK_EXT}"
-          LK_URL="https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/${LK_FILENAME}"
-          curl -fsSL "$LK_URL" -o "/tmp/${LK_FILENAME}"
-          if [ "$LK_EXT" = "zip" ]; then
-            unzip -o "/tmp/${LK_FILENAME}" livekit-server -d server/internal/livekit/bin/
-          else
-            tar -xzf "/tmp/${LK_FILENAME}" -C server/internal/livekit/bin/ livekit-server
-          fi
+          LK_FILENAME="livekit_${LIVEKIT_VERSION}_linux_${LK_ARCH}.tar.gz"
+          curl -fsSL "https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/${LK_FILENAME}" -o "/tmp/${LK_FILENAME}"
+          tar -xzf "/tmp/${LK_FILENAME}" -C server/internal/livekit/bin/ livekit-server
           chmod +x server/internal/livekit/bin/livekit-server
 
       - name: Build server binary
