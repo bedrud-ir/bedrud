@@ -102,6 +102,9 @@ jobs:
           bun install --frozen-lockfile
           bun run build:embed
 
+      - name: Create livekit placeholder
+        run: mkdir -p server/internal/livekit/bin && touch server/internal/livekit/bin/livekit-server
+
       - name: Build server binary
         working-directory: server
         env:
