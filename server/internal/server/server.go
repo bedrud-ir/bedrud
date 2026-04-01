@@ -89,7 +89,17 @@ func Run(configPath string) error {
 	defer scheduler.Stop()
 	auth.Init(cfg)
 
-	app := fiber.New(fiber.Config{AppName: "Bedrud API"})
+	fiberCfg := fiber.Config{AppName: "Bedrud API"}
+	if len(cfg.Server.TrustedProxies) > 0 {
+		fiberCfg.TrustedProxies = cfg.Server.TrustedProxies
+		fiberCfg.EnableTrustedProxyCheck = true
+		if cfg.Server.ProxyHeader != "" {
+			fiberCfg.ProxyHeader = cfg.Server.ProxyHeader
+		} else {
+			fiberCfg.ProxyHeader = "X-Forwarded-For"
+		}
+	}
+	app := fiber.New(fiberCfg)
 
 	// Proxy LiveKit traffic if we are using internal host
 	if strings.Contains(strings.ToLower(cfg.LiveKit.InternalHost), "127.0.0.1") ||
@@ -114,12 +124,19 @@ func Run(configPath string) error {
 	}
 
 	app.Use(recover.New())
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     cfg.Cors.AllowedOrigins,
+	corsConfig := cors.Config{
 		AllowHeaders:     cfg.Cors.AllowedHeaders,
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
-		AllowCredentials: true,
-	}))
+		AllowCredentials: cfg.Cors.AllowCredentials,
+	}
+	if cfg.Cors.AllowCredentials && (cfg.Cors.AllowedOrigins == "*" || cfg.Cors.AllowedOrigins == "") {
+		// Credentials + wildcard is forbidden by the CORS spec; reflect the request
+		// origin instead so the browser receives a specific origin with credentials.
+		corsConfig.AllowOriginsFunc = func(origin string) bool { return true }
+	} else {
+		corsConfig.AllowOrigins = cfg.Cors.AllowedOrigins
+	}
+	app.Use(cors.New(corsConfig))
 
 	api := app.Group("/api")
 	userRepo := repository.NewUserRepository(database.GetDB())

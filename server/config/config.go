@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -18,16 +19,18 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port         string `yaml:"port"`
-	Host         string `yaml:"host"`
-	ReadTimeout  int    `yaml:"readTimeout"`
-	WriteTimeout int    `yaml:"writeTimeout"`
-	EnableTLS    bool   `yaml:"enableTLS" env:"SERVER_ENABLE_TLS"`
-	CertFile     string `yaml:"certFile" env:"SERVER_CERT_FILE"`
-	KeyFile      string `yaml:"keyFile" env:"SERVER_KEY_FILE"`
-	Domain       string `yaml:"domain" env:"SERVER_DOMAIN"`
-	Email        string `yaml:"email" env:"SERVER_EMAIL"`
-	UseACME      bool   `yaml:"useACME" env:"SERVER_USE_ACME"`
+	Port            string   `yaml:"port"`
+	Host            string   `yaml:"host"`
+	ReadTimeout     int      `yaml:"readTimeout"`
+	WriteTimeout    int      `yaml:"writeTimeout"`
+	EnableTLS       bool     `yaml:"enableTLS" env:"SERVER_ENABLE_TLS"`
+	CertFile        string   `yaml:"certFile" env:"SERVER_CERT_FILE"`
+	KeyFile         string   `yaml:"keyFile" env:"SERVER_KEY_FILE"`
+	Domain          string   `yaml:"domain" env:"SERVER_DOMAIN"`
+	Email           string   `yaml:"email" env:"SERVER_EMAIL"`
+	UseACME         bool     `yaml:"useACME" env:"SERVER_USE_ACME"`
+	TrustedProxies  []string `yaml:"trustedProxies"`
+	ProxyHeader     string   `yaml:"proxyHeader"`
 }
 
 type DatabaseConfig struct {
@@ -130,6 +133,12 @@ func Load(configPath string) (*Config, error) {
 			if b, err := strconv.ParseBool(envUseACME); err == nil {
 				config.Server.UseACME = b
 			}
+		}
+		if envTrustedProxies := os.Getenv("SERVER_TRUSTED_PROXIES"); envTrustedProxies != "" {
+			config.Server.TrustedProxies = strings.Split(envTrustedProxies, ",")
+		}
+		if envProxyHeader := os.Getenv("SERVER_PROXY_HEADER"); envProxyHeader != "" {
+			config.Server.ProxyHeader = envProxyHeader
 		}
 		if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
 			config.Database.Host = dbHost
