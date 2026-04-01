@@ -12,7 +12,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  LIVEKIT_VERSION: "1.8.3"
+  LIVEKIT_VERSION: "1.10.1"
 
 jobs:
   # ── Server binaries (multi-platform) ─────────────────────────

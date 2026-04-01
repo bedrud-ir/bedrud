@@ -116,7 +116,7 @@ jobs:
 
       - name: Download LiveKit binary
         env:
-          LIVEKIT_VERSION: "1.8.3"
+          LIVEKIT_VERSION: "1.10.1"
           LK_OS: ${{ matrix.lk_os }}
           LK_ARCH: ${{ matrix.lk_arch }}
           LK_EXT: ${{ matrix.lk_ext }}
