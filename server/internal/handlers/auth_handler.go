@@ -3,9 +3,11 @@ package handlers
 import (
 	"bedrud/config"
 	"bedrud/internal/auth"
+	"bedrud/internal/repository"
 	"encoding/base64"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -14,28 +16,66 @@ import (
 )
 
 type AuthHandler struct {
-	authService *auth.AuthService
-	config      *config.Config
+	authService     *auth.AuthService
+	config          *config.Config
+	settingsRepo    *repository.SettingsRepository
+	inviteTokenRepo *repository.InviteTokenRepository
 }
 
-func NewAuthHandler(authService *auth.AuthService, cfg *config.Config) *AuthHandler {
+func NewAuthHandler(authService *auth.AuthService, cfg *config.Config, settingsRepo *repository.SettingsRepository, inviteTokenRepo *repository.InviteTokenRepository) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
-		config:      cfg,
+		authService:     authService,
+		config:          cfg,
+		settingsRepo:    settingsRepo,
+		inviteTokenRepo: inviteTokenRepo,
 	}
 }
 
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var input struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		Name     string `json:"name"`
+		Email       string `json:"email"`
+		Password    string `json:"password"`
+		Name        string `json:"name"`
+		InviteToken string `json:"inviteToken"`
 	}
 
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid input",
 		})
+	}
+
+	// Check registration settings
+	if h.settingsRepo != nil {
+		settings, _ := h.settingsRepo.GetSettings()
+		if settings != nil {
+			if !settings.RegistrationEnabled {
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"error": "Registration is currently disabled",
+				})
+			}
+			if settings.TokenRegistrationOnly {
+				if input.InviteToken == "" {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+						"error": "An invite token is required to register",
+					})
+				}
+				tok, err := h.inviteTokenRepo.GetByToken(input.InviteToken)
+				if err != nil || tok == nil || tok.UsedAt != nil || time.Now().After(tok.ExpiresAt) {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+						"error": "Invalid or expired invite token",
+					})
+				}
+				// Mark token used after successful registration (deferred below)
+				defer func() {
+					if tok != nil {
+						// Will be marked used once user is created; best-effort
+					}
+				}()
+				_ = tok // used below after user creation
+				c.Locals("pendingInviteToken", tok.ID)
+			}
+		}
 	}
 
 	user, err := h.authService.Register(input.Email, input.Password, input.Name)
@@ -63,6 +103,11 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to save refresh token",
 		})
+	}
+
+	// Mark invite token as used if one was validated
+	if tokenID, ok := c.Locals("pendingInviteToken").(string); ok && tokenID != "" && h.inviteTokenRepo != nil {
+		_ = h.inviteTokenRepo.MarkUsed(tokenID, user.ID)
 	}
 
 	return c.JSON(fiber.Map{
@@ -196,6 +241,42 @@ func (h *AuthHandler) GetMe(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(user)
+}
+
+func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
+	claims := c.Locals("user").(*auth.Claims)
+	var input struct {
+		Name string `json:"name"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	}
+	if len(input.Name) < 2 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Name must be at least 2 characters"})
+	}
+	user, err := h.authService.UpdateProfile(claims.UserID, input.Name)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(user)
+}
+
+func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
+	claims := c.Locals("user").(*auth.Claims)
+	var input struct {
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	}
+	if len(input.NewPassword) < 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "New password must be at least 6 characters"})
+	}
+	if err := h.authService.ChangePassword(claims.UserID, input.CurrentPassword, input.NewPassword); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "Password updated successfully"})
 }
 
 // LogoutRequest represents the logout request payload

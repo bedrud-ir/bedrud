@@ -328,3 +328,13 @@ func (r *RoomRepository) GetRoomsParticipatedInByUser(userID string) ([]models.R
 	err = r.db.Where("id IN (?)", participantRoomIDs).Order("created_at desc").Find(&rooms).Error
 	return rooms, err
 }
+
+func (r *RoomRepository) UpdateRoom(room *models.Room) error {
+	return r.db.Save(room).Error
+}
+
+func (r *RoomRepository) CountActiveParticipants() (int64, error) {
+	var count int64
+	err := r.db.Model(&models.RoomParticipant{}).Distinct("user_id").Count(&count).Error
+	return count, err
+}

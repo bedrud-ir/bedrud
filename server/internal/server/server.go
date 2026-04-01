@@ -124,8 +124,10 @@ func Run(configPath string) error {
 	userRepo := repository.NewUserRepository(database.GetDB())
 	passkeyRepo := repository.NewPasskeyRepository(database.GetDB())
 	roomRepo := repository.NewRoomRepository(database.GetDB())
+	settingsRepo := repository.NewSettingsRepository(database.GetDB())
+	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
 	authService := auth.NewAuthService(userRepo, passkeyRepo)
-	authHandler := handlers.NewAuthHandler(authService, cfg)
+	authHandler := handlers.NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)
 	roomHandler := handlers.NewRoomHandler(cfg.LiveKit, roomRepo)
 
 	api.Post("/auth/register", authHandler.Register)
@@ -134,6 +136,8 @@ func Run(configPath string) error {
 	api.Post("/auth/refresh", authHandler.RefreshToken)
 	api.Post("/auth/logout", middleware.Protected(), authHandler.Logout)
 	api.Get("/auth/me", middleware.Protected(), authHandler.GetMe)
+	api.Put("/auth/me", middleware.Protected(), authHandler.UpdateProfile)
+	api.Put("/auth/password", middleware.Protected(), authHandler.ChangePassword)
 
 	// Passkey routes
 	api.Post("/auth/passkey/register/begin", middleware.Protected(), authHandler.PasskeyRegisterBegin)
@@ -145,9 +149,11 @@ func Run(configPath string) error {
 
 	api.Post("/room/create", middleware.Protected(), roomHandler.CreateRoom)
 	api.Post("/room/join", middleware.Protected(), roomHandler.JoinRoom)
+	api.Post("/guest/join-room", roomHandler.GuestJoinRoom)
 	api.Get("/room/list", middleware.Protected(), roomHandler.ListRooms)
 	api.Post("/room/:roomId/kick/:identity", middleware.Protected(), roomHandler.KickParticipant)
 	api.Post("/room/:roomId/mute/:identity", middleware.Protected(), roomHandler.MuteParticipant)
+	api.Post("/room/:roomId/ban/:identity", middleware.Protected(), roomHandler.BanParticipant)
 	api.Post("/room/:roomId/video/:identity/off", middleware.Protected(), roomHandler.DisableParticipantVideo)
 	api.Post("/room/:roomId/stage/:identity/bring", middleware.Protected(), roomHandler.BringToStage)
 	api.Post("/room/:roomId/stage/:identity/remove", middleware.Protected(), roomHandler.RemoveFromStage)
@@ -155,15 +161,31 @@ func Run(configPath string) error {
 	api.Delete("/room/:roomId", middleware.Protected(), roomHandler.DeleteRoom)
 
 	// Admin routes
-	usersHandler := handlers.NewUsersHandler(userRepo)
+	usersHandler := handlers.NewUsersHandler(userRepo, roomRepo)
+	adminHandler := handlers.NewAdminHandler(settingsRepo, inviteTokenRepo)
 	adminGroup := api.Group("/admin",
 		middleware.Protected(),
 		middleware.RequireAccess("superadmin"),
 	)
 	adminGroup.Get("/users", usersHandler.ListUsers)
 	adminGroup.Put("/users/:id/status", usersHandler.UpdateUserStatus)
+	adminGroup.Put("/users/:id/accesses", usersHandler.UpdateUserAccesses)
 	adminGroup.Get("/rooms", roomHandler.AdminListRooms)
 	adminGroup.Post("/rooms/:roomId/token", roomHandler.AdminGenerateToken)
+	adminGroup.Delete("/rooms/:roomId", roomHandler.AdminCloseRoom)
+	adminGroup.Put("/rooms/:roomId", roomHandler.AdminUpdateRoom)
+	adminGroup.Get("/online-count", roomHandler.GetOnlineCount)
+	adminGroup.Get("/livekit/stats", roomHandler.AdminLiveKitStats)
+	adminGroup.Get("/users/:id", usersHandler.GetUserDetail)
+	adminGroup.Get("/rooms/:roomId/participants", roomHandler.AdminGetRoomParticipants)
+	adminGroup.Post("/rooms/:roomId/participants/:identity/kick", roomHandler.AdminKickParticipant)
+	adminGroup.Post("/rooms/:roomId/participants/:identity/mute", roomHandler.AdminMuteParticipant)
+	api.Get("/auth/settings", adminHandler.GetPublicSettings)
+	adminGroup.Get("/settings", adminHandler.GetSettings)
+	adminGroup.Put("/settings", adminHandler.UpdateSettings)
+	adminGroup.Get("/invite-tokens", adminHandler.ListInviteTokens)
+	adminGroup.Post("/invite-tokens", adminHandler.CreateInviteToken)
+	adminGroup.Delete("/invite-tokens/:id", adminHandler.DeleteInviteToken)
 
 	app.Use("/", filesystem.New(filesystem.Config{Root: http.FS(root.UI), PathPrefix: "frontend"}))
 	app.Get("*", func(c *fiber.Ctx) error {

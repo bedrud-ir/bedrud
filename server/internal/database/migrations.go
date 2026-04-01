@@ -32,6 +32,12 @@ func RunMigrations() error {
 	if err := db.AutoMigrate(&models.Passkey{}); err != nil {
 		return err
 	}
+	if err := db.AutoMigrate(&models.SystemSettings{}); err != nil {
+		return err
+	}
+	if err := db.AutoMigrate(&models.InviteToken{}); err != nil {
+		return err
+	}
 
 	// Add foreign key constraints manually
 	if err := db.Exec(`
