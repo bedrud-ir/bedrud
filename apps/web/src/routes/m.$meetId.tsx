@@ -371,6 +371,7 @@ function MeetingControls({ chatOpen, participantsOpen, onToggleChat, onTogglePar
   async function handleEndMeeting() {
     setIsEnding(true)
     try { await api.delete(`/api/room/${roomId}`) } catch { /* already closed */ }
+    room.disconnect()
     onNavigate()
   }
 
