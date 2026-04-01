@@ -39,6 +39,9 @@ func Stop() {
 // checkIdleRooms marks active DB rooms as idle when they have 0 participants in LiveKit.
 // Rooms created within the last 5 minutes are skipped to avoid false positives.
 func checkIdleRooms(roomRepo *repository.RoomRepository, cfg config.LiveKitConfig) {
+	if roomRepo == nil {
+		return
+	}
 	rooms, err := roomRepo.GetAllActiveRooms()
 	if err != nil || len(rooms) == 0 {
 		return
