@@ -1,125 +1,107 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Separator } from '@/components/ui/separator'
-import { LoginForm } from '@/components/auth/LoginForm'
-import { RegisterForm } from '@/components/auth/RegisterForm'
-import { GuestLoginForm } from '@/components/auth/GuestLoginForm'
-import { PasskeyButton } from '@/components/auth/PasskeyButton'
-import { OAuthButtons } from '@/components/auth/OAuthButtons'
+import { ArrowRight, Loader2, UserRound } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useAuthStore } from '#/lib/auth.store'
 import { useUserStore } from '#/lib/user.store'
 import { api } from '#/lib/api'
 
-export const Route = createFileRoute('/auth/')({
-  component: AuthPage,
-})
+export const Route = createFileRoute('/auth/')({ component: GuestPage })
 
 interface AuthResponse {
-  user: {
-    id: string
-    email: string
-    name: string
-    provider: string
-    accesses: string[] | null
-    avatarUrl?: string
-  }
+  user: { id: string; email: string; name: string; provider: string; accesses: string[] | null; avatarUrl?: string }
   tokens: { accessToken: string; refreshToken: string }
 }
 
-function AuthPage() {
+function GuestPage() {
   const navigate = useNavigate()
   const setTokens = useAuthStore((s) => s.setTokens)
   const setUser = useUserStore((s) => s.setUser)
+  const [name, setName] = useState('')
+  const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  function handleSuccess(res: AuthResponse) {
-    setTokens(res.tokens)
-    setUser({
-      id: res.user.id,
-      email: res.user.email,
-      name: res.user.name,
-      provider: res.user.provider,
-      isAdmin: res.user.accesses?.includes('superadmin') ?? false,
-      avatarUrl: res.user.avatarUrl,
-    })
-    navigate({ to: '/dashboard' })
-  }
-
-  async function handleLogin(data: { email: string; password: string }) {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = name.trim()
+    if (trimmed.length < 2) { setError('Name must be at least 2 characters'); return }
+    setError('')
     setIsLoading(true)
-    setError(null)
     try {
-      const res = await api.post<AuthResponse>('/api/auth/login', data)
-      handleSuccess(res)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Login failed')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  async function handleRegister(data: { name: string; email: string; password: string }) {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const res = await api.post<AuthResponse>('/api/auth/register', data)
-      handleSuccess(res)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Registration failed')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  async function handleGuestLogin(name: string) {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const res = await api.post<AuthResponse>('/api/auth/guest-login', { name })
-      handleSuccess(res)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Guest login failed')
+      const res = await api.post<AuthResponse>('/api/auth/guest-login', { name: trimmed })
+      setTokens(res.tokens)
+      setUser({ id: res.user.id, email: res.user.email, name: res.user.name, provider: res.user.provider, isAdmin: false, accesses: res.user.accesses ?? [], avatarUrl: res.user.avatarUrl })
+      navigate({ to: '/dashboard' })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="space-y-4">
-      {error && (
-        <div className="rounded-md bg-destructive/15 px-4 py-3 text-sm text-destructive">
-          {error}
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="space-y-1">
+        <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <UserRound className="h-5 w-5" />
         </div>
-      )}
-      <Tabs defaultValue="login">
-        <TabsList className="w-full">
-          <TabsTrigger value="login" className="flex-1">Login</TabsTrigger>
-          <TabsTrigger value="register" className="flex-1">Register</TabsTrigger>
-          <TabsTrigger value="guest" className="flex-1">Guest</TabsTrigger>
-          <TabsTrigger value="passkey" className="flex-1">Passkey</TabsTrigger>
-        </TabsList>
-        <TabsContent value="login">
-          <LoginForm onLogin={handleLogin} isLoading={isLoading} />
-        </TabsContent>
-        <TabsContent value="register">
-          <RegisterForm onRegister={handleRegister} isLoading={isLoading} />
-        </TabsContent>
-        <TabsContent value="guest">
-          <GuestLoginForm onGuestLogin={handleGuestLogin} isLoading={isLoading} />
-        </TabsContent>
-        <TabsContent value="passkey">
-          <PasskeyButton onSuccess={handleSuccess} />
-        </TabsContent>
-      </Tabs>
-      <div className="relative">
-        <Separator />
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
-          or continue with
-        </span>
+        <h1 className="text-2xl font-bold tracking-tight">Join as guest</h1>
+        <p className="text-sm text-muted-foreground">
+          No account needed — just pick a name and you're in.
+        </p>
       </div>
-      <OAuthButtons />
+
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <label htmlFor="guest-name" className="text-sm font-medium">
+            Display name
+          </label>
+          <Input
+            id="guest-name"
+            placeholder="What should we call you?"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setError('') }}
+            autoFocus
+            autoComplete="nickname"
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+
+        <Button type="submit" className="w-full gap-2" disabled={isLoading}>
+          {isLoading
+            ? <><Loader2 className="h-4 w-4 animate-spin" /> Joining…</>
+            : <> Continue as guest <ArrowRight className="h-4 w-4" /></>}
+        </Button>
+      </form>
+
+      {/* Divider */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-background px-3 text-xs text-muted-foreground">
+            have an account?
+          </span>
+        </div>
+      </div>
+
+      {/* Auth links */}
+      <div className="grid grid-cols-2 gap-3">
+        <Link to="/auth/login">
+          <Button variant="outline" className="w-full">
+            Sign in
+          </Button>
+        </Link>
+        <Link to="/auth/register">
+          <Button variant="outline" className="w-full">
+            Register
+          </Button>
+        </Link>
+      </div>
     </div>
   )
 }

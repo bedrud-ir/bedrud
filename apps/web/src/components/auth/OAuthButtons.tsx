@@ -1,4 +1,6 @@
-import { API_URL } from '#/lib/api'
+// OAuth redirects must be absolute — the browser navigates there directly.
+// In dev this is always localhost:8090; in prod set VITE_OAUTH_URL.
+const OAUTH_BASE = (import.meta.env['VITE_OAUTH_URL'] as string | undefined) ?? 'http://localhost:8090'
 
 const providers = [
   {
@@ -51,7 +53,7 @@ export function OAuthButtons() {
       {providers.map(({ id, label, icon }) => (
         <a
           key={id}
-          href={`${API_URL}/api/auth/${id}/login`}
+          href={`${OAUTH_BASE}/api/auth/${id}/login`}
           className="flex w-full items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
         >
           {icon}
