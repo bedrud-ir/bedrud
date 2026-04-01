@@ -380,7 +380,7 @@ func (h *AuthHandler) PasskeyRegisterBegin(c *fiber.Ctx) error {
 		},
 		"rp": fiber.Map{
 			"id":   h.getRPID(c),
-			"name": "Bedrud",
+			"name": h.getRPID(c),
 		},
 	})
 }
@@ -527,7 +527,7 @@ func (h *AuthHandler) PasskeySignupBegin(c *fiber.Ctx) error {
 		},
 		"rp": fiber.Map{
 			"id":   h.getRPID(c),
-			"name": "Bedrud",
+			"name": h.getRPID(c),
 		},
 	})
 }
