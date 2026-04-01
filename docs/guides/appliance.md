@@ -8,7 +8,7 @@ Bedrud is designed to run as a self-contained "appliance" for video meetings. A 
 |---------|-------------|
 | Zero external dependencies | No Node.js, Redis, or separate media server needed |
 | Embedded media server | LiveKit binary included and managed automatically |
-| Embedded frontend | Svelte 5 UI compiled into the Go binary |
+| Embedded frontend | React UI compiled and SSR pre-rendered into the Go binary |
 | SQLite storage | No database server required |
 | Built-in TLS | Self-signed certificates or Let's Encrypt |
 | Built-in installer | Configures systemd, directories, and configs |

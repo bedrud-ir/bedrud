@@ -36,7 +36,7 @@ Starts all three development services concurrently. Press `Ctrl+C` to stop all:
 
 - **LiveKit** at `localhost:7880`
 - **Server** at `localhost:8090`
-- **Web** at `localhost:5173`
+- **Web** at `localhost:3000`
 
 ## Build Targets
 
@@ -51,9 +51,8 @@ Starts all three development services concurrently. Press `Ctrl+C` to stop all:
 
 Full production build:
 
-1. Builds the Svelte frontend (`bun run build`)
-2. Copies compiled output to `server/frontend/`
-3. Builds the Go binary with embedded frontend
+1. Runs `bun run build:embed` — SSR pre-renders the React app and copies assets to `server/frontend/`
+2. Builds the Go binary with the embedded frontend
 
 Output: `server/dist/bedrud`
 
@@ -105,3 +104,31 @@ make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.c
 ```
 
 This runs the Python CLI at `tools/cli/bedrud.py` with the provided arguments.
+
+## Clean Targets
+
+| Target | Description |
+|--------|-------------|
+| `make clean` | Remove build artifacts and compiled binaries |
+| `make full-clean` | Remove artifacts + all installed dependencies |
+
+### `make clean`
+
+Removes:
+
+- `dist/` — distribution tarballs
+- `server/dist/` — compiled server binary
+- `apps/web/dist/` — React build output
+- `server/frontend/` contents — embedded frontend assets
+- `apps/android/app/build/` — Android build outputs
+- `apps/ios/build/` — iOS build outputs
+
+### `make full-clean`
+
+Everything `clean` does, plus:
+
+- `apps/web/node_modules/`
+- `apps/android/.gradle/`
+- Go module cache (`go clean -modcache`)
+
+Run `make init` afterwards to reinstall dependencies.

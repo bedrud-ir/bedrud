@@ -1,18 +1,22 @@
 # Web Frontend
 
-The Bedrud web frontend is a SvelteKit single-page application built with Svelte 5 and TailwindCSS. In production, it compiles to static files embedded in the Go server binary.
+The Bedrud web frontend is a React application built with TanStack Start, TailwindCSS v4, and shadcn/ui. In production, it uses server-side rendering to pre-render an HTML shell that is then embedded in the Go server binary alongside the static client assets.
 
 ## Technology Stack
 
 | Technology | Purpose |
 |-----------|---------|
-| SvelteKit 2.50 | Framework and routing |
-| Svelte 5.46 | UI components (Runes for state management) |
-| TailwindCSS 3.4 | Utility-first styling |
+| React 19 | UI framework |
+| TanStack Start | SSR framework and file-based routing |
+| TanStack Router | Client-side routing |
+| TanStack Query | Server state and data fetching |
+| TailwindCSS 4 | Utility-first styling |
+| shadcn/ui + Radix UI | Accessible component primitives |
+| Zustand | Client-side auth state |
 | Vite 7 | Build tool and dev server |
-| LiveKit Client SDK 2.9 | WebRTC media handling |
+| LiveKit React SDK | WebRTC media handling |
 | Zod | Schema validation |
-| Lucide Svelte | Icon library |
+| Lucide React | Icon library |
 | Bun | Package manager |
 
 ## Directory Structure
@@ -20,49 +24,48 @@ The Bedrud web frontend is a SvelteKit single-page application built with Svelte
 ```
 apps/web/
 ├── src/
-│   ├── routes/                    # File-based routing
-│   │   ├── +page.svelte           # Home / landing page
-│   │   ├── +layout.svelte         # Root layout
+│   ├── routes/                    # TanStack Router file-based routes
+│   │   ├── index.tsx              # Home / landing page
+│   │   ├── __root.tsx             # Root layout
 │   │   ├── auth/
-│   │   │   ├── login/             # Login page
-│   │   │   └── register/          # Registration page
-│   │   ├── m/[meetId]/            # Meeting room page
-│   │   ├── c/[roomCode]/          # Alternative room join (by code)
-│   │   ├── admin/                 # Admin dashboard
-│   │   ├── about/                 # About page
-│   │   ├── contact/               # Contact page
-│   │   ├── privacy/               # Privacy policy
-│   │   ├── terms/                 # Terms of service
-│   │   ├── design-system/         # Component showcase
-│   │   └── test/                  # Test pages
+│   │   │   ├── login.tsx          # Sign-in page
+│   │   │   └── register.tsx       # Sign-up page
+│   │   ├── dashboard/             # User dashboard
+│   │   ├── m.$meetId.tsx          # Meeting room page
+│   │   ├── admin/                 # Admin panel
+│   │   │   ├── index.tsx          # Overview
+│   │   │   ├── rooms.$id.tsx      # Room detail
+│   │   │   ├── users.$id.tsx      # User detail
+│   │   │   └── settings.tsx       # Server settings + invite tokens
+│   │   └── settings.tsx           # Account settings page
+│   ├── components/
+│   │   ├── admin/                 # Admin table components
+│   │   │   ├── RoomTable.tsx
+│   │   │   └── UserTable.tsx
+│   │   ├── auth/                  # Auth UI (OAuth, Passkey buttons)
+│   │   ├── dashboard/             # Room cards, create room dialog
+│   │   ├── meeting/               # Video tiles, controls, device picker
+│   │   │   ├── ControlsBar.tsx
+│   │   │   ├── DeviceSelector.tsx
+│   │   │   ├── ParticipantGrid.tsx
+│   │   │   ├── ChatPanel.tsx
+│   │   │   └── SpotlightView.tsx
+│   │   ├── ui/                    # shadcn/ui component library
+│   │   └── ThemeToggle.tsx        # Light/dark mode switcher
 │   └── lib/
-│       ├── api/                   # API client functions per endpoint
 │       ├── api.ts                 # authFetch wrapper
-│       ├── auth.ts                # Auth logic (login, register, passkeys)
-│       ├── livekit.ts             # LiveKit connection helpers
-│       ├── storage.ts             # LocalStorage utilities
-│       ├── components/
-│       │   ├── layout/            # Header, footer, navigation
-│       │   ├── meeting/           # Video tiles, controls, chat
-│       │   └── ui/                # Design system (buttons, inputs, cards)
-│       ├── hooks/                 # Custom Svelte hooks
-│       ├── models/                # TypeScript interfaces
-│       ├── stores/                # Svelte stores (reactive state)
-│       │   ├── user.store.ts      # Current user profile
-│       │   └── auth.store.ts      # JWT token management
-│       ├── types/                 # Shared type definitions
-│       └── utils/                 # Utility functions
-├── static/                        # Static assets
+│       └── auth.store.ts          # Zustand auth store (tokens, user)
+├── scripts/
+│   └── embed.mjs                  # SSR pre-render + copy to server/frontend/
+├── public/                        # Static assets
 ├── package.json
-├── svelte.config.js
-├── tailwind.config.js
 ├── tsconfig.json
 └── vite.config.ts
 ```
 
 ## Authentication Flow
 
-The frontend manages JWT tokens using Svelte stores:
+Auth state is managed by a Zustand store in `src/lib/auth.store.ts`:
 
 1. **Login** — User submits credentials to `POST /api/auth/login`
 2. **Token Storage** — Access and refresh tokens saved to `localStorage`
@@ -78,26 +81,29 @@ The `authFetch` function in `src/lib/api.ts` is a drop-in replacement for `fetch
 - Catches 401 responses and attempts a token refresh
 - Logs out the user if the refresh fails
 
-All API client functions in `src/lib/api/` use `authFetch` instead of native `fetch`.
-
 ## Meeting Page
 
-The meeting room at `/m/[meetId]` is the most complex page. It handles:
+The meeting room at `/m/$meetId` handles:
 
 - **LiveKit connection** — Connects to the media server with the token from the join API
 - **Track rendering** — Subscribes to audio/video tracks from other participants
+- **Device selection** — Switch camera, microphone, or speaker mid-call without leaving the room
 - **Admin controls** — Room creator sees kick, mute, and video-off buttons
-- **Admin crown** — Visual indicator next to the room creator's name
-- **Chat** — In-room text chat (if enabled in room settings)
-- **Screen sharing** — Publish screen as a track
+- **Chat** — In-room text chat via `ChatPanel`
+- **Spotlight view** — Focus a single participant
 
-## Design System
+## Admin Panel
 
-A custom design system in `src/routes/design-system/` provides a visual showcase of all UI components. The project uses:
+The admin panel at `/admin` provides:
 
-- **Tailwind Variants** — for component variant management
-- **Tailwind Merge** — for deduplicating class names
-- **clsx** — for conditional class composition
+- **Room management** — table view with drill-down to room detail pages
+- **User management** — table view with drill-down to individual user accounts and role editing
+- **Server settings** — configure instance-wide options, access controls, and invite links
+- **Invite tokens** — generate and revoke invite links to control who can join
+
+## Dark Mode
+
+A `ThemeToggle` component lets users switch between light and dark themes from anywhere in the app. The preference is persisted to `localStorage` and applied on load.
 
 ## Build
 
@@ -105,20 +111,35 @@ A custom design system in `src/routes/design-system/` provides a visual showcase
 
 ```bash
 cd apps/web
-bun run dev      # Starts Vite dev server with HMR at localhost:5173
+bun run dev      # Starts Vite dev server with HMR at localhost:3000
 ```
 
-### Production
+The dev server proxies `/api` and `/livekit` requests to the Go server at `localhost:8090`.
+
+### Production (standalone web bundle)
 
 ```bash
 cd apps/web
-bun run build    # Outputs static files to build/
+bun run build    # Outputs static client assets to dist/client/ and SSR server to dist/server/
 ```
 
-The static adapter (`@sveltejs/adapter-static`) compiles the app to plain HTML/CSS/JS files. The Makefile copies these to `server/frontend/` for embedding.
+### Production (embedded in Go binary)
+
+```bash
+cd apps/web
+bun run build:embed
+```
+
+This runs `scripts/embed.mjs` which:
+
+1. Runs `bun run build` to produce `dist/client/` and `dist/server/`
+2. Starts the SSR server locally
+3. Fetches `/` to capture the pre-rendered HTML shell
+4. Copies `dist/client/` into `server/frontend/`
+5. Writes the rendered HTML as `server/frontend/index.html`
 
 ### Type Checking
 
 ```bash
-bun run check    # Runs svelte-check with TypeScript
+bun run check    # Runs tsc --noEmit
 ```
