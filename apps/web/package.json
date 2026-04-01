@@ -10,6 +10,7 @@
     "build": "vite build",
     "build:embed": "node scripts/embed.mjs",
     "preview": "vite preview",
+    "check": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
