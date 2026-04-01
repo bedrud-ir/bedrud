@@ -139,6 +139,24 @@ func DebianInstall(enableTLS bool, overrideIP string, domainArg string, emailArg
 		livekitPublicHost = fmt.Sprintf("https://%s/livekit", hostForLK)
 	}
 
+	// CORS: when a domain is known, lock down to that origin so credentials work.
+	// With wildcard origins, credentials must be false (browsers and Fiber both reject it).
+	corsOrigins := "*"
+	corsCredentials := "false"
+	if domain != "" {
+		corsOrigins = fmt.Sprintf("%s://%s", protocol, domain)
+		corsCredentials = "true"
+	}
+
+	// Reverse-proxy support: if TLS is handled externally (nginx/CDN), trust the proxy.
+	proxyConfig := ""
+	if !enableTLS && domain != "" {
+		proxyConfig = `  trustedProxies:
+    - "127.0.0.1"
+  proxyHeader: "X-Forwarded-For"
+`
+	}
+
 	configContent := fmt.Sprintf(`server:
   port: "%s"
   host: "0.0.0.0"
@@ -148,7 +166,7 @@ func DebianInstall(enableTLS bool, overrideIP string, domainArg string, emailArg
   domain: "%s"
   email: "%s"
   useACME: %v
-
+%s
 database:
   type: "sqlite"
   path: "/var/lib/bedrud/bedrud.db"
@@ -171,8 +189,9 @@ logger:
   outputPath: "/var/log/bedrud/bedrud.log"
 
 cors:
-  allowedOrigins: "*"
-`, port, enableTLS, certFile, keyFile, domain, email, useACME, livekitPublicHost, lkPort, apiKey, apiSecret)
+  allowedOrigins: "%s"
+  allowCredentials: %s
+`, port, enableTLS, certFile, keyFile, domain, email, useACME, proxyConfig, livekitPublicHost, lkPort, apiKey, apiSecret, corsOrigins, corsCredentials)
 
 	_ = os.WriteFile("/etc/bedrud/config.yaml", []byte(configContent), 0644)
 

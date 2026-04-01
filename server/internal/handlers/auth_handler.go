@@ -408,10 +408,16 @@ func (h *AuthHandler) PasskeyRegisterFinish(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Challenge not found in session"})
 	}
 
-	clientData, _ := base64.RawURLEncoding.DecodeString(input.ClientDataJSON)
-	attestation, _ := base64.RawURLEncoding.DecodeString(input.AttestationObject)
+	clientData, err := base64.RawURLEncoding.DecodeString(input.ClientDataJSON)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid clientDataJSON encoding"})
+	}
+	attestation, err := base64.RawURLEncoding.DecodeString(input.AttestationObject)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid attestationObject encoding"})
+	}
 
-	err := h.authService.FinishRegisterPasskey(claims.UserID, challenge, clientData, attestation, h.getRPID(c), h.getOrigin(c))
+	err = h.authService.FinishRegisterPasskey(claims.UserID, challenge, clientData, attestation, h.getRPID(c), h.getOrigin(c))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -457,10 +463,22 @@ func (h *AuthHandler) PasskeyLoginFinish(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Challenge not found in session"})
 	}
 
-	credID, _ := base64.RawURLEncoding.DecodeString(input.CredentialID)
-	clientData, _ := base64.RawURLEncoding.DecodeString(input.ClientDataJSON)
-	authData, _ := base64.RawURLEncoding.DecodeString(input.AuthenticatorData)
-	sig, _ := base64.RawURLEncoding.DecodeString(input.Signature)
+	credID, err := base64.RawURLEncoding.DecodeString(input.CredentialID)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid credentialId encoding"})
+	}
+	clientData, err := base64.RawURLEncoding.DecodeString(input.ClientDataJSON)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid clientDataJSON encoding"})
+	}
+	authData, err := base64.RawURLEncoding.DecodeString(input.AuthenticatorData)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid authenticatorData encoding"})
+	}
+	sig, err := base64.RawURLEncoding.DecodeString(input.Signature)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid signature encoding"})
+	}
 
 	loginResponse, err := h.authService.FinishLoginPasskey(challenge, credID, clientData, authData, sig, h.getRPID(c), h.getOrigin(c))
 	if err != nil {
@@ -536,12 +554,21 @@ func (h *AuthHandler) PasskeySignupFinish(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Signup session expired or not found"})
 	}
 
-	email := sess.Values["signup_email"].(string)
-	name := sess.Values["signup_name"].(string)
-	userID := sess.Values["signup_user_id"].(string)
+	email, ok2 := sess.Values["signup_email"].(string)
+	name, ok3 := sess.Values["signup_name"].(string)
+	userID, ok4 := sess.Values["signup_user_id"].(string)
+	if !ok2 || !ok3 || !ok4 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Signup session expired or not found"})
+	}
 
-	clientData, _ := base64.RawURLEncoding.DecodeString(input.ClientDataJSON)
-	attestation, _ := base64.RawURLEncoding.DecodeString(input.AttestationObject)
+	clientData, err := base64.RawURLEncoding.DecodeString(input.ClientDataJSON)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid clientDataJSON encoding"})
+	}
+	attestation, err := base64.RawURLEncoding.DecodeString(input.AttestationObject)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid attestationObject encoding"})
+	}
 
 	loginResponse, err := h.authService.FinishSignupPasskey(userID, email, name, challenge, clientData, attestation, h.getRPID(c), h.getOrigin(c))
 	if err != nil {
