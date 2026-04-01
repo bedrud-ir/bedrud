@@ -1,18 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { useChat, useLocalParticipant, useRoomContext } from '@livekit/components-react'
-import { RoomEvent } from 'livekit-client'
+import { useLocalParticipant } from '@livekit/components-react'
 import { X, Send, MessageSquare } from 'lucide-react'
+import { useMeetingContext } from '@/components/meeting/MeetingContext'
 
 interface Props {
   onClose: () => void
-}
-
-interface SystemMessage {
-  type: 'system'
-  event: 'kick' | 'ban'
-  actor: string
-  target: string
-  ts: number
 }
 
 const panel: React.CSSProperties = {
@@ -25,27 +17,15 @@ const panel: React.CSSProperties = {
 }
 
 export function ChatPanel({ onClose }: Props) {
-  const { chatMessages, send, isSending } = useChat()
+  const { chatMessages, systemMessages, send, isSending, markRead } = useMeetingContext()
   const { localParticipant } = useLocalParticipant()
-  const room = useRoomContext()
   const [draft, setDraft] = useState('')
-  const [systemMessages, setSystemMessages] = useState<SystemMessage[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // Listen for system data messages (kick/ban events)
+  // Mark all messages as read when the panel opens
   useEffect(() => {
-    const handler = (payload: Uint8Array, _participant: unknown, _kind: unknown, topic?: string) => {
-      if (topic !== 'system') return
-      try {
-        const msg = JSON.parse(new TextDecoder().decode(payload)) as SystemMessage
-        if (msg.type === 'system') {
-          setSystemMessages((prev) => [...prev, { ...msg, ts: Date.now() }])
-        }
-      } catch { /* ignore malformed */ }
-    }
-    room.on(RoomEvent.DataReceived, handler)
-    return () => { room.off(RoomEvent.DataReceived, handler) }
-  }, [room])
+    markRead()
+  }, [markRead])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -62,7 +42,7 @@ export function ChatPanel({ onClose }: Props) {
   // Merge chat and system messages by timestamp for ordered display
   type DisplayItem =
     | { kind: 'chat'; msg: (typeof chatMessages)[number]; idx: number }
-    | { kind: 'system'; msg: SystemMessage }
+    | { kind: 'system'; msg: (typeof systemMessages)[number] }
 
   const items: DisplayItem[] = [
     ...chatMessages.map((msg, idx) => ({ kind: 'chat' as const, msg, idx })),
@@ -125,10 +105,7 @@ export function ChatPanel({ onClose }: Props) {
             if (item.kind === 'system') {
               const label = item.msg.event === 'kick' ? 'was kicked by' : 'was banned by'
               return (
-                <div key={`sys-${i}`} style={{
-                  display: 'flex', justifyContent: 'center',
-                  padding: '2px 0',
-                }}>
+                <div key={`sys-${i}`} style={{ display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
                   <span style={{
                     fontSize: 11, color: 'rgba(255,255,255,0.3)',
                     background: 'rgba(255,255,255,0.05)',
@@ -159,12 +136,8 @@ export function ChatPanel({ onClose }: Props) {
                   maxWidth: '82%',
                   padding: '7px 12px',
                   borderRadius: isLocal ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                  background: isLocal
-                    ? 'rgba(99,102,241,0.75)'
-                    : 'rgba(255,255,255,0.07)',
-                  border: isLocal
-                    ? '1px solid rgba(165,180,252,0.25)'
-                    : '1px solid rgba(255,255,255,0.06)',
+                  background: isLocal ? 'rgba(99,102,241,0.75)' : 'rgba(255,255,255,0.07)',
+                  border: isLocal ? '1px solid rgba(165,180,252,0.25)' : '1px solid rgba(255,255,255,0.06)',
                   color: isLocal ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.75)',
                   fontSize: 13, lineHeight: 1.45,
                   wordBreak: 'break-word',
