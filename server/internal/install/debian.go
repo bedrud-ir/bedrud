@@ -9,7 +9,7 @@ import (
 	"runtime"
 )
 
-func DebianInstall(enableTLS bool, disableTLS bool, overrideIP string, domainArg string, emailArg string, portArg string, certPathArg string, keyPathArg string, lkPortArg string, lkTcpPortArg string, lkUdpPortArg string, fresh bool, behindProxy bool, externalLKURL string, lkDomain string) error {
+func DebianInstall(enableTLS bool, disableTLS bool, selfSigned bool, overrideIP string, domainArg string, emailArg string, portArg string, certPathArg string, keyPathArg string, lkPortArg string, lkTcpPortArg string, lkUdpPortArg string, fresh bool, behindProxy bool, externalLKURL string, lkDomain string) error {
 	if fresh {
 		fmt.Println("➜ Fresh install: removing previous deployment...")
 		_ = DebianUninstall()
@@ -70,7 +70,12 @@ func DebianInstall(enableTLS bool, disableTLS bool, overrideIP string, domainArg
 		enableTLS = true
 	}
 
-	if !enableTLS && !useACME && !disableTLS && isTerm {
+	// --self-signed explicitly requests self-signed cert generation
+	if selfSigned && !disableTLS {
+		enableTLS = true
+	}
+
+	if !enableTLS && !useACME && !disableTLS && !selfSigned && isTerm {
 		fmt.Printf("➜ Enable Self-Signed TLS? [Y/n]: ")
 		var secure string
 		fmt.Scanln(&secure)
@@ -254,9 +259,16 @@ cors:
 			turnTLSSection = fmt.Sprintf("  tls_port: 5349\n  cert_file: \"%s\"\n  key_file: \"%s\"\n", certFile, keyFile)
 		}
 
+		// When clients connect directly (separate domain), LK must listen on a public interface.
+		// In the default embedded mode it only needs loopback.
+		lkBindAddr := "127.0.0.1"
+		if hasSeparateLKDomain {
+			lkBindAddr = "0.0.0.0"
+		}
+
 		lkContent := fmt.Sprintf(`port: %s
 bind_addresses:
-  - 127.0.0.1
+  - %s
 keys:
   %s: %s
 rtc:
@@ -271,7 +283,7 @@ turn:
 %slogging:
   json: true
   level: debug
-`, lkPort, apiKey, apiSecret, lkTcpPort, lkUdpPort, ip, turnDomain, turnTLSSection)
+`, lkPort, lkBindAddr, apiKey, apiSecret, lkTcpPort, lkUdpPort, ip, turnDomain, turnTLSSection)
 
 		_ = os.WriteFile("/etc/bedrud/livekit.yaml", []byte(lkContent), 0644)
 	}
@@ -319,7 +331,7 @@ Description=Bedrud Meeting Server
 After=%s
 
 [Service]
-ExecStart=/usr/local/bin/bedrud --run --config /etc/bedrud/config.yaml
+ExecStart=/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
 Restart=always
 Environment=CONFIG_PATH=/etc/bedrud/config.yaml%s
 
@@ -334,7 +346,14 @@ WantedBy=multi-user.target
 	exec.Command("systemctl", append([]string{"restart"}, services...)...).Run()
 
 	fmt.Println("✓ Installation complete!")
-	fmt.Println("  Access URL: ", protocol+"://"+ip+":8090")
+	accessURL := fmt.Sprintf("%s://%s:%s", protocol, ip, port)
+	if port == "443" || port == "80" {
+		accessURL = fmt.Sprintf("%s://%s", protocol, ip)
+	}
+	fmt.Println("  Access URL: ", accessURL)
+	if domain != "" {
+		fmt.Println("  Domain URL: ", fmt.Sprintf("%s://%s", protocol, domain))
+	}
 	fmt.Println("  LiveKit Host:", livekitPublicHost)
 	return nil
 }
