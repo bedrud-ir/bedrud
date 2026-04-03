@@ -66,6 +66,19 @@
 		F7206B3D27C4149FAF586BD0 /* SettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D443E4AB708CDA4B91B730F /* SettingsStoreTests.swift */; };
 		F8952462793A0D63336FBA9B /* Instance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5290E738195A622BCEECE8CF /* Instance.swift */; };
 		F9847B1335C6611C98EBB51D /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = 44944A1F1026F5A7EB146F44 /* KeychainAccess */; };
+		AA10000100000000000000AB /* ParticipantsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA10000100000000000000AA /* ParticipantsPanelView.swift */; };
+		AA10000100000000000000BB /* AdminAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA10000100000000000000BA /* AdminAPITests.swift */; };
+		AA10000100000000000000CB /* PasswordChangeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA10000100000000000000CA /* PasswordChangeTests.swift */; };
+		AA10000100000000000000DB /* KickDetectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA10000100000000000000DA /* KickDetectionTests.swift */; };
+		AA100001000000000000001B /* AdminAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000001A /* AdminAPI.swift */; };
+		AA100001000000000000002B /* OAuthLoginHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000002A /* OAuthLoginHandler.swift */; };
+		AA100001000000000000003B /* AdminView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000003A /* AdminView.swift */; };
+		AA100001000000000000004B /* AdminOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000004A /* AdminOverviewView.swift */; };
+		AA100001000000000000005B /* AdminUsersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000005A /* AdminUsersView.swift */; };
+		AA100001000000000000006B /* AdminRoomsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000006A /* AdminRoomsView.swift */; };
+		AA100001000000000000007B /* AdminSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000007A /* AdminSettingsView.swift */; };
+		AA100001000000000000008B /* GuestLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000008A /* GuestLoginView.swift */; };
+		AA100001000000000000009B /* OAuthButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000009A /* OAuthButtons.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -137,6 +150,19 @@
 		E96000CD15CF09126D920C87 /* ColorsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorsTests.swift; sourceTree = "<group>"; };
 		F3E54D5E71E44DA494FA8838 /* RoomAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomAPITests.swift; sourceTree = "<group>"; };
 		FDE8842881927790317E4C9A /* InstanceSwitcherSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceSwitcherSheet.swift; sourceTree = "<group>"; };
+		AA10000100000000000000AA /* ParticipantsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticipantsPanelView.swift; sourceTree = "<group>"; };
+		AA10000100000000000000BA /* AdminAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAPITests.swift; sourceTree = "<group>"; };
+		AA10000100000000000000CA /* PasswordChangeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordChangeTests.swift; sourceTree = "<group>"; };
+		AA10000100000000000000DA /* KickDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickDetectionTests.swift; sourceTree = "<group>"; };
+		AA100001000000000000001A /* AdminAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAPI.swift; sourceTree = "<group>"; };
+		AA100001000000000000002A /* OAuthLoginHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthLoginHandler.swift; sourceTree = "<group>"; };
+		AA100001000000000000003A /* AdminView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminView.swift; sourceTree = "<group>"; };
+		AA100001000000000000004A /* AdminOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminOverviewView.swift; sourceTree = "<group>"; };
+		AA100001000000000000005A /* AdminUsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminUsersView.swift; sourceTree = "<group>"; };
+		AA100001000000000000006A /* AdminRoomsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminRoomsView.swift; sourceTree = "<group>"; };
+		AA100001000000000000007A /* AdminSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminSettingsView.swift; sourceTree = "<group>"; };
+		AA100001000000000000008A /* GuestLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestLoginView.swift; sourceTree = "<group>"; };
+		AA100001000000000000009A /* OAuthButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthButtons.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -163,6 +189,7 @@
 		1397A803A8A1FA0761335046 /* API */ = {
 			isa = PBXGroup;
 			children = (
+				AA100001000000000000001A /* AdminAPI.swift */,
 				3B49FC1C1923E5053EF89591 /* APIClient.swift */,
 				294DD059C1708CFB35405442 /* AuthAPI.swift */,
 				CC2FF83D074FFD1EF87716BC /* RoomAPI.swift */,
@@ -221,6 +248,7 @@
 			isa = PBXGroup;
 			children = (
 				366CCCCDA13F7A96C09C3362 /* AuthManager.swift */,
+				AA100001000000000000002A /* OAuthLoginHandler.swift */,
 				75CCE93B4C02339996B64264 /* PasskeyManager.swift */,
 			);
 			path = Auth;
@@ -248,7 +276,9 @@
 		6196715D66CFD15E717F95E7 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
+				AA100001000000000000008A /* GuestLoginView.swift */,
 				CE51CC3D64BD7B14CC122D99 /* LoginView.swift */,
+				AA100001000000000000009A /* OAuthButtons.swift */,
 				B8610AD1B6C8E8134846C810 /* RegisterView.swift */,
 			);
 			path = Auth;
@@ -313,6 +343,7 @@
 		793F11242F2245A1863F6574 /* LiveKit */ = {
 			isa = PBXGroup;
 			children = (
+				AA10000100000000000000DA /* KickDetectionTests.swift */,
 				4EA81758239498886B3AD762 /* RoomManagerTests.swift */,
 			);
 			path = LiveKit;
@@ -419,9 +450,22 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
+		AA10000100000000000000EA /* Admin */ = {
+			isa = PBXGroup;
+			children = (
+				AA100001000000000000003A /* AdminView.swift */,
+				AA100001000000000000004A /* AdminOverviewView.swift */,
+				AA100001000000000000005A /* AdminUsersView.swift */,
+				AA100001000000000000006A /* AdminRoomsView.swift */,
+				AA100001000000000000007A /* AdminSettingsView.swift */,
+			);
+			path = Admin;
+			sourceTree = "<group>";
+		};
 		CBDA2D127A2542F456325CE0 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				AA10000100000000000000EA /* Admin */,
 				6196715D66CFD15E717F95E7 /* Auth */,
 				8FF065275AF53FAA17F3F5F3 /* Dashboard */,
 				40A1CB227C0990902D8C4667 /* Instance */,
@@ -440,6 +484,7 @@
 			children = (
 				A5B68AB2A5942C0C00D24E56 /* ControlBar.swift */,
 				3E180B8B3E6F5D75BFF638D0 /* MeetingView.swift */,
+				AA10000100000000000000AA /* ParticipantsPanelView.swift */,
 			);
 			path = Meeting;
 			sourceTree = "<group>";
@@ -489,8 +534,10 @@
 		FA54846CF23885EE1E42782C /* API */ = {
 			isa = PBXGroup;
 			children = (
+				AA10000100000000000000BA /* AdminAPITests.swift */,
 				9E271E4E77D423D6A5EF80E9 /* APIClientTests.swift */,
 				7D2CB613BB065F6075FF4165 /* AuthAPITests.swift */,
+				AA10000100000000000000CA /* PasswordChangeTests.swift */,
 				F3E54D5E71E44DA494FA8838 /* RoomAPITests.swift */,
 			);
 			path = API;
@@ -627,6 +674,16 @@
 				6C87A5E9B0761213B935041A /* Styles.swift in Sources */,
 				89E186C327424B2B315B8725 /* Typography.swift in Sources */,
 				035DF73F8818FA7F1AB672C1 /* User.swift in Sources */,
+				AA100001000000000000001B /* AdminAPI.swift in Sources */,
+				AA100001000000000000002B /* OAuthLoginHandler.swift in Sources */,
+				AA100001000000000000003B /* AdminView.swift in Sources */,
+				AA100001000000000000004B /* AdminOverviewView.swift in Sources */,
+				AA100001000000000000005B /* AdminUsersView.swift in Sources */,
+				AA100001000000000000006B /* AdminRoomsView.swift in Sources */,
+				AA100001000000000000007B /* AdminSettingsView.swift in Sources */,
+				AA100001000000000000008B /* GuestLoginView.swift in Sources */,
+				AA100001000000000000009B /* OAuthButtons.swift in Sources */,
+				AA10000100000000000000AB /* ParticipantsPanelView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -655,6 +712,9 @@
 				E3EB262E8F8D65834C44E88B /* RoomTests.swift in Sources */,
 				F7206B3D27C4149FAF586BD0 /* SettingsStoreTests.swift in Sources */,
 				C5EC553D900DE339BCAB5A4E /* UserTests.swift in Sources */,
+				AA10000100000000000000BB /* AdminAPITests.swift in Sources */,
+				AA10000100000000000000CB /* PasswordChangeTests.swift in Sources */,
+				AA10000100000000000000DB /* KickDetectionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
