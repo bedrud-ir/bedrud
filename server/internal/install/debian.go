@@ -96,9 +96,20 @@ func DebianInstall(enableTLS bool, disableTLS bool, selfSigned bool, overrideIP 
 	_ = os.MkdirAll("/var/log/bedrud", 0755)
 
 	// 1. Install Bedrud Binary
-	execPath, _ := os.Executable()
-	_ = copyFile(execPath, "/usr/local/bin/bedrud")
-	os.Chmod("/usr/local/bin/bedrud", 0755)
+	// Read via /proc/self/exe so the binary is accessible even if --fresh deleted
+	// the file we were launched from (os.Executable path may already be unlinked).
+	selfBytes, err := os.ReadFile("/proc/self/exe")
+	if err != nil {
+		// Fallback: try the reported executable path (works when not self-overwriting)
+		execPath, _ := os.Executable()
+		selfBytes, err = os.ReadFile(execPath)
+	}
+	if err != nil || len(selfBytes) == 0 {
+		return fmt.Errorf("failed to read current binary for installation: %w", err)
+	}
+	if err := os.WriteFile("/usr/local/bin/bedrud", selfBytes, 0755); err != nil {
+		return fmt.Errorf("failed to install binary to /usr/local/bin/bedrud: %w", err)
+	}
 
 	protocol := "http"
 	if enableTLS {
