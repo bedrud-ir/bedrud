@@ -84,11 +84,15 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 	respBody, _ := io.ReadAll(resp.Body)
 	var result map[string]interface{}
 	_ = json.Unmarshal(respBody, &result)
-	if result["access_token"] == nil || result["access_token"] == "" {
-		t.Fatal("expected access_token in response")
+	tokens, _ := result["tokens"].(map[string]interface{})
+	if tokens == nil || tokens["accessToken"] == nil || tokens["accessToken"] == "" {
+		t.Fatal("expected tokens.accessToken in response")
 	}
-	if result["refresh_token"] == nil || result["refresh_token"] == "" {
-		t.Fatal("expected refresh_token in response")
+	if tokens["refreshToken"] == nil || tokens["refreshToken"] == "" {
+		t.Fatal("expected tokens.refreshToken in response")
+	}
+	if result["user"] == nil {
+		t.Fatal("expected user in response")
 	}
 }
 
