@@ -70,8 +70,9 @@ func main() {
 
 	case "install":
 		installCmd := flag.NewFlagSet("install", flag.ExitOnError)
-		enableTLS := installCmd.Bool("tls", false, "Enable HTTPS (auto-generate self-signed certificates)")
-		noTLS := installCmd.Bool("no-tls", false, "Disable TLS entirely (plain HTTP)")
+		enableTLS := installCmd.Bool("tls", false, "Enable HTTPS with self-signed certificate (same as --self-signed)")
+		selfSigned := installCmd.Bool("self-signed", false, "Generate and use a self-signed TLS certificate")
+		noTLS := installCmd.Bool("no-tls", false, "Disable TLS entirely (plain HTTP, overrides --tls/--self-signed)")
 		ipOverride := installCmd.String("ip", "", "Override detected IP address")
 		domainFlag := installCmd.String("domain", "", "Domain for Let's Encrypt")
 		emailFlag := installCmd.String("email", "", "Email for Let's Encrypt")
@@ -87,8 +88,8 @@ func main() {
 		lkDomainFlag := installCmd.String("livekit-domain", "", "Separate domain for the local LiveKit server (e.g. lk.example.com, bypasses CDN)")
 		installCmd.Parse(os.Args[2:])
 
-		tls := *enableTLS && !*noTLS
-		if err := install.DebianInstall(tls, *noTLS, *ipOverride, *domainFlag, *emailFlag, *portFlag, *certFlag, *keyFlag, *lkPortFlag, *lkTcpPortFlag, *lkUdpPortFlag, *freshFlag, *behindProxyFlag, *externalLKFlag, *lkDomainFlag); err != nil {
+		tls := (*enableTLS || *selfSigned) && !*noTLS
+		if err := install.DebianInstall(tls, *noTLS, *selfSigned && !*noTLS, *ipOverride, *domainFlag, *emailFlag, *portFlag, *certFlag, *keyFlag, *lkPortFlag, *lkTcpPortFlag, *lkUdpPortFlag, *freshFlag, *behindProxyFlag, *externalLKFlag, *lkDomainFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "Installation error: %v\n", err)
 			os.Exit(1)
 		}
@@ -155,8 +156,9 @@ func printUsage() {
 	fmt.Println("  run       Start the meeting server")
 	fmt.Println("  livekit   Start the embedded LiveKit server")
 	fmt.Println("  install   Install Bedrud on a Debian/Linux system")
-	fmt.Println("            Flags: --tls, --no-tls, --domain, --email, --ip, --port,")
-	fmt.Println("                   --cert, --key, --lk-port, --lk-tcp-port, --lk-udp-port,")
+	fmt.Println("            Flags: --tls / --self-signed, --no-tls, --domain, --email,")
+	fmt.Println("                   --ip, --port, --cert, --key,")
+	fmt.Println("                   --lk-port, --lk-tcp-port, --lk-udp-port,")
 	fmt.Println("                   --fresh, --behind-proxy,")
 	fmt.Println("                   --livekit-domain <domain>  (local LK on its own domain)")
 	fmt.Println("                   --external-livekit <url>   (fully separate LK machine)")
