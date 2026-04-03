@@ -83,11 +83,12 @@ func main() {
 		lkUdpPortFlag := installCmd.String("lk-udp-port", "", "Override LiveKit RTC UDP port (default 7882)")
 		freshFlag := installCmd.Bool("fresh", false, "Remove existing installation before installing")
 		behindProxyFlag := installCmd.Bool("behind-proxy", false, "Running behind a CDN/reverse-proxy (Cloudflare, nginx, etc.)")
-		externalLKFlag := installCmd.String("external-livekit", "", "URL of an external LiveKit server (e.g. https://lk.bedrud.org)")
+		externalLKFlag := installCmd.String("external-livekit", "", "URL of a fully external LiveKit server (different machine, e.g. https://lk.example.com)")
+		lkDomainFlag := installCmd.String("livekit-domain", "", "Separate domain for the local LiveKit server (e.g. lk.example.com, bypasses CDN)")
 		installCmd.Parse(os.Args[2:])
 
 		tls := *enableTLS && !*noTLS
-		if err := install.DebianInstall(tls, *ipOverride, *domainFlag, *emailFlag, *portFlag, *certFlag, *keyFlag, *lkPortFlag, *lkTcpPortFlag, *lkUdpPortFlag, *freshFlag, *behindProxyFlag, *externalLKFlag); err != nil {
+		if err := install.DebianInstall(tls, *noTLS, *ipOverride, *domainFlag, *emailFlag, *portFlag, *certFlag, *keyFlag, *lkPortFlag, *lkTcpPortFlag, *lkUdpPortFlag, *freshFlag, *behindProxyFlag, *externalLKFlag, *lkDomainFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "Installation error: %v\n", err)
 			os.Exit(1)
 		}
@@ -156,7 +157,9 @@ func printUsage() {
 	fmt.Println("  install   Install Bedrud on a Debian/Linux system")
 	fmt.Println("            Flags: --tls, --no-tls, --domain, --email, --ip, --port,")
 	fmt.Println("                   --cert, --key, --lk-port, --lk-tcp-port, --lk-udp-port,")
-	fmt.Println("                   --fresh, --behind-proxy, --external-livekit <url>")
+	fmt.Println("                   --fresh, --behind-proxy,")
+	fmt.Println("                   --livekit-domain <domain>  (local LK on its own domain)")
+	fmt.Println("                   --external-livekit <url>   (fully separate LK machine)")
 	fmt.Println("  uninstall Uninstall Bedrud from the system")
 	fmt.Println("  user      Manage users")
 	fmt.Println("            promote --email <email>  Grant superadmin access")
