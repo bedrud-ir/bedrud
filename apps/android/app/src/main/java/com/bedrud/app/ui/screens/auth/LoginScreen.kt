@@ -73,6 +73,7 @@ import org.koin.compose.koinInject
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateToGuest: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
     instanceManager: InstanceManager = koinInject()
 ) {
@@ -331,6 +332,17 @@ fun LoginScreen(
                 )
                 TextButton(onClick = onNavigateToRegister) {
                     Text("Sign Up", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+
+            // Guest link
+            if (onNavigateToGuest != null) {
+                TextButton(onClick = onNavigateToGuest) {
+                    Text(
+                        "Join as guest",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 

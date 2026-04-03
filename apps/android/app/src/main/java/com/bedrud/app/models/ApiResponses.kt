@@ -54,6 +54,13 @@ data class MeResponse(
     val provider: String? = null
 )
 
+data class ChangePasswordRequest(
+    @SerializedName("currentPassword")
+    val currentPassword: String,
+    @SerializedName("newPassword")
+    val newPassword: String
+)
+
 // --- Passkeys ---
 
 data class PasskeySignupBeginRequest(
@@ -107,6 +114,8 @@ data class UserRoomResponse(
     val createdBy: String,
     @SerializedName("isActive")
     val isActive: Boolean,
+    @SerializedName("isPublic")
+    val isPublic: Boolean? = null,
     @SerializedName("maxParticipants")
     val maxParticipants: Int,
     @SerializedName("expiresAt")
@@ -114,6 +123,41 @@ data class UserRoomResponse(
     val settings: RoomSettings,
     val relationship: String,
     val mode: String
+)
+
+// --- Admin ---
+
+data class AdminUser(
+    val id: String,
+    val email: String,
+    val name: String,
+    @SerializedName("isActive") val isActive: Boolean = true,
+    @SerializedName("isAdmin") val isAdmin: Boolean = false,
+    val provider: String? = null,
+    @SerializedName("createdAt") val createdAt: String? = null
+)
+
+data class AdminRoom(
+    val id: String,
+    val name: String,
+    @SerializedName("isActive") val isActive: Boolean = false,
+    @SerializedName("isPublic") val isPublic: Boolean = true,
+    @SerializedName("maxParticipants") val maxParticipants: Int = 20,
+    @SerializedName("createdAt") val createdAt: String? = null
+)
+
+data class AdminSettings(
+    @SerializedName("allowRegistrations") val allowRegistrations: Boolean = true,
+    @SerializedName("requireInviteToken") val requireInviteToken: Boolean = false
+)
+
+data class InviteToken(
+    val id: String,
+    val token: String,
+    val email: String? = null,
+    @SerializedName("expiresAt") val expiresAt: String? = null,
+    @SerializedName("usedAt") val usedAt: String? = null,
+    val used: Boolean = false
 )
 
 // --- Generic ---

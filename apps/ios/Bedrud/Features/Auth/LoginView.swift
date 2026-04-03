@@ -9,6 +9,7 @@ struct LoginView: View {
     @State private var isLoading = false
     @State private var isPasskeyLoading = false
     @State private var showRegister = false
+    @State private var showGuestLogin = false
 
     private var authManager: AuthManager? { instanceManager.authManager }
     private var passkeyManager: PasskeyManager? { instanceManager.passkeyManager }
@@ -84,6 +85,9 @@ struct LoginView: View {
                 .disabled(isLoading || isPasskeyLoading || email.isEmpty || password.isEmpty)
             }
 
+            // OAuth providers
+            OAuthButtons()
+
             // Passkey
             Section {
                 Button(action: performPasskeyLogin) {
@@ -109,7 +113,7 @@ struct LoginView: View {
                 .padding(.bottom, 4)
             }
 
-            // Register link
+            // Register / Guest links
             Section {
                 HStack {
                     Spacer()
@@ -123,6 +127,17 @@ struct LoginView: View {
                 }
                 .font(.footnote)
                 .listRowBackground(Color.clear)
+
+                HStack {
+                    Spacer()
+                    Button("Join as guest") {
+                        showGuestLogin = true
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .listRowBackground(Color.clear)
             }
         }
         .formStyle(.grouped)
@@ -132,6 +147,9 @@ struct LoginView: View {
         #endif
         .navigationDestination(isPresented: $showRegister) {
             RegisterView()
+        }
+        .navigationDestination(isPresented: $showGuestLogin) {
+            GuestLoginView()
         }
     }
 

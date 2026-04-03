@@ -2,9 +2,11 @@ package com.bedrud.app.ui.screens.main
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.VideoCall
@@ -14,6 +16,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -21,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.bedrud.app.core.instance.InstanceManager
+import com.bedrud.app.ui.screens.admin.AdminScreen
 import com.bedrud.app.ui.screens.dashboard.DashboardContent
 import com.bedrud.app.ui.screens.profile.ProfileContent
 import com.bedrud.app.ui.screens.settings.SettingsContent
@@ -32,12 +36,6 @@ private data class TabItem(
     val unselectedIcon: ImageVector
 )
 
-private val tabs = listOf(
-    TabItem("Rooms", Icons.Filled.VideoCall, Icons.Outlined.VideoCall),
-    TabItem("Profile", Icons.Filled.Person, Icons.Outlined.Person),
-    TabItem("Settings", Icons.Filled.Settings, Icons.Outlined.Settings)
-)
-
 @Composable
 fun MainScreen(
     onJoinRoom: (String) -> Unit,
@@ -45,6 +43,17 @@ fun MainScreen(
     onNavigateToAddInstance: () -> Unit,
     instanceManager: InstanceManager = koinInject()
 ) {
+    val authManager by instanceManager.authManager.collectAsState()
+    val currentUser by (authManager?.currentUser ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsState()
+    val isAdmin = currentUser?.isAdmin == true
+
+    val tabs = buildList {
+        add(TabItem("Rooms", Icons.Filled.VideoCall, Icons.Outlined.VideoCall))
+        add(TabItem("Profile", Icons.Filled.Person, Icons.Outlined.Person))
+        add(TabItem("Settings", Icons.Filled.Settings, Icons.Outlined.Settings))
+        if (isAdmin) add(TabItem("Admin", Icons.Filled.AdminPanelSettings, Icons.Outlined.AdminPanelSettings))
+    }
+
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
@@ -81,6 +90,7 @@ fun MainScreen(
             2 -> SettingsContent(
                 modifier = Modifier.padding(padding)
             )
+            3 -> if (isAdmin) AdminScreen(modifier = Modifier.padding(padding))
         }
     }
 }

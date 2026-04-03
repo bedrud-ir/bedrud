@@ -65,6 +65,16 @@
                     android:host="bedrud.com"
                     android:pathPrefix="/c/" />
             </intent-filter>
+
+            <!-- OAuth callback: server must redirect to bedrud://oauth/auth/callback?token=... -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="bedrud"
+                    android:host="oauth" />
+            </intent-filter>
         </activity>
         <service
             android:name=".core.call.CallService"

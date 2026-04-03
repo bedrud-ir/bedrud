@@ -1,6 +1,7 @@
 package com.bedrud.app.core.instance
 
 import android.app.Application
+import com.bedrud.app.core.api.AdminApi
 import com.bedrud.app.core.api.ApiClientFactory
 import com.bedrud.app.core.api.AuthApi
 import com.bedrud.app.core.api.AuthInterceptor
@@ -39,6 +40,9 @@ class InstanceManager(
     private val _roomManager = MutableStateFlow<RoomManager?>(null)
     val roomManager: StateFlow<RoomManager?> = _roomManager.asStateFlow()
 
+    private val _adminApi = MutableStateFlow<AdminApi?>(null)
+    val adminApi: StateFlow<AdminApi?> = _adminApi.asStateFlow()
+
     init {
         rebuild()
     }
@@ -50,6 +54,7 @@ class InstanceManager(
             _roomApi.value = null
             _passkeyManager.value = null
             _roomManager.value = null
+            _adminApi.value = null
             return
         }
 
@@ -64,12 +69,14 @@ class InstanceManager(
 
         val auth: AuthApi = factory.createApi(retrofit)
         val room: RoomApi = factory.createApi(retrofit)
+        val admin: AdminApi = factory.createApi(retrofit)
         val pk = PasskeyManager(application, auth, am)
         val rm = RoomManager(application)
 
         _authManager.value = am
         _authApi.value = auth
         _roomApi.value = room
+        _adminApi.value = admin
         _passkeyManager.value = pk
         _roomManager.value = rm
     }

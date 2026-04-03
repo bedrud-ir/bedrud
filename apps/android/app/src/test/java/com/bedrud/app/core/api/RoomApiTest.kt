@@ -131,4 +131,48 @@ class RoomApiTest {
         assertEquals("/room/room123/mute/user456", request.path)
         assertTrue(response.isSuccessful)
     }
+
+    @Test
+    fun `banParticipant sends POST to correct path`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200))
+
+        val response = roomApi.banParticipant("room123", "user456")
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/room/room123/ban/user456", request.path)
+        assertTrue(response.isSuccessful)
+    }
+
+    @Test
+    fun `deleteRoom sends DELETE to correct path`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200))
+
+        val response = roomApi.deleteRoom("room999")
+
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/room/room999", request.path)
+        assertTrue(response.isSuccessful)
+    }
+
+    @Test
+    fun `banParticipant returns error on 404 when room not found`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(404))
+
+        val response = roomApi.banParticipant("nonexistent", "user1")
+
+        assertFalse(response.isSuccessful)
+        assertEquals(404, response.code())
+    }
+
+    @Test
+    fun `deleteRoom returns error on 403 when not authorized`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(403))
+
+        val response = roomApi.deleteRoom("room123")
+
+        assertFalse(response.isSuccessful)
+        assertEquals(403, response.code())
+    }
 }

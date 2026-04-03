@@ -1,5 +1,6 @@
 package com.bedrud.app.core.api
 
+import com.bedrud.app.models.ChangePasswordRequest
 import com.bedrud.app.models.GuestLoginRequest
 import com.bedrud.app.models.LoginRequest
 import com.bedrud.app.models.LoginResponse
@@ -12,6 +13,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 
 interface AuthApi {
 
@@ -29,6 +31,9 @@ interface AuthApi {
 
     @GET("auth/me")
     suspend fun getMe(): Response<MeResponse>
+
+    @PUT("auth/password")
+    suspend fun changePassword(@Body request: ChangePasswordRequest): Response<Unit>
 
     @POST("auth/passkey/login/begin")
     suspend fun passkeyLoginBegin(): Response<Map<String, Any>>
