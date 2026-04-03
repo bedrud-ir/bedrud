@@ -59,11 +59,14 @@ func Run(configPath string) error {
 	zerolog.SetGlobalLevel(logLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339})
 
+	// Start embedded LiveKit unless an external deployment is configured.
 	internalHost := strings.ToLower(cfg.LiveKit.InternalHost)
-	if strings.Contains(internalHost, "localhost") || strings.Contains(internalHost, "127.0.0.1") {
+	useInternalLK := !cfg.LiveKit.External &&
+		(strings.Contains(internalHost, "localhost") || strings.Contains(internalHost, "127.0.0.1"))
+	if useInternalLK {
 		log.Info().Msg("➜ Starting internal managed LiveKit server...")
 		certFile, keyFile := "", ""
-		if cfg.Server.EnableTLS {
+		if cfg.Server.EnableTLS && !cfg.Server.DisableTLS {
 			certFile = cfg.Server.CertFile
 			keyFile = cfg.Server.KeyFile
 			if certFile == "" {
@@ -76,9 +79,11 @@ func Run(configPath string) error {
 		if err := livekit.StartInternalServer(context.Background(), cfg.LiveKit.APIKey, cfg.LiveKit.APISecret, 7880, certFile, keyFile, cfg.LiveKit.ConfigPath); err != nil {
 			log.Error().Err(err).Msg("Failed to start internal LiveKit server")
 		}
+	} else if cfg.LiveKit.External {
+		log.Info().Str("host", cfg.LiveKit.Host).Msg("➜ Using external LiveKit server")
 	}
 
-	auth.InitializeSessionStore(cfg.Auth.SessionSecret, cfg.Server.EnableTLS)
+	auth.InitializeSessionStore(cfg.Auth.SessionSecret, cfg.Server.EnableTLS && !cfg.Server.DisableTLS)
 	if err := database.Initialize(&cfg.Database); err != nil {
 		return err
 	}
@@ -90,9 +95,16 @@ func Run(configPath string) error {
 	auth.Init(cfg)
 
 	fiberCfg := fiber.Config{AppName: "Bedrud API"}
-	if len(cfg.Server.TrustedProxies) > 0 {
-		fiberCfg.TrustedProxies = cfg.Server.TrustedProxies
+	// Enable trusted-proxy mode when: explicit trustedProxies list is set,
+	// OR behindProxy=true (CDN / nginx in front), OR DisableTLS with a domain.
+	if len(cfg.Server.TrustedProxies) > 0 || cfg.Server.BehindProxy {
 		fiberCfg.EnableTrustedProxyCheck = true
+		if len(cfg.Server.TrustedProxies) > 0 {
+			fiberCfg.TrustedProxies = cfg.Server.TrustedProxies
+		} else {
+			// Trust all proxies when behindProxy=true and no explicit list.
+			fiberCfg.TrustedProxies = []string{"0.0.0.0/0"}
+		}
 		if cfg.Server.ProxyHeader != "" {
 			fiberCfg.ProxyHeader = cfg.Server.ProxyHeader
 		} else {
@@ -101,9 +113,9 @@ func Run(configPath string) error {
 	}
 	app := fiber.New(fiberCfg)
 
-	// Proxy LiveKit traffic if we are using internal host
-	if strings.Contains(strings.ToLower(cfg.LiveKit.InternalHost), "127.0.0.1") ||
-		strings.Contains(strings.ToLower(cfg.LiveKit.InternalHost), "localhost") {
+	// Proxy LiveKit traffic only when using the internal (embedded) server.
+	// When livekit.external=true the client connects directly to livekit.host.
+	if useInternalLK {
 		target, _ := url.Parse("http://127.0.0.1:7880")
 		rp := httputil.NewSingleHostReverseProxy(target)
 
@@ -249,7 +261,8 @@ func Run(configPath string) error {
 		}
 
 		addr := cfg.Server.Host + ":" + cfg.Server.Port
-		if cfg.Server.EnableTLS {
+		tlsEnabled := cfg.Server.EnableTLS && !cfg.Server.DisableTLS
+		if tlsEnabled {
 			// Start HTTP on port 80 for bots/local use
 			go func() {
 				httpAddr := cfg.Server.Host + ":80"

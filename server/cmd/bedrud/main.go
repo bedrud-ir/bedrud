@@ -4,6 +4,7 @@ import (
 	"bedrud/internal/install"
 	"bedrud/internal/livekit"
 	"bedrud/internal/server"
+	"bedrud/internal/usercli"
 	"flag"
 	"fmt"
 	"os"
@@ -70,6 +71,7 @@ func main() {
 	case "install":
 		installCmd := flag.NewFlagSet("install", flag.ExitOnError)
 		enableTLS := installCmd.Bool("tls", false, "Enable HTTPS (auto-generate self-signed certificates)")
+		noTLS := installCmd.Bool("no-tls", false, "Disable TLS entirely (plain HTTP)")
 		ipOverride := installCmd.String("ip", "", "Override detected IP address")
 		domainFlag := installCmd.String("domain", "", "Domain for Let's Encrypt")
 		emailFlag := installCmd.String("email", "", "Email for Let's Encrypt")
@@ -79,9 +81,13 @@ func main() {
 		lkPortFlag := installCmd.String("lk-port", "", "Override LiveKit API port (default 7880)")
 		lkTcpPortFlag := installCmd.String("lk-tcp-port", "", "Override LiveKit RTC TCP port (default 7881)")
 		lkUdpPortFlag := installCmd.String("lk-udp-port", "", "Override LiveKit RTC UDP port (default 7882)")
+		freshFlag := installCmd.Bool("fresh", false, "Remove existing installation before installing")
+		behindProxyFlag := installCmd.Bool("behind-proxy", false, "Running behind a CDN/reverse-proxy (Cloudflare, nginx, etc.)")
+		externalLKFlag := installCmd.String("external-livekit", "", "URL of an external LiveKit server (e.g. https://lk.bedrud.org)")
 		installCmd.Parse(os.Args[2:])
 
-		if err := install.DebianInstall(*enableTLS, *ipOverride, *domainFlag, *emailFlag, *portFlag, *certFlag, *keyFlag, *lkPortFlag, *lkTcpPortFlag, *lkUdpPortFlag); err != nil {
+		tls := *enableTLS && !*noTLS
+		if err := install.DebianInstall(tls, *ipOverride, *domainFlag, *emailFlag, *portFlag, *certFlag, *keyFlag, *lkPortFlag, *lkTcpPortFlag, *lkUdpPortFlag, *freshFlag, *behindProxyFlag, *externalLKFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "Installation error: %v\n", err)
 			os.Exit(1)
 		}
@@ -89,6 +95,42 @@ func main() {
 	case "uninstall":
 		if err := install.DebianUninstall(); err != nil {
 			fmt.Fprintf(os.Stderr, "Uninstallation error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "user":
+		userCmd := flag.NewFlagSet("user", flag.ExitOnError)
+		configPath := userCmd.String("config", "/etc/bedrud/config.yaml", "Path to Bedrud config file")
+		userCmd.Parse(os.Args[2:])
+
+		if len(userCmd.Args()) == 0 {
+			fmt.Println("Usage: bedrud user <subcommand> [flags]")
+			fmt.Println("  promote --email <email>  Grant superadmin access to a user")
+			fmt.Println("  demote  --email <email>  Remove superadmin access from a user")
+			os.Exit(1)
+		}
+		sub := userCmd.Args()[0]
+		subCmd := flag.NewFlagSet(sub, flag.ExitOnError)
+		emailFlag := subCmd.String("email", "", "User email address")
+		subCmd.Parse(userCmd.Args()[1:])
+
+		if *emailFlag == "" {
+			fmt.Fprintf(os.Stderr, "Error: --email is required\n")
+			os.Exit(1)
+		}
+		switch sub {
+		case "promote":
+			if err := usercli.PromoteUser(*configPath, *emailFlag); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		case "demote":
+			if err := usercli.DemoteUser(*configPath, *emailFlag); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "Unknown user subcommand: %s\n", sub)
 			os.Exit(1)
 		}
 
@@ -111,8 +153,13 @@ func printUsage() {
 	fmt.Println("\nCommands:")
 	fmt.Println("  run       Start the meeting server")
 	fmt.Println("  livekit   Start the embedded LiveKit server")
-	fmt.Println("  install   Install Bedrud on a Debian system")
-	fmt.Println("            Flags: --tls, --domain, --email, --ip, --port, --cert, --key, --lk-port, --lk-tcp-port, --lk-udp-port")
+	fmt.Println("  install   Install Bedrud on a Debian/Linux system")
+	fmt.Println("            Flags: --tls, --no-tls, --domain, --email, --ip, --port,")
+	fmt.Println("                   --cert, --key, --lk-port, --lk-tcp-port, --lk-udp-port,")
+	fmt.Println("                   --fresh, --behind-proxy, --external-livekit <url>")
 	fmt.Println("  uninstall Uninstall Bedrud from the system")
+	fmt.Println("  user      Manage users")
+	fmt.Println("            promote --email <email>  Grant superadmin access")
+	fmt.Println("            demote  --email <email>  Remove superadmin access")
 	fmt.Println("  help      Show this help message")
 }

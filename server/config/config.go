@@ -19,18 +19,22 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port            string   `yaml:"port"`
-	Host            string   `yaml:"host"`
-	ReadTimeout     int      `yaml:"readTimeout"`
-	WriteTimeout    int      `yaml:"writeTimeout"`
-	EnableTLS       bool     `yaml:"enableTLS" env:"SERVER_ENABLE_TLS"`
-	CertFile        string   `yaml:"certFile" env:"SERVER_CERT_FILE"`
-	KeyFile         string   `yaml:"keyFile" env:"SERVER_KEY_FILE"`
-	Domain          string   `yaml:"domain" env:"SERVER_DOMAIN"`
-	Email           string   `yaml:"email" env:"SERVER_EMAIL"`
-	UseACME         bool     `yaml:"useACME" env:"SERVER_USE_ACME"`
-	TrustedProxies  []string `yaml:"trustedProxies"`
-	ProxyHeader     string   `yaml:"proxyHeader"`
+	Port           string   `yaml:"port"`
+	Host           string   `yaml:"host"`
+	ReadTimeout    int      `yaml:"readTimeout"`
+	WriteTimeout   int      `yaml:"writeTimeout"`
+	EnableTLS      bool     `yaml:"enableTLS" env:"SERVER_ENABLE_TLS"`
+	DisableTLS     bool     `yaml:"disableTLS"`
+	CertFile       string   `yaml:"certFile" env:"SERVER_CERT_FILE"`
+	KeyFile        string   `yaml:"keyFile" env:"SERVER_KEY_FILE"`
+	Domain         string   `yaml:"domain" env:"SERVER_DOMAIN"`
+	Email          string   `yaml:"email" env:"SERVER_EMAIL"`
+	UseACME        bool     `yaml:"useACME" env:"SERVER_USE_ACME"`
+	TrustedProxies []string `yaml:"trustedProxies"`
+	ProxyHeader    string   `yaml:"proxyHeader"`
+	// BehindProxy enables trusted-proxy mode. Set to true when running
+	// behind Cloudflare, nginx, or any reverse proxy that terminates TLS.
+	BehindProxy bool `yaml:"behindProxy"`
 }
 
 type DatabaseConfig struct {
@@ -54,6 +58,9 @@ type LiveKitConfig struct {
 	APISecret     string `yaml:"apiSecret"`
 	ConfigPath    string `yaml:"configPath"`
 	SkipTLSVerify bool   `yaml:"skipTLSVerify"`
+	// External skips the embedded LiveKit server and /livekit proxy.
+	// Set to true when using a separate LiveKit deployment (e.g. lk.bedrud.org).
+	External bool `yaml:"external"`
 }
 
 type AuthConfig struct {
