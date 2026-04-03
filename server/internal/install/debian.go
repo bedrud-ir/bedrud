@@ -9,7 +9,7 @@ import (
 	"runtime"
 )
 
-func DebianInstall(enableTLS bool, overrideIP string, domainArg string, emailArg string, portArg string, certPathArg string, keyPathArg string, lkPortArg string, lkTcpPortArg string, lkUdpPortArg string, fresh bool, behindProxy bool, externalLKURL string) error {
+func DebianInstall(enableTLS bool, disableTLS bool, overrideIP string, domainArg string, emailArg string, portArg string, certPathArg string, keyPathArg string, lkPortArg string, lkTcpPortArg string, lkUdpPortArg string, fresh bool, behindProxy bool, externalLKURL string, lkDomain string) error {
 	if fresh {
 		fmt.Println("➜ Fresh install: removing previous deployment...")
 		_ = DebianUninstall()
@@ -58,18 +58,19 @@ func DebianInstall(enableTLS bool, overrideIP string, domainArg string, emailArg
 			fmt.Printf("➜ Enter Email for Let's Encrypt: ")
 			fmt.Scanln(&email)
 		}
-		if email != "" {
+		// --no-tls suppresses ACME even when a domain+email are provided
+		if email != "" && !disableTLS {
 			useACME = true
 			enableTLS = true
 		}
 	}
 
 	// If providing custom cert/key, we should enable TLS
-	if certPathArg != "" && keyPathArg != "" {
+	if certPathArg != "" && keyPathArg != "" && !disableTLS {
 		enableTLS = true
 	}
 
-	if !enableTLS && !useACME && isTerm {
+	if !enableTLS && !useACME && !disableTLS && isTerm {
 		fmt.Printf("➜ Enable Self-Signed TLS? [Y/n]: ")
 		var secure string
 		fmt.Scanln(&secure)
@@ -166,19 +167,33 @@ func DebianInstall(enableTLS bool, overrideIP string, domainArg string, emailArg
 `
 	}
 
-	// Determine whether we're using external or embedded LiveKit.
+	// Determine LiveKit topology:
+	//   externalLKURL  → fully external (different machine), no local LK process
+	//   lkDomain       → local LK process, but clients connect via separate domain (bypasses CDN)
+	//   default        → LK runs locally, proxied through Bedrud at /livekit
 	isExternalLK := externalLKURL != ""
+	hasSeparateLKDomain := lkDomain != "" && !isExternalLK
+
 	if isExternalLK {
 		livekitPublicHost = externalLKURL
 		fmt.Println("➜ Using external LiveKit:", livekitPublicHost)
+	} else if hasSeparateLKDomain {
+		livekitPublicHost = fmt.Sprintf("https://%s", lkDomain)
+		fmt.Println("➜ LiveKit domain (direct, no CDN):", livekitPublicHost)
 	}
 
+	// external=true tells Bedrud: don't start/proxy LK internally.
+	// For hasSeparateLKDomain the livekit.service still runs it locally.
 	lkExternalFlag := "false"
+	if isExternalLK || hasSeparateLKDomain {
+		lkExternalFlag = "true"
+	}
 	lkInternalHost := fmt.Sprintf("http://127.0.0.1:%s", lkPort)
+	if isExternalLK {
+		lkInternalHost = livekitPublicHost
+	}
 	lkConfigPath := `  configPath: "/etc/bedrud/livekit.yaml"`
 	if isExternalLK {
-		lkExternalFlag = "true"
-		lkInternalHost = livekitPublicHost
 		lkConfigPath = ""
 	}
 
@@ -227,7 +242,11 @@ cors:
 	if !isExternalLK {
 		// Use explicit node_ip and disable external discovery to avoid LXC network issues.
 		// TURN is enabled so WebRTC works through VPNs and restrictive firewalls.
+		// When a separate LK domain is set, use it for TURN so clients can reach it directly.
 		turnDomain := hostForLK
+		if hasSeparateLKDomain {
+			turnDomain = lkDomain
+		}
 		turnTLSConfig := ""
 		if enableTLS {
 			turnTLSConfig = fmt.Sprintf("  cert_file: \"%s\"\n  key_file: \"%s\"\n", certFile, keyFile)
@@ -266,7 +285,7 @@ turn:
 	// 4. Create Systemd Services
 	services := []string{"bedrud"}
 
-	if !isExternalLK {
+	if !isExternalLK { // livekit.service needed for both embedded and separate-domain modes
 		// LiveKit Service (using bedrud binary)
 		lkService := `[Unit]
 Description=LiveKit Server (Embedded in Bedrud)
@@ -285,9 +304,12 @@ WantedBy=multi-user.target
 	}
 
 	// Bedrud Service
+	// LIVEKIT_MANAGED=true tells Bedrud not to start LK itself (systemd handles it).
+	// Not needed when livekit.external=true (externalLKURL) since LK runs elsewhere.
 	lkManagedEnv := ""
 	bedrudAfter := "network.target"
 	if !isExternalLK {
+		// For both embedded and separate-domain modes livekit.service manages the process.
 		lkManagedEnv = "\nEnvironment=LIVEKIT_MANAGED=true"
 		bedrudAfter = "network.target livekit.service"
 	}
