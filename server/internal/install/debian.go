@@ -247,9 +247,11 @@ cors:
 		if hasSeparateLKDomain {
 			turnDomain = lkDomain
 		}
-		turnTLSConfig := ""
+		// TURN TLS requires cert files; omit tls_port entirely when TLS is disabled
+		// to avoid "TURN tls cert required" error on LiveKit startup.
+		turnTLSSection := ""
 		if enableTLS {
-			turnTLSConfig = fmt.Sprintf("  cert_file: \"%s\"\n  key_file: \"%s\"\n", certFile, keyFile)
+			turnTLSSection = fmt.Sprintf("  tls_port: 5349\n  cert_file: \"%s\"\n  key_file: \"%s\"\n", certFile, keyFile)
 		}
 
 		lkContent := fmt.Sprintf(`port: %s
@@ -266,11 +268,10 @@ turn:
   enabled: true
   domain: %s
   udp_port: 3478
-  tls_port: 5349
 %slogging:
   json: true
   level: debug
-`, lkPort, apiKey, apiSecret, lkTcpPort, lkUdpPort, ip, turnDomain, turnTLSConfig)
+`, lkPort, apiKey, apiSecret, lkTcpPort, lkUdpPort, ip, turnDomain, turnTLSSection)
 
 		_ = os.WriteFile("/etc/bedrud/livekit.yaml", []byte(lkContent), 0644)
 	}
