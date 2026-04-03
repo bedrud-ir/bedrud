@@ -103,9 +103,12 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		_ = h.inviteTokenRepo.MarkUsed(tokenID, user.ID)
 	}
 
-	return c.JSON(fiber.Map{
-		"access_token":  accessToken,
-		"refresh_token": refreshToken,
+	return c.JSON(auth.LoginResponse{
+		User: user,
+		Token: auth.TokenPair{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		},
 	})
 }
 
