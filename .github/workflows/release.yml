@@ -12,6 +12,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  LIVEKIT_VERSION: "1.10.1"
 
 jobs:
   # ── Server binaries (multi-platform) ─────────────────────────
@@ -26,21 +27,13 @@ jobs:
             suffix: linux_amd64
             cgo: "1"
             cc: gcc
+            lk_arch: amd64
           - goos: linux
             goarch: arm64
             suffix: linux_arm64
             cgo: "1"
             cc: aarch64-linux-gnu-gcc
-          - goos: darwin
-            goarch: amd64
-            suffix: darwin_amd64
-            cgo: "0"
-            cc: ""
-          - goos: darwin
-            goarch: arm64
-            suffix: darwin_arm64
-            cgo: "0"
-            cc: ""
+            lk_arch: arm64
     steps:
       - uses: actions/checkout@v4
 
@@ -57,19 +50,22 @@ jobs:
           go-version: "1.24"
           cache-dependency-path: server/go.sum
 
-      # Build frontend
-      - name: Build frontend
+      # Build and embed frontend into server
+      - name: Build and embed frontend
         working-directory: apps/web
         run: |
           bun install --frozen-lockfile
-          bun run build
+          bun run build:embed
 
-      # Embed frontend into server
-      - name: Embed frontend
+      - name: Download LiveKit binary
+        env:
+          LK_ARCH: ${{ matrix.lk_arch }}
         run: |
-          rm -rf server/frontend
-          mkdir -p server/frontend
-          cp -r apps/web/build/* server/frontend/
+          mkdir -p server/internal/livekit/bin
+          LK_FILENAME="livekit_${LIVEKIT_VERSION}_linux_${LK_ARCH}.tar.gz"
+          curl -fsSL "https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/${LK_FILENAME}" -o "/tmp/${LK_FILENAME}"
+          tar -xzf "/tmp/${LK_FILENAME}" -C server/internal/livekit/bin/ livekit-server
+          chmod +x server/internal/livekit/bin/livekit-server
 
       # Build server binary
       - name: Build server binary
@@ -86,13 +82,16 @@ jobs:
       - name: Package binary
         run: |
           cd dist
+          cp bedrud bedrud_${{ matrix.suffix }}
           tar -cJf bedrud_${{ matrix.suffix }}.tar.xz bedrud
           rm bedrud
 
       - uses: actions/upload-artifact@v4
         with:
           name: server-${{ matrix.suffix }}
-          path: dist/bedrud_${{ matrix.suffix }}.tar.xz
+          path: |
+            dist/bedrud_${{ matrix.suffix }}.tar.xz
+            dist/bedrud_${{ matrix.suffix }}
 
   # ── Docker image ──────────────────────────────────────────────
   docker:
@@ -313,6 +312,7 @@ jobs:
           mkdir -p release-assets
           # Server binaries
           find artifacts/server-* -name "*.tar.xz" -exec cp {} release-assets/ \;
+          find artifacts/server-* -not -name "*.tar.xz" -not -name "." -type f -exec cp {} release-assets/ \;
           # Android APKs
           [ -f artifacts/android-debug-apk/app-debug.apk ] && \
             cp artifacts/android-debug-apk/app-debug.apk release-assets/bedrud-debug.apk

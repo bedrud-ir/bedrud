@@ -50,7 +50,12 @@ final class AuthManager: ObservableObject {
             currentUser = user
         }
 
-        isAuthenticated = true
+        // Only mark authenticated if the token is structurally valid and not expired.
+        // Background task below will refresh if needed.
+        let payload = try? Self.decodeJWTStatic(accessToken)
+        if let payload, payload.exp > Date().timeIntervalSince1970 {
+            isAuthenticated = true
+        }
 
         // Validate token in the background
         Task {

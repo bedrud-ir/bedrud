@@ -197,14 +197,16 @@ final class APIClientTests: XCTestCase {
         do {
             let _: HealthResponse = try await badClient.fetch(" invalid path")
             XCTFail("Should throw")
-        } catch {
-            // May throw invalidURL or networkError depending on URL construction
-            // Handle all possible errors to avoid exhaustiveness warnings
-            if error is APIError.invalidURL || error is APIError.networkError {
-                // Acceptable for a malformed URL
-            } else {
+        } catch let error as APIError {
+            // Acceptable for a malformed URL: either invalidURL or networkError
+            switch error {
+            case .invalidURL, .networkError:
+                break
+            default:
                 XCTFail("Expected invalidURL or networkError, got \(error)")
             }
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
         }
     }
 
@@ -415,7 +417,7 @@ final class APIClientTests: XCTestCase {
         }
     }
 
-    func testAuthFetchRetriesOn401() async {
+    func testAuthFetchRetriesOn401() async throws {
         let keychain = Keychain(service: "org.bedrud.tests.apiclient.\(UUID().uuidString)")
         defer { try? keychain.removeAll() }
 

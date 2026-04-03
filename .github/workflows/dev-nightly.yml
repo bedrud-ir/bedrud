@@ -81,21 +81,13 @@ jobs:
             suffix: linux_amd64
             cgo: "1"
             cc: gcc
+            lk_arch: amd64
           - goos: linux
             goarch: arm64
             suffix: linux_arm64
             cgo: "1"
             cc: aarch64-linux-gnu-gcc
-          - goos: darwin
-            goarch: amd64
-            suffix: darwin_amd64
-            cgo: "0"
-            cc: ""
-          - goos: darwin
-            goarch: arm64
-            suffix: darwin_arm64
-            cgo: "0"
-            cc: ""
+            lk_arch: arm64
     steps:
       - uses: actions/checkout@v4
 
@@ -123,6 +115,17 @@ jobs:
           rm -rf server/frontend
           mkdir -p server/frontend
           cp -r apps/web/build/* server/frontend/
+
+      - name: Download LiveKit binary
+        env:
+          LIVEKIT_VERSION: "1.10.1"
+          LK_ARCH: ${{ matrix.lk_arch }}
+        run: |
+          mkdir -p server/internal/livekit/bin
+          LK_FILENAME="livekit_${LIVEKIT_VERSION}_linux_${LK_ARCH}.tar.gz"
+          curl -fsSL "https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/${LK_FILENAME}" -o "/tmp/${LK_FILENAME}"
+          tar -xzf "/tmp/${LK_FILENAME}" -C server/internal/livekit/bin/ livekit-server
+          chmod +x server/internal/livekit/bin/livekit-server
 
       - name: Build server binary
         working-directory: server
@@ -227,7 +230,7 @@ jobs:
       - name: Package web build
         run: |
           mkdir -p ../../dist
-          tar -cJf ../../dist/web.tar.xz -C build .
+          tar -cJf ../../dist/web.tar.xz -C dist/client .
 
       - uses: actions/upload-artifact@v4
         with:

@@ -1,10 +1,14 @@
 package scheduler
 
-import "testing"
+import (
+	"testing"
+
+	"bedrud/config"
+)
 
 func TestInitialize_DoesNotPanic(t *testing.T) {
-	// Initialize should not panic
-	Initialize()
+	// Initialize should not panic with nil deps
+	Initialize(nil, config.LiveKitConfig{})
 	// Stop should not panic either
 	Stop()
 }

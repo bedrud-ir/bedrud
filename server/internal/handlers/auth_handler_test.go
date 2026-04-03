@@ -19,6 +19,8 @@ func setupAuthTestApp(t *testing.T) (*fiber.App, *auth.AuthService, *config.Conf
 	db := testutil.SetupTestDB(t)
 	userRepo := repository.NewUserRepository(db)
 	passkeyRepo := repository.NewPasskeyRepository(db)
+	settingsRepo := repository.NewSettingsRepository(db)
+	inviteTokenRepo := repository.NewInviteTokenRepository(db)
 	authService := auth.NewAuthService(userRepo, passkeyRepo)
 	cfg := &config.Config{
 		Auth: config.AuthConfig{
@@ -32,7 +34,7 @@ func setupAuthTestApp(t *testing.T) (*fiber.App, *auth.AuthService, *config.Conf
 	}
 	// Set global config so Login/GuestLogin (which call config.Get()) don't panic
 	config.SetForTest(cfg)
-	authHandler := NewAuthHandler(authService, cfg)
+	authHandler := NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)
 
 	app := fiber.New()
 
@@ -70,7 +72,7 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -95,7 +97,7 @@ func TestAuthHandler_Register_InvalidBody(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader([]byte("invalid")))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 400 {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
@@ -111,12 +113,12 @@ func TestAuthHandler_Register_DuplicateEmail(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	app.Test(req)
+	app.Test(req, -1)
 
 	// Try again
 	req2 := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req2.Header.Set("Content-Type", "application/json")
-	resp2, _ := app.Test(req2)
+	resp2, _ := app.Test(req2, -1)
 	if resp2.StatusCode != 400 {
 		t.Fatalf("expected 400 for duplicate, got %d", resp2.StatusCode)
 	}
@@ -135,7 +137,7 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 200 {
 		respBody, _ := io.ReadAll(resp.Body)
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
@@ -153,7 +155,7 @@ func TestAuthHandler_Login_InvalidCredentials(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 401 {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
@@ -168,7 +170,7 @@ func TestAuthHandler_Login_NonexistentUser(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 401 {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
@@ -179,7 +181,7 @@ func TestAuthHandler_Login_InvalidBody(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader([]byte("{invalid")))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 400 {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
@@ -191,7 +193,7 @@ func TestAuthHandler_GuestLogin_Success(t *testing.T) {
 	body, _ := json.Marshal(map[string]string{"name": "Guest Player"})
 	req := httptest.NewRequest("POST", "/api/auth/guest-login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 200 {
 		respBody, _ := io.ReadAll(resp.Body)
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
@@ -213,7 +215,7 @@ func TestAuthHandler_GuestLogin_EmptyName(t *testing.T) {
 	body, _ := json.Marshal(map[string]string{"name": ""})
 	req := httptest.NewRequest("POST", "/api/auth/guest-login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 400 {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
@@ -224,7 +226,7 @@ func TestAuthHandler_GuestLogin_InvalidBody(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/auth/guest-login", bytes.NewReader([]byte("{")))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 400 {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
@@ -238,7 +240,7 @@ func TestAuthHandler_GetMe_Success(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 200 {
 		respBody, _ := io.ReadAll(resp.Body)
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
@@ -256,7 +258,7 @@ func TestAuthHandler_GetMe_NoToken(t *testing.T) {
 	app, _, _ := setupAuthTestApp(t)
 
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 401 {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
@@ -267,7 +269,7 @@ func TestAuthHandler_GetMe_InvalidToken(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
 	req.Header.Set("Authorization", "Bearer invalid-jwt-token")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 401 {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}

@@ -86,6 +86,6 @@ func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
 
 ## Static Files (Frontend)
 
-One of Bedrud's best features is that the frontend is **embedded** in the backend binary. Fiber serves the Svelte files from the `frontend/` directory using `filesystem.New`.
+One of Bedrud's best features is that the frontend is **embedded** in the backend binary. Fiber serves the React files from the `frontend/` directory using `filesystem.New`.
 
-Any route that doesn't start with `/api` is redirected to the Svelte app's `index.html`. This allows for "Single Page Application" (SPA) routing.
+Any route that doesn't start with `/api` is redirected to the React app's `index.html`. This allows for client-side routing without 404s on page refresh.

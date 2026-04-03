@@ -9,7 +9,12 @@ import (
 	"runtime"
 )
 
-func DebianInstall(enableTLS bool, overrideIP string, domainArg string, emailArg string, portArg string, certPathArg string, keyPathArg string, lkPortArg string, lkTcpPortArg string, lkUdpPortArg string) error {
+func DebianInstall(enableTLS bool, disableTLS bool, selfSigned bool, overrideIP string, domainArg string, emailArg string, portArg string, certPathArg string, keyPathArg string, lkPortArg string, lkTcpPortArg string, lkUdpPortArg string, fresh bool, behindProxy bool, externalLKURL string, lkDomain string) error {
+	if fresh {
+		fmt.Println("➜ Fresh install: removing previous deployment...")
+		_ = DebianUninstall()
+		fmt.Println()
+	}
 	if runtime.GOOS != "linux" {
 		return fmt.Errorf("only linux is supported")
 	}
@@ -53,18 +58,24 @@ func DebianInstall(enableTLS bool, overrideIP string, domainArg string, emailArg
 			fmt.Printf("➜ Enter Email for Let's Encrypt: ")
 			fmt.Scanln(&email)
 		}
-		if email != "" {
+		// --no-tls suppresses ACME even when a domain+email are provided
+		if email != "" && !disableTLS {
 			useACME = true
 			enableTLS = true
 		}
 	}
 
 	// If providing custom cert/key, we should enable TLS
-	if certPathArg != "" && keyPathArg != "" {
+	if certPathArg != "" && keyPathArg != "" && !disableTLS {
 		enableTLS = true
 	}
 
-	if !enableTLS && !useACME && isTerm {
+	// --self-signed explicitly requests self-signed cert generation
+	if selfSigned && !disableTLS {
+		enableTLS = true
+	}
+
+	if !enableTLS && !useACME && !disableTLS && !selfSigned && isTerm {
 		fmt.Printf("➜ Enable Self-Signed TLS? [Y/n]: ")
 		var secure string
 		fmt.Scanln(&secure)
@@ -139,6 +150,58 @@ func DebianInstall(enableTLS bool, overrideIP string, domainArg string, emailArg
 		livekitPublicHost = fmt.Sprintf("https://%s/livekit", hostForLK)
 	}
 
+	// CORS: when a domain is known, lock down to that origin so credentials work.
+	// With wildcard origins, credentials must be false (browsers and Fiber both reject it).
+	corsOrigins := "*"
+	corsCredentials := "false"
+	if domain != "" {
+		corsOrigins = fmt.Sprintf("%s://%s", protocol, domain)
+		corsCredentials = "true"
+	}
+
+	// Reverse-proxy / CDN support.
+	// behindProxy=true means TLS is terminated by the CDN (e.g. Cloudflare) so
+	// the server runs plain HTTP but must trust X-Forwarded-* headers.
+	proxyConfig := ""
+	if behindProxy || (!enableTLS && domain != "") {
+		proxyConfig = `  behindProxy: true
+  trustedProxies:
+    - "127.0.0.1"
+    - "0.0.0.0/0"
+  proxyHeader: "X-Forwarded-For"
+`
+	}
+
+	// Determine LiveKit topology:
+	//   externalLKURL  → fully external (different machine), no local LK process
+	//   lkDomain       → local LK process, but clients connect via separate domain (bypasses CDN)
+	//   default        → LK runs locally, proxied through Bedrud at /livekit
+	isExternalLK := externalLKURL != ""
+	hasSeparateLKDomain := lkDomain != "" && !isExternalLK
+
+	if isExternalLK {
+		livekitPublicHost = externalLKURL
+		fmt.Println("➜ Using external LiveKit:", livekitPublicHost)
+	} else if hasSeparateLKDomain {
+		livekitPublicHost = fmt.Sprintf("https://%s", lkDomain)
+		fmt.Println("➜ LiveKit domain (direct, no CDN):", livekitPublicHost)
+	}
+
+	// external=true tells Bedrud: don't start/proxy LK internally.
+	// For hasSeparateLKDomain the livekit.service still runs it locally.
+	lkExternalFlag := "false"
+	if isExternalLK || hasSeparateLKDomain {
+		lkExternalFlag = "true"
+	}
+	lkInternalHost := fmt.Sprintf("http://127.0.0.1:%s", lkPort)
+	if isExternalLK {
+		lkInternalHost = livekitPublicHost
+	}
+	lkConfigPath := `  configPath: "/etc/bedrud/livekit.yaml"`
+	if isExternalLK {
+		lkConfigPath = ""
+	}
+
 	configContent := fmt.Sprintf(`server:
   port: "%s"
   host: "0.0.0.0"
@@ -148,18 +211,19 @@ func DebianInstall(enableTLS bool, overrideIP string, domainArg string, emailArg
   domain: "%s"
   email: "%s"
   useACME: %v
-
+%s
 database:
   type: "sqlite"
   path: "/var/lib/bedrud/bedrud.db"
 
 livekit:
   host: "%s"
-  internalHost: "http://127.0.0.1:%s"
+  internalHost: "%s"
   apiKey: "%s"
   apiSecret: "%s"
-  configPath: "/etc/bedrud/livekit.yaml"
+%s
   skipTLSVerify: true
+  external: %s
 
 auth:
   jwtSecret: "bedrud_jwt_secret_at_least_32_chars_long_now"
@@ -171,23 +235,40 @@ logger:
   outputPath: "/var/log/bedrud/bedrud.log"
 
 cors:
-  allowedOrigins: "*"
-`, port, enableTLS, certFile, keyFile, domain, email, useACME, livekitPublicHost, lkPort, apiKey, apiSecret)
+  allowedOrigins: "%s"
+  allowCredentials: %s
+`, port, enableTLS, certFile, keyFile, domain, email, useACME, proxyConfig,
+		livekitPublicHost, lkInternalHost, apiKey, apiSecret, lkConfigPath, lkExternalFlag,
+		corsOrigins, corsCredentials)
 
 	_ = os.WriteFile("/etc/bedrud/config.yaml", []byte(configContent), 0644)
 
-	// 3. Create LiveKit Config
-	// Use explicit node_ip and disable external discovery to avoid LXC network issues
-	// TURN is enabled so WebRTC works through VPNs and restrictive firewalls
-	turnDomain := hostForLK
-	turnTLSConfig := ""
-	if enableTLS {
-		turnTLSConfig = fmt.Sprintf("  cert_file: \"%s\"\n  key_file: \"%s\"\n", certFile, keyFile)
-	}
+	// 3. Create LiveKit Config (only needed for embedded LiveKit)
+	if !isExternalLK {
+		// Use explicit node_ip and disable external discovery to avoid LXC network issues.
+		// TURN is enabled so WebRTC works through VPNs and restrictive firewalls.
+		// When a separate LK domain is set, use it for TURN so clients can reach it directly.
+		turnDomain := hostForLK
+		if hasSeparateLKDomain {
+			turnDomain = lkDomain
+		}
+		// TURN TLS requires cert files; omit tls_port entirely when TLS is disabled
+		// to avoid "TURN tls cert required" error on LiveKit startup.
+		turnTLSSection := ""
+		if enableTLS {
+			turnTLSSection = fmt.Sprintf("  tls_port: 5349\n  cert_file: \"%s\"\n  key_file: \"%s\"\n", certFile, keyFile)
+		}
 
-	lkContent := fmt.Sprintf(`port: %s
+		// When clients connect directly (separate domain), LK must listen on a public interface.
+		// In the default embedded mode it only needs loopback.
+		lkBindAddr := "127.0.0.1"
+		if hasSeparateLKDomain {
+			lkBindAddr = "0.0.0.0"
+		}
+
+		lkContent := fmt.Sprintf(`port: %s
 bind_addresses:
-  - 127.0.0.1
+  - %s
 keys:
   %s: %s
 rtc:
@@ -199,13 +280,13 @@ turn:
   enabled: true
   domain: %s
   udp_port: 3478
-  tls_port: 5349
 %slogging:
   json: true
   level: debug
-`, lkPort, apiKey, apiSecret, lkTcpPort, lkUdpPort, ip, turnDomain, turnTLSConfig)
+`, lkPort, lkBindAddr, apiKey, apiSecret, lkTcpPort, lkUdpPort, ip, turnDomain, turnTLSSection)
 
-	_ = os.WriteFile("/etc/bedrud/livekit.yaml", []byte(lkContent), 0644)
+		_ = os.WriteFile("/etc/bedrud/livekit.yaml", []byte(lkContent), 0644)
+	}
 
 	if enableTLS && certPathArg == "" && keyPathArg == "" {
 		cp, kp := "/etc/bedrud/cert.pem", "/etc/bedrud/key.pem"
@@ -215,8 +296,11 @@ turn:
 	}
 
 	// 4. Create Systemd Services
-	// LiveKit Service (using bedrud binary)
-	lkService := `[Unit]
+	services := []string{"bedrud"}
+
+	if !isExternalLK { // livekit.service needed for both embedded and separate-domain modes
+		// LiveKit Service (using bedrud binary)
+		lkService := `[Unit]
 Description=LiveKit Server (Embedded in Bedrud)
 After=network.target
 
@@ -228,31 +312,48 @@ WorkingDirectory=/etc/bedrud
 [Install]
 WantedBy=multi-user.target
 `
-	_ = os.WriteFile("/etc/systemd/system/livekit.service", []byte(lkService), 0644)
+		_ = os.WriteFile("/etc/systemd/system/livekit.service", []byte(lkService), 0644)
+		services = append([]string{"livekit"}, services...)
+	}
 
 	// Bedrud Service
-	serviceContent := `[Unit]
+	// LIVEKIT_MANAGED=true tells Bedrud not to start LK itself (systemd handles it).
+	// Not needed when livekit.external=true (externalLKURL) since LK runs elsewhere.
+	lkManagedEnv := ""
+	bedrudAfter := "network.target"
+	if !isExternalLK {
+		// For both embedded and separate-domain modes livekit.service manages the process.
+		lkManagedEnv = "\nEnvironment=LIVEKIT_MANAGED=true"
+		bedrudAfter = "network.target livekit.service"
+	}
+	serviceContent := fmt.Sprintf(`[Unit]
 Description=Bedrud Meeting Server
-After=network.target livekit.service
+After=%s
 
 [Service]
-ExecStart=/usr/local/bin/bedrud --run --config /etc/bedrud/config.yaml
+ExecStart=/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
 Restart=always
-Environment=CONFIG_PATH=/etc/bedrud/config.yaml
-Environment=LIVEKIT_MANAGED=true
+Environment=CONFIG_PATH=/etc/bedrud/config.yaml%s
 
 [Install]
 WantedBy=multi-user.target
-`
+`, bedrudAfter, lkManagedEnv)
 	_ = os.WriteFile("/etc/systemd/system/bedrud.service", []byte(serviceContent), 0644)
 
 	fmt.Println("➜ Enabling and starting services...")
 	exec.Command("systemctl", "daemon-reload").Run()
-	exec.Command("systemctl", "enable", "livekit", "bedrud").Run()
-	exec.Command("systemctl", "restart", "livekit", "bedrud").Run()
+	exec.Command("systemctl", append([]string{"enable"}, services...)...).Run()
+	exec.Command("systemctl", append([]string{"restart"}, services...)...).Run()
 
 	fmt.Println("✓ Installation complete!")
-	fmt.Println("  Access URL: ", protocol+"://"+ip+":8090")
+	accessURL := fmt.Sprintf("%s://%s:%s", protocol, ip, port)
+	if port == "443" || port == "80" {
+		accessURL = fmt.Sprintf("%s://%s", protocol, ip)
+	}
+	fmt.Println("  Access URL: ", accessURL)
+	if domain != "" {
+		fmt.Println("  Domain URL: ", fmt.Sprintf("%s://%s", protocol, domain))
+	}
 	fmt.Println("  LiveKit Host:", livekitPublicHost)
 	return nil
 }

@@ -1,0 +1,364 @@
+name: PR Beta Release
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+
+concurrency:
+  group: pr-beta-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ── Cleanup on PR close/merge ─────────────────────────────────
+  cleanup:
+    name: Cleanup PR Beta
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+    steps:
+      - name: Delete PR beta release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+        run: |
+          gh release delete "pr-${PR_NUM}" \
+            --repo "${{ github.repository }}" \
+            --yes --cleanup-tag 2>/dev/null || true
+          echo "Cleaned up beta release for PR #${PR_NUM}"
+
+  # ── Collect PR metadata ───────────────────────────────────────
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    outputs:
+      tag: ${{ steps.info.outputs.tag }}
+      title: ${{ steps.info.outputs.title }}
+      sha_short: ${{ steps.info.outputs.sha_short }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set release info
+        id: info
+        env:
+          PR_NUM: ${{ github.event.pull_request.number }}
+        run: |
+          SHA_SHORT=$(git rev-parse --short=7 HEAD)
+          echo "sha_short=$SHA_SHORT" >> "$GITHUB_OUTPUT"
+          echo "tag=pr-${PR_NUM}" >> "$GITHUB_OUTPUT"
+          echo "title=PR #${PR_NUM} Beta – ${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+
+  # ── Server binaries (multi-platform) ─────────────────────────
+  server-binary:
+    name: Server – ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: linux_amd64
+            cgo: "1"
+            cc: gcc
+            lk_arch: amd64
+          - goos: linux
+            goarch: arm64
+            suffix: linux_arm64
+            cgo: "1"
+            cc: aarch64-linux-gnu-gcc
+            lk_arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cross-compiler
+        if: matrix.goarch == 'arm64' && matrix.goos == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: server/go.sum
+
+      - name: Build and embed frontend
+        working-directory: apps/web
+        run: |
+          bun install --frozen-lockfile
+          bun run build:embed
+
+      - name: Download LiveKit binary
+        env:
+          LIVEKIT_VERSION: "1.10.1"
+          LK_ARCH: ${{ matrix.lk_arch }}
+        run: |
+          mkdir -p server/internal/livekit/bin
+          LK_FILENAME="livekit_${LIVEKIT_VERSION}_linux_${LK_ARCH}.tar.gz"
+          curl -fsSL "https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/${LK_FILENAME}" -o "/tmp/${LK_FILENAME}"
+          tar -xzf "/tmp/${LK_FILENAME}" -C server/internal/livekit/bin/ livekit-server
+          chmod +x server/internal/livekit/bin/livekit-server
+
+      - name: Build server binary
+        working-directory: server
+        env:
+          CGO_ENABLED: ${{ matrix.cgo }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CC: ${{ matrix.cc }}
+        run: |
+          go build -ldflags="-s -w" -o ../dist/bedrud ./cmd/bedrud/main.go
+
+      - name: Package binary
+        run: |
+          cd dist
+          cp bedrud bedrud_${{ matrix.suffix }}
+          tar -cJf bedrud_${{ matrix.suffix }}.tar.xz bedrud
+          rm bedrud
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ matrix.suffix }}
+          path: |
+            dist/bedrud_${{ matrix.suffix }}.tar.xz
+            dist/bedrud_${{ matrix.suffix }}
+
+  # ── Android APK ──────────────────────────────────────────────
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    needs: prepare
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build APKs and bundle
+        run: ./gradlew assembleDebug bundleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-universal
+          path: apps/android/app/build/outputs/apk/debug/app-universal-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-arm64-v8a
+          path: apps/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-armeabi-v7a
+          path: apps/android/app/build/outputs/apk/debug/app-armeabi-v7a-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-x86_64
+          path: apps/android/app/build/outputs/apk/debug/app-x86_64-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-bundle
+          path: apps/android/app/build/outputs/bundle/debug/app-debug.aab
+
+  # ── Web bundle ───────────────────────────────────────────────
+  web:
+    name: Web Bundle
+    runs-on: ubuntu-latest
+    needs: prepare
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+
+      - name: Package web build
+        run: |
+          mkdir -p ../../dist
+          tar -cJf ../../dist/web.tar.xz -C dist/client .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-bundle
+          path: dist/web.tar.xz
+
+  # ── Publish beta release & comment on PR ─────────────────────
+  release:
+    name: Publish Beta for PR #${{ github.event.pull_request.number }}
+    runs-on: ubuntu-latest
+    needs: [prepare, server-binary, android, web]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: "{server-*,android-*,web-*}"
+
+      - name: Collect release assets
+        run: |
+          mkdir -p release-assets
+
+          find artifacts/server-* -name "*.tar.xz" -exec cp {} release-assets/ \;
+          find artifacts/server-* -not -name "*.tar.xz" -not -name "." -type f -exec cp {} release-assets/ \;
+
+          [ -f artifacts/android-apk-universal/app-universal-debug.apk ] && \
+            cp artifacts/android-apk-universal/app-universal-debug.apk release-assets/bedrud-android-universal.apk
+          [ -f artifacts/android-apk-arm64-v8a/app-arm64-v8a-debug.apk ] && \
+            cp artifacts/android-apk-arm64-v8a/app-arm64-v8a-debug.apk release-assets/bedrud-android-arm64-v8a.apk
+          [ -f artifacts/android-apk-armeabi-v7a/app-armeabi-v7a-debug.apk ] && \
+            cp artifacts/android-apk-armeabi-v7a/app-armeabi-v7a-debug.apk release-assets/bedrud-android-armeabi-v7a.apk
+          [ -f artifacts/android-apk-x86_64/app-x86_64-debug.apk ] && \
+            cp artifacts/android-apk-x86_64/app-x86_64-debug.apk release-assets/bedrud-android-x86_64.apk
+          [ -f artifacts/android-bundle/app-debug.aab ] && \
+            cp artifacts/android-bundle/app-debug.aab release-assets/bedrud-android.aab
+
+          [ -f artifacts/web-bundle/web.tar.xz ] && \
+            cp artifacts/web-bundle/web.tar.xz release-assets/bedrud-web.tar.xz
+
+          ls -la release-assets/
+
+      - name: Delete existing PR beta release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          gh release delete "$RELEASE_TAG" \
+            --repo "${{ github.repository }}" \
+            --yes --cleanup-tag 2>/dev/null || true
+
+      - name: Create beta release
+        id: create_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_TITLE: ${{ needs.prepare.outputs.title }}
+          SHA_SHORT: ${{ needs.prepare.outputs.sha_short }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          NOTES=$(cat <<NOTES_EOF
+          ## Beta Build for [PR #${PR_NUM}](${PR_URL})
+
+          **${PR_TITLE}**
+
+          Built from [\`${SHA_SHORT}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) on branch \`${HEAD_BRANCH}\`.
+
+          ### Artifacts
+
+          | Platform | Asset |
+          |----------|-------|
+          | Linux x86_64 | [bedrud_linux_amd64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_linux_amd64.tar.xz) |
+          | Linux ARM64 | [bedrud_linux_arm64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_linux_arm64.tar.xz) |
+          | macOS x86_64 | [bedrud_darwin_amd64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_darwin_amd64.tar.xz) |
+          | macOS ARM64 | [bedrud_darwin_arm64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_darwin_arm64.tar.xz) |
+          | Android (universal) | [bedrud-android-universal.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-universal.apk) |
+          | Android arm64-v8a | [bedrud-android-arm64-v8a.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-arm64-v8a.apk) |
+          | Android armeabi-v7a | [bedrud-android-armeabi-v7a.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-armeabi-v7a.apk) |
+          | Android x86\_64 | [bedrud-android-x86_64.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-x86_64.apk) |
+          | Android bundle (AAB) | [bedrud-android.aab](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android.aab) |
+          | Web | [bedrud-web.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-web.tar.xz) |
+
+          > This is an automated beta pre-release. It will be deleted when the PR is closed or merged.
+          NOTES_EOF
+          )
+
+          gh release create "$RELEASE_TAG" \
+            --repo "${{ github.repository }}" \
+            --title "$RELEASE_TITLE" \
+            --notes "$NOTES" \
+            --prerelease \
+            --target "${{ github.sha }}" \
+            release-assets/*
+
+          RELEASE_URL=$(gh release view "$RELEASE_TAG" \
+            --repo "${{ github.repository }}" \
+            --json url --jq '.url')
+          echo "release_url=$RELEASE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Post or update PR comment
+        uses: actions/github-script@v7
+        env:
+          RELEASE_URL: ${{ steps.create_release.outputs.release_url }}
+          SHA_SHORT: ${{ needs.prepare.outputs.sha_short }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        with:
+          script: |
+            const marker = '<!-- pr-beta-release -->';
+            const releaseUrl = process.env.RELEASE_URL;
+            const sha = process.env.SHA_SHORT;
+            const base = `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/download/${process.env.RELEASE_TAG}`;
+
+            const asset = (name) => `[${name}](${base}/${name})`;
+
+            const body = [
+              marker,
+              `## Beta Release Ready`,
+              ``,
+              `Binaries built from \`${sha}\` are available as a pre-release:`,
+              ``,
+              `**[Download Beta Binaries](${releaseUrl})**`,
+              ``,
+              `| Platform | Asset |`,
+              `|----------|-------|`,
+              `| Linux x86_64 | ${asset('bedrud_linux_amd64.tar.xz')} |`,
+              `| Linux ARM64 | ${asset('bedrud_linux_arm64.tar.xz')} |`,
+              `| macOS x86_64 | ${asset('bedrud_darwin_amd64.tar.xz')} |`,
+              `| macOS ARM64 | ${asset('bedrud_darwin_arm64.tar.xz')} |`,
+              `| Android (universal) | ${asset('bedrud-android-universal.apk')} |`,
+              `| Android arm64-v8a | ${asset('bedrud-android-arm64-v8a.apk')} |`,
+              `| Android armeabi-v7a | ${asset('bedrud-android-armeabi-v7a.apk')} |`,
+              `| Android x86_64 | ${asset('bedrud-android-x86_64.apk')} |`,
+              `| Android bundle (AAB) | ${asset('bedrud-android.aab')} |`,
+              `| Web bundle | ${asset('bedrud-web.tar.xz')} |`,
+              ``,
+              `> Updated on each push. Deleted when the PR is closed.`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

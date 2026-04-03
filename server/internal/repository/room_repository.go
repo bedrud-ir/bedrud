@@ -285,6 +285,16 @@ func (r *RoomRepository) GetAllRooms() ([]models.Room, error) {
 	return rooms, err
 }
 
+func (r *RoomRepository) GetAllActiveRooms() ([]models.Room, error) {
+	var rooms []models.Room
+	err := r.db.Where("is_active = ?", true).Find(&rooms).Error
+	return rooms, err
+}
+
+func (r *RoomRepository) SetRoomIdle(roomID string) error {
+	return r.db.Model(&models.Room{}).Where("id = ?", roomID).Update("is_active", false).Error
+}
+
 func (r *RoomRepository) GetRoomParticipantsWithUsers(roomID string) ([]models.RoomParticipant, error) {
 	var participants []models.RoomParticipant
 	err := r.db.Preload("User").Where("room_id = ?", roomID).Find(&participants).Error
@@ -327,4 +337,14 @@ func (r *RoomRepository) GetRoomsParticipatedInByUser(userID string) ([]models.R
 	// Fetch the rooms based on the found IDs
 	err = r.db.Where("id IN (?)", participantRoomIDs).Order("created_at desc").Find(&rooms).Error
 	return rooms, err
+}
+
+func (r *RoomRepository) UpdateRoom(room *models.Room) error {
+	return r.db.Save(room).Error
+}
+
+func (r *RoomRepository) CountActiveParticipants() (int64, error) {
+	var count int64
+	err := r.db.Model(&models.RoomParticipant{}).Distinct("user_id").Count(&count).Error
+	return count, err
 }

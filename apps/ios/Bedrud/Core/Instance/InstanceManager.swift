@@ -84,7 +84,6 @@ final class InstanceManager: ObservableObject {
 
         // Relay auth state changes to trigger root view updates
         authCancellable = am.$isAuthenticated
-            .receive(on: RunLoop.main)
             .sink { [weak self] value in
                 self?.isAuthenticated = value
             }

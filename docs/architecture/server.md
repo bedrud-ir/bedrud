@@ -98,7 +98,7 @@ The web frontend is compiled to static files and embedded into the Go binary usi
 var frontendFS embed.FS
 ```
 
-At build time, the Makefile copies the compiled Svelte output into `server/frontend/`, and the Go compiler bundles it into the binary. The Fiber server serves these files for any non-API route.
+At build time, `bun run build:embed` SSR pre-renders the React app and copies `dist/client/` into `server/frontend/`. The Go compiler then bundles it into the binary. The Fiber server serves these files for any non-API route.
 
 ### JWT Authentication
 
