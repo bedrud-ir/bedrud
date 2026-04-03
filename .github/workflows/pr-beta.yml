@@ -30,30 +30,6 @@ jobs:
             --yes --cleanup-tag 2>/dev/null || true
           echo "Cleaned up beta release for PR #${PR_NUM}"
 
-  # ── Detect what changed in this PR ───────────────────────────
-  changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    if: github.event.action != 'closed'
-    outputs:
-      server: ${{ steps.filter.outputs.server }}
-      android: ${{ steps.filter.outputs.android }}
-      web: ${{ steps.filter.outputs.web }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            server:
-              - 'server/**'
-              - 'apps/web/**'
-            android:
-              - 'apps/android/**'
-            web:
-              - 'apps/web/**'
-
   # ── Collect PR metadata ───────────────────────────────────────
   prepare:
     name: Prepare
@@ -80,8 +56,7 @@ jobs:
   server-binary:
     name: Server – ${{ matrix.goos }}/${{ matrix.goarch }}
     runs-on: ubuntu-latest
-    needs: [prepare, changes]
-    if: needs.changes.outputs.server == 'true'
+    needs: prepare
     strategy:
       matrix:
         include:
@@ -158,8 +133,7 @@ jobs:
   android:
     name: Android APK
     runs-on: ubuntu-latest
-    needs: [prepare, changes]
-    if: needs.changes.outputs.android == 'true'
+    needs: prepare
     defaults:
       run:
         working-directory: apps/android
@@ -205,8 +179,7 @@ jobs:
   web:
     name: Web Bundle
     runs-on: ubuntu-latest
-    needs: [prepare, changes]
-    if: needs.changes.outputs.web == 'true'
+    needs: prepare
     defaults:
       run:
         working-directory: apps/web
@@ -234,8 +207,7 @@ jobs:
   release:
     name: Publish Beta for PR #${{ github.event.pull_request.number }}
     runs-on: ubuntu-latest
-    needs: [prepare, changes, server-binary, android, web]
-    if: always() && needs.prepare.result == 'success' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    needs: [prepare, server-binary, android, web]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -397,7 +369,7 @@ jobs:
     name: Notify Telegram (Beta)
     runs-on: ubuntu-latest
     needs: [prepare, release]
-    if: always() && needs.release.result == 'success'
+    if: needs.release.result == 'success'
     steps:
       - uses: actions/download-artifact@v4
         with:
