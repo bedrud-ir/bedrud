@@ -336,6 +336,26 @@ func TestUserRepository_CleanupBlockedTokens(t *testing.T) {
 	}
 }
 
+func TestUserRepository_UpdateUserAccesses(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	repo := NewUserRepository(db)
+
+	_ = repo.CreateUser(&models.User{ID: "acc-user", Email: "acc@ex.com", Name: "Acc", Provider: "local", IsActive: true, Accesses: models.StringArray{"user"}})
+
+	err := repo.UpdateUserAccesses("acc-user", []string{"admin", "user"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found, _ := repo.GetUserByID("acc-user")
+	if len(found.Accesses) != 2 {
+		t.Fatalf("expected 2 accesses, got %d", len(found.Accesses))
+	}
+}
+
+// Note: GetUsersByAccess uses PostgreSQL-specific ANY() syntax and cannot be tested
+// with the in-memory SQLite test DB.
+
 func TestUserRepository_DeleteUser_CascadesCleanup(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewUserRepository(db)

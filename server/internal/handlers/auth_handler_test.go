@@ -278,3 +278,232 @@ func TestAuthHandler_GetMe_InvalidToken(t *testing.T) {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
 }
+
+// --- setupAuthTestAppFull wires RefreshToken, UpdateProfile, ChangePassword, Logout ---
+
+func setupAuthTestAppFull(t *testing.T) (*fiber.App, *auth.AuthService, *config.Config) {
+	t.Helper()
+	app, authService, cfg := setupAuthTestApp(t)
+	authHandler := NewAuthHandler(authService, cfg, nil, nil)
+
+	// Helper: add auth-required routes to the existing app
+	app.Post("/api/auth/refresh", authHandler.RefreshToken)
+	app.Put("/api/auth/profile", func(c *fiber.Ctx) error {
+		authHeader := c.Get("Authorization")
+		if authHeader == "" {
+			return c.Status(401).JSON(fiber.Map{"error": "missing"})
+		}
+		tokenStr := authHeader
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			tokenStr = authHeader[7:]
+		}
+		claims, err := auth.ValidateToken(tokenStr, cfg)
+		if err != nil {
+			return c.Status(401).JSON(fiber.Map{"error": "invalid"})
+		}
+		c.Locals("user", claims)
+		return c.Next()
+	}, authHandler.UpdateProfile)
+	app.Post("/api/auth/change-password", func(c *fiber.Ctx) error {
+		authHeader := c.Get("Authorization")
+		if authHeader == "" {
+			return c.Status(401).JSON(fiber.Map{"error": "missing"})
+		}
+		tokenStr := authHeader
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			tokenStr = authHeader[7:]
+		}
+		claims, err := auth.ValidateToken(tokenStr, cfg)
+		if err != nil {
+			return c.Status(401).JSON(fiber.Map{"error": "invalid"})
+		}
+		c.Locals("user", claims)
+		return c.Next()
+	}, authHandler.ChangePassword)
+	app.Post("/api/auth/logout", func(c *fiber.Ctx) error {
+		authHeader := c.Get("Authorization")
+		if authHeader == "" {
+			return c.Status(401).JSON(fiber.Map{"error": "missing"})
+		}
+		tokenStr := authHeader
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			tokenStr = authHeader[7:]
+		}
+		claims, err := auth.ValidateToken(tokenStr, cfg)
+		if err != nil {
+			return c.Status(401).JSON(fiber.Map{"error": "invalid"})
+		}
+		c.Locals("user", claims)
+		return c.Next()
+	}, authHandler.Logout)
+
+	return app, authService, cfg
+}
+
+// --- RefreshToken tests ---
+
+func TestAuthHandler_RefreshToken_Success(t *testing.T) {
+	app, authService, cfg := setupAuthTestApp(t)
+
+	_, _ = authService.Register("refresh@example.com", "pass", "Refresh User")
+	loginResp, _ := authService.Login("refresh@example.com", "pass")
+
+	authHandler := NewAuthHandler(authService, cfg, nil, nil)
+	app.Post("/api/auth/refresh", authHandler.RefreshToken)
+
+	body, _ := json.Marshal(map[string]string{
+		"refresh_token": loginResp.Token.RefreshToken,
+	})
+	req := httptest.NewRequest("POST", "/api/auth/refresh", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	respBody, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	_ = json.Unmarshal(respBody, &result)
+	if result["access_token"] == nil || result["access_token"] == "" {
+		t.Fatal("expected access_token in response")
+	}
+}
+
+func TestAuthHandler_RefreshToken_InvalidToken(t *testing.T) {
+	app, authService, cfg := setupAuthTestApp(t)
+	authHandler := NewAuthHandler(authService, cfg, nil, nil)
+	app.Post("/api/auth/refresh", authHandler.RefreshToken)
+
+	body, _ := json.Marshal(map[string]string{"refresh_token": "not-a-real-token"})
+	req := httptest.NewRequest("POST", "/api/auth/refresh", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 401 {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestAuthHandler_RefreshToken_InvalidBody(t *testing.T) {
+	app, authService, cfg := setupAuthTestApp(t)
+	authHandler := NewAuthHandler(authService, cfg, nil, nil)
+	app.Post("/api/auth/refresh", authHandler.RefreshToken)
+
+	req := httptest.NewRequest("POST", "/api/auth/refresh", bytes.NewReader([]byte("{invalid")))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 400 {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+}
+
+// --- UpdateProfile tests ---
+
+func TestAuthHandler_UpdateProfile_Success(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("upprof@example.com", "pass", "Old Name")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	body, _ := json.Marshal(map[string]string{"name": "New Name"})
+	req := httptest.NewRequest("PUT", "/api/auth/profile", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+}
+
+func TestAuthHandler_UpdateProfile_ShortName(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("shortname@example.com", "pass", "User")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	body, _ := json.Marshal(map[string]string{"name": "X"})
+	req := httptest.NewRequest("PUT", "/api/auth/profile", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 400 {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+}
+
+// --- ChangePassword tests ---
+
+func TestAuthHandler_ChangePassword_Success(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("chpass@example.com", "oldpass123", "User")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	body, _ := json.Marshal(map[string]string{
+		"currentPassword": "oldpass123",
+		"newPassword":     "newpass456",
+	})
+	req := httptest.NewRequest("POST", "/api/auth/change-password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+}
+
+func TestAuthHandler_ChangePassword_TooShortNewPassword(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("shortpw@example.com", "oldpass123", "User")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	body, _ := json.Marshal(map[string]string{
+		"currentPassword": "oldpass123",
+		"newPassword":     "abc",
+	})
+	req := httptest.NewRequest("POST", "/api/auth/change-password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 400 {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+}
+
+// --- Logout tests ---
+
+func TestAuthHandler_Logout_Success(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("logoutha@example.com", "pass", "Logout User")
+	loginResp, _ := authService.Login("logoutha@example.com", "pass")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	body, _ := json.Marshal(map[string]string{"refresh_token": loginResp.Token.RefreshToken})
+	req := httptest.NewRequest("POST", "/api/auth/logout", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+}
+
+func TestAuthHandler_Logout_InvalidBody(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("logoutbad@example.com", "pass", "Logout Bad")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	req := httptest.NewRequest("POST", "/api/auth/logout", bytes.NewReader([]byte("{invalid")))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 400 {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+}

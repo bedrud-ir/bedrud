@@ -225,6 +225,137 @@ func TestUserResponse_JSONTags(t *testing.T) {
 	}
 }
 
+func TestUsersHandler_UpdateUserAccesses_Success(t *testing.T) {
+	_, userRepo := setupUsersTestApp(t)
+
+	// Use a fresh DB/handler for these routes
+	db := testutil.SetupTestDB(t)
+	uRepo := repository.NewUserRepository(db)
+	rRepo := repository.NewRoomRepository(db)
+	h := NewUsersHandler(uRepo, rRepo)
+
+	app2 := fiber.New()
+	app2.Use(func(c *fiber.Ctx) error {
+		c.Locals("user", &auth.Claims{
+			UserID:   "admin-user",
+			Email:    "admin@ex.com",
+			Name:     "Admin",
+			Accesses: []string{"superadmin"},
+		})
+		return c.Next()
+	})
+	app2.Put("/admin/users/:id/accesses", h.UpdateUserAccesses)
+	app2.Get("/admin/users/:id", h.GetUserDetail)
+
+	_ = uRepo.CreateUser(&models.User{ID: "target-acc", Email: "acc@ex.com", Name: "Acc", Provider: "local", IsActive: true, Accesses: models.StringArray{"user"}})
+
+	body, _ := json.Marshal(map[string]interface{}{"accesses": []string{"admin", "user"}})
+	req := httptest.NewRequest("PUT", "/admin/users/target-acc/accesses", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app2.Test(req, -1)
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	_ = userRepo
+}
+
+func TestUsersHandler_UpdateUserAccesses_NotFound(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	uRepo := repository.NewUserRepository(db)
+	rRepo := repository.NewRoomRepository(db)
+	h := NewUsersHandler(uRepo, rRepo)
+
+	app := fiber.New()
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("user", &auth.Claims{UserID: "admin", Accesses: []string{"superadmin"}})
+		return c.Next()
+	})
+	app.Put("/admin/users/:id/accesses", h.UpdateUserAccesses)
+
+	body, _ := json.Marshal(map[string]interface{}{"accesses": []string{"admin"}})
+	req := httptest.NewRequest("PUT", "/admin/users/nonexistent/accesses", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 404 {
+		t.Fatalf("expected 404, got %d", resp.StatusCode)
+	}
+}
+
+func TestUsersHandler_UpdateUserAccesses_Forbidden(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	uRepo := repository.NewUserRepository(db)
+	rRepo := repository.NewRoomRepository(db)
+	h := NewUsersHandler(uRepo, rRepo)
+
+	app := fiber.New()
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("user", &auth.Claims{UserID: "regular-user", Accesses: []string{"user"}})
+		return c.Next()
+	})
+	app.Put("/admin/users/:id/accesses", h.UpdateUserAccesses)
+
+	body, _ := json.Marshal(map[string]interface{}{"accesses": []string{"admin"}})
+	req := httptest.NewRequest("PUT", "/admin/users/someone/accesses", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 403 {
+		t.Fatalf("expected 403, got %d", resp.StatusCode)
+	}
+}
+
+func TestUsersHandler_GetUserDetail_Found(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	uRepo := repository.NewUserRepository(db)
+	rRepo := repository.NewRoomRepository(db)
+	h := NewUsersHandler(uRepo, rRepo)
+
+	app := fiber.New()
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("user", &auth.Claims{UserID: "admin", Accesses: []string{"superadmin"}})
+		return c.Next()
+	})
+	app.Get("/admin/users/:id", h.GetUserDetail)
+
+	_ = uRepo.CreateUser(&models.User{ID: "detail-user", Email: "detail@ex.com", Name: "Detail", Provider: "local", IsActive: true, Accesses: models.StringArray{"user"}})
+
+	req := httptest.NewRequest("GET", "/admin/users/detail-user", nil)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	_ = json.Unmarshal(body, &result)
+	if result["user"] == nil {
+		t.Fatal("expected 'user' field in response")
+	}
+	if result["rooms"] == nil {
+		t.Fatal("expected 'rooms' field in response")
+	}
+}
+
+func TestUsersHandler_GetUserDetail_NotFound(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	uRepo := repository.NewUserRepository(db)
+	rRepo := repository.NewRoomRepository(db)
+	h := NewUsersHandler(uRepo, rRepo)
+
+	app := fiber.New()
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("user", &auth.Claims{UserID: "admin", Accesses: []string{"superadmin"}})
+		return c.Next()
+	})
+	app.Get("/admin/users/:id", h.GetUserDetail)
+
+	req := httptest.NewRequest("GET", "/admin/users/nonexistent", nil)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 404 {
+		t.Fatalf("expected 404, got %d", resp.StatusCode)
+	}
+}
+
 func TestUserDetails_Structure(t *testing.T) {
 	d := UserDetails{
 		ID:        "u1",
