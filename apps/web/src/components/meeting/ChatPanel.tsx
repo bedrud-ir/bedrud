@@ -20,6 +20,7 @@ export function ChatPanel({ onClose }: Props) {
   const { chatMessages, systemMessages, send, isSending, markRead } = useMeetingContext()
   const { localParticipant } = useLocalParticipant()
   const [draft, setDraft] = useState('')
+  const [sendError, setSendError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // Mark all messages as read when the panel opens
@@ -35,8 +36,13 @@ export function ChatPanel({ onClose }: Props) {
     e.preventDefault()
     const text = draft.trim()
     if (!text || isSending) return
-    await send(text)
-    setDraft('')
+    setSendError(null)
+    try {
+      await send(text)
+      setDraft('')
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'Failed to send message')
+    }
   }
 
   // Merge chat and system messages by timestamp for ordered display
@@ -153,6 +159,9 @@ export function ChatPanel({ onClose }: Props) {
 
       {/* Input */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px' }}>
+        {sendError && (
+          <p style={{ margin: '0 0 6px', fontSize: 11, color: 'rgba(248,113,113,0.9)' }}>{sendError}</p>
+        )}
         <form onSubmit={handleSend} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input
             value={draft}

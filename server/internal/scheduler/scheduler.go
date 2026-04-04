@@ -63,7 +63,11 @@ func checkIdleRooms(roomRepo *repository.RoomRepository, cfg config.LiveKitConfi
 
 	at := lkauth.NewAccessToken(cfg.APIKey, cfg.APISecret)
 	at.AddGrant(&lkauth.VideoGrant{RoomList: true})
-	token, _ := at.ToJWT()
+	token, err := at.ToJWT()
+	if err != nil {
+		log.Error().Err(err).Msg("Scheduler: failed to generate LiveKit token")
+		return
+	}
 	ctx, _ := twirp.WithHTTPRequestHeaders(context.Background(), http.Header{
 		"Authorization": []string{"Bearer " + token},
 	})

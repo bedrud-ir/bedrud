@@ -69,7 +69,9 @@ func (h *AdminHandler) CreateInviteToken(c *fiber.Ctx) error {
 		Email     string `json:"email"`
 		ExpiresIn int    `json:"expiresInHours"`
 	}
-	c.BodyParser(&input)
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	}
 	if input.ExpiresIn <= 0 {
 		input.ExpiresIn = 72
 	}

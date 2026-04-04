@@ -47,8 +47,12 @@ struct AdminRoom: Decodable, Identifiable {
 }
 
 struct AdminSettings: Codable {
-    var allowRegistrations: Bool
-    var requireInviteToken: Bool
+    var registrationEnabled: Bool
+    var tokenRegistrationOnly: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case registrationEnabled, tokenRegistrationOnly
+    }
 }
 
 struct InviteToken: Decodable, Identifiable {
@@ -60,6 +64,12 @@ struct InviteToken: Decodable, Identifiable {
     let used: Bool?
 }
 
+// MARK: - Admin List Wrappers (server wraps arrays in keyed objects)
+
+private struct UserListResponse: Decodable { let users: [AdminUser] }
+private struct RoomListResponse: Decodable { let rooms: [AdminRoom] }
+private struct TokenListResponse: Decodable { let tokens: [InviteToken] }
+
 // MARK: - Admin API
 
 struct AdminAPI {
@@ -69,7 +79,8 @@ struct AdminAPI {
     // MARK: - Users
 
     func listUsers() async throws -> [AdminUser] {
-        try await client.authFetch("/admin/users", authManager: authManager)
+        let wrapper: UserListResponse = try await client.authFetch("/admin/users", authManager: authManager)
+        return wrapper.users
     }
 
     func setUserStatus(id: String, active: Bool) async throws {
@@ -95,7 +106,8 @@ struct AdminAPI {
     // MARK: - Rooms
 
     func listRooms() async throws -> [AdminRoom] {
-        try await client.authFetch("/admin/rooms", authManager: authManager)
+        let wrapper: RoomListResponse = try await client.authFetch("/admin/rooms", authManager: authManager)
+        return wrapper.rooms
     }
 
     func deleteRoom(id: String) async throws {
@@ -134,7 +146,8 @@ struct AdminAPI {
     // MARK: - Invite Tokens
 
     func listInviteTokens() async throws -> [InviteToken] {
-        try await client.authFetch("/admin/invite-tokens", authManager: authManager)
+        let wrapper: TokenListResponse = try await client.authFetch("/admin/invite-tokens", authManager: authManager)
+        return wrapper.tokens
     }
 
     func createInviteToken(email: String?, expiresInHours: Int) async throws -> InviteToken {

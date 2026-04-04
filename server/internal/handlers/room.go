@@ -72,7 +72,10 @@ func (h *RoomHandler) withAuth(ctx context.Context, grants ...*lkauth.VideoGrant
 	for _, g := range grants {
 		at.AddGrant(g)
 	}
-	token, _ := at.ToJWT()
+	token, err := at.ToJWT()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to generate LiveKit auth token")
+	}
 	ctx, _ = twirp.WithHTTPRequestHeaders(ctx, http.Header{
 		"Authorization": []string{"Bearer " + token},
 	})
@@ -151,7 +154,11 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 	if meta, err := json.Marshal(map[string]interface{}{"accesses": claims.Accesses}); err == nil {
 		at.SetMetadata(string(meta))
 	}
-	token, _ := at.ToJWT()
+	token, err := at.ToJWT()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to sign LiveKit join token")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate room token"})
+	}
 
 	adminId := room.AdminID
 	if adminId == "" {
@@ -180,9 +187,16 @@ func (h *RoomHandler) GuestJoinRoom(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Guest name is required"})
 	}
 
-	room, _ := h.roomRepo.GetRoomByName(req.RoomName)
+	room, err := h.roomRepo.GetRoomByName(req.RoomName)
+	if err != nil {
+		log.Error().Err(err).Str("room", req.RoomName).Msg("Failed to look up room")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to look up room"})
+	}
 	if room == nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
+	}
+	if !room.IsPublic {
+		return c.Status(403).JSON(fiber.Map{"error": "This room is private"})
 	}
 
 	guestID := "guest-" + generateShortID()
@@ -192,7 +206,11 @@ func (h *RoomHandler) GuestJoinRoom(c *fiber.Ctx) error {
 		Room:                 req.RoomName,
 		CanUpdateOwnMetadata: boolPtr(false),
 	}).SetIdentity(guestID).SetName(req.GuestName).SetValidFor(time.Hour)
-	token, _ := at.ToJWT()
+	token, err := at.ToJWT()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to sign LiveKit guest token")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate room token"})
+	}
 
 	adminId := room.AdminID
 	if adminId == "" {
@@ -244,12 +262,23 @@ func (h *RoomHandler) sendSystemMessage(ctx context.Context, roomName, event, ac
 func (h *RoomHandler) KickParticipant(c *fiber.Ctx) error {
 	roomID, identity := c.Params("roomId"), c.Params("identity")
 	claims := c.Locals("user").(*auth.Claims)
-	room, _ := h.roomRepo.GetRoom(roomID)
+	room, err := h.roomRepo.GetRoom(roomID)
+	if err != nil {
+		log.Error().Err(err).Str("roomId", roomID).Msg("Failed to look up room")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to look up room"})
+	}
 	if room == nil {
 		return c.SendStatus(404)
 	}
+	adminId := room.AdminID
+	if adminId == "" {
+		adminId = room.CreatedBy
+	}
+	if claims.UserID != adminId && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
-	_, err := h.client.RemoveParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
+	_, err = h.client.RemoveParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -277,9 +306,15 @@ func (h *RoomHandler) DeleteRoom(c *fiber.Ctx) error {
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomCreate: true})
 	_, _ = h.client.DeleteRoom(ctx, &livekit.DeleteRoomRequest{Room: room.Name})
 
-	// Delete from database
-	if err := h.roomRepo.DeleteRoom(roomID, claims.UserID); err != nil {
-		log.Error().Err(err).Str("roomId", roomID).Msg("Failed to delete room")
+	// Delete from database (superadmin bypass skips creator check)
+	var deleteErr error
+	if room.CreatedBy != claims.UserID && containsAccess(claims.Accesses, "superadmin") {
+		deleteErr = h.roomRepo.AdminDeleteRoom(roomID)
+	} else {
+		deleteErr = h.roomRepo.DeleteRoom(roomID, claims.UserID)
+	}
+	if deleteErr != nil {
+		log.Error().Err(deleteErr).Str("roomId", roomID).Msg("Failed to delete room")
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to delete room"})
 	}
 

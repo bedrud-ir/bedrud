@@ -10,7 +10,7 @@ export const Route = createFileRoute('/admin')({
     if (typeof window === 'undefined') return
     if (!useAuthStore.getState().tokens) throw redirect({ to: '/auth' })
     const user = useUserStore.getState().user
-    if (user && !user.isAdmin) throw redirect({ to: '/dashboard' })
+    if (user !== null && !user.isAdmin) throw redirect({ to: '/dashboard' })
   },
   component: AdminLayout,
 })

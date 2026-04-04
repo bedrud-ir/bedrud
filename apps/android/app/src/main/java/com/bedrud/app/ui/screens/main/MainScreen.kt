@@ -44,7 +44,9 @@ fun MainScreen(
     instanceManager: InstanceManager = koinInject()
 ) {
     val authManager by instanceManager.authManager.collectAsState()
-    val currentUser by (authManager?.currentUser ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsState()
+    val currentUser by remember(authManager) {
+        authManager?.currentUser ?: kotlinx.coroutines.flow.MutableStateFlow(null)
+    }.collectAsState()
     val isAdmin = currentUser?.isAdmin == true
 
     val tabs = buildList {
@@ -55,6 +57,7 @@ fun MainScreen(
     }
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    if (selectedTab >= tabs.size) { selectedTab = 0 }
 
     Scaffold(
         bottomBar = {

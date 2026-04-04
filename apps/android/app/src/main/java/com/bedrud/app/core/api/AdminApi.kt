@@ -5,7 +5,10 @@ import com.bedrud.app.models.AdminSettings
 import com.bedrud.app.models.AdminUser
 import com.bedrud.app.models.CreateInviteTokenRequest
 import com.bedrud.app.models.InviteToken
+import com.bedrud.app.models.RoomListResponse
 import com.bedrud.app.models.SetAccessesRequest
+import com.bedrud.app.models.TokenListResponse
+import com.bedrud.app.models.UserListResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -19,7 +22,7 @@ interface AdminApi {
     // ── Users ─────────────────────────────────────────────────────────────────
 
     @GET("admin/users")
-    suspend fun listUsers(): Response<List<AdminUser>>
+    suspend fun listUsers(): Response<UserListResponse>
 
     @PUT("admin/users/{id}/status")
     suspend fun setUserStatus(
@@ -36,7 +39,7 @@ interface AdminApi {
     // ── Rooms ─────────────────────────────────────────────────────────────────
 
     @GET("admin/rooms")
-    suspend fun listRooms(): Response<List<AdminRoom>>
+    suspend fun listRooms(): Response<RoomListResponse>
 
     @DELETE("admin/rooms/{id}")
     suspend fun deleteRoom(@Path("id") id: String): Response<Unit>
@@ -58,7 +61,7 @@ interface AdminApi {
     // ── Invite Tokens ─────────────────────────────────────────────────────────
 
     @GET("admin/invite-tokens")
-    suspend fun listInviteTokens(): Response<List<InviteToken>>
+    suspend fun listInviteTokens(): Response<TokenListResponse>
 
     @POST("admin/invite-tokens")
     suspend fun createInviteToken(@Body body: CreateInviteTokenRequest): Response<InviteToken>

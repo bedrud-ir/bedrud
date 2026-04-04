@@ -100,7 +100,9 @@ fun AdminScreen(
 ) {
     val adminApi = instanceManager.adminApi.collectAsState().value ?: return
     val authManager = instanceManager.authManager.collectAsState().value
-    val currentUser by (authManager?.currentUser ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsState()
+    val currentUser by remember(authManager) {
+        authManager?.currentUser ?: kotlinx.coroutines.flow.MutableStateFlow(null)
+    }.collectAsState()
 
     // Only show admin panel to admins
     if (currentUser?.isAdmin != true) {
@@ -156,8 +158,8 @@ private fun AdminOverviewContent(
     suspend fun load() {
         isLoading = true
         try {
-            users = adminApi.listUsers().body() ?: emptyList()
-            rooms = adminApi.listRooms().body() ?: emptyList()
+            users = adminApi.listUsers().body()?.users ?: emptyList()
+            rooms = adminApi.listRooms().body()?.rooms ?: emptyList()
             onlineCount = adminApi.getOnlineCount().body()?.get("count") ?: 0
         } catch (e: Exception) {
             snackbarHostState.showSnackbar(e.message ?: "Failed to load data")
@@ -165,7 +167,7 @@ private fun AdminOverviewContent(
         isLoading = false
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(adminApi) {
         load()
         // Auto-refresh online count every 30s
         while (true) {
@@ -257,7 +259,7 @@ private fun AdminUsersContent(
 
     LaunchedEffect(Unit) {
         isLoading = true
-        try { users = adminApi.listUsers().body() ?: emptyList() } catch (e: Exception) {
+        try { users = adminApi.listUsers().body()?.users ?: emptyList() } catch (e: Exception) {
             snackbarHostState.showSnackbar(e.message ?: "Failed to load users")
         }
         isLoading = false
@@ -355,7 +357,7 @@ private fun AdminRoomsContent(
 
     LaunchedEffect(Unit) {
         isLoading = true
-        try { rooms = adminApi.listRooms().body() ?: emptyList() } catch (e: Exception) {
+        try { rooms = adminApi.listRooms().body()?.rooms ?: emptyList() } catch (e: Exception) {
             snackbarHostState.showSnackbar(e.message ?: "Failed to load rooms")
         }
         isLoading = false
@@ -441,7 +443,7 @@ private fun AdminSettingsContent(
         isLoading = true
         try {
             settings = adminApi.getSettings().body()
-            tokens = adminApi.listInviteTokens().body() ?: emptyList()
+            tokens = adminApi.listInviteTokens().body()?.tokens ?: emptyList()
         } catch (e: Exception) {
             snackbarHostState.showSnackbar(e.message ?: "Failed to load settings")
         }
@@ -471,9 +473,9 @@ private fun AdminSettingsContent(
                         ListItem(
                             headlineContent = { Text("Allow Registrations") },
                             trailingContent = {
-                                Switch(checked = s.allowRegistrations, onCheckedChange = { newVal ->
+                                Switch(checked = s.registrationEnabled, onCheckedChange = { newVal ->
                                     scope.launch {
-                                        val updated = s.copy(allowRegistrations = newVal)
+                                        val updated = s.copy(registrationEnabled = newVal)
                                         try { adminApi.updateSettings(updated); settings = updated }
                                         catch (e: Exception) { snackbarHostState.showSnackbar(e.message ?: "Failed") }
                                     }
@@ -485,9 +487,9 @@ private fun AdminSettingsContent(
                         ListItem(
                             headlineContent = { Text("Require Invite Token") },
                             trailingContent = {
-                                Switch(checked = s.requireInviteToken, onCheckedChange = { newVal ->
+                                Switch(checked = s.tokenRegistrationOnly, onCheckedChange = { newVal ->
                                     scope.launch {
-                                        val updated = s.copy(requireInviteToken = newVal)
+                                        val updated = s.copy(tokenRegistrationOnly = newVal)
                                         try { adminApi.updateSettings(updated); settings = updated }
                                         catch (e: Exception) { snackbarHostState.showSnackbar(e.message ?: "Failed") }
                                     }

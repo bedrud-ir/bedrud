@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth/gothic"
+	"github.com/rs/zerolog/log"
 )
 
 type AuthHandler struct {
@@ -100,7 +101,12 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 	// Mark invite token as used if one was validated
 	if tokenID, ok := c.Locals("pendingInviteToken").(string); ok && tokenID != "" && h.inviteTokenRepo != nil {
-		_ = h.inviteTokenRepo.MarkUsed(tokenID, user.ID)
+		if err := h.inviteTokenRepo.MarkUsed(tokenID, user.ID); err != nil {
+			log.Error().Err(err).Str("tokenID", tokenID).Msg("Failed to mark invite token as used")
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Registration succeeded but failed to record token usage",
+			})
+		}
 	}
 
 	return c.JSON(auth.LoginResponse{
@@ -489,8 +495,9 @@ func (h *AuthHandler) PasskeyLoginFinish(c *fiber.Ctx) error {
 
 func (h *AuthHandler) PasskeySignupBegin(c *fiber.Ctx) error {
 	var input struct {
-		Email string `json:"email"`
-		Name  string `json:"name"`
+		Email       string `json:"email"`
+		Name        string `json:"name"`
+		InviteToken string `json:"inviteToken"`
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
@@ -498,6 +505,26 @@ func (h *AuthHandler) PasskeySignupBegin(c *fiber.Ctx) error {
 
 	if input.Email == "" || input.Name == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Email and Name are required"})
+	}
+
+	// Check registration settings (mirrors Register())
+	if h.settingsRepo != nil {
+		settings, _ := h.settingsRepo.GetSettings()
+		if settings != nil {
+			if !settings.RegistrationEnabled {
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Registration is currently disabled"})
+			}
+			if settings.TokenRegistrationOnly {
+				if input.InviteToken == "" {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "An invite token is required to register"})
+				}
+				tok, err := h.inviteTokenRepo.GetByToken(input.InviteToken)
+				if err != nil || tok == nil || tok.UsedAt != nil || time.Now().After(tok.ExpiresAt) {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Invalid or expired invite token"})
+				}
+				c.Locals("pendingPasskeyInviteToken", tok.ID)
+			}
+		}
 	}
 
 	// Check if user already exists
@@ -517,6 +544,9 @@ func (h *AuthHandler) PasskeySignupBegin(c *fiber.Ctx) error {
 	sess.Values["signup_email"] = input.Email
 	sess.Values["signup_name"] = input.Name
 	sess.Values["signup_user_id"] = userID
+	if tokenID, ok := c.Locals("pendingPasskeyInviteToken").(string); ok && tokenID != "" {
+		sess.Values["signup_invite_token"] = tokenID
+	}
 	if err := h.saveSession(c, sess, req); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save session"})
 	}
@@ -571,10 +601,18 @@ func (h *AuthHandler) PasskeySignupFinish(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// Mark invite token used if passkey signup required one
+	if tokenID, ok := sess.Values["signup_invite_token"].(string); ok && tokenID != "" && h.inviteTokenRepo != nil {
+		if err := h.inviteTokenRepo.MarkUsed(tokenID, loginResponse.User.ID); err != nil {
+			log.Error().Err(err).Str("tokenID", tokenID).Msg("Failed to mark passkey invite token as used")
+		}
+	}
+
 	delete(sess.Values, "signup_challenge")
 	delete(sess.Values, "signup_email")
 	delete(sess.Values, "signup_name")
 	delete(sess.Values, "signup_user_id")
+	delete(sess.Values, "signup_invite_token")
 	h.saveSession(c, sess, req)
 
 	return c.JSON(loginResponse)

@@ -147,8 +147,8 @@ data class AdminRoom(
 )
 
 data class AdminSettings(
-    @SerializedName("allowRegistrations") val allowRegistrations: Boolean = true,
-    @SerializedName("requireInviteToken") val requireInviteToken: Boolean = false
+    @SerializedName("registrationEnabled") val registrationEnabled: Boolean = true,
+    @SerializedName("tokenRegistrationOnly") val tokenRegistrationOnly: Boolean = false
 )
 
 data class InviteToken(
@@ -159,6 +159,12 @@ data class InviteToken(
     @SerializedName("usedAt") val usedAt: String? = null,
     val used: Boolean = false
 )
+
+// --- Admin list wrappers (server wraps arrays in keyed objects) ---
+
+data class UserListResponse(val users: List<AdminUser>)
+data class RoomListResponse(val rooms: List<AdminRoom>)
+data class TokenListResponse(val tokens: List<InviteToken>)
 
 // --- Admin Requests ---
 

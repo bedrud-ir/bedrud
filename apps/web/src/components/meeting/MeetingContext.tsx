@@ -11,6 +11,8 @@ export interface SystemMessage {
   ts: number
 }
 
+const KNOWN_SYSTEM_EVENTS = new Set(['kick', 'ban'])
+
 type ChatMessages = ReturnType<typeof useChat>['chatMessages']
 type SendFn = ReturnType<typeof useChat>['send']
 
@@ -66,9 +68,14 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
     const handler = (payload: Uint8Array, _participant: unknown, _kind: unknown, topic?: string) => {
       if (topic !== 'system') return
       try {
-        const msg = JSON.parse(new TextDecoder().decode(payload)) as SystemMessage
-        if (msg.type === 'system') {
-          setSystemMessages((prev) => [...prev, { ...msg, ts: Date.now() }])
+        const raw = JSON.parse(new TextDecoder().decode(payload))
+        if (
+          raw.type === 'system' &&
+          typeof raw.event === 'string' && KNOWN_SYSTEM_EVENTS.has(raw.event) &&
+          typeof raw.actor === 'string' && raw.actor.length > 0 &&
+          typeof raw.target === 'string' && raw.target.length > 0
+        ) {
+          setSystemMessages((prev) => [...prev, { ...(raw as SystemMessage), ts: Date.now() }])
         }
       } catch (e) {
         console.warn('[MeetingContext] failed to parse system message:', e)

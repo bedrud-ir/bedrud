@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AdminSettingsView: View {
     @EnvironmentObject private var instanceManager: InstanceManager
-    @State private var settings = AdminSettings(allowRegistrations: true, requireInviteToken: false)
+    @State private var settings = AdminSettings(registrationEnabled: true, tokenRegistrationOnly: false)
     @State private var tokens: [InviteToken] = []
     @State private var isLoadingSettings = false
     @State private var isLoadingTokens = false
@@ -33,7 +33,7 @@ struct AdminSettingsView: View {
                 await loadSettings()
                 await loadTokens()
             }
-            .alert("Error", isPresented: .constant(errorMessage != nil)) {
+            .alert("Error", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("OK") { errorMessage = nil }
             } message: { Text(errorMessage ?? "") }
         }
@@ -43,10 +43,10 @@ struct AdminSettingsView: View {
 
     private var registrationSection: some View {
         Section("Registration") {
-            Toggle("Allow Registrations", isOn: $settings.allowRegistrations)
-                .onChange(of: settings.allowRegistrations) { _, _ in saveSettings() }
-            Toggle("Require Invite Token", isOn: $settings.requireInviteToken)
-                .onChange(of: settings.requireInviteToken) { _, _ in saveSettings() }
+            Toggle("Allow Registrations", isOn: $settings.registrationEnabled)
+                .onChange(of: settings.registrationEnabled) { _, _ in saveSettings() }
+            Toggle("Require Invite Token", isOn: $settings.tokenRegistrationOnly)
+                .onChange(of: settings.tokenRegistrationOnly) { _, _ in saveSettings() }
             if isSavingSettings {
                 HStack {
                     ProgressView().scaleEffect(0.7)

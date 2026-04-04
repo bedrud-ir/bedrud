@@ -85,6 +85,7 @@ function ToggleRow({
 
 export function CreateRoomDialog({ open, onOpenChange, onCreate }: Props) {
   const [isLoading, setIsLoading] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [isPublic, setIsPublic] = useState(false)
   const [settings, setSettings] = useState<RoomSettings>({
     allowChat: true,
@@ -104,8 +105,11 @@ export function CreateRoomDialog({ open, onOpenChange, onCreate }: Props) {
     const name = (fd.get('name') as string).trim() || undefined
     const maxParticipants = parseInt(fd.get('maxParticipants') as string, 10) || 20
     setIsLoading(true)
+    setCreateError(null)
     try {
       await onCreate({ name, isPublic, maxParticipants, settings })
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to create room')
     } finally {
       setIsLoading(false)
     }
@@ -238,6 +242,9 @@ export function CreateRoomDialog({ open, onOpenChange, onCreate }: Props) {
             >
               Cancel
             </button>
+            {createError && (
+              <p className="w-full text-xs text-destructive pb-1">{createError}</p>
+            )}
             <button
               type="submit"
               disabled={isLoading}

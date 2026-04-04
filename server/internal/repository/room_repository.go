@@ -279,6 +279,20 @@ func (r *RoomRepository) DeleteRoom(roomID, userID string) error {
 	})
 }
 
+// AdminDeleteRoom deletes a room without a created_by check. Use only after
+// verifying the caller has superadmin access in the handler layer.
+func (r *RoomRepository) AdminDeleteRoom(roomID string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var room models.Room
+		if err := tx.Where("id = ?", roomID).First(&room).Error; err != nil {
+			return err
+		}
+		tx.Where("room_id = ?", roomID).Delete(&models.RoomPermissions{})
+		tx.Where("room_id = ?", roomID).Delete(&models.RoomParticipant{})
+		return tx.Delete(&room).Error
+	})
+}
+
 func (r *RoomRepository) GetAllRooms() ([]models.Room, error) {
 	var rooms []models.Room
 	err := r.db.Find(&rooms).Error
