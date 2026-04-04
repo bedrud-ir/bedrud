@@ -120,7 +120,7 @@ struct MeetingView: View {
     private var participantsPanelSheet: some View {
         let allParticipants = buildParticipantList()
         return NavigationStack {
-            List(allParticipants) { participant in
+            List(allParticipants, id: \.id) { participant in
                 HStack(spacing: 10) {
                     Circle()
                         .fill(participantColor(for: participant.name))

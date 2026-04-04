@@ -53,7 +53,7 @@ final class RoomManager: ObservableObject {
     @Published var isScreenShareEnabled: Bool = false
     @Published private(set) var error: String?
     @Published private(set) var chatMessages: [ChatMessage] = []
-    @Published private(set) var wasKicked: Bool = false
+    @Published fileprivate(set) var wasKicked: Bool = false
 
     // MARK: - LiveKit Room
 
