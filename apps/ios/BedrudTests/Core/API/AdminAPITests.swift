@@ -38,7 +38,7 @@ final class AdminAPITests: XCTestCase {
             XCTAssertTrue(request.url!.absoluteString.hasSuffix("/admin/users"))
             XCTAssertEqual(request.httpMethod, "GET")
             let json = """
-            [{"id":"u1","email":"a@b.com","name":"Alice","is_active":true,"is_admin":false,"provider":"local","created_at":"2025-01-01"}]
+            {"users":[{"id":"u1","email":"a@b.com","name":"Alice","is_active":true,"is_admin":false,"provider":"local","created_at":"2025-01-01"}]}
             """
             let res = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (res, json.data(using: .utf8)!)
@@ -54,7 +54,7 @@ final class AdminAPITests: XCTestCase {
     func testListUsersReturnsEmptyList() async throws {
         MockURLProtocol.requestHandler = { request in
             let res = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            return (res, "[]".data(using: .utf8)!)
+            return (res, #"{"users":[]}"#.data(using: .utf8)!)
         }
         let users = try await adminAPI.listUsers()
         XCTAssertTrue(users.isEmpty)
@@ -89,7 +89,7 @@ final class AdminAPITests: XCTestCase {
         MockURLProtocol.requestHandler = { request in
             XCTAssertTrue(request.url!.absoluteString.hasSuffix("/admin/rooms"))
             let json = """
-            [{"id":"r1","name":"Test Room","is_active":true,"is_public":false,"max_participants":20,"created_at":"2025-01-01"}]
+            {"rooms":[{"id":"r1","name":"Test Room","is_active":true,"is_public":false,"max_participants":20,"created_at":"2025-01-01"}]}
             """
             let res = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (res, json.data(using: .utf8)!)
@@ -130,13 +130,13 @@ final class AdminAPITests: XCTestCase {
     func testGetSettingsReturnsSettings() async throws {
         MockURLProtocol.requestHandler = { request in
             XCTAssertTrue(request.url!.absoluteString.hasSuffix("/admin/settings"))
-            let json = #"{"allow_registrations":true,"require_invite_token":false}"#
+            let json = #"{"registrationEnabled":true,"tokenRegistrationOnly":false}"#
             let res = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (res, json.data(using: .utf8)!)
         }
         let settings = try await adminAPI.getSettings()
-        XCTAssertTrue(settings.allowRegistrations)
-        XCTAssertFalse(settings.requireInviteToken)
+        XCTAssertTrue(settings.registrationEnabled)
+        XCTAssertFalse(settings.tokenRegistrationOnly)
     }
 
     func testUpdateSettingsSendsPUT() async throws {
@@ -148,7 +148,7 @@ final class AdminAPITests: XCTestCase {
             let res = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (res, Data())
         }
-        try await adminAPI.updateSettings(AdminSettings(allowRegistrations: false, requireInviteToken: true))
+        try await adminAPI.updateSettings(AdminSettings(registrationEnabled: false, tokenRegistrationOnly: true))
     }
 
     // MARK: - Invite Tokens
@@ -157,7 +157,7 @@ final class AdminAPITests: XCTestCase {
         MockURLProtocol.requestHandler = { request in
             XCTAssertTrue(request.url!.absoluteString.hasSuffix("/admin/invite-tokens"))
             let json = """
-            [{"id":"t1","token":"tok-abc","email":"x@y.com","expires_at":"2025-12-31","used_at":null,"used":false}]
+            {"tokens":[{"id":"t1","token":"tok-abc","email":"x@y.com","expires_at":"2025-12-31","used_at":null,"used":false}]}
             """
             let res = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (res, json.data(using: .utf8)!)
@@ -236,7 +236,7 @@ final class AdminAPITests: XCTestCase {
             XCTAssertNotNil(request.value(forHTTPHeaderField: "Authorization"))
             XCTAssertTrue(request.value(forHTTPHeaderField: "Authorization")!.hasPrefix("Bearer "))
             let res = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            return (res, "[]".data(using: .utf8)!)
+            return (res, #"{"users":[]}"#.data(using: .utf8)!)
         }
         _ = try await adminAPI.listUsers()
     }
