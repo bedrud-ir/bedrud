@@ -95,8 +95,8 @@ struct AdminUsersView: View {
                     let u = users[idx]
                     users[idx] = AdminUser(
                         id: u.id, email: u.email, name: u.name,
-                        isActive: !u.isActive, isAdmin: u.isAdmin,
-                        provider: u.provider, createdAt: u.createdAt
+                        provider: u.provider, isActive: !u.isActive,
+                        isAdmin: u.isAdmin, accesses: u.accesses, createdAt: u.createdAt
                     )
                 }
             } catch {
@@ -231,8 +231,8 @@ struct AdminUserDetailView: View {
                 try await api.setUserStatus(id: user.id, active: !user.isActive)
                 let updated = AdminUser(
                     id: user.id, email: user.email, name: user.name,
-                    isActive: !user.isActive, isAdmin: user.isAdmin,
-                    provider: user.provider, createdAt: user.createdAt
+                    provider: user.provider, isActive: !user.isActive,
+                    isAdmin: user.isAdmin, accesses: user.accesses, createdAt: user.createdAt
                 )
                 onUpdate(updated)
                 dismiss()
