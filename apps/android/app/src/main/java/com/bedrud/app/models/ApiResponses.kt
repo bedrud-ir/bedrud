@@ -160,6 +160,12 @@ data class InviteToken(
     val used: Boolean = false
 )
 
+// --- Admin Requests ---
+
+data class SetAccessesRequest(val accesses: List<String>)
+
+data class CreateInviteTokenRequest(val email: String?, val expiresInHours: Int)
+
 // --- Generic ---
 
 data class ApiError(

@@ -3,7 +3,9 @@ package com.bedrud.app.core.api
 import com.bedrud.app.models.AdminRoom
 import com.bedrud.app.models.AdminSettings
 import com.bedrud.app.models.AdminUser
+import com.bedrud.app.models.CreateInviteTokenRequest
 import com.bedrud.app.models.InviteToken
+import com.bedrud.app.models.SetAccessesRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -28,7 +30,7 @@ interface AdminApi {
     @PUT("admin/users/{id}/accesses")
     suspend fun setUserAccesses(
         @Path("id") id: String,
-        @Body body: Map<String, List<String>>
+        @Body body: SetAccessesRequest
     ): Response<Unit>
 
     // ── Rooms ─────────────────────────────────────────────────────────────────
@@ -59,7 +61,7 @@ interface AdminApi {
     suspend fun listInviteTokens(): Response<List<InviteToken>>
 
     @POST("admin/invite-tokens")
-    suspend fun createInviteToken(@Body body: Map<String, Any>): Response<InviteToken>
+    suspend fun createInviteToken(@Body body: CreateInviteTokenRequest): Response<InviteToken>
 
     @DELETE("admin/invite-tokens/{id}")
     suspend fun deleteInviteToken(@Path("id") id: String): Response<Unit>

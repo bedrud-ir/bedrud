@@ -1,6 +1,8 @@
 package com.bedrud.app.core.api
 
 import com.bedrud.app.models.*
+import com.bedrud.app.models.CreateInviteTokenRequest
+import com.bedrud.app.models.SetAccessesRequest
 import com.google.gson.Gson
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
@@ -90,7 +92,7 @@ class AdminApiTest {
     fun `setUserAccesses sends PUT with accesses array`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(200))
 
-        val response = adminApi.setUserAccesses("user123", mapOf("accesses" to listOf("admin", "moderator")))
+        val response = adminApi.setUserAccesses("user123", SetAccessesRequest(listOf("admin", "moderator")))
         val request = server.takeRequest()
 
         assertEquals("PUT", request.method)
@@ -207,8 +209,7 @@ class AdminApiTest {
             expiresAt = "2025-06-01", usedAt = null, used = false)
         server.enqueue(MockResponse().setBody(gson.toJson(token)).setResponseCode(200))
 
-        val body = mapOf("email" to "new@user.com", "expiresInHours" to 48)
-        val response = adminApi.createInviteToken(body)
+        val response = adminApi.createInviteToken(CreateInviteTokenRequest(email = "new@user.com", expiresInHours = 48))
         val request = server.takeRequest()
 
         assertEquals("POST", request.method)
@@ -226,9 +227,7 @@ class AdminApiTest {
             expiresAt = null, usedAt = null, used = false)
         server.enqueue(MockResponse().setBody(gson.toJson(token)).setResponseCode(200))
 
-        @Suppress("UNCHECKED_CAST")
-        val body = mapOf("email" to null, "expiresInHours" to 24) as Map<String, Any>
-        adminApi.createInviteToken(body)
+        adminApi.createInviteToken(CreateInviteTokenRequest(email = null, expiresInHours = 24))
         val request = server.takeRequest()
 
         val reqBody = request.body.readUtf8()
