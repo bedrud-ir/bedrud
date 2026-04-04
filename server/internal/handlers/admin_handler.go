@@ -60,7 +60,15 @@ func (h *AdminHandler) ListInviteTokens(c *fiber.Ctx) error {
 	if tokens == nil {
 		tokens = []models.InviteToken{}
 	}
-	return c.JSON(fiber.Map{"tokens": tokens})
+	type tokenResponse struct {
+		models.InviteToken
+		Used bool `json:"used"`
+	}
+	out := make([]tokenResponse, len(tokens))
+	for i, t := range tokens {
+		out[i] = tokenResponse{InviteToken: t, Used: t.UsedAt != nil}
+	}
+	return c.JSON(fiber.Map{"tokens": out})
 }
 
 func (h *AdminHandler) CreateInviteToken(c *fiber.Ctx) error {

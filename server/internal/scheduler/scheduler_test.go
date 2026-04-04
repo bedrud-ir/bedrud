@@ -5,8 +5,11 @@ import (
 	"bedrud/internal/models"
 	"bedrud/internal/repository"
 	"bedrud/internal/testutil"
+	"net/http"
 	"testing"
 	"time"
+
+	"github.com/livekit/protocol/livekit"
 )
 
 func TestInitialize_DoesNotPanic(t *testing.T) {
@@ -23,7 +26,7 @@ func TestStop_BeforeInitialize(t *testing.T) {
 
 func TestCheckIdleRooms_NilRepo(t *testing.T) {
 	// Should return early without panic
-	checkIdleRooms(nil, config.LiveKitConfig{})
+	checkIdleRooms(nil, config.LiveKitConfig{}, nil)
 }
 
 func TestCheckIdleRooms_EmptyRooms(t *testing.T) {
@@ -31,7 +34,7 @@ func TestCheckIdleRooms_EmptyRooms(t *testing.T) {
 	roomRepo := repository.NewRoomRepository(db)
 
 	// No rooms in DB → should return without panic
-	checkIdleRooms(roomRepo, config.LiveKitConfig{})
+	checkIdleRooms(roomRepo, config.LiveKitConfig{}, nil)
 }
 
 func TestCheckIdleRooms_RoomsWithinGracePeriod(t *testing.T) {
@@ -49,7 +52,8 @@ func TestCheckIdleRooms_RoomsWithinGracePeriod(t *testing.T) {
 	db.Create(room)
 
 	// Should NOT call LiveKit nor mark idle; exits early due to grace period
-	checkIdleRooms(roomRepo, config.LiveKitConfig{Host: "http://localhost:9999"})
+	lkClient := livekit.NewRoomServiceProtobufClient("http://localhost:9999", http.DefaultClient)
+	checkIdleRooms(roomRepo, config.LiveKitConfig{Host: "http://localhost:9999"}, lkClient)
 
 	// Room should still be active
 	updated, _ := roomRepo.GetRoom("grace-room-1")
@@ -73,9 +77,10 @@ func TestCheckIdleRooms_OldRoomLiveKitUnavailable(t *testing.T) {
 	db.Create(room)
 
 	// LiveKit is unreachable — checkIdleRooms should handle this gracefully
+	lkClient := livekit.NewRoomServiceProtobufClient("http://localhost:9999", http.DefaultClient)
 	checkIdleRooms(roomRepo, config.LiveKitConfig{
 		Host: "http://localhost:9999", // nothing listening here
-	})
+	}, lkClient)
 
 	// Room stays active since LiveKit reported an error
 	updated, _ := roomRepo.GetRoom("old-room-1")

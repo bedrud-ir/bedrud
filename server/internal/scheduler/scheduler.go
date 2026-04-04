@@ -22,8 +22,24 @@ var scheduler *gocron.Scheduler
 func Initialize(roomRepo *repository.RoomRepository, lkCfg config.LiveKitConfig) {
 	scheduler = gocron.NewScheduler(time.Local)
 
+	apiHost := lkCfg.InternalHost
+	if apiHost == "" {
+		apiHost = lkCfg.Host
+	}
+	var httpClient *http.Client
+	if lkCfg.SkipTLSVerify && strings.HasPrefix(apiHost, "https") {
+		httpClient = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+	} else {
+		httpClient = http.DefaultClient
+	}
+	lkClient := livekit.NewRoomServiceProtobufClient(apiHost, httpClient)
+
 	_, _ = scheduler.Every(1).Minute().Do(func() {
-		checkIdleRooms(roomRepo, lkCfg)
+		checkIdleRooms(roomRepo, lkCfg, lkClient)
 	})
 
 	scheduler.StartAsync()
@@ -38,7 +54,7 @@ func Stop() {
 
 // checkIdleRooms marks active DB rooms as idle when they have 0 participants in LiveKit.
 // Rooms created within the last 5 minutes are skipped to avoid false positives.
-func checkIdleRooms(roomRepo *repository.RoomRepository, cfg config.LiveKitConfig) {
+func checkIdleRooms(roomRepo *repository.RoomRepository, cfg config.LiveKitConfig, client livekit.RoomService) {
 	if roomRepo == nil {
 		return
 	}
@@ -46,20 +62,6 @@ func checkIdleRooms(roomRepo *repository.RoomRepository, cfg config.LiveKitConfi
 	if err != nil || len(rooms) == 0 {
 		return
 	}
-
-	apiHost := cfg.InternalHost
-	if apiHost == "" {
-		apiHost = cfg.Host
-	}
-	httpClient := http.DefaultClient
-	if cfg.SkipTLSVerify && strings.HasPrefix(apiHost, "https") {
-		httpClient = &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
-		}
-	}
-	client := livekit.NewRoomServiceProtobufClient(apiHost, httpClient)
 
 	at := lkauth.NewAccessToken(cfg.APIKey, cfg.APISecret)
 	at.AddGrant(&lkauth.VideoGrant{RoomList: true})

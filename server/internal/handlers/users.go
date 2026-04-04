@@ -38,6 +38,9 @@ type UserDetails struct {
 	// @Description Whether the user account is active
 	IsActive bool `json:"isActive" example:"true"`
 
+	// @Description Whether the user has admin access
+	IsAdmin bool `json:"isAdmin" example:"false"`
+
 	// @Description List of user's access levels
 	Accesses []string `json:"accesses" example:"user,admin"`
 
@@ -91,6 +94,7 @@ func (h *UsersHandler) ListUsers(c *fiber.Ctx) error {
 			Name:      user.Name,
 			Provider:  user.Provider,
 			IsActive:  user.IsActive,
+			IsAdmin:   containsAccess(user.Accesses, "admin"),
 			Accesses:  user.Accesses,
 			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
@@ -191,6 +195,7 @@ func (h *UsersHandler) GetUserDetail(c *fiber.Ctx) error {
 			Name:      user.Name,
 			Provider:  user.Provider,
 			IsActive:  user.IsActive,
+			IsAdmin:   containsAccess(user.Accesses, "admin"),
 			Accesses:  user.Accesses,
 			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
 		},
