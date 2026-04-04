@@ -29,6 +29,8 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 		&models.RoomParticipant{},
 		&models.RoomPermissions{},
 		&models.Passkey{},
+		&models.SystemSettings{},
+		&models.InviteToken{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate test database: %v", err)

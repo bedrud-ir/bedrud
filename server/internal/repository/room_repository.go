@@ -273,8 +273,30 @@ func (r *RoomRepository) DeleteRoom(roomID, userID string) error {
 		if err := tx.Where("id = ? AND created_by = ?", roomID, userID).First(&room).Error; err != nil {
 			return err
 		}
-		tx.Where("room_id = ?", roomID).Delete(&models.RoomPermissions{})
-		tx.Where("room_id = ?", roomID).Delete(&models.RoomParticipant{})
+		if err := tx.Where("room_id = ?", roomID).Delete(&models.RoomPermissions{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("room_id = ?", roomID).Delete(&models.RoomParticipant{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&room).Error
+	})
+}
+
+// AdminDeleteRoom deletes a room without a created_by check. Use only after
+// verifying the caller has superadmin access in the handler layer.
+func (r *RoomRepository) AdminDeleteRoom(roomID string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var room models.Room
+		if err := tx.Where("id = ?", roomID).First(&room).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("room_id = ?", roomID).Delete(&models.RoomPermissions{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("room_id = ?", roomID).Delete(&models.RoomParticipant{}).Error; err != nil {
+			return err
+		}
 		return tx.Delete(&room).Error
 	})
 }
@@ -283,6 +305,16 @@ func (r *RoomRepository) GetAllRooms() ([]models.Room, error) {
 	var rooms []models.Room
 	err := r.db.Find(&rooms).Error
 	return rooms, err
+}
+
+func (r *RoomRepository) GetAllActiveRooms() ([]models.Room, error) {
+	var rooms []models.Room
+	err := r.db.Where("is_active = ?", true).Find(&rooms).Error
+	return rooms, err
+}
+
+func (r *RoomRepository) SetRoomIdle(roomID string) error {
+	return r.db.Model(&models.Room{}).Where("id = ?", roomID).Update("is_active", false).Error
 }
 
 func (r *RoomRepository) GetRoomParticipantsWithUsers(roomID string) ([]models.RoomParticipant, error) {
@@ -327,4 +359,14 @@ func (r *RoomRepository) GetRoomsParticipatedInByUser(userID string) ([]models.R
 	// Fetch the rooms based on the found IDs
 	err = r.db.Where("id IN (?)", participantRoomIDs).Order("created_at desc").Find(&rooms).Error
 	return rooms, err
+}
+
+func (r *RoomRepository) UpdateRoom(room *models.Room) error {
+	return r.db.Save(room).Error
+}
+
+func (r *RoomRepository) CountActiveParticipants() (int64, error) {
+	var count int64
+	err := r.db.Model(&models.RoomParticipant{}).Where("is_active = ?", true).Distinct("user_id").Count(&count).Error
+	return count, err
 }

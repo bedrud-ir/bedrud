@@ -41,13 +41,13 @@ This starts three processes concurrently:
 |---------|-----|-------------|
 | LiveKit | `localhost:7880` | WebRTC media server |
 | Server | `localhost:8090` | Go REST API |
-| Web | `localhost:5173` | Svelte dev server (with HMR) |
+| Web | `localhost:3000` | React dev server (with HMR) |
 
 Press `Ctrl+C` to stop all processes.
 
 ## 4. Open the App
 
-Navigate to [http://localhost:5173](http://localhost:5173) in your browser. You can:
+Navigate to [http://localhost:3000](http://localhost:3000) in your browser. You can:
 
 1. **Register** a new account
 2. **Create** a meeting room
@@ -58,7 +58,7 @@ Navigate to [http://localhost:5173](http://localhost:5173) in your browser. You 
 If you only need to work on one part:
 
 ```bash
-make dev-web       # Frontend only (Svelte dev server)
+make dev-web       # Frontend only (React dev server)
 make dev-server    # Backend only (Go server)
 make dev-livekit   # LiveKit only (media server)
 ```

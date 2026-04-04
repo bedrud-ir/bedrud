@@ -64,6 +64,15 @@ android {
         compose = true
         buildConfig = true
     }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
+        }
+    }
 }
 
 dependencies {
@@ -111,6 +120,9 @@ dependencies {
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Browser (CustomTabs for OAuth)
+    implementation("androidx.browser:browser:1.8.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

@@ -59,11 +59,14 @@ func Run(configPath string) error {
 	zerolog.SetGlobalLevel(logLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339})
 
+	// Start embedded LiveKit unless an external deployment is configured.
 	internalHost := strings.ToLower(cfg.LiveKit.InternalHost)
-	if strings.Contains(internalHost, "localhost") || strings.Contains(internalHost, "127.0.0.1") {
+	useInternalLK := !cfg.LiveKit.External &&
+		(strings.Contains(internalHost, "localhost") || strings.Contains(internalHost, "127.0.0.1"))
+	if useInternalLK {
 		log.Info().Msg("➜ Starting internal managed LiveKit server...")
 		certFile, keyFile := "", ""
-		if cfg.Server.EnableTLS {
+		if cfg.Server.EnableTLS && !cfg.Server.DisableTLS {
 			certFile = cfg.Server.CertFile
 			keyFile = cfg.Server.KeyFile
 			if certFile == "" {
@@ -76,23 +79,43 @@ func Run(configPath string) error {
 		if err := livekit.StartInternalServer(context.Background(), cfg.LiveKit.APIKey, cfg.LiveKit.APISecret, 7880, certFile, keyFile, cfg.LiveKit.ConfigPath); err != nil {
 			log.Error().Err(err).Msg("Failed to start internal LiveKit server")
 		}
+	} else if cfg.LiveKit.External {
+		log.Info().Str("host", cfg.LiveKit.Host).Msg("➜ Using external LiveKit server")
 	}
 
-	auth.InitializeSessionStore(cfg.Auth.SessionSecret, cfg.Server.EnableTLS)
+	auth.InitializeSessionStore(cfg.Auth.SessionSecret, cfg.Server.EnableTLS && !cfg.Server.DisableTLS)
 	if err := database.Initialize(&cfg.Database); err != nil {
 		return err
 	}
 	defer database.Close()
 	database.RunMigrations()
-	scheduler.Initialize()
+	roomRepo := repository.NewRoomRepository(database.GetDB())
+	scheduler.Initialize(roomRepo, cfg.LiveKit)
 	defer scheduler.Stop()
 	auth.Init(cfg)
 
-	app := fiber.New(fiber.Config{AppName: "Bedrud API"})
+	fiberCfg := fiber.Config{AppName: "Bedrud API"}
+	// Enable trusted-proxy mode when: explicit trustedProxies list is set,
+	// OR behindProxy=true (CDN / nginx in front), OR DisableTLS with a domain.
+	if len(cfg.Server.TrustedProxies) > 0 || cfg.Server.BehindProxy {
+		fiberCfg.EnableTrustedProxyCheck = true
+		if len(cfg.Server.TrustedProxies) > 0 {
+			fiberCfg.TrustedProxies = cfg.Server.TrustedProxies
+		} else {
+			// Trust all proxies when behindProxy=true and no explicit list.
+			fiberCfg.TrustedProxies = []string{"0.0.0.0/0"}
+		}
+		if cfg.Server.ProxyHeader != "" {
+			fiberCfg.ProxyHeader = cfg.Server.ProxyHeader
+		} else {
+			fiberCfg.ProxyHeader = "X-Forwarded-For"
+		}
+	}
+	app := fiber.New(fiberCfg)
 
-	// Proxy LiveKit traffic if we are using internal host
-	if strings.Contains(strings.ToLower(cfg.LiveKit.InternalHost), "127.0.0.1") ||
-		strings.Contains(strings.ToLower(cfg.LiveKit.InternalHost), "localhost") {
+	// Proxy LiveKit traffic only when using the internal (embedded) server.
+	// When livekit.external=true the client connects directly to livekit.host.
+	if useInternalLK {
 		target, _ := url.Parse("http://127.0.0.1:7880")
 		rp := httputil.NewSingleHostReverseProxy(target)
 
@@ -113,19 +136,27 @@ func Run(configPath string) error {
 	}
 
 	app.Use(recover.New())
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     cfg.Cors.AllowedOrigins,
+	corsConfig := cors.Config{
 		AllowHeaders:     cfg.Cors.AllowedHeaders,
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
-		AllowCredentials: true,
-	}))
+		AllowCredentials: cfg.Cors.AllowCredentials,
+	}
+	if cfg.Cors.AllowCredentials && (cfg.Cors.AllowedOrigins == "*" || cfg.Cors.AllowedOrigins == "") {
+		// Credentials + wildcard is forbidden by the CORS spec; reflect the request
+		// origin instead so the browser receives a specific origin with credentials.
+		corsConfig.AllowOriginsFunc = func(origin string) bool { return true }
+	} else {
+		corsConfig.AllowOrigins = cfg.Cors.AllowedOrigins
+	}
+	app.Use(cors.New(corsConfig))
 
 	api := app.Group("/api")
 	userRepo := repository.NewUserRepository(database.GetDB())
 	passkeyRepo := repository.NewPasskeyRepository(database.GetDB())
-	roomRepo := repository.NewRoomRepository(database.GetDB())
+	settingsRepo := repository.NewSettingsRepository(database.GetDB())
+	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
 	authService := auth.NewAuthService(userRepo, passkeyRepo)
-	authHandler := handlers.NewAuthHandler(authService, cfg)
+	authHandler := handlers.NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)
 	roomHandler := handlers.NewRoomHandler(cfg.LiveKit, roomRepo)
 
 	api.Post("/auth/register", authHandler.Register)
@@ -134,6 +165,8 @@ func Run(configPath string) error {
 	api.Post("/auth/refresh", authHandler.RefreshToken)
 	api.Post("/auth/logout", middleware.Protected(), authHandler.Logout)
 	api.Get("/auth/me", middleware.Protected(), authHandler.GetMe)
+	api.Put("/auth/me", middleware.Protected(), authHandler.UpdateProfile)
+	api.Put("/auth/password", middleware.Protected(), authHandler.ChangePassword)
 
 	// Passkey routes
 	api.Post("/auth/passkey/register/begin", middleware.Protected(), authHandler.PasskeyRegisterBegin)
@@ -145,9 +178,11 @@ func Run(configPath string) error {
 
 	api.Post("/room/create", middleware.Protected(), roomHandler.CreateRoom)
 	api.Post("/room/join", middleware.Protected(), roomHandler.JoinRoom)
+	api.Post("/room/guest-join", roomHandler.GuestJoinRoom)
 	api.Get("/room/list", middleware.Protected(), roomHandler.ListRooms)
 	api.Post("/room/:roomId/kick/:identity", middleware.Protected(), roomHandler.KickParticipant)
 	api.Post("/room/:roomId/mute/:identity", middleware.Protected(), roomHandler.MuteParticipant)
+	api.Post("/room/:roomId/ban/:identity", middleware.Protected(), roomHandler.BanParticipant)
 	api.Post("/room/:roomId/video/:identity/off", middleware.Protected(), roomHandler.DisableParticipantVideo)
 	api.Post("/room/:roomId/stage/:identity/bring", middleware.Protected(), roomHandler.BringToStage)
 	api.Post("/room/:roomId/stage/:identity/remove", middleware.Protected(), roomHandler.RemoveFromStage)
@@ -155,15 +190,31 @@ func Run(configPath string) error {
 	api.Delete("/room/:roomId", middleware.Protected(), roomHandler.DeleteRoom)
 
 	// Admin routes
-	usersHandler := handlers.NewUsersHandler(userRepo)
+	usersHandler := handlers.NewUsersHandler(userRepo, roomRepo)
+	adminHandler := handlers.NewAdminHandler(settingsRepo, inviteTokenRepo)
 	adminGroup := api.Group("/admin",
 		middleware.Protected(),
 		middleware.RequireAccess("superadmin"),
 	)
 	adminGroup.Get("/users", usersHandler.ListUsers)
 	adminGroup.Put("/users/:id/status", usersHandler.UpdateUserStatus)
+	adminGroup.Put("/users/:id/accesses", usersHandler.UpdateUserAccesses)
 	adminGroup.Get("/rooms", roomHandler.AdminListRooms)
 	adminGroup.Post("/rooms/:roomId/token", roomHandler.AdminGenerateToken)
+	adminGroup.Delete("/rooms/:roomId", roomHandler.AdminCloseRoom)
+	adminGroup.Put("/rooms/:roomId", roomHandler.AdminUpdateRoom)
+	adminGroup.Get("/online-count", roomHandler.GetOnlineCount)
+	adminGroup.Get("/livekit/stats", roomHandler.AdminLiveKitStats)
+	adminGroup.Get("/users/:id", usersHandler.GetUserDetail)
+	adminGroup.Get("/rooms/:roomId/participants", roomHandler.AdminGetRoomParticipants)
+	adminGroup.Post("/rooms/:roomId/participants/:identity/kick", roomHandler.AdminKickParticipant)
+	adminGroup.Post("/rooms/:roomId/participants/:identity/mute", roomHandler.AdminMuteParticipant)
+	api.Get("/auth/settings", adminHandler.GetPublicSettings)
+	adminGroup.Get("/settings", adminHandler.GetSettings)
+	adminGroup.Put("/settings", adminHandler.UpdateSettings)
+	adminGroup.Get("/invite-tokens", adminHandler.ListInviteTokens)
+	adminGroup.Post("/invite-tokens", adminHandler.CreateInviteToken)
+	adminGroup.Delete("/invite-tokens/:id", adminHandler.DeleteInviteToken)
 
 	app.Use("/", filesystem.New(filesystem.Config{Root: http.FS(root.UI), PathPrefix: "frontend"}))
 	app.Get("*", func(c *fiber.Ctx) error {
@@ -200,15 +251,18 @@ func Run(configPath string) error {
 
 			ln, err := tls.Listen("tcp", ":443", tlsConfig)
 			if err != nil {
-				log.Fatal().Err(err).Msg("Failed to listen on :443 for ACME")
+				log.Error().Err(err).Msg("Failed to listen on :443 for ACME — falling back to plain HTTP")
+				// fall through to the plain-HTTP / manual-TLS block below
+			} else {
+				log.Info().Msg("➜ Bedrud is running on HTTPS 443 with Let's Encrypt")
+				_ = app.Listener(ln)
+				return
 			}
-			log.Info().Msg("➜ Bedrud is running on HTTPS 443 with Let's Encrypt")
-			_ = app.Listener(ln)
-			return
 		}
 
 		addr := cfg.Server.Host + ":" + cfg.Server.Port
-		if cfg.Server.EnableTLS {
+		tlsEnabled := cfg.Server.EnableTLS && !cfg.Server.DisableTLS
+		if tlsEnabled {
 			// Start HTTP on port 80 for bots/local use
 			go func() {
 				httpAddr := cfg.Server.Host + ":80"

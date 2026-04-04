@@ -184,6 +184,7 @@ private struct RoomPreview: View {
                 name: "Team Standup",
                 createdBy: "user1",
                 isActive: true,
+                isPublic: false,
                 maxParticipants: 10,
                 expiresAt: "2025-12-31T00:00:00Z",
                 settings: RoomSettings(

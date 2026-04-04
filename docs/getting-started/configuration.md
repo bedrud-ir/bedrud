@@ -28,7 +28,7 @@ auth:
   jwt_secret: "your-jwt-secret"         # Secret for signing JWT tokens
   jwt_expiration: 24                     # Token expiration in hours
   session_secret: "your-session-secret"  # Secret for session cookies
-  frontend_url: "http://localhost:5173"  # Frontend URL (for OAuth redirects)
+  frontend_url: "http://localhost:3000"  # Frontend URL (for OAuth redirects)
 
   # OAuth providers (optional)
   google:
@@ -43,7 +43,7 @@ auth:
 
 cors:
   allowed_origins:
-    - "http://localhost:5173"   # Frontend dev server
+    - "http://localhost:3000"   # Frontend dev server
   allow_credentials: true
 ```
 
@@ -61,7 +61,7 @@ The `jwt_secret` is used to sign access and refresh tokens. Change this from the
 
 #### CORS
 
-The `allowed_origins` list must include the URL where your frontend is served. In development this is `http://localhost:5173`. In production, set it to your domain (e.g., `https://meet.example.com`).
+The `allowed_origins` list must include the URL where your frontend is served. In development this is `http://localhost:3000`. In production, set it to your domain (e.g., `https://meet.example.com`).
 
 ---
 

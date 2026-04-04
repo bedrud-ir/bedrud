@@ -35,4 +35,5 @@ access.log
 deploy
 site
 server/internal/livekit/bin/
-server/internal/livekit/LICENSE
+server/internal/livekit/LICENSEserver/tmp/
+server/tmp/

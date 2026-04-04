@@ -8,7 +8,7 @@ This guide covers the day-to-day development workflow for contributing to Bedrud
 bedrud/
 ├── server/          # Go backend
 ├── apps/
-│   ├── web/         # SvelteKit frontend
+│   ├── web/         # React frontend (TanStack Start)
 │   ├── android/     # Android app
 │   └── ios/         # iOS app
 ├── agents/          # Python bot agents
@@ -47,7 +47,7 @@ To run the entire stack locally:
 make dev
 ```
 
-This starts LiveKit, the Go server, and the Svelte dev server concurrently. Press `Ctrl+C` to stop all processes.
+This starts LiveKit, the Go server, and the React dev server concurrently. Press `Ctrl+C` to stop all processes.
 
 ### Running Services Individually
 
@@ -56,7 +56,7 @@ This starts LiveKit, the Go server, and the Svelte dev server concurrently. Pres
     ```bash
     make dev-web
     ```
-    Runs at `http://localhost:5173` with hot module replacement.
+    Runs at `http://localhost:3000` with hot module replacement.
 
 === "Go Server"
 
@@ -98,23 +98,23 @@ swag init -g cmd/server/main.go
 
 ## Web Frontend Development
 
-The frontend is at `apps/web/` and uses SvelteKit with Svelte 5.
+The frontend is at `apps/web/` and uses React 19 with TanStack Start.
 
 ### Adding a Page
 
-Create a new directory under `src/routes/` with a `+page.svelte` file. SvelteKit uses file-based routing.
+Create a new file under `src/routes/` following TanStack Router's file naming convention (e.g. `src/routes/settings.tsx`). Export a `Route` created with `createFileRoute`.
 
 ### Adding an API Client Function
 
-1. Add the function in `src/lib/api/` using `authFetch`
-2. Define TypeScript types in `src/lib/models/`
-3. Use the function from your page or component
+1. Add the function in `src/lib/api.ts` using `authFetch`
+2. Define TypeScript types inline or in a shared types file
+3. Use the function from your route component, typically via a TanStack Query `useQuery` hook
 
 ### Type Checking
 
 ```bash
 cd apps/web
-bun run check
+bun run check    # runs tsc --noEmit
 ```
 
 ## Android Development
@@ -196,7 +196,7 @@ Release builds are triggered by version tags (`v*`).
 ## Code Style
 
 - **Go:** Standard `gofmt` formatting
-- **TypeScript/Svelte:** Prettier (configured in the web project)
+- **TypeScript/React:** Prettier (configured in the web project)
 - **Kotlin:** Android Studio default formatting
 - **Swift:** Xcode default formatting
 

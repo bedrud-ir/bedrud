@@ -71,10 +71,10 @@ Bedrud provides a modern, passwordless experience using the FIDO2 standard.
 Allows users to join a meeting instantly with just a name. The server creates a temporary user record with the role `guest`.
 
 ## Interoperability & CORS
-Bedrud is designed to be accessible from multiple origins, which is crucial for development (Svelte dev server) and production (different subdomains).
+Bedrud is designed to be accessible from multiple origins, which is crucial for development (React dev server) and production (different subdomains).
 
 - **CORS Policy:** Defined in `config.yaml`. It supports `AllowCredentials: true`, which is required for the session cookies used during OAuth and Passkey ceremonies.
-- **Allowed Origins:** By default, it allows the server's own domain and `localhost:5173` (Vite's default port).
+- **Allowed Origins:** By default, it allows the server's own domain and `localhost:3000` (the React dev server port).
 
 ## User Roles (Access Control)
 Each user has a list of "accesses" (roles).

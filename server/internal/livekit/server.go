@@ -17,6 +17,10 @@ func ExportBinary(destPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read embedded LiveKit binary: %w", err)
 	}
+	// Unlink before writing — on Linux you cannot overwrite a file that is
+	// currently mapped as an executable (ETXTBSY).  Removing the path lets
+	// the running process keep its inode while we create a fresh one.
+	_ = os.Remove(destPath)
 	if err := os.WriteFile(destPath, binData, 0755); err != nil {
 		return fmt.Errorf("failed to write LiveKit binary to %s: %w", destPath, err)
 	}
