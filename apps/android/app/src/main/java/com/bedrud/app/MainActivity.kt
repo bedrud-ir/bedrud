@@ -59,7 +59,7 @@ class MainActivity : ComponentActivity() {
         handleOAuthCallback(intent)
 
         setContent {
-            val appearance by settingsStore.appearance.collectAsState(initial = settingsStore.appearance.value)
+            val appearance by settingsStore.appearance.collectAsState()
             val darkTheme = when (appearance) {
                 AppAppearance.LIGHT -> false
                 AppAppearance.DARK -> true

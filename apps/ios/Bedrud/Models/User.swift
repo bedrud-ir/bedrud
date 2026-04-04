@@ -15,18 +15,4 @@ struct User: Codable, Identifiable, Equatable, Sendable {
     }
 }
 
-// MARK: - Admin User
 
-struct AdminUser: Codable, Identifiable, Equatable, Sendable {
-    let id: String
-    let email: String
-    let name: String
-    let provider: String
-    let isActive: Bool
-    let accesses: [String]?
-    let createdAt: String
-
-    static func == (lhs: AdminUser, rhs: AdminUser) -> Bool {
-        lhs.id == rhs.id
-    }
-}
