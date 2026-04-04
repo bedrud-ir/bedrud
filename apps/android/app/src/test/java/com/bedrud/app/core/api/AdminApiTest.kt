@@ -42,7 +42,7 @@ class AdminApiTest {
             AdminUser(id = "u1", email = "a@b.com", name = "Alice", isActive = true,
                 isAdmin = false, provider = "local", createdAt = "2025-01-01")
         )
-        server.enqueue(MockResponse().setBody(gson.toJson(users)).setResponseCode(200))
+        server.enqueue(MockResponse().setBody(gson.toJson(UserListResponse(users))).setResponseCode(200))
 
         val response = adminApi.listUsers()
         val request = server.takeRequest()
@@ -50,17 +50,17 @@ class AdminApiTest {
         assertEquals("GET", request.method)
         assertEquals("/admin/users", request.path)
         assertTrue(response.isSuccessful)
-        assertEquals(1, response.body()!!.size)
-        assertEquals("u1", response.body()!![0].id)
-        assertEquals("Alice", response.body()!![0].name)
+        assertEquals(1, response.body()!!.users.size)
+        assertEquals("u1", response.body()!!.users[0].id)
+        assertEquals("Alice", response.body()!!.users[0].name)
     }
 
     @Test
     fun `listUsers returns empty list on empty response`() = runBlocking {
-        server.enqueue(MockResponse().setBody("[]").setResponseCode(200))
+        server.enqueue(MockResponse().setBody(gson.toJson(UserListResponse(emptyList()))).setResponseCode(200))
         val response = adminApi.listUsers()
         assertTrue(response.isSuccessful)
-        assertEquals(0, response.body()!!.size)
+        assertEquals(0, response.body()!!.users.size)
     }
 
     @Test
@@ -111,7 +111,7 @@ class AdminApiTest {
             AdminRoom(id = "r1", name = "Main Room", isActive = true,
                 isPublic = true, maxParticipants = 50, createdAt = "2025-01-01")
         )
-        server.enqueue(MockResponse().setBody(gson.toJson(rooms)).setResponseCode(200))
+        server.enqueue(MockResponse().setBody(gson.toJson(RoomListResponse(rooms))).setResponseCode(200))
 
         val response = adminApi.listRooms()
         val request = server.takeRequest()
@@ -119,9 +119,9 @@ class AdminApiTest {
         assertEquals("GET", request.method)
         assertEquals("/admin/rooms", request.path)
         assertTrue(response.isSuccessful)
-        assertEquals(1, response.body()!!.size)
-        assertEquals("r1", response.body()!![0].id)
-        assertTrue(response.body()!![0].isActive)
+        assertEquals(1, response.body()!!.rooms.size)
+        assertEquals("r1", response.body()!!.rooms[0].id)
+        assertTrue(response.body()!!.rooms[0].isActive)
     }
 
     @Test
@@ -154,7 +154,7 @@ class AdminApiTest {
 
     @Test
     fun `getSettings sends GET to admin-settings and parses response`() = runBlocking {
-        val settings = AdminSettings(allowRegistrations = true, requireInviteToken = false)
+        val settings = AdminSettings(registrationEnabled = true, tokenRegistrationOnly = false)
         server.enqueue(MockResponse().setBody(gson.toJson(settings)).setResponseCode(200))
 
         val response = adminApi.getSettings()
@@ -163,23 +163,23 @@ class AdminApiTest {
         assertEquals("GET", request.method)
         assertEquals("/admin/settings", request.path)
         assertTrue(response.isSuccessful)
-        assertTrue(response.body()!!.allowRegistrations)
-        assertFalse(response.body()!!.requireInviteToken)
+        assertTrue(response.body()!!.registrationEnabled)
+        assertFalse(response.body()!!.tokenRegistrationOnly)
     }
 
     @Test
     fun `updateSettings sends PUT with all fields`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(200))
 
-        val settings = AdminSettings(allowRegistrations = false, requireInviteToken = true)
+        val settings = AdminSettings(registrationEnabled = false, tokenRegistrationOnly = true)
         val response = adminApi.updateSettings(settings)
         val request = server.takeRequest()
 
         assertEquals("PUT", request.method)
         assertEquals("/admin/settings", request.path)
         val body = request.body.readUtf8()
-        assertTrue(body.contains("\"allowRegistrations\":false"))
-        assertTrue(body.contains("\"requireInviteToken\":true"))
+        assertTrue(body.contains("\"registrationEnabled\":false"))
+        assertTrue(body.contains("\"tokenRegistrationOnly\":true"))
         assertTrue(response.isSuccessful)
     }
 
@@ -191,7 +191,7 @@ class AdminApiTest {
             InviteToken(id = "t1", token = "tok-abc123", email = "x@y.com",
                 expiresAt = "2025-12-31", usedAt = null, used = false)
         )
-        server.enqueue(MockResponse().setBody(gson.toJson(tokens)).setResponseCode(200))
+        server.enqueue(MockResponse().setBody(gson.toJson(TokenListResponse(tokens))).setResponseCode(200))
 
         val response = adminApi.listInviteTokens()
         val request = server.takeRequest()
@@ -199,8 +199,8 @@ class AdminApiTest {
         assertEquals("GET", request.method)
         assertEquals("/admin/invite-tokens", request.path)
         assertTrue(response.isSuccessful)
-        assertEquals("t1", response.body()!![0].id)
-        assertEquals("tok-abc123", response.body()!![0].token)
+        assertEquals("t1", response.body()!!.tokens[0].id)
+        assertEquals("tok-abc123", response.body()!!.tokens[0].token)
     }
 
     @Test
@@ -290,7 +290,7 @@ class AdminApiTest {
     @Test
     fun `updateSettings returns error on 500`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(500))
-        val response = adminApi.updateSettings(AdminSettings(allowRegistrations = true, requireInviteToken = false))
+        val response = adminApi.updateSettings(AdminSettings(registrationEnabled = true, tokenRegistrationOnly = false))
         assertFalse(response.isSuccessful)
         assertEquals(500, response.code())
     }
