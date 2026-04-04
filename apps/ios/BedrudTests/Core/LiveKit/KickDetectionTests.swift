@@ -13,17 +13,17 @@ final class KickDetectionTests: XCTestCase {
         XCTAssertFalse(rm.wasKicked)
     }
 
-    func testWasKickedResetOnDisconnect() {
+    func testWasKickedResetOnDisconnect() async {
         let rm = RoomManager()
         // Simulate the reset that happens in disconnect()
-        rm.disconnect()
+        await rm.disconnect()
         XCTAssertFalse(rm.wasKicked)
     }
 
-    func testDisconnectResetsWasKickedToFalse() {
+    func testDisconnectResetsWasKickedToFalse() async {
         let rm = RoomManager()
         // Calling disconnect should reset wasKicked (which starts false, reset stays false)
-        rm.disconnect()
+        await rm.disconnect()
         XCTAssertFalse(rm.wasKicked)
     }
 

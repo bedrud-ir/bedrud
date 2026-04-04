@@ -2,14 +2,39 @@ import Foundation
 
 // MARK: - Admin Models
 
-struct AdminUser: Decodable, Identifiable {
+struct AdminUser: Codable, Identifiable, Equatable {
     let id: String
     let email: String
     let name: String
+    let provider: String?
     let isActive: Bool
     let isAdmin: Bool
-    let provider: String?
+    let accesses: [String]?
     let createdAt: String?
+
+    static func == (lhs: AdminUser, rhs: AdminUser) -> Bool { lhs.id == rhs.id }
+
+    enum CodingKeys: String, CodingKey {
+        case id, email, name, provider, isActive, isAdmin, accesses, createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        email = try c.decode(String.self, forKey: .email)
+        name = try c.decode(String.self, forKey: .name)
+        provider = try c.decodeIfPresent(String.self, forKey: .provider)
+        isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? false
+        isAdmin = try c.decodeIfPresent(Bool.self, forKey: .isAdmin) ?? false
+        accesses = try c.decodeIfPresent([String].self, forKey: .accesses)
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt)
+    }
+
+    init(id: String, email: String, name: String, provider: String? = nil,
+         isActive: Bool, isAdmin: Bool = false, accesses: [String]? = nil, createdAt: String? = nil) {
+        self.id = id; self.email = email; self.name = name; self.provider = provider
+        self.isActive = isActive; self.isAdmin = isAdmin; self.accesses = accesses; self.createdAt = createdAt
+    }
 }
 
 struct AdminRoom: Decodable, Identifiable {

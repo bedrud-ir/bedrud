@@ -70,6 +70,7 @@
 		AA10000100000000000000BB /* AdminAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA10000100000000000000BA /* AdminAPITests.swift */; };
 		AA10000100000000000000CB /* PasswordChangeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA10000100000000000000CA /* PasswordChangeTests.swift */; };
 		AA10000100000000000000DB /* KickDetectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA10000100000000000000DA /* KickDetectionTests.swift */; };
+		AA10000100000000000000EB /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA10000100000000000000EA /* TestHelpers.swift */; };
 		AA100001000000000000001B /* AdminAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000001A /* AdminAPI.swift */; };
 		AA100001000000000000002B /* OAuthLoginHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000002A /* OAuthLoginHandler.swift */; };
 		AA100001000000000000003B /* AdminView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001000000000000003A /* AdminView.swift */; };
@@ -154,6 +155,7 @@
 		AA10000100000000000000BA /* AdminAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAPITests.swift; sourceTree = "<group>"; };
 		AA10000100000000000000CA /* PasswordChangeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordChangeTests.swift; sourceTree = "<group>"; };
 		AA10000100000000000000DA /* KickDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickDetectionTests.swift; sourceTree = "<group>"; };
+		AA10000100000000000000EA /* TestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
 		AA100001000000000000001A /* AdminAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAPI.swift; sourceTree = "<group>"; };
 		AA100001000000000000002A /* OAuthLoginHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthLoginHandler.swift; sourceTree = "<group>"; };
 		AA100001000000000000003A /* AdminView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminView.swift; sourceTree = "<group>"; };
@@ -336,6 +338,7 @@
 				A16A81B43A1BD1AB980147F2 /* APIErrorTests.swift */,
 				78A31F7459DCE4C1238DE851 /* PasskeyDataExtensionTests.swift */,
 				CB8862D305D7CC1117BCB85C /* PasskeyErrorTests.swift */,
+				AA10000100000000000000EA /* TestHelpers.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -715,6 +718,7 @@
 				AA10000100000000000000BB /* AdminAPITests.swift in Sources */,
 				AA10000100000000000000CB /* PasswordChangeTests.swift in Sources */,
 				AA10000100000000000000DB /* KickDetectionTests.swift in Sources */,
+				AA10000100000000000000EB /* TestHelpers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
