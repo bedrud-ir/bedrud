@@ -61,7 +61,7 @@ struct InviteToken: Decodable, Identifiable {
     let email: String?
     let expiresAt: String?
     let usedAt: String?
-    let used: Bool?
+    let used: Bool
 }
 
 // MARK: - Admin List Wrappers (server wraps arrays in keyed objects)

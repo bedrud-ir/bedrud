@@ -76,7 +76,7 @@ final class AdminAPITests: XCTestCase {
             XCTAssertTrue(request.url!.absoluteString.contains("/admin/users/user123/status"))
             XCTAssertEqual(request.httpMethod, "PUT")
             let body = String(data: request.httpBody ?? Data(), encoding: .utf8) ?? ""
-            XCTAssertTrue(body.contains("active") || body.contains("false"))
+            XCTAssertTrue(body.contains("\"active\":false") || body.contains("\"active\" : false"))
             let res = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (res, Data())
         }

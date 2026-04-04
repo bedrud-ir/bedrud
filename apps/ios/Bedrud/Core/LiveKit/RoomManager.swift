@@ -375,10 +375,12 @@ private final class CallProviderDelegate: NSObject, CXProviderDelegate {
 // MARK: - Room Delegate Handler
 
 private final class RoomDelegateHandler: RoomDelegate, @unchecked Sendable {
-    private weak var manager: RoomManager?
+    @MainActor private weak var manager: RoomManager?
 
     init(manager: RoomManager) {
-        self.manager = manager
+        MainActor.assumeIsolated {
+            self.manager = manager
+        }
     }
 
     nonisolated func room(_ room: LiveKit.Room, didUpdateConnectionState connectionState: ConnectionState, from oldConnectionState: ConnectionState) {
