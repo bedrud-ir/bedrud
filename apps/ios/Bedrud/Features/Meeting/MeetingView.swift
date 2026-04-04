@@ -134,7 +134,7 @@ struct MeetingView: View {
                         HStack(spacing: 4) {
                             Text(participant.name).font(.subheadline).lineLimit(1)
                             if participant.isLocal {
-                                Text("you").font(.caption2).foregroundStyle(.accentColor)
+                                Text("you").font(.caption2).foregroundStyle(Color.accentColor)
                             }
                         }
                     }
