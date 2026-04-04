@@ -116,7 +116,7 @@ struct AdminSettingsView: View {
             Button {
                 UIPasteboard.general.string = token.token
             } label: {
-                Image(systemName: "doc.on.doc").foregroundStyle(.accentColor)
+                Image(systemName: "doc.on.doc").foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
         }
@@ -213,7 +213,7 @@ private struct TokenRow: View {
             Button {
                 UIPasteboard.general.string = token.token
             } label: {
-                Image(systemName: "doc.on.doc").foregroundStyle(.accentColor)
+                Image(systemName: "doc.on.doc").foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
         }
@@ -228,7 +228,7 @@ private struct TokenRow: View {
             .font(.caption2).fontWeight(.medium)
             .padding(.horizontal, 5).padding(.vertical, 2)
             .background(used ? Color(.systemFill) : Color.green.opacity(0.15))
-            .foregroundStyle(used ? .secondary : .green)
+            .foregroundStyle(used ? Color.gray : Color.green)
             .clipShape(Capsule())
     }
 

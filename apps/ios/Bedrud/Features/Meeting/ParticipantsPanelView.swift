@@ -90,7 +90,7 @@ private struct ParticipantRow: View {
                     if isLocal {
                         Text("you")
                             .font(.caption2)
-                            .foregroundStyle(.accentColor)
+                            .foregroundStyle(Color.accentColor)
                     }
                 }
             }
