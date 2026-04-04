@@ -196,7 +196,7 @@ jobs:
       - name: Package web build
         run: |
           mkdir -p ../../dist
-          tar -cJf ../../dist/web.tar.xz -C dist/client .
+          tar -cJf ../../dist/web.tar.xz -C dist .
 
       - uses: actions/upload-artifact@v4
         with:
@@ -276,8 +276,6 @@ jobs:
           |----------|-------|
           | Linux x86_64 | [bedrud_linux_amd64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_linux_amd64.tar.xz) |
           | Linux ARM64 | [bedrud_linux_arm64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_linux_arm64.tar.xz) |
-          | macOS x86_64 | [bedrud_darwin_amd64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_darwin_amd64.tar.xz) |
-          | macOS ARM64 | [bedrud_darwin_arm64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud_darwin_arm64.tar.xz) |
           | Android (universal) | [bedrud-android-universal.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-universal.apk) |
           | Android arm64-v8a | [bedrud-android-arm64-v8a.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-arm64-v8a.apk) |
           | Android armeabi-v7a | [bedrud-android-armeabi-v7a.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-armeabi-v7a.apk) |
@@ -329,8 +327,6 @@ jobs:
               `|----------|-------|`,
               `| Linux x86_64 | ${asset('bedrud_linux_amd64.tar.xz')} |`,
               `| Linux ARM64 | ${asset('bedrud_linux_arm64.tar.xz')} |`,
-              `| macOS x86_64 | ${asset('bedrud_darwin_amd64.tar.xz')} |`,
-              `| macOS ARM64 | ${asset('bedrud_darwin_arm64.tar.xz')} |`,
               `| Android (universal) | ${asset('bedrud-android-universal.apk')} |`,
               `| Android arm64-v8a | ${asset('bedrud-android-arm64-v8a.apk')} |`,
               `| Android armeabi-v7a | ${asset('bedrud-android-armeabi-v7a.apk')} |`,
