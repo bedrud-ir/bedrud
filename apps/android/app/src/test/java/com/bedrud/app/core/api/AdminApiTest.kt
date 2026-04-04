@@ -226,7 +226,8 @@ class AdminApiTest {
             expiresAt = null, usedAt = null, used = false)
         server.enqueue(MockResponse().setBody(gson.toJson(token)).setResponseCode(200))
 
-        val body = mapOf("email" to null, "expiresInHours" to 24)
+        @Suppress("UNCHECKED_CAST")
+        val body = mapOf("email" to null, "expiresInHours" to 24) as Map<String, Any>
         adminApi.createInviteToken(body)
         val request = server.takeRequest()
 
