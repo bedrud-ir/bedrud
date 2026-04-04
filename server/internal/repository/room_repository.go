@@ -273,8 +273,12 @@ func (r *RoomRepository) DeleteRoom(roomID, userID string) error {
 		if err := tx.Where("id = ? AND created_by = ?", roomID, userID).First(&room).Error; err != nil {
 			return err
 		}
-		tx.Where("room_id = ?", roomID).Delete(&models.RoomPermissions{})
-		tx.Where("room_id = ?", roomID).Delete(&models.RoomParticipant{})
+		if err := tx.Where("room_id = ?", roomID).Delete(&models.RoomPermissions{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("room_id = ?", roomID).Delete(&models.RoomParticipant{}).Error; err != nil {
+			return err
+		}
 		return tx.Delete(&room).Error
 	})
 }
@@ -287,8 +291,12 @@ func (r *RoomRepository) AdminDeleteRoom(roomID string) error {
 		if err := tx.Where("id = ?", roomID).First(&room).Error; err != nil {
 			return err
 		}
-		tx.Where("room_id = ?", roomID).Delete(&models.RoomPermissions{})
-		tx.Where("room_id = ?", roomID).Delete(&models.RoomParticipant{})
+		if err := tx.Where("room_id = ?", roomID).Delete(&models.RoomPermissions{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("room_id = ?", roomID).Delete(&models.RoomParticipant{}).Error; err != nil {
+			return err
+		}
 		return tx.Delete(&room).Error
 	})
 }

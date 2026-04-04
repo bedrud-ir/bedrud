@@ -238,7 +238,14 @@ func generateShortID() string {
 
 func (h *RoomHandler) ListRooms(c *fiber.Ctx) error {
 	claims := c.Locals("user").(*auth.Claims)
-	rooms, _ := h.roomRepo.GetRoomsCreatedByUser(claims.UserID)
+	rooms, err := h.roomRepo.GetRoomsCreatedByUser(claims.UserID)
+	if err != nil {
+		log.Error().Err(err).Str("userID", claims.UserID).Msg("Failed to list rooms")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to list rooms"})
+	}
+	if rooms == nil {
+		rooms = []models.Room{}
+	}
 	return c.JSON(rooms)
 }
 
@@ -414,7 +421,10 @@ func (h *RoomHandler) AdminGenerateToken(c *fiber.Ctx) error {
 
 func (h *RoomHandler) AdminCloseRoom(c *fiber.Ctx) error {
 	roomID := c.Params("roomId")
-	room, _ := h.roomRepo.GetRoom(roomID)
+	room, err := h.roomRepo.GetRoom(roomID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch room"})
+	}
 	if room == nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
 	}
@@ -435,7 +445,10 @@ func (h *RoomHandler) AdminUpdateRoom(c *fiber.Ctx) error {
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
 	}
-	room, _ := h.roomRepo.GetRoom(roomID)
+	room, err := h.roomRepo.GetRoom(roomID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch room"})
+	}
 	if room == nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
 	}
@@ -493,7 +506,10 @@ func (h *RoomHandler) AdminLiveKitStats(c *fiber.Ctx) error {
 // AdminGetRoomParticipants fetches live participant data from LiveKit for a specific room.
 func (h *RoomHandler) AdminGetRoomParticipants(c *fiber.Ctx) error {
 	roomID := c.Params("roomId")
-	room, _ := h.roomRepo.GetRoom(roomID)
+	room, err := h.roomRepo.GetRoom(roomID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch room"})
+	}
 	if room == nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
 	}
