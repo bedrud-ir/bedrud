@@ -78,6 +78,7 @@ import com.bedrud.app.core.instance.InstanceManager
 import com.bedrud.app.models.AdminRoom
 import com.bedrud.app.models.AdminSettings
 import com.bedrud.app.models.AdminUser
+import com.bedrud.app.models.CreateInviteTokenRequest
 import com.bedrud.app.models.InviteToken
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -537,10 +538,10 @@ private fun AdminSettingsContent(
                         Button(onClick = {
                             scope.launch {
                                 try {
-                                    val body = buildMap<String, Any> {
-                                        if (tokenEmail.isNotBlank()) put("email", tokenEmail)
-                                        put("expiresInHours", 168)
-                                    }
+                                    val body = CreateInviteTokenRequest(
+                                        email = tokenEmail.takeIf { it.isNotBlank() },
+                                        expiresInHours = 168
+                                    )
                                     val created = adminApi.createInviteToken(body).body()
                                     if (created != null) {
                                         tokens = tokens + created
