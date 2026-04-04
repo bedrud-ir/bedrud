@@ -139,6 +139,11 @@ func (h *UsersHandler) UpdateUserAccesses(c *fiber.Ctx) error {
 }
 
 func (h *UsersHandler) UpdateUserStatus(c *fiber.Ctx) error {
+	claims, ok := c.Locals("user").(*auth.Claims)
+	if !ok || claims == nil || !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+
 	userID := c.Params("id")
 	var input UserStatusUpdateRequest
 

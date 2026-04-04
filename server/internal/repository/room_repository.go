@@ -367,6 +367,6 @@ func (r *RoomRepository) UpdateRoom(room *models.Room) error {
 
 func (r *RoomRepository) CountActiveParticipants() (int64, error) {
 	var count int64
-	err := r.db.Model(&models.RoomParticipant{}).Distinct("user_id").Count(&count).Error
+	err := r.db.Model(&models.RoomParticipant{}).Where("is_active = ?", true).Distinct("user_id").Count(&count).Error
 	return count, err
 }

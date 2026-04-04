@@ -374,7 +374,10 @@ func (h *AuthHandler) PasskeyRegisterBegin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	sess, req, _ := h.getSession(c)
+	sess, req, err := h.getSession(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Session unavailable"})
+	}
 	sess.Values["passkey_challenge"] = challenge
 	if err := h.saveSession(c, sess, req); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save session"})
@@ -404,7 +407,10 @@ func (h *AuthHandler) PasskeyRegisterFinish(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
 
-	sess, req, _ := h.getSession(c)
+	sess, req, err := h.getSession(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Session unavailable"})
+	}
 	challenge, ok := sess.Values["passkey_challenge"].(string)
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Challenge not found in session"})
@@ -436,7 +442,10 @@ func (h *AuthHandler) PasskeyLoginBegin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	sess, req, _ := h.getSession(c)
+	sess, req, err := h.getSession(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Session unavailable"})
+	}
 	sess.Values["passkey_challenge"] = challenge
 	if err := h.saveSession(c, sess, req); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save session"})
@@ -459,7 +468,10 @@ func (h *AuthHandler) PasskeyLoginFinish(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
 
-	sess, req, _ := h.getSession(c)
+	sess, req, err := h.getSession(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Session unavailable"})
+	}
 	challenge, ok := sess.Values["passkey_challenge"].(string)
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Challenge not found in session"})
@@ -539,7 +551,10 @@ func (h *AuthHandler) PasskeySignupBegin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	sess, req, _ := h.getSession(c)
+	sess, req, err := h.getSession(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Session unavailable"})
+	}
 	sess.Values["signup_challenge"] = challenge
 	sess.Values["signup_email"] = input.Email
 	sess.Values["signup_name"] = input.Name
@@ -574,7 +589,10 @@ func (h *AuthHandler) PasskeySignupFinish(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
 
-	sess, req, _ := h.getSession(c)
+	sess, req, err := h.getSession(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Session unavailable"})
+	}
 	challenge, ok := sess.Values["signup_challenge"].(string)
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Signup session expired or not found"})
@@ -605,6 +623,9 @@ func (h *AuthHandler) PasskeySignupFinish(c *fiber.Ctx) error {
 	if tokenID, ok := sess.Values["signup_invite_token"].(string); ok && tokenID != "" && h.inviteTokenRepo != nil {
 		if err := h.inviteTokenRepo.MarkUsed(tokenID, loginResponse.User.ID); err != nil {
 			log.Error().Err(err).Str("tokenID", tokenID).Msg("Failed to mark passkey invite token as used")
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Signup succeeded but failed to record token usage",
+			})
 		}
 	}
 
