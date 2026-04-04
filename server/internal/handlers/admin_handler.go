@@ -77,7 +77,9 @@ func (h *AdminHandler) CreateInviteToken(c *fiber.Ctx) error {
 	}
 
 	b := make([]byte, 16)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate secure token"})
+	}
 	token := &models.InviteToken{
 		ID:        uuid.NewString(),
 		Token:     hex.EncodeToString(b),
