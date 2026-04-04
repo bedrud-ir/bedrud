@@ -108,6 +108,7 @@ export function CreateRoomDialog({ open, onOpenChange, onCreate }: Props) {
     setCreateError(null)
     try {
       await onCreate({ name, isPublic, maxParticipants, settings })
+      onOpenChange(false)
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create room')
     } finally {

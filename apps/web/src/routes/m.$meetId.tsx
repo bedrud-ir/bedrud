@@ -51,6 +51,7 @@ function MeetingPage() {
   const [wasKicked, setWasKicked] = useState(false)
 
   useEffect(() => {
+    if (joinData) return
     if (tokens) {
       // Authenticated: join directly
       api.post<JoinResponse>('/api/room/join', { roomName: meetId })
@@ -62,7 +63,7 @@ function MeetingPage() {
         .then(setJoinData)
         .catch((err: Error) => setJoinError(err.message))
     }
-  }, [meetId, tokens, guestName])
+  }, [meetId, tokens, guestName, joinData])
 
   // Show guest name dialog for unauthenticated users
   if (!tokens && guestName === null) {

@@ -6,7 +6,7 @@ export interface User {
   name: string
   provider: string
   isAdmin: boolean
-  accesses: string[]
+  accesses: string[] | null
   avatarUrl?: string
 }
 
