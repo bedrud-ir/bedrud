@@ -384,9 +384,9 @@ private final class RoomDelegateHandler: RoomDelegate, @unchecked Sendable {
     nonisolated func room(_ room: LiveKit.Room, didUpdateConnectionState connectionState: ConnectionState, from oldConnectionState: ConnectionState) {
         Task { @MainActor in
             switch connectionState {
-            case .disconnected(let reason):
-                // Detect kick: LiveKit Swift SDK 2.x uses `.participant` case for PARTICIPANT_REMOVED
-                if let reason, case .participant = reason {
+            case .disconnected:
+                // Detect kick: LiveKit 2.11 exposes reason via room.disconnectError
+                if room.disconnectError?.type == .participantRemoved {
                     manager?.wasKicked = true
                 }
                 manager?.updateLocalParticipant()
