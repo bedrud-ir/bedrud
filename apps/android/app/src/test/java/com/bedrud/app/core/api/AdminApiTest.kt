@@ -146,7 +146,7 @@ class AdminApiTest {
         assertEquals("PUT", request.method)
         assertEquals("/admin/rooms/room789", request.path)
         val body = request.body.readUtf8()
-        assertTrue(body.contains("100"))
+        assertTrue(body.contains("\"maxParticipants\":100"))
         assertTrue(response.isSuccessful)
     }
 

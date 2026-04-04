@@ -63,7 +63,9 @@ class InstanceManager(
         val factory = ApiClientFactory(baseURL)
 
         val interceptor = AuthInterceptor(am)
-        val authenticator = TokenAuthenticator(am, baseURL) { _authApi.value!! }
+        val authenticator = TokenAuthenticator(am, baseURL) {
+            _authApi.value ?: error("AuthApi not yet initialized — token refresh attempted before setup completed")
+        }
         val okHttp = factory.createOkHttpClient(interceptor, authenticator)
         val retrofit = factory.createRetrofit(okHttp)
 

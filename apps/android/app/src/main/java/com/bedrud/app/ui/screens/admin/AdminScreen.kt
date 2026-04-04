@@ -185,9 +185,9 @@ private fun AdminOverviewContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (isLoading) {
@@ -458,9 +458,9 @@ private fun AdminSettingsContent(
         Column(
             modifier = Modifier
                 .fillMaxSize().padding(padding)
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             settings?.let { s ->
