@@ -1,5 +1,6 @@
 mod api;
 mod app;
+mod auth;
 
 slint::include_modules!();
 
