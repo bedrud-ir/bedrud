@@ -1,0 +1,95 @@
+import { theme } from "theme.slint";
+import { Button, ButtonVariant } from "components/button.slint";
+import { ComboBox } from "std-widgets.slint";
+
+export component SettingsScreen inherits Rectangle {
+    background: theme.bg-primary;
+
+    in property <[string]> mic-devices: [];
+    in property <[string]> speaker-devices: [];
+    in-out property <string> selected-mic: "";
+    in-out property <string> selected-speaker: "";
+    in-out property <int> theme-index: 2;        // 0=Light 1=Dark 2=System
+    in-out property <int> noise-suppression-index: 0; // 0=None 1=RNNoise 2=Krisp
+
+    callback back-clicked;
+    callback save-clicked;
+
+    VerticalLayout {
+        // Toolbar
+        Rectangle {
+            height: 56px;
+            background: theme.bg-secondary;
+            border-width: 1px;
+            border-color: theme.border;
+
+            HorizontalLayout {
+                padding-left: theme.space-md;
+                padding-right: theme.space-md;
+                spacing: theme.space-md;
+
+                Button {
+                    text: "← Back";
+                    variant: ButtonVariant.secondary;
+                    height: 32px;
+                    clicked => { back-clicked(); }
+                }
+                Text {
+                    text: "Settings";
+                    font-size: theme.font-lg;
+                    font-weight: 700;
+                    color: theme.text-primary;
+                    vertical-alignment: center;
+                    height: parent.height;
+                }
+            }
+        }
+
+        // Content
+        VerticalLayout {
+            padding: theme.space-xl;
+            spacing: theme.space-lg;
+            width: 480px;
+            x: theme.space-xl;
+
+            // Appearance section
+            VerticalLayout {
+                spacing: theme.space-sm;
+                Text { text: "Appearance"; font-size: theme.font-lg; font-weight: 600; color: theme.text-primary; }
+                Text { text: "Theme"; color: theme.text-secondary; font-size: theme.font-sm; }
+                ComboBox {
+                    width: 200px;
+                    model: ["Light", "Dark", "System"];
+                    current-index <=> theme-index;
+                }
+            }
+
+            // Audio devices section
+            VerticalLayout {
+                spacing: theme.space-sm;
+                Text { text: "Audio Devices"; font-size: theme.font-lg; font-weight: 600; color: theme.text-primary; }
+                Text { text: "Microphone"; color: theme.text-secondary; font-size: theme.font-sm; }
+                ComboBox { width: 300px; model: mic-devices; current-value <=> selected-mic; }
+                Text { text: "Speaker"; color: theme.text-secondary; font-size: theme.font-sm; }
+                ComboBox { width: 300px; model: speaker-devices; current-value <=> selected-speaker; }
+            }
+
+            // Noise suppression section
+            VerticalLayout {
+                spacing: theme.space-sm;
+                Text { text: "Noise Suppression"; font-size: theme.font-lg; font-weight: 600; color: theme.text-primary; }
+                ComboBox {
+                    width: 200px;
+                    model: ["None", "RNNoise (WASM)", "Krisp"];
+                    current-index <=> noise-suppression-index;
+                }
+            }
+
+            Button {
+                text: "Save Settings";
+                width: 160px;
+                clicked => { save-clicked(); }
+            }
+        }
+    }
+}

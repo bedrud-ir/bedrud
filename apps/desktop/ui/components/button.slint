@@ -1,0 +1,46 @@
+import { theme } from "../theme.slint";
+
+export enum ButtonVariant { primary, secondary, destructive }
+
+export component Button inherits Rectangle {
+    in property <string> text;
+    in property <ButtonVariant> variant: ButtonVariant.primary;
+    in property <bool> enabled: true;
+    in property <bool> loading: false;
+    callback clicked;
+
+    height: 36px;
+    border-radius: theme.radius-md;
+    background: variant == ButtonVariant.destructive ? theme.destructive
+              : variant == ButtonVariant.secondary ? theme.bg-card
+              : theme.accent;
+
+    states [
+        disabled when !enabled || loading: {
+            opacity: 0.5;
+        }
+        hovered when touch.has-hover && enabled: {
+            background: variant == ButtonVariant.destructive ? theme.destructive-hover
+                      : variant == ButtonVariant.secondary ? theme.bg-hover
+                      : theme.accent-hover;
+        }
+    ]
+
+    HorizontalLayout {
+        padding-left: theme.space-md;
+        padding-right: theme.space-md;
+        alignment: center;
+
+        Text {
+            text: loading ? "…" : root.text;
+            color: theme.text-primary;
+            font-size: theme.font-base;
+            font-weight: 500;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled && !root.loading;
+        clicked => { root.clicked(); }
+    }
+}

@@ -1,0 +1,61 @@
+import { ListView } from "std-widgets.slint";
+import { theme } from "../theme.slint";
+import { Button, ButtonVariant } from "../components/button.slint";
+
+export struct AdminUserRow {
+    id: string,
+    email: string,
+    name: string,
+    provider: string,
+    is-active: bool,
+    accesses: string,
+}
+
+export component UserTable inherits Rectangle {
+    in property <[AdminUserRow]> users: [];
+    callback toggle-status(string, bool);
+
+    VerticalLayout {
+        // Header row
+        Rectangle {
+            height: 36px;
+            background: theme.bg-card;
+            HorizontalLayout {
+                padding-left: theme.space-sm;
+                spacing: theme.space-md;
+                Text { text: "Name"; color: theme.text-secondary; font-size: theme.font-sm; font-weight: 600; width: 140px; vertical-alignment: center; height: parent.height; }
+                Text { text: "Email"; color: theme.text-secondary; font-size: theme.font-sm; font-weight: 600; width: 200px; vertical-alignment: center; height: parent.height; }
+                Text { text: "Provider"; color: theme.text-secondary; font-size: theme.font-sm; font-weight: 600; width: 80px; vertical-alignment: center; height: parent.height; }
+                Text { text: "Accesses"; color: theme.text-secondary; font-size: theme.font-sm; font-weight: 600; width: 120px; vertical-alignment: center; height: parent.height; }
+                Text { text: "Status"; color: theme.text-secondary; font-size: theme.font-sm; font-weight: 600; width: 80px; vertical-alignment: center; height: parent.height; }
+            }
+        }
+
+        // Data rows
+        ListView {
+            vertical-stretch: 1;
+            for user in users: Rectangle {
+                height: 40px;
+                border-width: 1px;
+                border-color: theme.border;
+
+                HorizontalLayout {
+                    padding-left: theme.space-sm;
+                    spacing: theme.space-md;
+
+                    Text { text: user.name; color: theme.text-primary; font-size: theme.font-sm; overflow: elide; width: 140px; vertical-alignment: center; height: parent.height; }
+                    Text { text: user.email; color: theme.text-secondary; font-size: theme.font-sm; overflow: elide; width: 200px; vertical-alignment: center; height: parent.height; }
+                    Text { text: user.provider; color: theme.text-muted; font-size: theme.font-sm; width: 80px; vertical-alignment: center; height: parent.height; }
+                    Text { text: user.accesses; color: theme.text-muted; font-size: theme.font-sm; overflow: elide; width: 120px; vertical-alignment: center; height: parent.height; }
+                    Button {
+                        text: user.is-active ? "Active" : "Disabled";
+                        variant: user.is-active ? ButtonVariant.secondary : ButtonVariant.destructive;
+                        width: 80px;
+                        height: 28px;
+                        clicked => { toggle-status(user.id, !user.is-active); }
+                    }
+                }
+            }
+        }
+    }
+}
