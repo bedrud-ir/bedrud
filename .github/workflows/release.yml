@@ -358,6 +358,7 @@ jobs:
             cp artifacts/android-release-apk/app-release.apk release-assets/bedrud-release.apk
           [ -f artifacts/ios-ipa/Bedrud.ipa ] && \
             cp artifacts/ios-ipa/Bedrud.ipa release-assets/Bedrud.ipa
+          find artifacts/bedrud-desktop-* -type f -exec cp {} release-assets/ \;
           ls -la release-assets/
 
       - name: Create GitHub release

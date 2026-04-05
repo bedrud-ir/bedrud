@@ -1,10 +1,12 @@
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
 use slint::ComponentHandle;
+use slint::Model;
 
 use crate::AppWindow;
 use crate::NavScreen;
 use crate::RoomData;
+use crate::ChatMessage;
 use crate::api::{auth, rooms};
 use crate::api::client::ApiClient;
 use crate::auth::session::SessionStore;
@@ -182,6 +184,155 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
         window.on_save_settings(move || {
             if let Some(w) = ww.upgrade() {
                 w.set_current_screen(NavScreen::Dashboard);
+            }
+        });
+    }
+
+    // passkey_login — stub: passkey is complex, just show an error
+    {
+        let ww = w.clone();
+        window.on_passkey_login(move || {
+            if let Some(w) = ww.upgrade() {
+                w.set_login_error("Passkey login is not yet supported on desktop.".into());
+            }
+        });
+    }
+
+    // guest_login — call auth::guest_login
+    {
+        let api = ctx.api.clone();
+        let session = ctx.session.clone();
+        let rt = ctx.rt.clone();
+        let ww = w.clone();
+        window.on_guest_login(move |name| {
+            let api = api.clone();
+            let session = session.clone();
+            let ww = ww.clone();
+            rt.spawn(async move {
+                let result = auth::guest_login(&api, &name).await;
+                slint::invoke_from_event_loop(move || {
+                    if let Some(w) = ww.upgrade() {
+                        match result {
+                            Ok(resp) => {
+                                api.set_token(Some(resp.tokens.access_token.clone()));
+                                let _ = session.save_access_token(&resp.tokens.access_token);
+                                w.set_user_name(resp.user.name.into());
+                                w.set_is_admin(false);
+                                w.set_current_screen(NavScreen::Dashboard);
+                                w.invoke_load_rooms();
+                            }
+                            Err(e) => {
+                                w.set_login_error(e.to_string().into());
+                            }
+                        }
+                    }
+                }).ok();
+            });
+        });
+    }
+
+    // register — call auth::register
+    {
+        let api = ctx.api.clone();
+        let session = ctx.session.clone();
+        let rt = ctx.rt.clone();
+        let ww = w.clone();
+        window.on_register(move |email, name, password, invite_token| {
+            let api = api.clone();
+            let session = session.clone();
+            let ww = ww.clone();
+            let invite = if invite_token.is_empty() { None } else { Some(invite_token.to_string()) };
+            rt.spawn(async move {
+                let result = auth::register(&api, &email, &name, &password, invite.as_deref()).await;
+                slint::invoke_from_event_loop(move || {
+                    if let Some(w) = ww.upgrade() {
+                        match result {
+                            Ok(resp) => {
+                                api.set_token(Some(resp.tokens.access_token.clone()));
+                                let _ = session.save_access_token(&resp.tokens.access_token);
+                                let is_admin = resp.user.is_admin();
+                                w.set_user_name(resp.user.name.into());
+                                w.set_is_admin(is_admin);
+                                w.set_current_screen(NavScreen::Dashboard);
+                                w.invoke_load_rooms();
+                            }
+                            Err(e) => {
+                                w.set_login_error(e.to_string().into());
+                            }
+                        }
+                    }
+                }).ok();
+            });
+        });
+    }
+
+    // create_room — call rooms::create_room
+    {
+        let api = ctx.api.clone();
+        let rt = ctx.rt.clone();
+        let ww = w.clone();
+        window.on_create_room(move |name, is_public, max_participants| {
+            let api = api.clone();
+            let ww = ww.clone();
+            let room_name = if name.is_empty() {
+                None
+            } else {
+                Some(name.to_string())
+            };
+            rt.spawn(async move {
+                let req = rooms::CreateRoomRequest {
+                    name: room_name,
+                    is_public,
+                    max_participants,
+                    settings: rooms::RoomSettings::default(),
+                };
+                if rooms::create_room(&api, req).await.is_ok() {
+                    slint::invoke_from_event_loop(move || {
+                        if let Some(w) = ww.upgrade() {
+                            w.invoke_load_rooms();
+                        }
+                    }).ok();
+                }
+            });
+        });
+    }
+
+    // delete_room — call rooms::delete_room
+    {
+        let api = ctx.api.clone();
+        let rt = ctx.rt.clone();
+        let ww = w.clone();
+        window.on_delete_room(move |room_id| {
+            let api = api.clone();
+            let ww = ww.clone();
+            rt.spawn(async move {
+                if rooms::delete_room(&api, &room_id).await.is_ok() {
+                    slint::invoke_from_event_loop(move || {
+                        if let Some(w) = ww.upgrade() {
+                            w.invoke_load_rooms();
+                        }
+                    }).ok();
+                }
+            });
+        });
+    }
+
+    // send_chat — append to chat messages model
+    {
+        let ww = w.clone();
+        window.on_send_chat(move |message| {
+            if let Some(w) = ww.upgrade() {
+                let current = w.get_chat_messages();
+                let mut messages: Vec<ChatMessage> = (0..current.row_count())
+                    .map(|i| current.row_data(i).unwrap())
+                    .collect();
+                messages.push(ChatMessage {
+                    sender: w.get_user_name(),
+                    content: message,
+                    timestamp: "".into(),
+                    is_system: false,
+                });
+                w.set_chat_messages(std::rc::Rc::new(slint::VecModel::from(messages)).into());
             }
         });
     }
