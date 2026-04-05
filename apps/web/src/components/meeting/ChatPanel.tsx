@@ -2,9 +2,87 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocalParticipant } from '@livekit/components-react'
 import { X, Send, MessageSquare } from 'lucide-react'
 import { useMeetingContext } from '@/components/meeting/MeetingContext'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import type { Components } from 'react-markdown'
 
 interface Props {
   onClose: () => void
+}
+
+function ChatMarkdown({ content, isLocal }: { content: string; isLocal: boolean }) {
+  const linkColor = isLocal ? 'rgba(255,255,255,0.9)' : 'rgba(165,180,252,0.9)'
+  const codeBackground = isLocal ? 'rgba(0,0,0,0.25)' : 'rgba(99,102,241,0.15)'
+
+  const components: Components = {
+    a: ({ href, children }) => (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: linkColor, textDecoration: 'underline', wordBreak: 'break-all' }}
+      >
+        {children}
+      </a>
+    ),
+    p: ({ children }) => (
+      <p style={{ margin: 0, lineHeight: 1.45 }}>{children}</p>
+    ),
+    code: ({ children, className }) => {
+      const isBlock = Boolean(className)
+      return isBlock ? (
+        <pre style={{
+          margin: '4px 0', padding: '6px 9px', borderRadius: 6,
+          background: codeBackground, overflowX: 'auto', fontSize: 12,
+        }}>
+          <code>{children}</code>
+        </pre>
+      ) : (
+        <code style={{
+          background: codeBackground, borderRadius: 4,
+          padding: '1px 5px', fontSize: 12,
+        }}>
+          {children}
+        </code>
+      )
+    },
+    ul: ({ children }) => (
+      <ul style={{ margin: '2px 0', paddingLeft: 18 }}>{children}</ul>
+    ),
+    ol: ({ children }) => (
+      <ol style={{ margin: '2px 0', paddingLeft: 18 }}>{children}</ol>
+    ),
+    li: ({ children }) => (
+      <li style={{ lineHeight: 1.45 }}>{children}</li>
+    ),
+    strong: ({ children }) => (
+      <strong style={{ fontWeight: 700 }}>{children}</strong>
+    ),
+    em: ({ children }) => (
+      <em style={{ fontStyle: 'italic' }}>{children}</em>
+    ),
+    blockquote: ({ children }) => (
+      <blockquote style={{
+        margin: '4px 0', paddingLeft: 10,
+        borderLeft: `2px solid ${isLocal ? 'rgba(255,255,255,0.4)' : 'rgba(165,180,252,0.4)'}`,
+        color: isLocal ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.5)',
+      }}>
+        {children}
+      </blockquote>
+    ),
+    h1: ({ children }) => <strong style={{ fontSize: 15 }}>{children}</strong>,
+    h2: ({ children }) => <strong style={{ fontSize: 14 }}>{children}</strong>,
+    h3: ({ children }) => <strong style={{ fontSize: 13 }}>{children}</strong>,
+  }
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={components}
+    >
+      {content}
+    </ReactMarkdown>
+  )
 }
 
 const panel: React.CSSProperties = {
@@ -155,7 +233,7 @@ export function ChatPanel({ onClose }: Props) {
                   fontSize: 13, lineHeight: 1.45,
                   wordBreak: 'break-word',
                 }}>
-                  {msg.message}
+                  <ChatMarkdown content={msg.message} isLocal={isLocal} />
                 </div>
               </div>
             )
