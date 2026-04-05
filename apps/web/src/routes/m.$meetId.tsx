@@ -402,21 +402,21 @@ function ChatToastNotifier({ chatOpen }: { chatOpen: boolean }) {
           style={{
             background: 'rgba(15,15,28,0.96)',
             border: '1px solid rgba(99,102,241,0.35)',
-            borderRadius: 12,
-            padding: '10px 14px',
-            maxWidth: 280,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+            borderRadius: 14,
+            padding: '13px 16px',
+            maxWidth: 340,
+            boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
             backdropFilter: 'blur(16px)',
             display: 'flex',
             flexDirection: 'column',
-            gap: 3,
+            gap: 5,
           }}
         >
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#a5b4fc' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#a5b4fc' }}>
             {toast.sender}
           </span>
           <span style={{
-            fontSize: 13,
+            fontSize: 14,
             color: 'rgba(255,255,255,0.75)',
             overflow: 'hidden',
             display: '-webkit-box',

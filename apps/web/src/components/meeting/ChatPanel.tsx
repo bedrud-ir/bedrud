@@ -25,10 +25,14 @@ export function ChatPanel({ onClose }: Props) {
   const [draft, setDraft] = useState('')
   const [sendError, setSendError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  // Mark all messages as read when the panel opens
+  // Mark all messages as read when the panel opens + focus input
   useEffect(() => {
     markRead()
+    // Small delay so the panel animation doesn't fight the focus
+    const t = setTimeout(() => inputRef.current?.focus(), 80)
+    return () => clearTimeout(t)
   }, [markRead])
 
   useEffect(() => {
@@ -167,6 +171,7 @@ export function ChatPanel({ onClose }: Props) {
         )}
         <form onSubmit={handleSend} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input
+            ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Type a message…"
