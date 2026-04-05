@@ -28,7 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { PhoneOff, LogOut, Radio, Users, Wifi } from 'lucide-react'
+import { PhoneOff, LogOut, Radio, Users, Wifi, Mic, Video, X } from 'lucide-react'
 import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
 import { AudioProcessorManager } from '@/components/meeting/AudioProcessorManager'
 
@@ -263,6 +263,7 @@ function MeetingPage() {
       <div className="fixed inset-0 overflow-hidden" style={{ background: '#07070f' }}>
       <MeetingProvider roomId={id} roomName={roomName} adminId={adminId ?? ''}>
         <KickDetector onKicked={() => setWasKicked(true)} />
+        <AskActionBanner />
         <AudioProcessorManager />
         {/* Ambient depth gradients */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
@@ -299,8 +300,18 @@ function MeetingPage() {
 // ── Layout switcher (inside LiveKitRoom context) ───────────────
 function MeetingLayout() {
   const { pinned, toggle, clear } = usePinnedParticipants()
+  const { systemMessages } = useMeetingContext()
   const screenShareTracks = useTracks([Track.Source.ScreenShare])
   const isFocusMode = screenShareTracks.length > 0 || pinned.size > 0
+
+  // Auto-pin on spotlight system message
+  const lastSpotlightTsRef = useRef(0)
+  useEffect(() => {
+    const last = [...systemMessages].reverse().find((m) => m.event === 'spotlight')
+    if (!last || last.ts <= lastSpotlightTsRef.current) return
+    lastSpotlightTsRef.current = last.ts
+    if (!pinned.has(last.target)) toggle(last.target)
+  }, [systemMessages, pinned, toggle])
 
   useEffect(() => () => clear(), [clear])
 
@@ -483,6 +494,65 @@ function MeetingControls({ chatOpen, participantsOpen, onToggleChat, onTogglePar
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+// ── Ask-action notification banner ────────────────────────────
+function AskActionBanner() {
+  const { systemMessages, currentUserId } = useMeetingContext()
+  const [dismissed, setDismissed] = useState<number>(0)
+
+  const lastAsk = [...systemMessages]
+    .reverse()
+    .find((m) => (m.event === 'ask_unmute' || m.event === 'ask_camera') && m.target === currentUserId)
+
+  if (!lastAsk || lastAsk.ts <= dismissed) return null
+
+  const isUnmute = lastAsk.event === 'ask_unmute'
+
+  return (
+    <div
+      role="alert"
+      style={{
+        position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
+        zIndex: 60,
+        background: 'rgba(15,15,30,0.95)',
+        border: '1px solid rgba(99,102,241,0.4)',
+        borderRadius: 12,
+        padding: '12px 16px',
+        display: 'flex', alignItems: 'center', gap: 12,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        backdropFilter: 'blur(16px)',
+        maxWidth: 340,
+      }}
+    >
+      <div style={{
+        width: 32, height: 32, borderRadius: 8,
+        background: 'rgba(99,102,241,0.15)',
+        border: '1px solid rgba(99,102,241,0.3)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {isUnmute
+          ? <Mic size={15} style={{ color: '#a5b4fc' }} />
+          : <Video size={15} style={{ color: '#a5b4fc' }} />
+        }
+      </div>
+      <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, flex: 1 }}>
+        {isUnmute ? 'A moderator is asking you to unmute.' : 'A moderator is asking you to turn on your camera.'}
+      </span>
+      <button
+        onClick={() => setDismissed(lastAsk.ts)}
+        style={{
+          background: 'none', border: 'none', padding: 4, cursor: 'pointer',
+          color: 'rgba(255,255,255,0.3)', flexShrink: 0,
+          display: 'flex', alignItems: 'center',
+        }}
+        aria-label="Dismiss"
+      >
+        <X size={14} />
+      </button>
+    </div>
   )
 }
 
