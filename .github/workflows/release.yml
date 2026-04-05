@@ -49,7 +49,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           cache-dependency-path: server/go.sum
 
       - name: Build and embed frontend
@@ -430,8 +430,8 @@ jobs:
             libdbus-1-dev libsecret-1-dev \
             libasound2-dev
 
-      - name: Install NSIS (Windows ARM64)
-        if: matrix.os == 'windows-11-arm'
+      - name: Install NSIS (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: choco install nsis -y --no-progress
 

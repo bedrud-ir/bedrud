@@ -12,7 +12,7 @@ COPY apps/web/ ./
 RUN bun run build
 
 # ── Stage 2: Server binary ───────────────────────────────────────────────────
-FROM golang:1.24-alpine AS backend
+FROM golang:1.25-alpine AS backend
 ARG TARGETARCH
 ARG LIVEKIT_VERSION=1.10.1
 

@@ -87,7 +87,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           cache-dependency-path: server/go.sum
 
       - name: Build and embed frontend
@@ -130,7 +130,8 @@ jobs:
 
           {
             echo "Package: bedrud"
-            echo "Version: ${{ needs.prepare.outputs.tag }}"
+            DEB_VER=$(printf '%s' "${{ needs.prepare.outputs.tag }}" | sed 's/^[^0-9]/0~&/')
+            echo "Version: ${DEB_VER}"
             echo "Architecture: ${{ matrix.deb_arch }}"
             echo "Maintainer: Bedrud <info@bedrud.ir>"
             echo "Description: Bedrud self-hosted video meeting server"
@@ -281,8 +282,8 @@ jobs:
             libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
             libdbus-1-dev libsecret-1-dev \
             libasound2-dev
-      - name: Install NSIS (Windows ARM64)
-        if: matrix.os == 'windows-11-arm'
+      - name: Install NSIS (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: choco install nsis -y --no-progress
       - name: Build release binary
@@ -309,7 +310,8 @@ jobs:
 
           {
             echo "Package: bedrud-desktop"
-            echo "Version: ${{ needs.prepare.outputs.tag }}"
+            DEB_VER=$(printf '%s' "${{ needs.prepare.outputs.tag }}" | sed 's/^[^0-9]/0~&/')
+            echo "Version: ${DEB_VER}"
             echo "Architecture: ${{ matrix.deb_arch }}"
             echo "Maintainer: Bedrud <info@bedrud.ir>"
             echo "Description: Bedrud Desktop — self-hosted video meeting client"
