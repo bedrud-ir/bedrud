@@ -168,3 +168,7 @@
 .meet-connecting {
   animation: meet-connecting-spin 1.2s linear infinite;
 }
+
+.strip-scroll::-webkit-scrollbar {
+  display: none;
+}
