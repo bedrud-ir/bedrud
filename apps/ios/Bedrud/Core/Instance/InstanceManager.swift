@@ -9,6 +9,7 @@ final class InstanceManager: ObservableObject {
     @Published private(set) var authAPI: AuthAPI?
     @Published private(set) var authManager: AuthManager?
     @Published private(set) var roomAPI: RoomAPI?
+    @Published private(set) var adminAPI: AdminAPI?
     @Published private(set) var passkeyManager: PasskeyManager?
     @Published private(set) var isAuthenticated: Bool = false
 
@@ -64,6 +65,7 @@ final class InstanceManager: ObservableObject {
             authAPI = nil
             authManager = nil
             roomAPI = nil
+            adminAPI = nil
             passkeyManager = nil
             isAuthenticated = false
             authCancellable = nil
@@ -74,17 +76,18 @@ final class InstanceManager: ObservableObject {
         let auth = AuthAPI(client: client)
         let am = AuthManager(instanceId: instance.id, authAPI: auth)
         let room = RoomAPI(client: client, authManager: am)
+        let adminApi = AdminAPI(client: client, authManager: am)
         let pk = PasskeyManager(authAPI: auth, authManager: am)
 
         self.apiClient = client
         self.authAPI = auth
         self.authManager = am
         self.roomAPI = room
+        self.adminAPI = adminApi
         self.passkeyManager = pk
 
         // Relay auth state changes to trigger root view updates
         authCancellable = am.$isAuthenticated
-            .receive(on: RunLoop.main)
             .sink { [weak self] value in
                 self?.isAuthenticated = value
             }

@@ -542,7 +542,7 @@ final class AuthManagerTests: XCTestCase {
 
     // MARK: - Restore Session Edge Cases
 
-    func testRestoreSessionWithCorruptedUserData() {
+    func testRestoreSessionWithCorruptedUserData() async throws {
         keychain["test-instance_access_token"] = fakeJWT()
         keychain["test-instance_refresh_token"] = "refresh"
         keychain["test-instance_user_data"] = "invalid json data {"
@@ -555,6 +555,9 @@ final class AuthManagerTests: XCTestCase {
         }
 
         let manager = makeAuthManager()
+        // Wait for the background /auth/me validation task to complete
+        try await Task.sleep(nanoseconds: 100_000_000)
+
         // Should still restore session successfully via /auth/me
         XCTAssertTrue(manager.isAuthenticated)
         XCTAssertNotNil(manager.currentUser)

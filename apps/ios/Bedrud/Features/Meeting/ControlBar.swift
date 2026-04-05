@@ -4,6 +4,8 @@ struct ControlBar: View {
     @ObservedObject var roomManager: RoomManager
     let onLeave: () -> Void
     @Binding var showChat: Bool
+    @Binding var showParticipants: Bool
+    var unreadChatCount: Int = 0
 
     var body: some View {
         HStack(spacing: 0) {
@@ -47,14 +49,40 @@ struct ControlBar: View {
 
             Spacer()
 
-            // Chat
+            // Chat with unread badge
+            ZStack(alignment: .topTrailing) {
+                controlButton(
+                    icon: "bubble.left.fill",
+                    label: "Chat",
+                    isActive: showChat,
+                    tint: showChat ? .accentColor : .primary
+                ) {
+                    showChat.toggle()
+                    if showChat { showParticipants = false }
+                }
+                if unreadChatCount > 0 {
+                    Text(unreadChatCount > 9 ? "9+" : "\(unreadChatCount)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(.red)
+                        .clipShape(Capsule())
+                        .offset(x: 8, y: -4)
+                }
+            }
+
+            Spacer()
+
+            // Participants
             controlButton(
-                icon: "bubble.left.fill",
-                label: "Chat",
-                isActive: showChat,
-                tint: showChat ? .accentColor : .primary
+                icon: "person.3.fill",
+                label: "People",
+                isActive: showParticipants,
+                tint: showParticipants ? .accentColor : .primary
             ) {
-                showChat.toggle()
+                showParticipants.toggle()
+                if showParticipants { showChat = false }
             }
 
             Spacer()
@@ -118,7 +146,8 @@ struct ControlBar: View {
         ControlBar(
             roomManager: RoomManager(),
             onLeave: {},
-            showChat: .constant(false)
+            showChat: .constant(false),
+            showParticipants: .constant(false)
         )
     }
 }

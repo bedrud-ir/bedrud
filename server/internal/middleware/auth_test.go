@@ -25,6 +25,7 @@ func getTestConfig() *config.Config {
 				TokenDuration: 1,
 			},
 		}
+		config.SetForTest(testCfg)
 	})
 	return testCfg
 }
@@ -33,6 +34,109 @@ func generateTestToken(userID, email, name, provider string, accesses []string) 
 	cfg := getTestConfig()
 	token, _ := auth.GenerateToken(userID, email, name, provider, accesses, cfg)
 	return token
+}
+
+// --- Tests using the real Protected() and RequireAccess() functions ---
+
+func TestProtected_Real_NoAuthHeader(t *testing.T) {
+	getTestConfig() // ensure config is set
+	app := fiber.New()
+	app.Use(Protected())
+	app.Get("/test", func(c *fiber.Ctx) error { return c.SendString("ok") })
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	resp, _ := app.Test(req)
+	if resp.StatusCode != fiber.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestProtected_Real_ValidToken(t *testing.T) {
+	cfg := getTestConfig()
+	token, _ := auth.GenerateToken("u1", "t@ex.com", "T", "local", []string{"user"}, cfg)
+
+	app := fiber.New()
+	app.Use(Protected())
+	app.Get("/test", func(c *fiber.Ctx) error {
+		claims := c.Locals("user").(*auth.Claims)
+		return c.SendString(claims.UserID)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req)
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "u1" {
+		t.Fatalf("expected 'u1', got '%s'", string(body))
+	}
+}
+
+func TestProtected_Real_InvalidToken(t *testing.T) {
+	getTestConfig()
+	app := fiber.New()
+	app.Use(Protected())
+	app.Get("/test", func(c *fiber.Ctx) error { return c.SendString("ok") })
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer bad-token")
+	resp, _ := app.Test(req)
+	if resp.StatusCode != fiber.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestProtected_Real_NoBearerPrefix(t *testing.T) {
+	cfg := getTestConfig()
+	token, _ := auth.GenerateToken("u2", "u2@ex.com", "U2", "local", []string{"user"}, cfg)
+
+	app := fiber.New()
+	app.Use(Protected())
+	app.Get("/test", func(c *fiber.Ctx) error {
+		claims := c.Locals("user").(*auth.Claims)
+		return c.SendString(claims.UserID)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", token) // no "Bearer " prefix
+	resp, _ := app.Test(req)
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestRequireAccess_Real_HasAccess(t *testing.T) {
+	app := fiber.New()
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("user", &auth.Claims{UserID: "u1", Accesses: []string{"admin"}})
+		return c.Next()
+	})
+	app.Use(RequireAccess(models.AccessAdmin))
+	app.Get("/admin", func(c *fiber.Ctx) error { return c.SendString("ok") })
+
+	req := httptest.NewRequest("GET", "/admin", nil)
+	resp, _ := app.Test(req)
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestRequireAccess_Real_InsufficientAccess(t *testing.T) {
+	app := fiber.New()
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("user", &auth.Claims{UserID: "u1", Accesses: []string{"user"}})
+		return c.Next()
+	})
+	app.Use(RequireAccess(models.AccessAdmin))
+	app.Get("/admin", func(c *fiber.Ctx) error { return c.SendString("ok") })
+
+	req := httptest.NewRequest("GET", "/admin", nil)
+	resp, _ := app.Test(req)
+	if resp.StatusCode != fiber.StatusForbidden {
+		t.Fatalf("expected 403, got %d", resp.StatusCode)
+	}
 }
 
 func TestProtected_NoAuthHeader(t *testing.T) {

@@ -23,9 +23,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.bedrud.app.core.auth.OAuthLoginHandler
 import com.bedrud.app.core.deeplink.BedrudURLParser
 import com.bedrud.app.core.instance.InstanceManager
 import com.bedrud.app.core.pip.PipStateHolder
+import com.bedrud.app.ui.screens.auth.GuestLoginScreen
 import com.bedrud.app.ui.screens.auth.LoginScreen
 import com.bedrud.app.ui.screens.auth.RegisterScreen
 import com.bedrud.app.ui.screens.instance.AddInstanceScreen
@@ -44,6 +46,7 @@ class MainActivity : ComponentActivity() {
     private val pipStateHolder: PipStateHolder by inject()
 
     private val _deepLinkRoomName = MutableStateFlow<String?>(null)
+    private val _oauthToken = MutableStateFlow<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,6 +54,9 @@ class MainActivity : ComponentActivity() {
 
         // Parse deep link from initial intent
         handleDeepLink(intent)
+
+        // Handle OAuth callback from initial intent (app not running)
+        handleOAuthCallback(intent)
 
         setContent {
             val appearance by settingsStore.appearance.collectAsState()
@@ -67,7 +73,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     BedrudNavHost(
                         instanceManager = instanceManager,
-                        deepLinkRoomName = _deepLinkRoomName
+                        deepLinkRoomName = _deepLinkRoomName,
+                        oauthToken = _oauthToken
                     )
                 }
             }
@@ -77,12 +84,20 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleDeepLink(intent)
+        handleOAuthCallback(intent)
     }
 
     private fun handleDeepLink(intent: Intent?) {
         val uri = intent?.data ?: return
         val parsed = BedrudURLParser.parse(uri.toString()) ?: return
         _deepLinkRoomName.value = parsed.roomName
+    }
+
+    private fun handleOAuthCallback(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (!OAuthLoginHandler.isOAuthCallback(uri)) return
+        val token = OAuthLoginHandler.extractToken(intent) ?: return
+        _oauthToken.value = token
     }
 
     override fun onUserLeaveHint() {
@@ -110,6 +125,7 @@ object Routes {
     const val ADD_INSTANCE = "add_instance"
     const val LOGIN = "login"
     const val REGISTER = "register"
+    const val GUEST_LOGIN = "guest_login"
     const val MAIN = "main"
     const val MEETING = "meeting/{roomName}"
 
@@ -119,11 +135,13 @@ object Routes {
 @Composable
 fun BedrudNavHost(
     instanceManager: InstanceManager,
-    deepLinkRoomName: MutableStateFlow<String?> = MutableStateFlow(null)
+    deepLinkRoomName: MutableStateFlow<String?> = MutableStateFlow(null),
+    oauthToken: MutableStateFlow<String?> = MutableStateFlow(null)
 ) {
     val navController = rememberNavController()
     val instances by instanceManager.store.instances.collectAsState()
     val authManager by instanceManager.authManager.collectAsState()
+    val authApi by instanceManager.authApi.collectAsState()
     val isLoggedIn = authManager?.isLoggedIn?.collectAsState()?.value ?: false
 
     LaunchedEffect(instances.isEmpty(), isLoggedIn, authManager) {
@@ -135,6 +153,31 @@ fun BedrudNavHost(
         navController.navigate(target) {
             popUpTo(0) { inclusive = true }
         }
+    }
+
+    // Handle OAuth callback — save token then fetch user profile
+    val oauthTokenValue by oauthToken.collectAsState()
+    LaunchedEffect(oauthTokenValue) {
+        val token = oauthTokenValue ?: return@LaunchedEffect
+        val manager = authManager ?: return@LaunchedEffect
+        val api = authApi ?: return@LaunchedEffect
+        // Save access token first so getMe() uses it in the Authorization header
+        manager.saveTokens(token, "")
+        val me = api.getMe()
+        if (me.isSuccessful) {
+            val body = me.body()!!
+            manager.saveUser(
+                com.bedrud.app.models.User(
+                    id = body.id,
+                    email = body.email,
+                    name = body.name,
+                    avatarUrl = body.avatarUrl,
+                    isAdmin = body.isAdmin,
+                    provider = body.provider
+                )
+            )
+        }
+        oauthToken.value = null
     }
 
     // Handle deep links
@@ -171,6 +214,9 @@ fun BedrudNavHost(
                 onNavigateToRegister = {
                     navController.navigate(Routes.REGISTER)
                 },
+                onNavigateToGuest = {
+                    navController.navigate(Routes.GUEST_LOGIN)
+                },
                 onBack = {
                     navController.navigate(Routes.ADD_INSTANCE) {
                         popUpTo(0) { inclusive = true }
@@ -187,6 +233,24 @@ fun BedrudNavHost(
                     }
                 },
                 onNavigateToLogin = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Routes.GUEST_LOGIN) {
+            GuestLoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.GUEST_LOGIN) { inclusive = true }
+                    }
+                },
+                onBack = {
                     navController.popBackStack()
                 }
             )

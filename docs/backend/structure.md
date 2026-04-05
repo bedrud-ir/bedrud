@@ -9,7 +9,7 @@ Bedrud is structured as a mono-repo. The `server/` directory is the heart of the
 ```text
 bedrud/
 ├── apps/                # Client Applications
-│   ├── web/             # Svelte 5 Frontend (Source)
+│   ├── web/             # React Frontend (TanStack Start)
 │   ├── android/         # Native Android Application
 │   └── ios/             # Native iOS Application
 ├── server/              # Go Backend (The "Appliance")
@@ -64,7 +64,7 @@ This is where the core logic lives.
 
 Bedrud uses the `//go:embed` directive to bundle files into the compiled binary.
 
-- **Frontend:** The entire Svelte `dist/` folder is embedded in `server/ui.go`. Static files are served directly from memory using Fiber's `filesystem` middleware.
+- **Frontend:** The React `dist/client/` folder (plus a pre-rendered `index.html`) is embedded in `server/ui.go`. Static files are served directly from memory using Fiber's `filesystem` middleware.
 - **LiveKit Server:** Since LiveKit is a complex Go application itself, we embed the pre-compiled `livekit-server` executable in `internal/livekit/bin/`. At runtime, Bedrud extracts this binary to `/tmp/bedrud-livekit-server` and launches it as a background process (`internal/livekit/server.go`).
 
 ### 2. LiveKit Reverse Proxy

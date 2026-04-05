@@ -12,6 +12,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  LIVEKIT_VERSION: "1.10.1"
 
 jobs:
   # ── Server binaries (multi-platform) ─────────────────────────
@@ -26,21 +27,13 @@ jobs:
             suffix: linux_amd64
             cgo: "1"
             cc: gcc
+            lk_arch: amd64
           - goos: linux
             goarch: arm64
             suffix: linux_arm64
             cgo: "1"
             cc: aarch64-linux-gnu-gcc
-          - goos: darwin
-            goarch: amd64
-            suffix: darwin_amd64
-            cgo: "0"
-            cc: ""
-          - goos: darwin
-            goarch: arm64
-            suffix: darwin_arm64
-            cgo: "0"
-            cc: ""
+            lk_arch: arm64
     steps:
       - uses: actions/checkout@v4
 
@@ -57,19 +50,22 @@ jobs:
           go-version: "1.24"
           cache-dependency-path: server/go.sum
 
-      # Build frontend
-      - name: Build frontend
+      # Build and embed frontend into server
+      - name: Build and embed frontend
         working-directory: apps/web
         run: |
           bun install --frozen-lockfile
-          bun run build
+          bun run build:embed
 
-      # Embed frontend into server
-      - name: Embed frontend
+      - name: Download LiveKit binary
+        env:
+          LK_ARCH: ${{ matrix.lk_arch }}
         run: |
-          rm -rf server/frontend
-          mkdir -p server/frontend
-          cp -r apps/web/build/* server/frontend/
+          mkdir -p server/internal/livekit/bin
+          LK_FILENAME="livekit_${LIVEKIT_VERSION}_linux_${LK_ARCH}.tar.gz"
+          curl -fsSL "https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/${LK_FILENAME}" -o "/tmp/${LK_FILENAME}"
+          tar -xzf "/tmp/${LK_FILENAME}" -C server/internal/livekit/bin/ livekit-server
+          chmod +x server/internal/livekit/bin/livekit-server
 
       # Build server binary
       - name: Build server binary
@@ -86,13 +82,16 @@ jobs:
       - name: Package binary
         run: |
           cd dist
+          cp bedrud bedrud_${{ matrix.suffix }}
           tar -cJf bedrud_${{ matrix.suffix }}.tar.xz bedrud
           rm bedrud
 
       - uses: actions/upload-artifact@v4
         with:
           name: server-${{ matrix.suffix }}
-          path: dist/bedrud_${{ matrix.suffix }}.tar.xz
+          path: |
+            dist/bedrud_${{ matrix.suffix }}.tar.xz
+            dist/bedrud_${{ matrix.suffix }}
 
   # ── Docker image ──────────────────────────────────────────────
   docker:
@@ -313,6 +312,7 @@ jobs:
           mkdir -p release-assets
           # Server binaries
           find artifacts/server-* -name "*.tar.xz" -exec cp {} release-assets/ \;
+          find artifacts/server-* -not -name "*.tar.xz" -not -name "." -type f -exec cp {} release-assets/ \;
           # Android APKs
           [ -f artifacts/android-debug-apk/app-debug.apk ] && \
             cp artifacts/android-debug-apk/app-debug.apk release-assets/bedrud-debug.apk
@@ -328,3 +328,70 @@ jobs:
         with:
           generate_release_notes: true
           files: release-assets/*
+
+  # ── Telegram notification ─────────────────────────────────────
+  telegram:
+    name: Notify Telegram
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.result == 'success'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: "{server-*,android-*,ios-*}"
+
+      - name: Collect assets
+        run: |
+          mkdir -p tg-assets
+          find artifacts/server-* -name "*.tar.xz" -exec cp {} tg-assets/ \; 2>/dev/null || true
+          [ -f artifacts/android-debug-apk/app-debug.apk ]     && cp artifacts/android-debug-apk/app-debug.apk     tg-assets/bedrud-debug.apk   || true
+          [ -f artifacts/android-release-apk/app-release.apk ] && cp artifacts/android-release-apk/app-release.apk tg-assets/bedrud-release.apk || true
+          [ -f artifacts/ios-ipa/Bedrud.ipa ]                   && cp artifacts/ios-ipa/Bedrud.ipa                  tg-assets/Bedrud.ipa          || true
+          ls -lh tg-assets/
+
+      - name: Send message and files to Telegram
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          RELEASE_URL="https://github.com/${REPO}/releases/tag/${TAG}"
+
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${CHAT_ID}" \
+            -d "parse_mode=HTML" \
+            -d "disable_web_page_preview=true" \
+            --data-urlencode "text=🚀 <b>Bedrud ${TAG} released</b>
+
+<a href=\"${RELEASE_URL}\">View release on GitHub</a>
+
+<b>Server binaries</b>
+• <a href=\"https://github.com/${REPO}/releases/download/${TAG}/bedrud_linux_amd64.tar.xz\">Linux x86_64</a>
+• <a href=\"https://github.com/${REPO}/releases/download/${TAG}/bedrud_linux_arm64.tar.xz\">Linux ARM64</a>
+
+<b>Android</b>
+• <a href=\"https://github.com/${REPO}/releases/download/${TAG}/bedrud-release.apk\">Release APK</a>
+• <a href=\"https://github.com/${REPO}/releases/download/${TAG}/bedrud-debug.apk\">Debug APK</a>"
+
+          # Upload files ≤ 49 MB directly; larger ones are linked in the message above.
+          MAX=49000000
+          upload() {
+            local f="$1" caption="$2"
+            local size
+            size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f")
+            if [ "$size" -le "$MAX" ]; then
+              echo "Uploading $(basename "$f") (${size} bytes)"
+              curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+                -F "chat_id=${CHAT_ID}" \
+                -F "document=@${f}" \
+                -F "caption=${caption}" || echo "⚠ upload failed for $(basename "$f")"
+            else
+              echo "⚠ $(basename "$f") is ${size} bytes — too large for direct upload, linked in message"
+            fi
+          }
+
+          for f in tg-assets/*.apk tg-assets/*.ipa tg-assets/*.tar.xz; do
+            [ -f "$f" ] && upload "$f" "Bedrud ${TAG} — $(basename "$f")"
+          done

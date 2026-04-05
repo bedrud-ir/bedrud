@@ -54,6 +54,13 @@ data class MeResponse(
     val provider: String? = null
 )
 
+data class ChangePasswordRequest(
+    @SerializedName("currentPassword")
+    val currentPassword: String,
+    @SerializedName("newPassword")
+    val newPassword: String
+)
+
 // --- Passkeys ---
 
 data class PasskeySignupBeginRequest(
@@ -107,6 +114,8 @@ data class UserRoomResponse(
     val createdBy: String,
     @SerializedName("isActive")
     val isActive: Boolean,
+    @SerializedName("isPublic")
+    val isPublic: Boolean? = null,
     @SerializedName("maxParticipants")
     val maxParticipants: Int,
     @SerializedName("expiresAt")
@@ -115,6 +124,53 @@ data class UserRoomResponse(
     val relationship: String,
     val mode: String
 )
+
+// --- Admin ---
+
+data class AdminUser(
+    val id: String,
+    val email: String,
+    val name: String,
+    @SerializedName("isActive") val isActive: Boolean = true,
+    @SerializedName("isAdmin") val isAdmin: Boolean = false,
+    val provider: String? = null,
+    @SerializedName("createdAt") val createdAt: String? = null
+)
+
+data class AdminRoom(
+    val id: String,
+    val name: String,
+    @SerializedName("isActive") val isActive: Boolean = false,
+    @SerializedName("isPublic") val isPublic: Boolean = true,
+    @SerializedName("maxParticipants") val maxParticipants: Int = 20,
+    @SerializedName("createdAt") val createdAt: String? = null
+)
+
+data class AdminSettings(
+    @SerializedName("registrationEnabled") val registrationEnabled: Boolean = true,
+    @SerializedName("tokenRegistrationOnly") val tokenRegistrationOnly: Boolean = false
+)
+
+data class InviteToken(
+    val id: String,
+    val token: String,
+    val email: String? = null,
+    @SerializedName("expiresAt") val expiresAt: String? = null,
+    @SerializedName("usedAt") val usedAt: String? = null,
+    val used: Boolean = false
+)
+
+// --- Admin list wrappers (server wraps arrays in keyed objects) ---
+
+data class UserListResponse(val users: List<AdminUser>)
+data class RoomListResponse(val rooms: List<AdminRoom>)
+data class TokenListResponse(val tokens: List<InviteToken>)
+
+// --- Admin Requests ---
+
+data class SetAccessesRequest(val accesses: List<String>)
+
+data class CreateInviteTokenRequest(val email: String?, val expiresInHours: Int)
 
 // --- Generic ---
 

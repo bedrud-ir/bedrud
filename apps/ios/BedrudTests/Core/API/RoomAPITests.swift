@@ -343,4 +343,46 @@ final class RoomAPITests: XCTestCase {
             XCTFail("Unexpected error type: \(error)")
         }
     }
+
+    // MARK: - banParticipant
+
+    func testBanParticipantSendsCorrectEndpoint() async throws {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.absoluteString.contains("/room/r1/ban/baduser"))
+            XCTAssertEqual(request.httpMethod, "POST")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        try await roomAPI.banParticipant(roomId: "r1", identity: "baduser")
+    }
+
+    func testBanParticipantThrowsOn403() async {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 403, httpVersion: nil, headerFields: nil)!
+            return (response, #"{"error":"not authorized"}"#.data(using: .utf8)!)
+        }
+
+        do {
+            try await roomAPI.banParticipant(roomId: "r1", identity: "user1")
+            XCTFail("Should throw on 403")
+        } catch { /* expected */ }
+    }
+
+    func testBanParticipantIncludesAuthHeader() async throws {
+        authenticateManager()
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertNotNil(request.value(forHTTPHeaderField: "Authorization"))
+            XCTAssertTrue(request.value(forHTTPHeaderField: "Authorization")!.hasPrefix("Bearer "))
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        try await roomAPI.banParticipant(roomId: "room1", identity: "user1")
+    }
 }

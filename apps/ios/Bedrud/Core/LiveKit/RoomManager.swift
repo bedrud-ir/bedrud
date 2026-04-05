@@ -53,6 +53,7 @@ final class RoomManager: ObservableObject {
     @Published var isScreenShareEnabled: Bool = false
     @Published private(set) var error: String?
     @Published private(set) var chatMessages: [ChatMessage] = []
+    @Published fileprivate(set) var wasKicked: Bool = false
 
     // MARK: - LiveKit Room
 
@@ -172,6 +173,7 @@ final class RoomManager: ObservableObject {
         isCameraEnabled = false
         isScreenShareEnabled = false
         chatMessages = []
+        wasKicked = false
         cancellables.removeAll()
         #if os(iOS)
         endCallKitCall()
@@ -373,16 +375,22 @@ private final class CallProviderDelegate: NSObject, CXProviderDelegate {
 // MARK: - Room Delegate Handler
 
 private final class RoomDelegateHandler: RoomDelegate, @unchecked Sendable {
-    private weak var manager: RoomManager?
+    @MainActor private weak var manager: RoomManager?
 
     init(manager: RoomManager) {
-        self.manager = manager
+        MainActor.assumeIsolated {
+            self.manager = manager
+        }
     }
 
     nonisolated func room(_ room: LiveKit.Room, didUpdateConnectionState connectionState: ConnectionState, from oldConnectionState: ConnectionState) {
         Task { @MainActor in
             switch connectionState {
             case .disconnected:
+                // Detect kick: LiveKit 2.11 exposes reason via room.disconnectError
+                if room.disconnectError?.type == .participantRemoved {
+                    manager?.wasKicked = true
+                }
                 manager?.updateLocalParticipant()
                 manager?.updateRemoteParticipants()
             case .connected:

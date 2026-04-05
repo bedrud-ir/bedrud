@@ -9,28 +9,47 @@ struct MeetingView: View {
 
     @State private var showError = false
     @State private var showChat = false
+    @State private var showParticipants = false
+    @State private var showLeaveDialog = false
+    @State private var lastReadChatCount = 0
+
+    private var unreadChatCount: Int {
+        showChat ? 0 : max(0, roomManager.chatMessages.count - lastReadChatCount)
+    }
+
+    private var isAdmin: Bool {
+        roomManager.localParticipant?.identity == joinResponse.adminId
+    }
 
     var body: some View {
         ZStack {
-            Color.systemBackground
-                .ignoresSafeArea()
+            // Kick detection overlay
+            if roomManager.wasKicked {
+                kickedScreen
+            } else {
+                Color.systemBackground
+                    .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                meetingTopBar
+                VStack(spacing: 0) {
+                    meetingTopBar
 
-                videoGrid
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    videoGrid
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                ControlBar(
-                    roomManager: roomManager,
-                    onLeave: {
-                        Task {
-                            await roomManager.disconnect()
-                            dismiss()
-                        }
-                    },
-                    showChat: $showChat
-                )
+                    ControlBar(
+                        roomManager: roomManager,
+                        onLeave: {
+                            if isAdmin {
+                                showLeaveDialog = true
+                            } else {
+                                Task { await roomManager.disconnect(); dismiss() }
+                            }
+                        },
+                        showChat: $showChat,
+                        showParticipants: $showParticipants,
+                        unreadChatCount: unreadChatCount
+                    )
+                }
             }
         }
         #if os(iOS)
@@ -46,7 +65,105 @@ struct MeetingView: View {
         }
         .sheet(isPresented: $showChat) {
             ChatSheetView(roomManager: roomManager)
+                .onAppear { lastReadChatCount = roomManager.chatMessages.count }
         }
+        .sheet(isPresented: $showParticipants) {
+            participantsPanelSheet
+        }
+        .confirmationDialog("Leave Meeting", isPresented: $showLeaveDialog, titleVisibility: .visible) {
+            Button("End for Everyone", role: .destructive) {
+                Task {
+                    // TODO: call roomAPI.deleteRoom(joinResponse.id) when roomAPI is accessible here
+                    await roomManager.disconnect()
+                    dismiss()
+                }
+            }
+            Button("Just Leave") {
+                Task { await roomManager.disconnect(); dismiss() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Do you want to end the meeting for everyone or just leave?")
+        }
+    }
+
+    // MARK: - Kicked screen
+
+    private var kickedScreen: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "person.badge.minus")
+                .font(.system(size: 64))
+                .foregroundStyle(.red)
+
+            Text("You were removed")
+                .font(.title2.bold())
+
+            Text("A moderator removed you from this meeting.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Button {
+                Task { await roomManager.disconnect(); dismiss() }
+            } label: {
+                Text("Back to Dashboard")
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.systemBackground)
+    }
+
+    // MARK: - Participants Panel Sheet
+
+    private var participantsPanelSheet: some View {
+        let allParticipants = buildParticipantList()
+        return NavigationStack {
+            List(allParticipants, id: \.id) { participant in
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(participantColor(for: participant.name))
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Text(participant.name.prefix(1).uppercased())
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
+                        )
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text(participant.name).font(.subheadline).lineLimit(1)
+                            if participant.isLocal {
+                                Text("you").font(.caption2).foregroundStyle(Color.accentColor)
+                            }
+                        }
+                    }
+                    Spacer()
+                    HStack(spacing: 6) {
+                        if !participant.isMicrophoneEnabled {
+                            Image(systemName: "mic.slash.fill").font(.caption).foregroundStyle(.secondary)
+                        }
+                        if !participant.isCameraEnabled {
+                            Image(systemName: "video.slash.fill").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .navigationTitle("Participants (\(allParticipants.count))")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { showParticipants = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func participantColor(for name: String) -> Color {
+        let colors: [Color] = [.indigo, .purple, .teal, .cyan, .orange, .pink]
+        return colors[abs(name.hashValue) % colors.count]
     }
 
     // MARK: - Top Bar

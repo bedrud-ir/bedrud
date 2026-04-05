@@ -1,55 +1,30 @@
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
-import compression from 'vite-plugin-compression';
-import { visualizer } from 'rollup-plugin-visualizer';
+import { defineConfig } from 'vite'
+import { devtools } from '@tanstack/devtools-vite'
+import tsconfigPaths from 'vite-tsconfig-paths'
 
-export default defineConfig({
-	plugins: [
-		sveltekit(),
-		compression({
-			algorithm: 'brotliCompress',
-			ext: '.br',
-		}),
-		compression({
-			algorithm: 'gzip',
-			ext: '.gz',
-		}),
-		visualizer({
-			emitFile: true,
-			filename: 'stats.html',
-		}),
-	],
-	build: {
-		target: 'esnext',
-		minify: 'terser',
-		terserOptions: {
-			compress: {
-				drop_console: true,
-				drop_debugger: true,
-			},
-		},
-		rollupOptions: {
-			output: {
-				manualChunks: (id) => {
-					if (id.includes('node_modules')) {
-						if (id.includes('livekit-client')) {
-							return 'vendor-livekit';
-						}
-						return 'vendor';
-					}
-				},
-			},
-		},
-		reportCompressedSize: true,
-		chunkSizeWarningLimit: 1000,
-	},
-	server: {
-		allowedHosts: ['b.a16.at', 'bedrud.xyz'],
-		proxy: {
-			'/api': {
-				target: 'http://localhost:8090',
-				changeOrigin: true,
-			},
-		},
-	}
-});
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+
+import viteReact from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+
+const config = defineConfig({
+  plugins: [
+    devtools(),
+    tsconfigPaths({ projects: ['./tsconfig.json'] }),
+    tailwindcss(),
+    tanstackStart(),
+    viteReact(),
+  ],
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': 'http://localhost:8090',
+      '/livekit': {
+        target: 'http://localhost:8090',
+        ws: true,
+      },
+    },
+  },
+})
+
+export default config

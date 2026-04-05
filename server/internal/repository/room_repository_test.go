@@ -1210,3 +1210,102 @@ func TestRoomRepository_UpdateParticipantStatus_ChatBlocked(t *testing.T) {
 		t.Fatal("expected chat to be blocked")
 	}
 }
+
+func TestRoomRepository_GetAllActiveRooms(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	repo := NewRoomRepository(db)
+
+	db.Create(&models.User{ID: "user-gar", Email: "gar@ex.com", Name: "GAR", Provider: "local", IsActive: true})
+
+	r1, _ := repo.CreateRoom("user-gar", "active-room-1", false, "standard", models.RoomSettings{})
+	r2, _ := repo.CreateRoom("user-gar", "active-room-2", false, "standard", models.RoomSettings{})
+
+	// Mark r2 as idle
+	_ = repo.SetRoomIdle(r2.ID)
+
+	actives, err := repo.GetAllActiveRooms()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(actives) != 1 {
+		t.Fatalf("expected 1 active room, got %d", len(actives))
+	}
+	if actives[0].ID != r1.ID {
+		t.Fatalf("expected active room to be r1, got %s", actives[0].ID)
+	}
+}
+
+func TestRoomRepository_SetRoomIdle(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	repo := NewRoomRepository(db)
+
+	db.Create(&models.User{ID: "user-sri", Email: "sri@ex.com", Name: "SRI", Provider: "local", IsActive: true})
+
+	room, _ := repo.CreateRoom("user-sri", "idle-room", false, "standard", models.RoomSettings{})
+	if !room.IsActive {
+		t.Fatal("expected room to be active initially")
+	}
+
+	err := repo.SetRoomIdle(room.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	updated, _ := repo.GetRoom(room.ID)
+	if updated.IsActive {
+		t.Fatal("expected room to be inactive after SetRoomIdle")
+	}
+}
+
+func TestRoomRepository_UpdateRoom(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	repo := NewRoomRepository(db)
+
+	db.Create(&models.User{ID: "user-ur", Email: "ur@ex.com", Name: "UR", Provider: "local", IsActive: true})
+
+	room, _ := repo.CreateRoom("user-ur", "update-room", false, "standard", models.RoomSettings{})
+
+	room.MaxParticipants = 99
+	err := repo.UpdateRoom(room)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	updated, _ := repo.GetRoom(room.ID)
+	if updated.MaxParticipants != 99 {
+		t.Fatalf("expected MaxParticipants 99, got %d", updated.MaxParticipants)
+	}
+}
+
+func TestRoomRepository_CountActiveParticipants(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	repo := NewRoomRepository(db)
+
+	db.Create(&models.User{ID: "user-cap1", Email: "cap1@ex.com", Name: "CAP1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: "user-cap2", Email: "cap2@ex.com", Name: "CAP2", Provider: "local", IsActive: true})
+
+	room, _ := repo.CreateRoom("user-cap1", "cap-room", false, "standard", models.RoomSettings{})
+	_ = repo.AddParticipant(room.ID, "user-cap2")
+
+	count, err := repo.CountActiveParticipants()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// creator + cap2 = 2 distinct users
+	if count < 1 {
+		t.Fatalf("expected at least 1 active participant, got %d", count)
+	}
+}
+
+func TestRoomRepository_CountActiveParticipants_Empty(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	repo := NewRoomRepository(db)
+
+	count, err := repo.CountActiveParticipants()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected 0 participants in empty DB, got %d", count)
+	}
+}

@@ -131,7 +131,7 @@ func (r *UserRepository) CleanupBlockedTokens() error {
 func (r *UserRepository) UpdateUserAccesses(userID string, accesses []string) error {
 	result := r.db.Model(&models.User{}).
 		Where("id = ?", userID).
-		Update("accesses", accesses)
+		Update("accesses", models.StringArray(accesses))
 
 	return result.Error
 }

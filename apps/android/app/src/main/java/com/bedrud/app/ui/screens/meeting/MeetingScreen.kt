@@ -33,8 +33,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
@@ -43,6 +45,8 @@ import androidx.compose.material.icons.filled.StopScreenShare
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -63,13 +67,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -120,11 +127,21 @@ fun MeetingScreen(
     val isCameraEnabled by roomManager.isCameraEnabled.collectAsState()
     val isScreenShareEnabled by roomManager.isScreenShareEnabled.collectAsState()
     val error by roomManager.error.collectAsState()
+    val wasKicked by roomManager.wasKicked.collectAsState()
 
     val participantVersion by roomManager.participantVersion.collectAsState()
     val chatMessages by roomManager.chatMessages.collectAsState()
     var showChat by remember { mutableStateOf(false) }
+    var showParticipants by remember { mutableStateOf(false) }
     var chatInput by remember { mutableStateOf("") }
+
+    // Unread chat count while panel is closed
+    var lastReadCount by rememberSaveable { mutableIntStateOf(0) }
+    val unreadCount = if (showChat) 0 else (chatMessages.size - lastReadCount).coerceAtLeast(0)
+    LaunchedEffect(showChat) { if (showChat) lastReadCount = chatMessages.size }
+
+    // Leave/end dialog
+    var showLeaveDialog by remember { mutableStateOf(false) }
 
     var roomInfo by remember { mutableStateOf<JoinRoomResponse?>(null) }
     var isJoining by remember { mutableStateOf(true) }
@@ -186,6 +203,15 @@ fun MeetingScreen(
         error?.let {
             snackbarHostState.showSnackbar(it)
         }
+    }
+
+    // "You were removed" overlay shown after kick
+    if (wasKicked) {
+        KickedScreen(onBack = {
+            roomManager.disconnect()
+            onLeave()
+        })
+        return
     }
 
     Scaffold(
@@ -275,38 +301,12 @@ fun MeetingScreen(
                             Column(
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                // Room header
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = roomName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-
-                                    if (connectionState == ConnectionState.RECONNECTING) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(14.dp),
-                                                strokeWidth = 2.dp
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                text = "Reconnecting...",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.error
-                                            )
-                                        }
-                                    }
-                                }
+                                // Meeting Header HUD
+                                MeetingHeaderHUD(
+                                    roomName = roomName,
+                                    participantCount = participants.size,
+                                    connectionState = connectionState
+                                )
 
                                 val columns = when {
                                     participants.size <= 1 -> 1
@@ -402,34 +402,81 @@ fun MeetingScreen(
                                         )
                                     }
 
-                                    // Chat toggle
+                                    // Chat toggle with unread badge
                                     SmallFloatingActionButton(
-                                        onClick = { showChat = !showChat },
+                                        onClick = {
+                                            showChat = !showChat
+                                            if (showChat) showParticipants = false
+                                        },
                                         containerColor = if (showChat)
                                             MaterialTheme.colorScheme.primary
                                         else MaterialTheme.colorScheme.surfaceVariant
                                     ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.Chat,
-                                            contentDescription = "Toggle Chat"
-                                        )
+                                        BadgedBox(badge = {
+                                            if (unreadCount > 0) {
+                                                Badge { Text(if (unreadCount > 9) "9+" else unreadCount.toString()) }
+                                            }
+                                        }) {
+                                            Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Toggle Chat")
+                                        }
                                     }
 
-                                    // Leave call
+                                    // Participants panel toggle
+                                    SmallFloatingActionButton(
+                                        onClick = {
+                                            showParticipants = !showParticipants
+                                            if (showParticipants) showChat = false
+                                        },
+                                        containerColor = if (showParticipants)
+                                            MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant
+                                    ) {
+                                        Icon(Icons.Default.People, contentDescription = "Participants")
+                                    }
+
+                                    // Leave / End call
                                     FloatingActionButton(
                                         onClick = {
-                                            CallService.stop(context)
-                                            onLeave()
+                                            if (isAdmin) showLeaveDialog = true
+                                            else { CallService.stop(context); onLeave() }
                                         },
                                         containerColor = MaterialTheme.colorScheme.error,
                                         contentColor = MaterialTheme.colorScheme.onError,
-                                        elevation = FloatingActionButtonDefaults.elevation(
-                                            defaultElevation = 0.dp
-                                        )
+                                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 0.dp)
                                     ) {
-                                        Icon(
-                                            Icons.Default.CallEnd,
-                                            contentDescription = "Leave Call"
+                                        Icon(Icons.Default.CallEnd, contentDescription = "Leave Call")
+                                    }
+
+                                    // Leave/End dialog for room creator
+                                    if (showLeaveDialog) {
+                                        AlertDialog(
+                                            onDismissRequest = { showLeaveDialog = false },
+                                            title = { Text("Leave Meeting") },
+                                            text = { Text("Do you want to end the meeting for everyone or just leave?") },
+                                            confirmButton = {
+                                                TextButton(onClick = {
+                                                    showLeaveDialog = false
+                                                    scope.launch {
+                                                        try {
+                                                            roomApi.deleteRoom(roomId)
+                                                        } catch (_: Exception) {}
+                                                        CallService.stop(context)
+                                                        onLeave()
+                                                    }
+                                                }) {
+                                                    Text("End for Everyone", color = MaterialTheme.colorScheme.error)
+                                                }
+                                            },
+                                            dismissButton = {
+                                                Row {
+                                                    TextButton(onClick = {
+                                                        showLeaveDialog = false
+                                                        CallService.stop(context)
+                                                        onLeave()
+                                                    }) { Text("Just Leave") }
+                                                    TextButton(onClick = { showLeaveDialog = false }) { Text("Cancel") }
+                                                }
+                                            }
                                         )
                                     }
                                 }
@@ -455,6 +502,25 @@ fun MeetingScreen(
                                         }
                                     },
                                     onClose = { showChat = false }
+                                )
+                            }
+
+                            // Participants panel - slides in from the right
+                            AnimatedVisibility(
+                                visible = showParticipants,
+                                enter = slideInHorizontally(initialOffsetX = { it }),
+                                exit = slideOutHorizontally(targetOffsetX = { it }),
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            ) {
+                                ParticipantsPanel(
+                                    participants = participants,
+                                    localIdentity = room.localParticipant.identity?.value,
+                                    isAdmin = isAdmin,
+                                    roomId = roomId,
+                                    roomApi = roomApi,
+                                    snackbarHostState = snackbarHostState,
+                                    scope = scope,
+                                    onClose = { showParticipants = false }
                                 )
                             }
                         }
@@ -688,8 +754,309 @@ private fun ParticipantTile(
                         showKickConfirm = true
                     }
                 )
+                DropdownMenuItem(
+                    text = { Text("Ban", color = MaterialTheme.colorScheme.error) },
+                    onClick = {
+                        showMenu = false
+                        scope?.launch {
+                            try {
+                                roomApi?.banParticipant(roomId, identity)
+                            } catch (e: Exception) {
+                                snackbarHostState?.showSnackbar(e.message ?: "Failed to ban participant")
+                            }
+                        }
+                    }
+                )
             }
         }
+    }
+}
+
+// ── Participants Panel ─────────────────────────────────────────────────────────
+
+@Composable
+private fun ParticipantsPanel(
+    participants: List<Participant>,
+    localIdentity: String?,
+    isAdmin: Boolean,
+    roomId: String,
+    roomApi: RoomApi?,
+    snackbarHostState: SnackbarHostState,
+    scope: kotlinx.coroutines.CoroutineScope,
+    onClose: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(300.dp)
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                "Participants (${participants.size})",
+                style = MaterialTheme.typography.titleMedium
+            )
+            IconButton(onClick = onClose) {
+                Icon(Icons.Default.Close, contentDescription = "Close")
+            }
+        }
+
+        androidx.compose.material3.HorizontalDivider()
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(participants) { participant ->
+                val identity = participant.identity?.value ?: ""
+                val name = participant.name?.ifBlank { identity } ?: identity
+                val isLocal = identity == localIdentity
+
+                ParticipantListRow(
+                    name = name,
+                    identity = identity,
+                    isLocal = isLocal,
+                    isAdmin = isAdmin,
+                    roomId = roomId,
+                    roomApi = roomApi,
+                    snackbarHostState = snackbarHostState,
+                    scope = scope
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ParticipantListRow(
+    name: String,
+    identity: String,
+    isLocal: Boolean,
+    isAdmin: Boolean,
+    roomId: String,
+    roomApi: RoomApi?,
+    snackbarHostState: SnackbarHostState,
+    scope: kotlinx.coroutines.CoroutineScope
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    val avatarColor = remember(name) {
+        val colors = listOf(0xFF6366F1, 0xFF8B5CF6, 0xFF06B6D4, 0xFF10B981, 0xFFF59E0B, 0xFFEF4444)
+        colors[Math.abs(name.hashCode()) % colors.size]
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Gradient avatar
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(androidx.compose.ui.graphics.Color(avatarColor)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                name.take(1).uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                color = androidx.compose.ui.graphics.Color.White
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (isLocal) {
+                    Text(
+                        "you",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        // Three-dot menu for admins (on remote participants only)
+        if (isAdmin && !isLocal && roomApi != null) {
+            Box {
+                IconButton(
+                    onClick = { showMenu = true },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Badge,
+                        contentDescription = "More options",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Mute") },
+                        onClick = {
+                            showMenu = false
+                            scope.launch {
+                                try { roomApi.muteParticipant(roomId, identity) }
+                                catch (e: Exception) { snackbarHostState.showSnackbar(e.message ?: "Failed") }
+                            }
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Kick", color = MaterialTheme.colorScheme.error) },
+                        onClick = {
+                            showMenu = false
+                            scope.launch {
+                                try { roomApi.kickParticipant(roomId, identity) }
+                                catch (e: Exception) { snackbarHostState.showSnackbar(e.message ?: "Failed") }
+                            }
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Ban", color = MaterialTheme.colorScheme.error) },
+                        onClick = {
+                            showMenu = false
+                            scope.launch {
+                                try { roomApi.banParticipant(roomId, identity) }
+                                catch (e: Exception) { snackbarHostState.showSnackbar(e.message ?: "Failed") }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Kicked screen ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun KickedScreen(onBack: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.Badge,
+                contentDescription = null,
+                modifier = Modifier.size(72.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "You were removed",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "A moderator removed you from this meeting.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            androidx.compose.material3.FilledTonalButton(onClick = onBack) {
+                Text("Back to Dashboard")
+            }
+        }
+    }
+}
+
+// ── Meeting header HUD ────────────────────────────────────────────────────────
+
+@Composable
+private fun MeetingHeaderHUD(
+    roomName: String,
+    participantCount: Int,
+    connectionState: ConnectionState
+) {
+    var clockText by remember { mutableStateOf(java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))) }
+    DisposableEffect(Unit) {
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val runnable = object : Runnable {
+            override fun run() {
+                clockText = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+                handler.postDelayed(this, 60_000L)
+            }
+        }
+        handler.postDelayed(runnable, 60_000L)
+        onDispose { handler.removeCallbacks(runnable) }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // LIVE badge
+        Box(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(4.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            Text("LIVE", style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer)
+        }
+
+        // Room name (monospace)
+        Text(
+            text = roomName,
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+
+        // Participant count
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.People, contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.width(2.dp))
+            Text(participantCount.toString(), style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        // Clock
+        Text(clockText, style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        // Connection state dot
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(
+                    when (connectionState) {
+                        ConnectionState.CONNECTED -> MaterialTheme.colorScheme.primary
+                        ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.error
+                    }
+                )
+        )
     }
 }
 

@@ -19,6 +19,8 @@ func setupAuthTestApp(t *testing.T) (*fiber.App, *auth.AuthService, *config.Conf
 	db := testutil.SetupTestDB(t)
 	userRepo := repository.NewUserRepository(db)
 	passkeyRepo := repository.NewPasskeyRepository(db)
+	settingsRepo := repository.NewSettingsRepository(db)
+	inviteTokenRepo := repository.NewInviteTokenRepository(db)
 	authService := auth.NewAuthService(userRepo, passkeyRepo)
 	cfg := &config.Config{
 		Auth: config.AuthConfig{
@@ -32,7 +34,7 @@ func setupAuthTestApp(t *testing.T) (*fiber.App, *auth.AuthService, *config.Conf
 	}
 	// Set global config so Login/GuestLogin (which call config.Get()) don't panic
 	config.SetForTest(cfg)
-	authHandler := NewAuthHandler(authService, cfg)
+	authHandler := NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)
 
 	app := fiber.New()
 
@@ -70,7 +72,7 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -82,11 +84,15 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 	respBody, _ := io.ReadAll(resp.Body)
 	var result map[string]interface{}
 	_ = json.Unmarshal(respBody, &result)
-	if result["access_token"] == nil || result["access_token"] == "" {
-		t.Fatal("expected access_token in response")
+	tokens, _ := result["tokens"].(map[string]interface{})
+	if tokens == nil || tokens["accessToken"] == nil || tokens["accessToken"] == "" {
+		t.Fatal("expected tokens.accessToken in response")
 	}
-	if result["refresh_token"] == nil || result["refresh_token"] == "" {
-		t.Fatal("expected refresh_token in response")
+	if tokens["refreshToken"] == nil || tokens["refreshToken"] == "" {
+		t.Fatal("expected tokens.refreshToken in response")
+	}
+	if result["user"] == nil {
+		t.Fatal("expected user in response")
 	}
 }
 
@@ -95,7 +101,7 @@ func TestAuthHandler_Register_InvalidBody(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader([]byte("invalid")))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 400 {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
@@ -111,12 +117,12 @@ func TestAuthHandler_Register_DuplicateEmail(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	app.Test(req)
+	app.Test(req, -1)
 
 	// Try again
 	req2 := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req2.Header.Set("Content-Type", "application/json")
-	resp2, _ := app.Test(req2)
+	resp2, _ := app.Test(req2, -1)
 	if resp2.StatusCode != 400 {
 		t.Fatalf("expected 400 for duplicate, got %d", resp2.StatusCode)
 	}
@@ -135,7 +141,7 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 200 {
 		respBody, _ := io.ReadAll(resp.Body)
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
@@ -153,7 +159,7 @@ func TestAuthHandler_Login_InvalidCredentials(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 401 {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
@@ -168,7 +174,7 @@ func TestAuthHandler_Login_NonexistentUser(t *testing.T) {
 	})
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 401 {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
@@ -179,7 +185,7 @@ func TestAuthHandler_Login_InvalidBody(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader([]byte("{invalid")))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 400 {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
@@ -191,7 +197,7 @@ func TestAuthHandler_GuestLogin_Success(t *testing.T) {
 	body, _ := json.Marshal(map[string]string{"name": "Guest Player"})
 	req := httptest.NewRequest("POST", "/api/auth/guest-login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 200 {
 		respBody, _ := io.ReadAll(resp.Body)
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
@@ -213,7 +219,7 @@ func TestAuthHandler_GuestLogin_EmptyName(t *testing.T) {
 	body, _ := json.Marshal(map[string]string{"name": ""})
 	req := httptest.NewRequest("POST", "/api/auth/guest-login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 400 {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
@@ -224,7 +230,7 @@ func TestAuthHandler_GuestLogin_InvalidBody(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/auth/guest-login", bytes.NewReader([]byte("{")))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 400 {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
@@ -238,7 +244,7 @@ func TestAuthHandler_GetMe_Success(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 200 {
 		respBody, _ := io.ReadAll(resp.Body)
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
@@ -256,7 +262,7 @@ func TestAuthHandler_GetMe_NoToken(t *testing.T) {
 	app, _, _ := setupAuthTestApp(t)
 
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 401 {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
@@ -267,8 +273,237 @@ func TestAuthHandler_GetMe_InvalidToken(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
 	req.Header.Set("Authorization", "Bearer invalid-jwt-token")
-	resp, _ := app.Test(req)
+	resp, _ := app.Test(req, -1)
 	if resp.StatusCode != 401 {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+}
+
+// --- setupAuthTestAppFull wires RefreshToken, UpdateProfile, ChangePassword, Logout ---
+
+func setupAuthTestAppFull(t *testing.T) (*fiber.App, *auth.AuthService, *config.Config) {
+	t.Helper()
+	app, authService, cfg := setupAuthTestApp(t)
+	authHandler := NewAuthHandler(authService, cfg, nil, nil)
+
+	// Helper: add auth-required routes to the existing app
+	app.Post("/api/auth/refresh", authHandler.RefreshToken)
+	app.Put("/api/auth/profile", func(c *fiber.Ctx) error {
+		authHeader := c.Get("Authorization")
+		if authHeader == "" {
+			return c.Status(401).JSON(fiber.Map{"error": "missing"})
+		}
+		tokenStr := authHeader
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			tokenStr = authHeader[7:]
+		}
+		claims, err := auth.ValidateToken(tokenStr, cfg)
+		if err != nil {
+			return c.Status(401).JSON(fiber.Map{"error": "invalid"})
+		}
+		c.Locals("user", claims)
+		return c.Next()
+	}, authHandler.UpdateProfile)
+	app.Post("/api/auth/change-password", func(c *fiber.Ctx) error {
+		authHeader := c.Get("Authorization")
+		if authHeader == "" {
+			return c.Status(401).JSON(fiber.Map{"error": "missing"})
+		}
+		tokenStr := authHeader
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			tokenStr = authHeader[7:]
+		}
+		claims, err := auth.ValidateToken(tokenStr, cfg)
+		if err != nil {
+			return c.Status(401).JSON(fiber.Map{"error": "invalid"})
+		}
+		c.Locals("user", claims)
+		return c.Next()
+	}, authHandler.ChangePassword)
+	app.Post("/api/auth/logout", func(c *fiber.Ctx) error {
+		authHeader := c.Get("Authorization")
+		if authHeader == "" {
+			return c.Status(401).JSON(fiber.Map{"error": "missing"})
+		}
+		tokenStr := authHeader
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			tokenStr = authHeader[7:]
+		}
+		claims, err := auth.ValidateToken(tokenStr, cfg)
+		if err != nil {
+			return c.Status(401).JSON(fiber.Map{"error": "invalid"})
+		}
+		c.Locals("user", claims)
+		return c.Next()
+	}, authHandler.Logout)
+
+	return app, authService, cfg
+}
+
+// --- RefreshToken tests ---
+
+func TestAuthHandler_RefreshToken_Success(t *testing.T) {
+	app, authService, cfg := setupAuthTestApp(t)
+
+	_, _ = authService.Register("refresh@example.com", "pass", "Refresh User")
+	loginResp, _ := authService.Login("refresh@example.com", "pass")
+
+	authHandler := NewAuthHandler(authService, cfg, nil, nil)
+	app.Post("/api/auth/refresh", authHandler.RefreshToken)
+
+	body, _ := json.Marshal(map[string]string{
+		"refresh_token": loginResp.Token.RefreshToken,
+	})
+	req := httptest.NewRequest("POST", "/api/auth/refresh", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	respBody, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	_ = json.Unmarshal(respBody, &result)
+	if result["access_token"] == nil || result["access_token"] == "" {
+		t.Fatal("expected access_token in response")
+	}
+}
+
+func TestAuthHandler_RefreshToken_InvalidToken(t *testing.T) {
+	app, authService, cfg := setupAuthTestApp(t)
+	authHandler := NewAuthHandler(authService, cfg, nil, nil)
+	app.Post("/api/auth/refresh", authHandler.RefreshToken)
+
+	body, _ := json.Marshal(map[string]string{"refresh_token": "not-a-real-token"})
+	req := httptest.NewRequest("POST", "/api/auth/refresh", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 401 {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestAuthHandler_RefreshToken_InvalidBody(t *testing.T) {
+	app, authService, cfg := setupAuthTestApp(t)
+	authHandler := NewAuthHandler(authService, cfg, nil, nil)
+	app.Post("/api/auth/refresh", authHandler.RefreshToken)
+
+	req := httptest.NewRequest("POST", "/api/auth/refresh", bytes.NewReader([]byte("{invalid")))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 400 {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+}
+
+// --- UpdateProfile tests ---
+
+func TestAuthHandler_UpdateProfile_Success(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("upprof@example.com", "pass", "Old Name")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	body, _ := json.Marshal(map[string]string{"name": "New Name"})
+	req := httptest.NewRequest("PUT", "/api/auth/profile", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+}
+
+func TestAuthHandler_UpdateProfile_ShortName(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("shortname@example.com", "pass", "User")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	body, _ := json.Marshal(map[string]string{"name": "X"})
+	req := httptest.NewRequest("PUT", "/api/auth/profile", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 400 {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+}
+
+// --- ChangePassword tests ---
+
+func TestAuthHandler_ChangePassword_Success(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("chpass@example.com", "oldpass123", "User")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	body, _ := json.Marshal(map[string]string{
+		"currentPassword": "oldpass123",
+		"newPassword":     "newpass456",
+	})
+	req := httptest.NewRequest("POST", "/api/auth/change-password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+}
+
+func TestAuthHandler_ChangePassword_TooShortNewPassword(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("shortpw@example.com", "oldpass123", "User")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	body, _ := json.Marshal(map[string]string{
+		"currentPassword": "oldpass123",
+		"newPassword":     "abc",
+	})
+	req := httptest.NewRequest("POST", "/api/auth/change-password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 400 {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+}
+
+// --- Logout tests ---
+
+func TestAuthHandler_Logout_Success(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("logoutha@example.com", "pass", "Logout User")
+	loginResp, _ := authService.Login("logoutha@example.com", "pass")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	body, _ := json.Marshal(map[string]string{"refresh_token": loginResp.Token.RefreshToken})
+	req := httptest.NewRequest("POST", "/api/auth/logout", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+}
+
+func TestAuthHandler_Logout_InvalidBody(t *testing.T) {
+	app, authService, cfg := setupAuthTestAppFull(t)
+
+	user, _ := authService.Register("logoutbad@example.com", "pass", "Logout Bad")
+	token, _ := auth.GenerateToken(user.ID, user.Email, user.Name, "local", user.Accesses, cfg)
+
+	req := httptest.NewRequest("POST", "/api/auth/logout", bytes.NewReader([]byte("{invalid")))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := app.Test(req, -1)
+	if resp.StatusCode != 400 {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
 }

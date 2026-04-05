@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bedrud/internal/auth"
+	"bedrud/internal/models"
 	"bedrud/internal/repository"
 
 	"github.com/gofiber/fiber/v2"
@@ -8,6 +10,7 @@ import (
 
 type UsersHandler struct {
 	userRepo *repository.UserRepository
+	roomRepo *repository.RoomRepository
 }
 
 // UserListResponse represents the response for listing users
@@ -35,6 +38,9 @@ type UserDetails struct {
 	// @Description Whether the user account is active
 	IsActive bool `json:"isActive" example:"true"`
 
+	// @Description Whether the user has admin access
+	IsAdmin bool `json:"isAdmin" example:"false"`
+
 	// @Description List of user's access levels
 	Accesses []string `json:"accesses" example:"user,admin"`
 
@@ -54,9 +60,10 @@ type UserStatusUpdateResponse struct {
 	Message string `json:"message" example:"User status updated successfully"`
 }
 
-func NewUsersHandler(userRepo *repository.UserRepository) *UsersHandler {
+func NewUsersHandler(userRepo *repository.UserRepository, roomRepo *repository.RoomRepository) *UsersHandler {
 	return &UsersHandler{
 		userRepo: userRepo,
+		roomRepo: roomRepo,
 	}
 }
 
@@ -87,6 +94,7 @@ func (h *UsersHandler) ListUsers(c *fiber.Ctx) error {
 			Name:      user.Name,
 			Provider:  user.Provider,
 			IsActive:  user.IsActive,
+			IsAdmin:   containsAccess(user.Accesses, "admin"),
 			Accesses:  user.Accesses,
 			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
@@ -110,7 +118,36 @@ func (h *UsersHandler) ListUsers(c *fiber.Ctx) error {
 // @Failure 404 {object} ErrorResponse "User not found"
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /admin/users/{id}/status [put]
+func (h *UsersHandler) UpdateUserAccesses(c *fiber.Ctx) error {
+	claims, ok := c.Locals("user").(*auth.Claims)
+	if !ok || claims == nil || !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+
+	userID := c.Params("id")
+	var input struct {
+		Accesses []string `json:"accesses"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	}
+	user, err := h.userRepo.GetUserByID(userID)
+	if err != nil || user == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
+	}
+	user.Accesses = input.Accesses
+	if err := h.userRepo.UpdateUser(user); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update user"})
+	}
+	return c.JSON(fiber.Map{"message": "User accesses updated"})
+}
+
 func (h *UsersHandler) UpdateUserStatus(c *fiber.Ctx) error {
+	claims, ok := c.Locals("user").(*auth.Claims)
+	if !ok || claims == nil || !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+
 	userID := c.Params("id")
 	var input UserStatusUpdateRequest
 
@@ -136,5 +173,32 @@ func (h *UsersHandler) UpdateUserStatus(c *fiber.Ctx) error {
 
 	return c.JSON(UserStatusUpdateResponse{
 		Message: "User status updated successfully",
+	})
+}
+
+func (h *UsersHandler) GetUserDetail(c *fiber.Ctx) error {
+	userID := c.Params("id")
+	user, err := h.userRepo.GetUserByID(userID)
+	if err != nil || user == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
+	}
+
+	rooms, _ := h.roomRepo.GetRoomsCreatedByUser(userID)
+	if rooms == nil {
+		rooms = []models.Room{}
+	}
+
+	return c.JSON(fiber.Map{
+		"user": UserDetails{
+			ID:        user.ID,
+			Email:     user.Email,
+			Name:      user.Name,
+			Provider:  user.Provider,
+			IsActive:  user.IsActive,
+			IsAdmin:   containsAccess(user.Accesses, "admin"),
+			Accesses:  user.Accesses,
+			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+		},
+		"rooms": rooms,
 	})
 }

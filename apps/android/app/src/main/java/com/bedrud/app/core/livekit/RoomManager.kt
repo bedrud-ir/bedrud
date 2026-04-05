@@ -68,6 +68,9 @@ class RoomManager(private val application: Application) {
 
     var onDisconnected: (() -> Unit)? = null
 
+    private val _wasKicked = MutableStateFlow(false)
+    val wasKicked: StateFlow<Boolean> = _wasKicked.asStateFlow()
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -142,6 +145,9 @@ class RoomManager(private val application: Application) {
                             _participantVersion.value++
                         }
                         is RoomEvent.Disconnected -> {
+                            // "PARTICIPANT_REMOVED" is the LiveKit disconnect reason for kick
+                            val kicked = event.reason?.name == "PARTICIPANT_REMOVED"
+                            if (kicked) _wasKicked.value = true
                             _connectionState.value = ConnectionState.DISCONNECTED
                             onDisconnected?.invoke()
                         }
@@ -197,6 +203,7 @@ class RoomManager(private val application: Application) {
         _isScreenShareEnabled.value = false
         _participantVersion.value = 0
         _chatMessages.value = emptyList()
+        _wasKicked.value = false
         _error.value = null
         Log.d(TAG, "Disconnected from room")
     }

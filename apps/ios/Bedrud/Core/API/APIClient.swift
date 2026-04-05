@@ -105,7 +105,19 @@ final class APIClient {
         }
 
         let request = try buildRequest(endpoint: endpoint, method: method, body: body, token: token)
-        try await performVoid(request)
+
+        do {
+            try await performVoid(request)
+        } catch APIError.unauthorized {
+            // Attempt token refresh and retry once (mirrors authFetch)
+            guard let refreshedToken = try await authManager.refreshAccessToken() else {
+                throw APIError.unauthorized
+            }
+            let retryRequest = try buildRequest(
+                endpoint: endpoint, method: method, body: body, token: refreshedToken
+            )
+            try await performVoid(retryRequest)
+        }
     }
 
     // MARK: - Request Building

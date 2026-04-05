@@ -12,7 +12,7 @@ This "Appliance Mode" architecture simplifies deployment to the extreme: you cop
 - **Database Layer:** [GORM](https://gorm.io/) with support for **SQLite** (standard) and **PostgreSQL** (production).
 - **Media Engine:** [LiveKit](https://livekit.io/) (Embedded as a sibling binary).
 - **Auth System:** Multi-layered auth supporting JWT, OAuth2 (Google/GitHub/Twitter), and passwordless FIDO2 Passkeys.
-- **Embedded Static Assets:** Uses Go 1.16+ `embed` package to bundle the Svelte 5 frontend.
+- **Embedded Static Assets:** Uses Go 1.16+ `embed` package to bundle the React frontend (SSR pre-rendered client assets).
 - **Deployment:** Integrated Debian/Ubuntu auto-installer with systemd orchestration and ACME (Let's Encrypt) support.
 
 ## Why this Architecture?

@@ -25,10 +25,10 @@ WORKDIR /build/apps/web
 COPY apps/web/package.json apps/web/bun.lock ./
 RUN bun install --frozen-lockfile
 COPY apps/web/ ./
-RUN bun run build
+RUN bun run build:embed
 ```
 
-Installs Bun, builds the Svelte frontend to static files.
+Installs Bun, SSR pre-renders the React app, and copies assets to `server/frontend/`.
 
 ### Stage 2: Server Build
 
@@ -39,7 +39,7 @@ WORKDIR /build/server
 COPY server/go.mod server/go.sum ./
 RUN go mod download
 COPY server/ ./
-COPY --from=frontend /build/apps/web/build ./frontend/
+COPY --from=frontend /build/server/frontend ./frontend/
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /bedrud ./cmd/bedrud/main.go
 ```
 

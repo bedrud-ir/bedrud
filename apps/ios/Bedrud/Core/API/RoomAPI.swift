@@ -36,6 +36,7 @@ struct UserRoomResponse: Decodable, Identifiable {
     let name: String
     let createdBy: String
     let isActive: Bool
+    let isPublic: Bool?
     let maxParticipants: Int?
     let expiresAt: String?
     let settings: RoomSettings
@@ -131,6 +132,14 @@ struct RoomAPI {
     func removeFromStage(roomId: String, identity: String) async throws {
         try await client.authFetchVoid(
             "/room/\(roomId)/stage/\(identity)/remove",
+            method: "POST",
+            authManager: authManager
+        )
+    }
+
+    func banParticipant(roomId: String, identity: String) async throws {
+        try await client.authFetchVoid(
+            "/room/\(roomId)/ban/\(identity)",
             method: "POST",
             authManager: authManager
         )

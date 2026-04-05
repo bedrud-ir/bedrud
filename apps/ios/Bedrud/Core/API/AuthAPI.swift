@@ -134,6 +134,16 @@ struct AuthAPI {
         try await client.authFetch("/auth/me", authManager: authManager)
     }
 
+    func changePassword(currentPassword: String, newPassword: String, authManager: AuthManager) async throws {
+        struct Body: Encodable { let currentPassword: String; let newPassword: String }
+        try await client.authFetchVoid(
+            "/auth/password",
+            method: "PUT",
+            body: Body(currentPassword: currentPassword, newPassword: newPassword),
+            authManager: authManager
+        )
+    }
+
     // MARK: - Passkey Endpoints
 
     func passkeyRegisterBegin(authManager: AuthManager) async throws -> PasskeyBeginResponse {

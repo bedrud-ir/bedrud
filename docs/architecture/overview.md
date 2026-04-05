@@ -10,7 +10,7 @@ Bedrud is a monorepo containing a Go server, three client applications, Python b
 │                                                         │
 │  ┌──────────┐   ┌───────────┐   ┌──────────────────┐   │
 │  │  Web      │   │  Android  │   │  iOS             │   │
-│  │  Svelte 5 │   │  Compose  │   │  SwiftUI         │   │
+│  │  React 19 │   │  Compose  │   │  SwiftUI         │   │
 │  └─────┬─────┘   └─────┬─────┘   └───────┬──────────┘   │
 │        │               │                 │              │
 │        └───────────────┼─────────────────┘              │
@@ -56,7 +56,7 @@ See [Server Architecture](server.md) for details.
 
 ### Web Frontend (`apps/web/`)
 
-A **SvelteKit** single-page application built with Svelte 5 and TailwindCSS. In production, it compiles to static files that are embedded into the Go binary.
+A **React** application built with TanStack Start, TailwindCSS v4, and shadcn/ui. In production, it is SSR pre-rendered and the client assets are embedded into the Go binary.
 
 Key capabilities:
 

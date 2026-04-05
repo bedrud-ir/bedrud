@@ -50,7 +50,12 @@ final class AuthManager: ObservableObject {
             currentUser = user
         }
 
-        isAuthenticated = true
+        // Only mark authenticated if the token is structurally valid and not expired.
+        // Background task below will refresh if needed.
+        let payload = try? Self.decodeJWTStatic(accessToken)
+        if let payload, payload.exp > Date().timeIntervalSince1970 {
+            isAuthenticated = true
+        }
 
         // Validate token in the background
         Task {
@@ -130,6 +135,36 @@ final class AuthManager: ObservableObject {
             avatarUrl: nil,
             isAdmin: decoded.accesses?.contains("admin") ?? false,
             provider: nil
+        )
+
+        currentUser = user
+        isAuthenticated = true
+        cacheUser(user)
+
+        return user
+    }
+
+    // MARK: - OAuth Login
+
+    /// Finalises an OAuth flow given the access token returned by the server's callback.
+    /// Stores the token, fetches the user profile, and marks the session as authenticated.
+    func loginWithOAuth(accessToken: String) async throws -> User {
+        isLoading = true
+        defer { isLoading = false }
+
+        // Store token first so getMe() can use it in the Authorization header.
+        // OAuth callbacks don't return a refresh token — leave it empty; the server
+        // may issue a new one on the next token refresh request.
+        storeTokens(accessToken: accessToken, refreshToken: "")
+
+        let me = try await authAPI.getMe(authManager: self)
+        let user = User(
+            id: me.id,
+            email: me.email,
+            name: me.name,
+            avatarUrl: me.avatarUrl,
+            isAdmin: me.isAdmin ?? false,
+            provider: me.provider
         )
 
         currentUser = user

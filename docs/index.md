@@ -11,7 +11,7 @@ Bedrud lets you run your own video conferencing service. Unlike hosted solutions
 A single `bedrud` binary contains:
 
 - A **Go REST API** for authentication, room management, and admin operations
-- An **embedded Svelte 5 web frontend** compiled into the binary
+- An **embedded React web frontend** compiled and SSR pre-rendered into the binary
 - An **embedded LiveKit media server** for WebRTC audio/video
 - An **SQLite database** (or PostgreSQL for production)
 - A **built-in installer** that configures systemd services and TLS certificates
@@ -20,7 +20,7 @@ A single `bedrud` binary contains:
 
 | Platform | Technology | Status |
 |----------|-----------|--------|
-| Web | SvelteKit 2, Svelte 5, TailwindCSS | Production |
+| Web | React 19, TanStack Start, TailwindCSS v4 | Production |
 | Android | Jetpack Compose, Koin, LiveKit SDK | Production |
 | iOS | SwiftUI, KeychainAccess, LiveKit SDK | Production |
 | Server | Go 1.24, Fiber, GORM, LiveKit | Production |
@@ -40,7 +40,7 @@ A single `bedrud` binary contains:
 bedrud/
 ├── server/            Go backend with embedded LiveKit
 ├── apps/
-│   ├── web/           SvelteKit frontend
+│   ├── web/           React frontend (TanStack Start)
 │   ├── android/       Jetpack Compose app
 │   └── ios/           SwiftUI app
 ├── agents/            Python bot agents

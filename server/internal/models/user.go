@@ -10,10 +10,11 @@ import (
 type AccessLevel string
 
 const (
-	AccessAdmin AccessLevel = "admin"
-	AccessMod   AccessLevel = "moderator"
-	AccessUser  AccessLevel = "user"
-	AccessGuest AccessLevel = "guest"
+	AccessSuperAdmin AccessLevel = "superadmin"
+	AccessAdmin      AccessLevel = "admin"
+	AccessMod        AccessLevel = "moderator"
+	AccessUser       AccessLevel = "user"
+	AccessGuest      AccessLevel = "guest"
 )
 
 // StringArray is a custom type for handling string arrays in PostgreSQL
