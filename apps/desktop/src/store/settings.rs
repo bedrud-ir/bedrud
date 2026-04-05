@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
 pub enum Theme {
     Light,
     Dark,
@@ -10,6 +11,7 @@ pub enum Theme {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
 pub enum NoiseSuppression {
     #[default] None,
     RNNoise,
