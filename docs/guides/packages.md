@@ -50,6 +50,26 @@ sudo bedrud install
 
 ---
 
+### DNF / RPM Repository (Fedora / RHEL / openSUSE)
+
+**1. Add the repository:**
+
+```bash
+sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key \
+  -o /etc/pki/rpm-gpg/RPM-GPG-KEY-bedrud
+
+sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.repo \
+  -o /etc/yum.repos.d/bedrud.repo
+```
+
+**2. Install:**
+
+```bash
+sudo dnf install bedrud
+```
+
+---
+
 ### Direct .deb Download
 
 Download the `.deb` package directly from the [latest GitHub release](https://github.com/bedrud-ir/bedrud/releases/latest):
@@ -68,6 +88,24 @@ Download the `.deb` package directly from the [latest GitHub release](https://gi
     wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_arm64.deb
     sudo dpkg -i bedrud_arm64.deb
     sudo apt-get install -f
+    ```
+
+---
+
+### Direct .rpm Download
+
+Download the `.rpm` package from the [latest GitHub release](https://github.com/bedrud-ir/bedrud/releases/latest):
+
+=== "x86_64"
+
+    ```bash
+    sudo dnf install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-*.x86_64.rpm
+    ```
+
+=== "aarch64"
+
+    ```bash
+    sudo dnf install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-*.aarch64.rpm
     ```
 
 ---
@@ -132,6 +170,31 @@ See the [Docker Guide](docker.md) for full details including volume mounts and r
     yay -S bedrud-desktop-bin
     ```
 
+=== "Fedora / RHEL (DNF)"
+
+    Add the DNF repository first (see [Server — DNF Repository](#dnf--rpm-repository-fedora--rhel--opensuse) above), then:
+
+    ```bash
+    sudo dnf install bedrud-desktop
+    ```
+
+=== "Snap (any distro)"
+
+    ```bash
+    sudo snap install bedrud-desktop
+    ```
+
+    Snap is available on any Linux distribution that supports the Snap daemon (snapd).
+
+=== "Flatpak (any distro)"
+
+    Install from the Flatpak bundle:
+
+    ```bash
+    flatpak install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.flatpak
+    flatpak run ir.bedrud.Desktop
+    ```
+
 === "AppImage (any distro)"
 
     The AppImage is self-contained and works on any Linux distribution without installation.
@@ -179,8 +242,18 @@ Pre-built portable tarballs are available for both Intel and Apple Silicon. The 
     ./bedrud-desktop
     ```
 
+=== "Homebrew Tap"
+
+    ```bash
+    brew tap bedrud-ir/bedrud
+    brew install bedrud-desktop
+    ```
+
+!!! info
+    macOS releases are **code-signed and notarized** when `MACOS_CERTIFICATE` is configured in CI (see [Secrets Reference](#secrets-reference)). Without those secrets the binary is unsigned — use the `xattr` workaround above or right-click → Open in Finder.
+
 !!! warning
-    macOS Gatekeeper will block unsigned binaries by default. Either run the `xattr` command above, or open **System Settings → Privacy & Security** and click **Open Anyway** after the first blocked launch attempt.
+    Unsigned macOS Gatekeeper warning: either run the `xattr` command above, or open **System Settings → Privacy & Security** and click **Open Anyway** after the first blocked launch attempt.
 
 ---
 
@@ -206,6 +279,18 @@ Pre-built portable tarballs are available for both Intel and Apple Silicon. The 
     | x86_64 | `bedrud-desktop-windows-x86_64.zip` |
     | ARM64 | `bedrud-desktop-windows-arm64.zip` |
 
+=== "Chocolatey"
+
+    ```powershell
+    choco install bedrud-desktop
+    ```
+
+=== "WinGet"
+
+    ```powershell
+    winget install Bedrud.BedrudDesktop
+    ```
+
 ---
 
 ## Summary Table
@@ -213,8 +298,36 @@ Pre-built portable tarballs are available for both Intel and Apple Silicon. The 
 | Platform | Server | Desktop Client |
 |---|---|---|
 | Ubuntu / Debian (apt) | `apt install bedrud` | `apt install bedrud-desktop` |
+| Fedora / RHEL (dnf) | `dnf install bedrud` | `dnf install bedrud-desktop` |
 | Arch Linux (AUR) | `yay -S bedrud-bin` | `yay -S bedrud-desktop-bin` |
-| Any Linux | `tar.xz` binary | AppImage / `tar.xz` |
-| macOS | `tar.xz` binary | Portable `tar.gz` (unsigned) |
-| Windows | — | NSIS installer or portable `.zip` |
+| Any Linux | AppImage / `tar.xz` binary | AppImage / Flatpak / Snap / `tar.xz` |
+| macOS | `tar.xz` binary | Homebrew tap / portable `tar.gz` |
+| Windows | — | WinGet / Chocolatey / NSIS installer / portable `.zip` |
 | Docker | `ghcr.io/bedrud-ir/bedrud` | — |
+
+---
+
+## Secrets Reference
+
+These GitHub Actions secrets unlock the optional distribution channels:
+
+| Secret | Channel | Description |
+|---|---|---|
+| `AUR_SSH_PRIVATE_KEY` | AUR | SSH key for `aur.archlinux.org` push |
+| `APT_GPG_PRIVATE_KEY` | apt repo | GPG key for signing `Release` file |
+| `APT_GPG_KEY_ID` | apt repo | Key ID of the above |
+| `RPM_GPG_PRIVATE_KEY` | DNF repo | GPG key for signing RPM packages |
+| `SNAPCRAFT_STORE_CREDENTIALS` | Snap Store | Login from `snapcraft export-login` |
+| `CHOCOLATEY_API_KEY` | Chocolatey | API key from chocolatey.org |
+| `HOMEBREW_TAP_TOKEN` | Homebrew tap | GitHub PAT with write access to `bedrud-ir/homebrew-bedrud` |
+| `WINGET_GITHUB_TOKEN` | WinGet | GitHub PAT for submitting PR to `microsoft/winget-pkgs` |
+| `MACOS_CERTIFICATE` | macOS signing | Base64-encoded Developer ID `.p12` certificate |
+| `MACOS_CERTIFICATE_PWD` | macOS signing | Password for the `.p12` file |
+| `MACOS_TEAM_ID` | macOS signing / notarize | Apple Developer Team ID |
+| `MACOS_APPLE_ID` | macOS notarize | Apple ID email address |
+| `MACOS_APP_PWD` | macOS notarize | App-specific password for notarytool |
+| `IOS_P12_BASE64` | iOS IPA | iOS distribution certificate |
+| `TELEGRAM_BOT_TOKEN` | Telegram | Bot token for release notifications |
+| `TELEGRAM_CHAT_ID` | Telegram | Target channel/group ID |
+
+All secrets are optional — if absent, that channel's job is silently skipped.

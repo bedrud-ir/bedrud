@@ -126,6 +126,36 @@ jobs:
           name: server-deb-${{ matrix.deb_arch }}
           path: bedrud_${{ matrix.deb_arch }}.deb
 
+      - name: Package server (.rpm)
+        run: |
+          sudo apt-get install -y rpm
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          RPM_ARCH="${{ matrix.deb_arch == 'amd64' && 'x86_64' || 'aarch64' }}"
+
+          mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+          sed \
+            -e "s/VERSION_PLACEHOLDER/${VERSION}/" \
+            -e "s/ARCH_PLACEHOLDER/${RPM_ARCH}/" \
+            apps/server/installer/linux/bedrud.spec > rpmbuild/SPECS/bedrud.spec
+
+          install -Dm755 dist/bedrud_${{ matrix.suffix }} rpmbuild/BUILD/bedrud
+          install -Dm644 apps/server/installer/linux/bedrud.service \
+            rpmbuild/BUILD/bedrud.service
+
+          rpmbuild --define "_topdir $(pwd)/rpmbuild" \
+            --define "_builddir $(pwd)/rpmbuild/BUILD" \
+            -bb rpmbuild/SPECS/bedrud.spec
+
+          find rpmbuild/RPMS -name "*.rpm" -exec cp {} \
+            bedrud-${VERSION}-1.${RPM_ARCH}.rpm \;
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: server-rpm-${{ matrix.deb_arch }}
+          path: bedrud-*.rpm
+
   # ── Docker image ──────────────────────────────────────────────
   docker:
     name: Docker Image
@@ -478,6 +508,45 @@ jobs:
           name: bedrud-desktop-${{ matrix.name }}-appimage
           path: bedrud-desktop-${{ matrix.name }}.AppImage
 
+      - name: Package Linux (.rpm)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y rpm
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          RPM_ARCH="${{ matrix.deb_arch == 'amd64' && 'x86_64' || 'aarch64' }}"
+
+          mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+          sed \
+            -e "s/VERSION_PLACEHOLDER/${VERSION}/" \
+            -e "s/ARCH_PLACEHOLDER/${RPM_ARCH}/" \
+            apps/desktop/installer/linux/bedrud-desktop.spec \
+            > rpmbuild/SPECS/bedrud-desktop.spec
+
+          install -Dm755 \
+            target/${{ matrix.target }}/release/bedrud-desktop \
+            rpmbuild/BUILD/bedrud-desktop
+          install -Dm644 \
+            apps/desktop/installer/linux/bedrud.desktop \
+            rpmbuild/BUILD/bedrud.desktop
+          install -Dm644 \
+            apps/web/public/logo512.png \
+            rpmbuild/BUILD/bedrud.png
+
+          rpmbuild --define "_topdir $(pwd)/rpmbuild" \
+            --define "_builddir $(pwd)/rpmbuild/BUILD" \
+            -bb rpmbuild/SPECS/bedrud-desktop.spec
+
+          find rpmbuild/RPMS -name "*.rpm" -exec cp {} \
+            bedrud-desktop-${VERSION}-1.${RPM_ARCH}.rpm \;
+
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'Linux'
+        with:
+          name: bedrud-desktop-${{ matrix.name }}-rpm
+          path: bedrud-desktop-*.rpm
+
       # ── Windows packaging ────────────────────────────────────
       - name: Package Windows (portable zip)
         if: runner.os == 'Windows'
@@ -508,6 +577,37 @@ jobs:
           name: bedrud-desktop-${{ matrix.name }}-setup
           path: bedrud-desktop-${{ matrix.name }}-setup.exe
 
+      # ── macOS signing ────────────────────────────────────────────
+      - name: Sign macOS binary
+        if: runner.os == 'macOS'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+          BIN: target/${{ matrix.target }}/release/bedrud-desktop
+        run: |
+          if [ -z "$MACOS_CERTIFICATE" ]; then
+            echo "⚠ MACOS_CERTIFICATE not set — skipping code signing"
+            echo "MACOS_SIGNED=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/macos.p12"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "ci-temp-password" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "ci-temp-password" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$MACOS_CERTIFICATE_PWD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple: -k "ci-temp-password" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          codesign --deep --force --verify --verbose \
+            --sign "Developer ID Application: Bedrud ($MACOS_TEAM_ID)" \
+            --options runtime \
+            "$BIN"
+          echo "MACOS_SIGNED=true" >> "$GITHUB_ENV"
+
       # ── macOS packaging ──────────────────────────────────────
       - name: Package macOS (portable tar.gz + DMG)
         if: runner.os == 'macOS'
@@ -526,6 +626,31 @@ jobs:
             -srcfolder dmg-staging \
             -ov -format UDZO \
             "bedrud-desktop-${{ matrix.name }}.dmg"
+
+      - name: Notarize macOS DMG
+        if: runner.os == 'macOS' && env.MACOS_SIGNED == 'true'
+        env:
+          MACOS_APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
+          MACOS_APP_PWD: ${{ secrets.MACOS_APP_PWD }}
+          MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+          DMG: bedrud-desktop-${{ matrix.name }}.dmg
+        run: |
+          if [ -z "$MACOS_APPLE_ID" ] || [ -z "$MACOS_APP_PWD" ]; then
+            echo "⚠ Notarization credentials not set — skipping notarization"
+            exit 0
+          fi
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$MACOS_APPLE_ID" \
+            --password "$MACOS_APP_PWD" \
+            --team-id "$MACOS_TEAM_ID" \
+            --wait
+          xcrun stapler staple "$DMG"
+
+      - name: Cleanup macOS keychain
+        if: runner.os == 'macOS' && always()
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          [ -f "$KEYCHAIN_PATH" ] && security delete-keychain "$KEYCHAIN_PATH" || true
 
       - uses: actions/upload-artifact@v7
         if: runner.os == 'macOS'
@@ -562,6 +687,9 @@ jobs:
           # Server .deb packages
           find artifacts/server-deb-* -name "*.deb" -exec cp {} release-assets/ \;
 
+          # Server .rpm packages
+          find artifacts/server-rpm-* -name "*.rpm" -exec cp {} release-assets/ \; 2>/dev/null || true
+
           # Android debug APKs
           for f in \
             "android-debug-universal/app-universal-debug.apk:bedrud-android-universal-debug.apk" \
@@ -585,7 +713,7 @@ jobs:
           # iOS IPA (optional — may not exist without signing certs)
           [ -f artifacts/ios-ipa/Bedrud.ipa ] && cp artifacts/ios-ipa/Bedrud.ipa release-assets/Bedrud.ipa || true
 
-          # Desktop: AppImages, portables, installers, debs, DMGs
+          # Desktop: AppImages, portables, installers, debs, RPMs, DMGs
           find artifacts/bedrud-desktop-* -type f -exec cp {} release-assets/ \;
 
           ls -la release-assets/
@@ -625,6 +753,7 @@ jobs:
           <b>🖥 Server packages</b>
           • <a href="${BASE}/bedrud_amd64.deb">x86_64 .deb</a>
           • <a href="${BASE}/bedrud_arm64.deb">ARM64 .deb</a>
+          • x86_64 .rpm / ARM64 .rpm (see release page)
 
           <b>🤖 Android (release)</b>
           • <a href="${BASE}/bedrud-android-universal-release.apk">Universal APK</a>
@@ -657,6 +786,9 @@ jobs:
           <b>🐧 Desktop Linux (.deb)</b>
           • <a href="${BASE}/bedrud-desktop-linux-x86_64.deb">x86_64 .deb</a>
           • <a href="${BASE}/bedrud-desktop-linux-arm64.deb">ARM64 .deb</a>
+
+          <b>🐧 Desktop Linux (.rpm)</b>
+          • x86_64 .rpm / aarch64 .rpm (see release page)
 
           <b>🍎 Desktop macOS</b>
           • <a href="${BASE}/bedrud-desktop-macos-x86_64.dmg">Intel DMG</a>
@@ -756,3 +888,256 @@ jobs:
           commit_email: info@bedrud.ir
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Update to ${{ github.ref_name }}"
+
+  # ── Snap Store ────────────────────────────────────────────────
+  snap-publish:
+    name: Snap Store – bedrud-desktop
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.result == 'success' && secrets.SNAPCRAFT_STORE_CREDENTIALS != ''
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: bedrud-desktop-linux-x86_64-portable
+          path: snap-staging
+
+      - name: Prepare snap source directory
+        run: |
+          # Extract binary from the tar.xz
+          tar -xJf snap-staging/bedrud-desktop-linux-x86_64.tar.xz \
+            -C snap-staging/ 2>/dev/null || \
+          cp snap-staging/bedrud-desktop snap-staging/ 2>/dev/null || true
+
+          # Place snapcraft.yaml in expected location
+          mkdir -p snap-staging/snap
+          cp apps/desktop/installer/snap/snapcraft.yaml snap-staging/snap/
+
+          # Update version in snapcraft.yaml
+          VERSION="${{ github.ref_name }}"
+          sed -i "s/^version: .*/version: '${VERSION#v}'/" \
+            snap-staging/snap/snapcraft.yaml
+
+      - uses: snapcore/action-build@v1
+        id: build
+        with:
+          path: snap-staging
+
+      - name: Publish to Snap Store
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        run: |
+          sudo snap install snapcraft --classic
+          snapcraft upload --release=stable "${{ steps.build.outputs.snap }}"
+
+  # ── Flatpak bundle ─────────────────────────────────────────────
+  flatpak-bundle:
+    name: Flatpak Bundle
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.result == 'success'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Flatpak tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder python3-yaml
+          sudo flatpak remote-add --if-not-exists flathub \
+            https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install Flatpak runtime
+        run: |
+          sudo flatpak install -y flathub \
+            org.freedesktop.Platform//23.08 \
+            org.freedesktop.Sdk//23.08
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: bedrud-desktop-linux-x86_64-portable
+          path: flatpak-src
+
+      - name: Prepare Flatpak sources
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Extract binary
+          cd flatpak-src
+          tar -xJf *.tar.xz 2>/dev/null || true
+          cd ..
+
+          # Update manifest with local binary path
+          cp packages/flatpak/ir.bedrud.Desktop.yml flatpak-manifest.yml
+          cp packages/flatpak/ir.bedrud.Desktop.desktop flatpak-src/
+          cp apps/web/public/logo512.png flatpak-src/bedrud.png
+          cp packages/flatpak/ir.bedrud.Desktop.desktop \
+            flatpak-src/ir.bedrud.Desktop.desktop
+          cp packages/flatpak/ir.bedrud.Desktop.metainfo.xml flatpak-src/
+
+          # Replace extra-data sources with local file source
+          python3 - << 'PYEOF'
+          import yaml, sys
+          with open('flatpak-manifest.yml') as f:
+              m = yaml.safe_load(f)
+          for mod in m.get('modules', []):
+              if mod.get('name') == 'bedrud-desktop':
+                  mod['sources'] = [
+                      {'type': 'file', 'path': 'flatpak-src/bedrud-desktop',
+                       'dest-filename': 'bedrud-desktop'},
+                      {'type': 'file', 'path': 'flatpak-src/ir.bedrud.Desktop.desktop',
+                       'dest-filename': 'ir.bedrud.Desktop.desktop'},
+                      {'type': 'file', 'path': 'flatpak-src/bedrud.png',
+                       'dest-filename': 'bedrud.png'},
+                      {'type': 'file',
+                       'path': 'flatpak-src/ir.bedrud.Desktop.metainfo.xml',
+                       'dest-filename': 'ir.bedrud.Desktop.metainfo.xml'},
+                  ]
+          with open('flatpak-manifest.yml', 'w') as f:
+              yaml.dump(m, f, default_flow_style=False)
+          PYEOF
+
+      - name: Build Flatpak bundle
+        run: |
+          flatpak-builder --force-clean --repo=flatpak-repo \
+            build-flatpak flatpak-manifest.yml
+          flatpak build-bundle flatpak-repo \
+            bedrud-desktop-linux-x86_64.flatpak ir.bedrud.Desktop
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bedrud-desktop-linux-x86_64-flatpak
+          path: bedrud-desktop-linux-x86_64.flatpak
+
+      - name: Upload Flatpak bundle to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh release upload "$TAG" \
+            bedrud-desktop-linux-x86_64.flatpak \
+            --repo "$REPO" \
+            --clobber
+
+  # ── Chocolatey ────────────────────────────────────────────────
+  chocolatey-push:
+    name: Chocolatey – bedrud-desktop
+    runs-on: windows-latest
+    needs: release
+    if: needs.release.result == 'success' && secrets.CHOCOLATEY_API_KEY != ''
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Update nuspec version and checksums
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          CHOCO_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+        shell: pwsh
+        run: |
+          $version = $env:TAG.TrimStart('v')
+          $base = "https://github.com/$env:REPO/releases/download/$env:TAG"
+          $url64 = "$base/bedrud-desktop-windows-x86_64-setup.exe"
+
+          # Download installer to compute checksum
+          Invoke-WebRequest -Uri $url64 -OutFile "setup-x64.exe"
+          $hash = (Get-FileHash "setup-x64.exe" -Algorithm SHA256).Hash.ToLower()
+
+          # Update nuspec version
+          $nuspec = "packages/chocolatey/bedrud-desktop/bedrud-desktop.nuspec"
+          (Get-Content $nuspec) `
+            -replace '<version>.*</version>', "<version>$version</version>" `
+            -replace '<releaseNotes>.*</releaseNotes>',
+              "<releaseNotes>https://github.com/$env:REPO/releases/tag/$env:TAG</releaseNotes>" |
+            Set-Content $nuspec
+
+          # Update install script
+          $install = "packages/chocolatey/bedrud-desktop/tools/chocolateyinstall.ps1"
+          (Get-Content $install) `
+            -replace "releases/download/v[\d.]+/", "releases/download/$env:TAG/" `
+            -replace "checksum64  = '.*'", "checksum64  = '$hash'" |
+            Set-Content $install
+
+      - name: Pack and push to Chocolatey
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+        shell: pwsh
+        working-directory: packages/chocolatey/bedrud-desktop
+        run: |
+          choco pack
+          choco push bedrud-desktop.*.nupkg `
+            --source "https://push.chocolatey.org/" `
+            --api-key "$env:CHOCO_API_KEY"
+
+  # ── Homebrew tap ──────────────────────────────────────────────
+  homebrew-update:
+    name: Homebrew Tap – bedrud-desktop
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.result == 'success' && secrets.HOMEBREW_TAP_TOKEN != ''
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compute macOS tarball checksums
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          BASE="https://github.com/${REPO}/releases/download/${TAG}"
+          ARM_URL="${BASE}/bedrud-desktop-macos-arm64.tar.gz"
+          X86_URL="${BASE}/bedrud-desktop-macos-x86_64.tar.gz"
+
+          ARM_SHA=$(curl -fsSL "$ARM_URL" | sha256sum | awk '{print $1}')
+          X86_SHA=$(curl -fsSL "$X86_URL" | sha256sum | awk '{print $1}')
+          VERSION="${TAG#v}"
+
+          sed -i \
+            -e "s/  version \".*\"/  version \"${VERSION}\"/" \
+            -e "s/ARM64_SHA256_PLACEHOLDER/${ARM_SHA}/" \
+            -e "s/X86_64_SHA256_PLACEHOLDER/${X86_SHA}/" \
+            packages/homebrew/Formula/bedrud-desktop.rb
+
+          echo "FORMULA_VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Updated formula:"
+          cat packages/homebrew/Formula/bedrud-desktop.rb
+
+      - name: Push formula to homebrew-bedrud tap
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          FORMULA_VERSION: ${{ env.FORMULA_VERSION }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          # Clone the tap repo
+          git clone \
+            "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${REPO_OWNER}/homebrew-bedrud.git" \
+            tap-repo
+
+          mkdir -p tap-repo/Formula
+          cp packages/homebrew/Formula/bedrud-desktop.rb tap-repo/Formula/
+
+          cd tap-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/bedrud-desktop.rb
+          git commit -m "Update bedrud-desktop to ${FORMULA_VERSION}" || \
+            echo "No changes to commit"
+          git push
+
+  # ── WinGet ────────────────────────────────────────────────────
+  winget-submit:
+    name: WinGet – Bedrud.BedrudDesktop
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.result == 'success' && secrets.WINGET_GITHUB_TOKEN != ''
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Submit WinGet manifests
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: Bedrud.BedrudDesktop
+          release-tag: ${{ github.ref_name }}
+          installers-regex: 'bedrud-desktop-windows-(x86_64|arm64)-setup\.exe$'
+          token: ${{ secrets.WINGET_GITHUB_TOKEN }}

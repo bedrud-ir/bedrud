@@ -1,0 +1,43 @@
+name: bedrud-desktop
+base: core22
+version: "0.1.0"
+summary: "Bedrud Desktop — self-hosted video meeting client"
+description: |
+  Native desktop client for the Bedrud video meeting platform.
+  Connect to your self-hosted Bedrud server for secure video meetings.
+
+  Bedrud is fully self-hosted — no data leaves your infrastructure.
+
+grade: stable
+confinement: strict
+
+apps:
+  bedrud-desktop:
+    command: usr/bin/bedrud-desktop
+    plugs:
+      - audio-playback
+      - audio-record
+      - camera
+      - network
+      - opengl
+      - wayland
+      - x11
+      - desktop
+      - desktop-legacy
+      - home
+
+parts:
+  bedrud-desktop:
+    plugin: dump
+    source: .
+    organize:
+      bedrud-desktop: usr/bin/bedrud-desktop
+    stage-packages:
+      - libfontconfig1
+      - libxkbcommon0
+      - libsecret-1-0
+      - libasound2
+      - libgl1
+      - libwayland-client0
+      - libwayland-egl1
+      - libegl1

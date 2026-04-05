@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>ir.bedrud.Desktop</id>
+  <name>Bedrud</name>
+  <summary>Self-hosted video meeting client</summary>
+  <description>
+    <p>
+      Native desktop client for the Bedrud video meeting platform.
+      Connect to your self-hosted Bedrud server for secure, private video meetings.
+      No data leaves your infrastructure.
+    </p>
+  </description>
+  <url type="homepage">https://bedrud.ir</url>
+  <url type="bugtracker">https://github.com/bedrud-ir/bedrud/issues</url>
+  <url type="help">https://bedrud-ir.github.io/bedrud/</url>
+  <launchable type="desktop-id">ir.bedrud.Desktop.desktop</launchable>
+  <metadata_license>MIT</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <categories>
+    <category>Network</category>
+    <category>VideoConference</category>
+  </categories>
+  <provides>
+    <binary>bedrud-desktop</binary>
+  </provides>
+  <releases>
+    <release version="0.1.0" date="2025-01-01"/>
+  </releases>
+  <content_rating type="oars-1.1"/>
+</component>

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Bedrud
+GenericName=Video Meeting Client
+Comment=Self-hosted video meeting client
+Exec=bedrud-desktop %u
+Icon=ir.bedrud.Desktop
+Type=Application
+Categories=Network;VideoConference;
+MimeType=x-scheme-handler/bedrud;
+StartupWMClass=bedrud-desktop
+X-Flatpak=ir.bedrud.Desktop

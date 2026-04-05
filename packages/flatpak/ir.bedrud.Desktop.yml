@@ -1,0 +1,65 @@
+id: ir.bedrud.Desktop
+runtime: org.freedesktop.Platform
+runtime-version: "23.08"
+sdk: org.freedesktop.Sdk
+command: bedrud-desktop
+
+finish-args:
+  - --share=network
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --device=all
+  - --talk-name=org.freedesktop.secrets
+  - --filesystem=xdg-run/dconf
+  - --filesystem=~/.config/dconf:ro
+  - --talk-name=ca.desrt.dconf
+  - --env=DCONF_USER_CONFIG_DIR=.config/dconf
+
+modules:
+  - name: bedrud-desktop
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 bedrud-desktop /app/bin/bedrud-desktop
+      - install -Dm644 ir.bedrud.Desktop.desktop
+          /app/share/applications/ir.bedrud.Desktop.desktop
+      - install -Dm644 bedrud.png
+          /app/share/icons/hicolor/512x512/apps/ir.bedrud.Desktop.png
+      - install -Dm644 ir.bedrud.Desktop.metainfo.xml
+          /app/share/metainfo/ir.bedrud.Desktop.metainfo.xml
+    sources:
+      # Pre-built binary — downloaded at Flatpak install time (extra-data)
+      - type: extra-data
+        filename: bedrud-desktop
+        url: https://github.com/bedrud-ir/bedrud/releases/download/v0.1.0/bedrud-desktop-linux-x86_64.tar.xz
+        sha256: SKIP
+        size: 0
+        only-arches: [x86_64]
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/bedrud-ir/bedrud/releases/latest
+          version-query: .tag_name | ltrimstr("v")
+          url-query: >-
+            .assets[] |
+            select(.name == "bedrud-desktop-linux-x86_64.tar.xz") |
+            .browser_download_url
+      - type: extra-data
+        filename: bedrud-desktop
+        url: https://github.com/bedrud-ir/bedrud/releases/download/v0.1.0/bedrud-desktop-linux-arm64.tar.xz
+        sha256: SKIP
+        size: 0
+        only-arches: [aarch64]
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/bedrud-ir/bedrud/releases/latest
+          version-query: .tag_name | ltrimstr("v")
+          url-query: >-
+            .assets[] |
+            select(.name == "bedrud-desktop-linux-arm64.tar.xz") |
+            .browser_download_url
+      - type: file
+        path: ir.bedrud.Desktop.desktop
+      - type: file
+        path: bedrud.png
+      - type: file
+        path: ir.bedrud.Desktop.metainfo.xml

@@ -1,0 +1,134 @@
+name: DNF / RPM Repository
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # ── Check whether GPG key secret is present ──────────────────────
+  check-secrets:
+    name: Check Secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has_gpg: ${{ steps.check.outputs.has_gpg }}
+    steps:
+      - id: check
+        env:
+          KEY: ${{ secrets.RPM_GPG_PRIVATE_KEY }}
+        run: |
+          if [ -n "$KEY" ]; then
+            echo "has_gpg=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_gpg=false" >> "$GITHUB_OUTPUT"
+            echo "⚠ RPM_GPG_PRIVATE_KEY not configured — skipping DNF repo update"
+          fi
+
+  # ── Build and publish DNF repository ─────────────────────────────
+  update-dnf-repo:
+    name: Update DNF Repository
+    runs-on: ubuntu-latest
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has_gpg == 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: packages
+          fetch-depth: 0
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y createrepo-c gnupg2
+
+      - name: Download RPM packages from release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir -p rpm-downloads
+          gh release download "$TAG" \
+            --repo "$REPO" \
+            --pattern "*.rpm" \
+            --dir rpm-downloads || echo "No RPM files found in release"
+          ls -la rpm-downloads/
+
+      - name: Import GPG key
+        env:
+          RPM_GPG_PRIVATE_KEY: ${{ secrets.RPM_GPG_PRIVATE_KEY }}
+        run: |
+          echo "$RPM_GPG_PRIVATE_KEY" | gpg --batch --import
+          KEY_ID=$(gpg --list-keys --with-colons | awk -F: '/^pub/{print $5; exit}')
+          echo "GPG_KEY_ID=${KEY_ID}" >> "$GITHUB_ENV"
+
+      - name: Build DNF repository structure
+        run: |
+          mkdir -p dnf/bedrud-desktop/x86_64
+          mkdir -p dnf/bedrud-desktop/aarch64
+          mkdir -p dnf/bedrud/x86_64
+          mkdir -p dnf/bedrud/aarch64
+
+          for rpm in rpm-downloads/*.rpm; do
+            [ -f "$rpm" ] || continue
+            name=$(rpm -qp --queryformat '%{NAME}' "$rpm" 2>/dev/null)
+            arch=$(rpm -qp --queryformat '%{ARCH}' "$rpm" 2>/dev/null)
+            if [ "$name" = "bedrud-desktop" ]; then
+              cp "$rpm" "dnf/bedrud-desktop/${arch}/"
+            elif [ "$name" = "bedrud" ]; then
+              cp "$rpm" "dnf/bedrud/${arch}/"
+            fi
+          done
+
+          for dir in \
+            dnf/bedrud-desktop/x86_64 \
+            dnf/bedrud-desktop/aarch64 \
+            dnf/bedrud/x86_64 \
+            dnf/bedrud/aarch64; do
+            if ls "${dir}"/*.rpm >/dev/null 2>&1; then
+              createrepo_c "${dir}"
+            fi
+          done
+
+      - name: GPG sign RPM packages
+        run: |
+          for rpm in dnf/**/*.rpm; do
+            [ -f "$rpm" ] || continue
+            rpm --addsign "$rpm" 2>/dev/null || true
+          done
+
+      - name: Export GPG public key and repo file
+        run: |
+          gpg --armor --export "$GPG_KEY_ID" > dnf/bedrud.gpg.key
+
+          cat > dnf/bedrud.repo << 'REPOEOF'
+          [bedrud-desktop]
+          name=Bedrud Desktop Client
+          baseurl=https://bedrud-ir.github.io/bedrud/dnf/bedrud-desktop/$basearch/
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key
+
+          [bedrud]
+          name=Bedrud Server
+          baseurl=https://bedrud-ir.github.io/bedrud/dnf/bedrud/$basearch/
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key
+          REPOEOF
+
+      - name: Commit to packages branch
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add dnf/
+          git commit -m "chore: update DNF repo for ${TAG}" || \
+            echo "No changes to commit"
+          git push
