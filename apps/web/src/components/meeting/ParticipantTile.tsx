@@ -101,11 +101,17 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
         }}
       >
         {hasCameraVideo && cameraTrack ? (
-          /* Video stream */
-          <VideoTrack
-            trackRef={{ participant, source: Track.Source.Camera, publication: cameraTrack }}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-          />
+          /* Video stream — wrapper suppresses browser's native <video> context menu
+             so right-click bubbles to the Radix ContextMenuTrigger instead */
+          <div
+            style={{ position: 'absolute', inset: 0 }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <VideoTrack
+              trackRef={{ participant, source: Track.Source.Camera, publication: cameraTrack }}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </div>
         ) : (
           /* No video: gradient avatar */
           <div style={{
