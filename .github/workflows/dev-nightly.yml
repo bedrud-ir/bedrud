@@ -367,17 +367,21 @@ jobs:
         run: |
           BASE="https://github.com/${REPO}/releases/download/${TAG}"
           LABEL=$([ "$CHANNEL" = "nightly" ] && echo "Nightly" || echo "Dev")
-          MSG="🔨 <b>Bedrud ${LABEL} build — ${TAG}</b>
 
-Commit: <code>${SHA}</code>
-<a href=\"https://github.com/${REPO}/releases/tag/${TAG}\">Download all artifacts</a>
+          MSG=$(cat <<EOF
+          🔨 <b>Bedrud ${LABEL} build — ${TAG}</b>
 
-<b>Server</b>
-• <a href=\"${BASE}/bedrud_linux_amd64.tar.xz\">Linux x86_64</a>
-• <a href=\"${BASE}/bedrud_linux_arm64.tar.xz\">Linux ARM64</a>
+          Commit: <code>${SHA}</code>
+          <a href="https://github.com/${REPO}/releases/tag/${TAG}">Download all artifacts</a>
 
-<b>Android (debug)</b>
-• <a href=\"${BASE}/bedrud-debug.apk\">Debug APK</a>"
+          <b>Server</b>
+          • <a href="${BASE}/bedrud_linux_amd64.tar.xz">Linux x86_64</a>
+          • <a href="${BASE}/bedrud_linux_arm64.tar.xz">Linux ARM64</a>
+
+          <b>Android (debug)</b>
+          • <a href="${BASE}/bedrud-debug.apk">Debug APK</a>
+          EOF
+          )
 
           curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
             -d "chat_id=${CHAT_ID}" \
