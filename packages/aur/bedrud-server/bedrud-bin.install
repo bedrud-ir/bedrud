@@ -1,0 +1,22 @@
+post_install() {
+    # Create bedrud system user
+    id -u bedrud &>/dev/null || useradd -r -s /usr/bin/nologin -d /var/lib/bedrud bedrud
+
+    chown -R bedrud:bedrud /var/lib/bedrud /var/log/bedrud
+
+    echo ""
+    echo "==> Bedrud server installed."
+    echo "==> Configure: /etc/bedrud/config.yaml"
+    echo "==> Then run:  bedrud install  or  systemctl enable --now bedrud"
+    echo "==> Docs: https://bedrud-ir.github.io/bedrud/"
+    systemctl daemon-reload
+}
+
+post_upgrade() {
+    post_install
+}
+
+pre_remove() {
+    systemctl stop bedrud.service 2>/dev/null || true
+    systemctl disable bedrud.service 2>/dev/null || true
+}

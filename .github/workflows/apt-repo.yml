@@ -20,9 +20,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Check that required secrets are present before doing any real work
+  check-secrets:
+    name: Check secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has_gpg: ${{ steps.check.outputs.has_gpg }}
+    steps:
+      - name: Verify APT_GPG_PRIVATE_KEY is configured
+        id: check
+        env:
+          GPG_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: |
+          if [ -n "$GPG_KEY" ]; then
+            echo "has_gpg=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_gpg=false" >> "$GITHUB_OUTPUT"
+            echo "⚠ APT_GPG_PRIVATE_KEY not configured — apt repo update skipped"
+            echo "To enable: generate a GPG key and add APT_GPG_PRIVATE_KEY + APT_GPG_KEY_ID secrets"
+          fi
+
   update-apt-repo:
     name: Publish apt repository
     runs-on: ubuntu-latest
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has_gpg == 'true'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

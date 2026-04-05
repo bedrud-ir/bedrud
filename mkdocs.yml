@@ -72,6 +72,7 @@ nav:
       - Deployment: guides/deployment.md
       - Appliance Mode: guides/appliance.md
       - Docker: guides/docker.md
+      - Package Installation: guides/packages.md
   - API Reference:
       - Authentication: api/authentication.md
       - Rooms: api/rooms.md

@@ -79,12 +79,14 @@ jobs:
           - goos: linux
             goarch: amd64
             suffix: linux_amd64
+            deb_arch: amd64
             cgo: "1"
             cc: gcc
             lk_arch: amd64
           - goos: linux
             goarch: arm64
             suffix: linux_arm64
+            deb_arch: arm64
             cgo: "1"
             cc: aarch64-linux-gnu-gcc
             lk_arch: arm64
@@ -131,8 +133,30 @@ jobs:
         run: |
           go build -ldflags="-s -w" -o ../dist/bedrud ./cmd/bedrud/main.go
 
-      - name: Package binary
+      - name: Package server (tar.xz + .deb)
         run: |
+          # .deb — must be built before binary is removed from dist/
+          mkdir -p deb/DEBIAN deb/usr/bin deb/usr/lib/systemd/system \
+            deb/etc/bedrud deb/var/lib/bedrud deb/var/log/bedrud
+
+          cp dist/bedrud deb/usr/bin/bedrud
+          cp apps/server/installer/linux/bedrud.service deb/usr/lib/systemd/system/
+          cp apps/server/installer/linux/postinst deb/DEBIAN/postinst
+          chmod 0755 deb/DEBIAN/postinst
+
+          {
+            echo "Package: bedrud"
+            echo "Version: ${{ needs.prepare.outputs.tag }}"
+            echo "Architecture: ${{ matrix.deb_arch }}"
+            echo "Maintainer: Bedrud <info@bedrud.ir>"
+            echo "Description: Bedrud self-hosted video meeting server"
+            echo " A single binary packaging the web UI, REST API, and LiveKit WebRTC."
+            echo "Depends: libc6"
+          } > deb/DEBIAN/control
+
+          dpkg-deb --build deb bedrud_${{ matrix.deb_arch }}.deb
+
+          # tar.xz portable
           cd dist
           tar -cJf bedrud_${{ matrix.suffix }}.tar.xz bedrud
           rm bedrud
@@ -141,6 +165,11 @@ jobs:
         with:
           name: server-${{ matrix.suffix }}
           path: dist/bedrud_${{ matrix.suffix }}.tar.xz
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: server-deb-${{ matrix.deb_arch }}
+          path: bedrud_${{ matrix.deb_arch }}.deb
 
   # ── Docker image ──────────────────────────────────────────────
   docker:
@@ -243,6 +272,12 @@ jobs:
             target: aarch64-pc-windows-msvc
             name: windows-arm64
             nsis_arch: arm64
+          - os: macos-13
+            target: x86_64-apple-darwin
+            name: macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: macos-arm64
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -368,6 +403,30 @@ jobs:
           name: bedrud-desktop-${{ matrix.name }}-setup
           path: bedrud-desktop-${{ matrix.name }}-setup.exe
 
+      # ── macOS packaging ──────────────────────────────────────
+      - name: Package macOS (portable tar.gz + DMG)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/bedrud-desktop dist/
+          tar -czf bedrud-desktop-${{ matrix.name }}.tar.gz -C dist .
+          mkdir -p dmg-staging
+          cp target/${{ matrix.target }}/release/bedrud-desktop dmg-staging/
+          hdiutil create -volname "Bedrud Desktop" -srcfolder dmg-staging -ov -format UDZO \
+            "bedrud-desktop-${{ matrix.name }}.dmg"
+
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'macOS'
+        with:
+          name: bedrud-desktop-${{ matrix.name }}-portable
+          path: bedrud-desktop-${{ matrix.name }}.tar.gz
+
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'macOS'
+        with:
+          name: bedrud-desktop-${{ matrix.name }}-dmg
+          path: bedrud-desktop-${{ matrix.name }}.dmg
+
   # ── Web bundle ───────────────────────────────────────────────
   web:
     name: Web Bundle
@@ -415,8 +474,9 @@ jobs:
         run: |
           mkdir -p release-assets
 
-          # Server binaries
-          find artifacts/server-* -name "*.tar.xz" -exec cp {} release-assets/ \;
+          # Server binaries (tar.xz + .deb)
+          find artifacts/server-linux_* -name "*.tar.xz" -exec cp {} release-assets/ \;
+          find artifacts/server-deb-* -name "*.deb" -exec cp {} release-assets/ \; 2>/dev/null || true
 
           # Android debug APKs
           for f in \

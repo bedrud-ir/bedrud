@@ -25,12 +25,14 @@ jobs:
           - goos: linux
             goarch: amd64
             suffix: linux_amd64
+            deb_arch: amd64
             cgo: "1"
             cc: gcc
             lk_arch: amd64
           - goos: linux
             goarch: arm64
             suffix: linux_arm64
+            deb_arch: arm64
             cgo: "1"
             cc: aarch64-linux-gnu-gcc
             lk_arch: arm64
@@ -76,12 +78,41 @@ jobs:
         run: |
           go build -ldflags="-s -w" -o ../dist/bedrud ./cmd/bedrud/main.go
 
-      - name: Package binary
+      - name: Package binary (tar.xz)
         run: |
           cd dist
           cp bedrud bedrud_${{ matrix.suffix }}
           tar -cJf bedrud_${{ matrix.suffix }}.tar.xz bedrud
           rm bedrud
+
+      - name: Package server (.deb)
+        run: |
+          mkdir -p deb/DEBIAN \
+            deb/usr/bin \
+            deb/usr/lib/systemd/system \
+            deb/etc/bedrud \
+            deb/var/lib/bedrud \
+            deb/var/log/bedrud
+
+          cp dist/bedrud_${{ matrix.suffix }} deb/usr/bin/bedrud
+          cp apps/server/installer/linux/bedrud.service deb/usr/lib/systemd/system/
+
+          {
+            echo "Package: bedrud"
+            echo "Version: ${{ github.ref_name }}"
+            echo "Architecture: ${{ matrix.deb_arch }}"
+            echo "Maintainer: Bedrud <info@bedrud.ir>"
+            echo "Homepage: https://github.com/bedrud-ir/bedrud"
+            echo "Description: Bedrud self-hosted video meeting server"
+            echo " A single binary packaging the web UI, REST API, and LiveKit WebRTC"
+            echo " media server. Supports Let's Encrypt TLS and SQLite/PostgreSQL."
+            echo "Depends: libc6"
+          } > deb/DEBIAN/control
+
+          cp apps/server/installer/linux/postinst deb/DEBIAN/postinst
+          chmod 0755 deb/DEBIAN/postinst
+
+          dpkg-deb --build deb bedrud_${{ matrix.deb_arch }}.deb
 
       - uses: actions/upload-artifact@v7
         with:
@@ -89,6 +120,11 @@ jobs:
           path: |
             dist/bedrud_${{ matrix.suffix }}.tar.xz
             dist/bedrud_${{ matrix.suffix }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: server-deb-${{ matrix.deb_arch }}
+          path: bedrud_${{ matrix.deb_arch }}.deb
 
   # ── Docker image ──────────────────────────────────────────────
   docker:
@@ -336,6 +372,12 @@ jobs:
             target: aarch64-pc-windows-msvc
             name: windows-arm64
             nsis_arch: arm64
+          - os: macos-13
+            target: x86_64-apple-darwin
+            name: macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: macos-arm64
     steps:
       - uses: actions/checkout@v6
 
@@ -466,6 +508,37 @@ jobs:
           name: bedrud-desktop-${{ matrix.name }}-setup
           path: bedrud-desktop-${{ matrix.name }}-setup.exe
 
+      # ── macOS packaging ──────────────────────────────────────
+      - name: Package macOS (portable tar.gz + DMG)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/bedrud-desktop dist/
+
+          # Portable tarball
+          tar -czf bedrud-desktop-${{ matrix.name }}.tar.gz -C dist .
+
+          # DMG disk image
+          mkdir -p dmg-staging
+          cp target/${{ matrix.target }}/release/bedrud-desktop dmg-staging/
+          hdiutil create \
+            -volname "Bedrud Desktop" \
+            -srcfolder dmg-staging \
+            -ov -format UDZO \
+            "bedrud-desktop-${{ matrix.name }}.dmg"
+
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'macOS'
+        with:
+          name: bedrud-desktop-${{ matrix.name }}-portable
+          path: bedrud-desktop-${{ matrix.name }}.tar.gz
+
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'macOS'
+        with:
+          name: bedrud-desktop-${{ matrix.name }}-dmg
+          path: bedrud-desktop-${{ matrix.name }}.dmg
+
   # ── GitHub Release ───────────────────────────────────────────
   release:
     name: Create GitHub Release
@@ -483,8 +556,11 @@ jobs:
         run: |
           mkdir -p release-assets
 
-          # Server binaries
-          find artifacts/server-* -name "*.tar.xz" -exec cp {} release-assets/ \;
+          # Server binaries (tar.xz + raw)
+          find artifacts/server-linux_* -name "*.tar.xz" -exec cp {} release-assets/ \;
+
+          # Server .deb packages
+          find artifacts/server-deb-* -name "*.deb" -exec cp {} release-assets/ \;
 
           # Android debug APKs
           for f in \
@@ -509,7 +585,7 @@ jobs:
           # iOS IPA (optional — may not exist without signing certs)
           [ -f artifacts/ios-ipa/Bedrud.ipa ] && cp artifacts/ios-ipa/Bedrud.ipa release-assets/Bedrud.ipa || true
 
-          # Desktop: portable + installers + deb packages
+          # Desktop: AppImages, portables, installers, debs, DMGs
           find artifacts/bedrud-desktop-* -type f -exec cp {} release-assets/ \;
 
           ls -la release-assets/
@@ -546,6 +622,10 @@ jobs:
           • <a href="${BASE}/bedrud_linux_amd64.tar.xz">Linux x86_64</a>
           • <a href="${BASE}/bedrud_linux_arm64.tar.xz">Linux ARM64</a>
 
+          <b>🖥 Server packages</b>
+          • <a href="${BASE}/bedrud_amd64.deb">x86_64 .deb</a>
+          • <a href="${BASE}/bedrud_arm64.deb">ARM64 .deb</a>
+
           <b>🤖 Android (release)</b>
           • <a href="${BASE}/bedrud-android-universal-release.apk">Universal APK</a>
           • <a href="${BASE}/bedrud-android-arm64-v8a-release.apk">arm64-v8a</a>
@@ -578,6 +658,10 @@ jobs:
           • <a href="${BASE}/bedrud-desktop-linux-x86_64.deb">x86_64 .deb</a>
           • <a href="${BASE}/bedrud-desktop-linux-arm64.deb">ARM64 .deb</a>
 
+          <b>🍎 Desktop macOS</b>
+          • <a href="${BASE}/bedrud-desktop-macos-x86_64.dmg">Intel DMG</a>
+          • <a href="${BASE}/bedrud-desktop-macos-arm64.dmg">Apple Silicon DMG</a>
+
           <b>🐳 Docker</b>
           <code>docker pull ghcr.io/${REPO}:${TAG}</code>
           EOF
@@ -589,48 +673,85 @@ jobs:
             -d "disable_web_page_preview=true" \
             --data-urlencode "text=${MSG}"
 
-  # ── AUR package update ────────────────────────────────────────
-  aur:
-    name: Update AUR package
+  # ── AUR: desktop client ───────────────────────────────────────
+  aur-desktop:
+    name: AUR – bedrud-desktop-bin
     runs-on: ubuntu-latest
     needs: release
     if: needs.release.result == 'success' && secrets.AUR_SSH_PRIVATE_KEY != ''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Compute release checksums
+      - name: Update PKGBUILD checksums
         env:
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
           BASE="https://github.com/${REPO}/releases/download/${TAG}"
+          PKGVER="${TAG#v}"
           X86_URL="${BASE}/bedrud-desktop-linux-x86_64.tar.xz"
           ARM_URL="${BASE}/bedrud-desktop-linux-arm64.tar.xz"
 
           X86_SHA=$(curl -fsSL "$X86_URL" | sha256sum | awk '{print $1}')
           ARM_SHA=$(curl -fsSL "$ARM_URL" | sha256sum | awk '{print $1}')
 
-          # Strip leading 'v' from tag for pkgver
-          PKGVER="${TAG#v}"
-
           sed -i "s/^pkgver=.*/pkgver=${PKGVER}/" packages/aur/PKGBUILD
           sed -i "s/^sha256sums_x86_64=.*/sha256sums_x86_64=('${X86_SHA}')/" packages/aur/PKGBUILD
           sed -i "s/^sha256sums_aarch64=.*/sha256sums_aarch64=('${ARM_SHA}')/" packages/aur/PKGBUILD
 
-          # Update .SRCINFO
           sed -i "s/pkgver = .*/pkgver = ${PKGVER}/" packages/aur/.SRCINFO
-          sed -i "s|source_x86_64 = .*|source_x86_64 = bedrud-desktop-bin-${PKGVER}-x86_64.tar.xz::${X86_URL}|" packages/aur/.SRCINFO
-          sed -i "s|source_aarch64 = .*|source_aarch64 = bedrud-desktop-bin-${PKGVER}-aarch64.tar.xz::${ARM_URL}|" packages/aur/.SRCINFO
+          sed -i "s|source_x86_64 = .*tar.xz.*|source_x86_64 = bedrud-desktop-bin-${PKGVER}-x86_64.tar.xz::${X86_URL}|" packages/aur/.SRCINFO
+          sed -i "s|source_aarch64 = .*tar.xz.*|source_aarch64 = bedrud-desktop-bin-${PKGVER}-aarch64.tar.xz::${ARM_URL}|" packages/aur/.SRCINFO
           sed -i "s/sha256sums_x86_64 = .*/sha256sums_x86_64 = ${X86_SHA}/" packages/aur/.SRCINFO
           sed -i "s/sha256sums_aarch64 = .*/sha256sums_aarch64 = ${ARM_SHA}/" packages/aur/.SRCINFO
 
-      - name: Push updated PKGBUILD to AUR
+      - name: Push to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v3
         with:
           pkgname: bedrud-desktop-bin
           pkgbuild: packages/aur/PKGBUILD
-          assets: |
-            packages/aur/.SRCINFO
+          assets: packages/aur/.SRCINFO
+          commit_username: bedrud-bot
+          commit_email: info@bedrud.ir
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ github.ref_name }}"
+
+  # ── AUR: server ───────────────────────────────────────────────
+  aur-server:
+    name: AUR – bedrud-bin
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.result == 'success' && secrets.AUR_SSH_PRIVATE_KEY != ''
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Update PKGBUILD checksums
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          BASE="https://github.com/${REPO}/releases/download/${TAG}"
+          PKGVER="${TAG#v}"
+          X86_URL="${BASE}/bedrud_linux_amd64.tar.xz"
+          ARM_URL="${BASE}/bedrud_linux_arm64.tar.xz"
+
+          X86_SHA=$(curl -fsSL "$X86_URL" | sha256sum | awk '{print $1}')
+          ARM_SHA=$(curl -fsSL "$ARM_URL" | sha256sum | awk '{print $1}')
+
+          sed -i "s/^pkgver=.*/pkgver=${PKGVER}/" packages/aur/bedrud-server/PKGBUILD
+          sed -i "0,/^sha256sums_x86_64=/{s/^sha256sums_x86_64=.*/sha256sums_x86_64=('${X86_SHA}' 'SKIP')/}" packages/aur/bedrud-server/PKGBUILD
+          sed -i "0,/^sha256sums_aarch64=/{s/^sha256sums_aarch64=.*/sha256sums_aarch64=('${ARM_SHA}' 'SKIP')/}" packages/aur/bedrud-server/PKGBUILD
+
+          sed -i "s/pkgver = .*/pkgver = ${PKGVER}/" packages/aur/bedrud-server/.SRCINFO
+          sed -i "s|source_x86_64 = .*tar.xz.*|source_x86_64 = bedrud-bin-${PKGVER}-x86_64.tar.xz::${X86_URL}|" packages/aur/bedrud-server/.SRCINFO
+          sed -i "s|source_aarch64 = .*tar.xz.*|source_aarch64 = bedrud-bin-${PKGVER}-aarch64.tar.xz::${ARM_URL}|" packages/aur/bedrud-server/.SRCINFO
+
+      - name: Push to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v3
+        with:
+          pkgname: bedrud-bin
+          pkgbuild: packages/aur/bedrud-server/PKGBUILD
+          assets: packages/aur/bedrud-server/.SRCINFO
           commit_username: bedrud-bot
           commit_email: info@bedrud.ir
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}

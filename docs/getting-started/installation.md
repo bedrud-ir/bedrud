@@ -2,6 +2,40 @@
 
 This guide covers all installation scenarios for deploying Bedrud to a production server.
 
+## Install via Package Manager
+
+The quickest way to get Bedrud running on a supported Linux distribution.
+
+=== "Ubuntu / Debian (apt)"
+
+    ```bash
+    curl -fsSL https://bedrud-ir.github.io/bedrud/bedrud.gpg.key \
+      | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/bedrud.gpg
+
+    echo "deb https://bedrud-ir.github.io/bedrud stable main" \
+      | sudo tee /etc/apt/sources.list.d/bedrud.list
+
+    sudo apt update && sudo apt install bedrud
+    ```
+
+    Then run the interactive installer:
+
+    ```bash
+    sudo bedrud install
+    ```
+
+=== "Arch Linux (AUR)"
+
+    ```bash
+    yay -S bedrud-bin
+    sudo bedrud install
+    ```
+
+!!! tip
+    For desktop client installation (Linux, macOS, Windows) see the [Package Installation guide](../guides/packages.md).
+
+---
+
 ## Prerequisites
 
 - A Debian-based Linux server (Debian 12+ recommended)

@@ -6,10 +6,33 @@ This guide explains how to deploy Bedrud to a production server.
 
 | Method | Best For |
 |--------|----------|
+| [Package Manager (apt/AUR)](#package-manager) | Managed install on supported Linux distros |
 | [Automated CLI](#automated-cli-deployment) | Quick remote setup |
 | [Manual Install](#manual-installation) | Full control over configuration |
 | [Docker](#docker-deployment) | Containerized environments |
 | [Appliance Mode](appliance.md) | Single-binary all-in-one setup |
+
+---
+
+## Package Manager
+
+Install Bedrud on Debian/Ubuntu or Arch Linux using the native package manager. This is the recommended method for persistent server deployments where you want automatic updates via `apt upgrade` or the AUR.
+
+See the [Package Installation guide](packages.md) for full instructions, including adding the apt GPG key and repository.
+
+```bash
+# Ubuntu / Debian
+sudo apt install bedrud
+
+# Arch Linux (AUR)
+yay -S bedrud-bin
+```
+
+After installation, run the interactive installer to configure TLS, systemd services, and the database:
+
+```bash
+sudo bedrud install
+```
 
 ---
 
@@ -93,7 +116,7 @@ docker build -t bedrud .
 
 The multi-stage Dockerfile:
 
-1. **Stage 1** (Node 22 Alpine): Builds the Svelte frontend with Bun
+1. **Stage 1** (Node 22 Alpine): Builds the React 19 + TanStack Start frontend with Bun
 2. **Stage 2** (Go 1.24 Alpine): Builds the Go server with embedded frontend
 3. **Stage 3** (Alpine 3.21): Minimal runtime (~8MB base)
 
@@ -194,9 +217,21 @@ tail -f /var/log/bedrud/bedrud.log
 
 The `release.yml` workflow triggers on version tags (`v*`) and produces:
 
-- Multi-platform binaries: `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`
-- Docker image pushed to GHCR
-- All artifacts attached to the GitHub release
+| Artifact | Description |
+|---|---|
+| `bedrud_linux_amd64.tar.xz` / `bedrud_linux_arm64.tar.xz` | Server binaries (Linux x86_64 / ARM64) |
+| `bedrud_amd64.deb` / `bedrud_arm64.deb` | Debian/Ubuntu packages (server) |
+| Docker image (`ghcr.io/bedrud-ir/bedrud`) | Multi-arch container image pushed to GHCR |
+| `bedrud-desktop-linux-x86_64.AppImage` | Desktop — universal Linux AppImage |
+| `bedrud-desktop-linux-x86_64.deb` | Desktop — Debian/Ubuntu package |
+| `bedrud-desktop-linux-x86_64.tar.xz` | Desktop — Linux portable tarball |
+| `bedrud-desktop-windows-x86_64-setup.exe` / `-arm64-setup.exe` | Desktop — Windows NSIS installer |
+| `bedrud-desktop-windows-x86_64.zip` / `-arm64.zip` | Desktop — Windows portable |
+| `bedrud-desktop-macos-x86_64.tar.gz` / `-arm64.tar.gz` | Desktop — macOS portable (unsigned) |
+| Android APK (debug + release, per-arch) | Android client builds |
+| iOS IPA (optional, requires signing) | iOS client archive |
+
+All artifacts are attached to the GitHub release.
 
 ### Nightly Builds
 

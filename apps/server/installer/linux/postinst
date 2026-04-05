@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+# Create bedrud system user if it doesn't exist
+if ! getent passwd bedrud > /dev/null 2>&1; then
+    useradd -r -s /usr/sbin/nologin -d /var/lib/bedrud bedrud
+fi
+
+# Create runtime directories
+mkdir -p /etc/bedrud /var/lib/bedrud /var/log/bedrud
+chown -R bedrud:bedrud /var/lib/bedrud /var/log/bedrud
+
+# Enable and start service if systemd is available
+if command -v systemctl > /dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then
+    systemctl daemon-reload
+    systemctl enable bedrud.service || true
+    # Don't auto-start — user needs to configure /etc/bedrud/config.yaml first
+fi
+
+echo ""
+echo "Bedrud installed. Before starting, configure /etc/bedrud/config.yaml"
+echo "then run: bedrud install  or  systemctl start bedrud"
+echo "Docs: https://bedrud-ir.github.io/bedrud/getting-started/installation/"

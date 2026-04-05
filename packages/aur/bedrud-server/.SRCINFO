@@ -1,0 +1,24 @@
+pkgbase = bedrud-bin
+	pkgdesc = Self-hosted video meeting server (single binary with embedded UI and LiveKit)
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/bedrud-ir/bedrud
+	arch = x86_64
+	arch = aarch64
+	license = Apache-2.0
+	depends = glibc
+	provides = bedrud
+	conflicts = bedrud
+	options = !strip
+	backup = etc/bedrud/config.yaml
+	install = bedrud-bin.install
+	source_x86_64 = bedrud-bin-0.1.0-x86_64.tar.xz::https://github.com/bedrud-ir/bedrud/releases/download/v0.1.0/bedrud_linux_amd64.tar.xz
+	source_x86_64 = bedrud.service::https://raw.githubusercontent.com/bedrud-ir/bedrud/main/apps/server/installer/linux/bedrud.service
+	sha256sums_x86_64 = SKIP
+	sha256sums_x86_64 = SKIP
+	source_aarch64 = bedrud-bin-0.1.0-aarch64.tar.xz::https://github.com/bedrud-ir/bedrud/releases/download/v0.1.0/bedrud_linux_arm64.tar.xz
+	source_aarch64 = bedrud.service::https://raw.githubusercontent.com/bedrud-ir/bedrud/main/apps/server/installer/linux/bedrud.service
+	sha256sums_aarch64 = SKIP
+	sha256sums_aarch64 = SKIP
+
+pkgname = bedrud-bin

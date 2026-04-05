@@ -13,6 +13,7 @@
 [![iOS](https://img.shields.io/badge/iOS-18.0+-000000?logo=apple&logoColor=white)](apps/ios)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)](apps/desktop)
 [![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?logo=linux&logoColor=black)](apps/desktop)
+[![macOS](https://img.shields.io/badge/macOS-x86__64%2Farm64-000000?logo=apple&logoColor=white)](apps/desktop)
 
 ---
 
@@ -20,7 +21,7 @@
 
 - **Video & Audio Meetings** — WebRTC-powered rooms via an embedded LiveKit media server
 - **Single Binary** — Go server with the React frontend and LiveKit compiled in; no runtime dependencies
-- **Native Client Apps** — Android (Jetpack Compose), iOS (SwiftUI), and desktop (Rust + Slint for Windows/Linux) with picture-in-picture, deep linking, and call management
+- **Native Client Apps** — Android (Jetpack Compose), iOS (SwiftUI), and desktop (Rust + Slint for Windows, Linux, and macOS) with picture-in-picture, deep linking, and call management
 - **Multiple Auth Methods** — Email/password, OAuth (Google, GitHub, Twitter), guest access, and FIDO2 passkeys
 - **Room Controls** — Public/private rooms, admin kick/mute/video-off, participant management
 - **Multi-Instance** — Mobile and desktop apps can connect to multiple Bedrud servers simultaneously
@@ -100,6 +101,81 @@ uv run python bedrud.py --auto-config \
 # Or run the built binary directly on the target server
 sudo ./bedrud install --tls --domain meet.example.com --email admin@example.com
 ```
+
+## Installation
+
+### Server
+
+=== "Ubuntu/Debian (apt)"
+
+```bash
+curl -fsSL https://bedrud-ir.github.io/bedrud/bedrud.gpg.key \
+  | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/bedrud.gpg
+echo "deb https://bedrud-ir.github.io/bedrud stable main" \
+  | sudo tee /etc/apt/sources.list.d/bedrud.list
+sudo apt update && sudo apt install bedrud
+```
+
+=== "Arch Linux (AUR)"
+
+```bash
+yay -S bedrud-bin
+```
+
+=== "Binary download"
+
+```bash
+curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz | tar xJ
+sudo mv bedrud /usr/local/bin/
+```
+
+After installing, run the interactive setup:
+
+```bash
+sudo bedrud install
+```
+
+### Desktop Client
+
+=== "Ubuntu/Debian (apt)"
+
+```bash
+# After adding the repo above:
+sudo apt install bedrud-desktop
+```
+
+=== "Arch Linux (AUR)"
+
+```bash
+yay -S bedrud-desktop-bin
+```
+
+=== "AppImage (any Linux)"
+
+```bash
+wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
+chmod +x bedrud-desktop-linux-x86_64.AppImage
+./bedrud-desktop-linux-x86_64.AppImage
+```
+
+=== "macOS (unsigned)"
+
+```bash
+# Apple Silicon
+curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz | tar xz
+# Intel
+curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz | tar xz
+```
+
+The macOS builds are unsigned. If Gatekeeper blocks the app, run `xattr -d com.apple.quarantine bedrud-desktop` or allow it in **System Settings → Privacy & Security**.
+
+=== "Windows"
+
+Download the NSIS installer or portable `.zip` from the [latest release](https://github.com/bedrud-ir/bedrud/releases/latest) for x86_64 or ARM64.
+
+See the [Package Installation guide](https://bedrud-ir.github.io/bedrud/guides/packages/) for full details on all platforms.
+
+---
 
 ## Client Apps
 
