@@ -5,13 +5,13 @@ import { useUserStore } from '#/lib/user.store'
 
 export interface SystemMessage {
   type: 'system'
-  event: 'kick' | 'ban'
+  event: 'kick' | 'ban' | 'ask_unmute' | 'ask_camera' | 'spotlight' | 'deafen' | 'undeafen'
   actor: string
   target: string
   ts: number
 }
 
-const KNOWN_SYSTEM_EVENTS = new Set(['kick', 'ban'])
+const KNOWN_SYSTEM_EVENTS = new Set(['kick', 'ban', 'ask_unmute', 'ask_camera', 'spotlight', 'deafen', 'undeafen'])
 
 type ChatMessages = ReturnType<typeof useChat>['chatMessages']
 type SendFn = ReturnType<typeof useChat>['send']
@@ -24,6 +24,8 @@ interface MeetingContextValue {
   isCreator: boolean
   isAdmin: boolean
   isModerator: boolean
+  // Server-deafened: admin/mod sent a deafen system message targeting this user
+  isServerDeafened: boolean
   // Chat — always live, regardless of panel visibility
   chatMessages: ChatMessages
   systemMessages: SystemMessage[]
@@ -57,6 +59,7 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
   // useChat is always mounted here — messages accumulate whether the panel is open or not
   const { chatMessages, send, isSending } = useChat()
   const [systemMessages, setSystemMessages] = useState<SystemMessage[]>([])
+  const [isServerDeafened, setIsServerDeafened] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
 
   // Track how many messages existed at the last markRead() so we only count new arrivals
@@ -75,7 +78,13 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
           typeof raw.actor === 'string' && raw.actor.length > 0 &&
           typeof raw.target === 'string' && raw.target.length > 0
         ) {
-          setSystemMessages((prev) => [...prev, { ...(raw as SystemMessage), ts: Date.now() }])
+          const msg = { ...(raw as SystemMessage), ts: Date.now() }
+          setSystemMessages((prev) => [...prev, msg])
+          // Track server-deafen state for current user
+          if (msg.target === currentUserId) {
+            if (msg.event === 'deafen') setIsServerDeafened(true)
+            else if (msg.event === 'undeafen') setIsServerDeafened(false)
+          }
         }
       } catch (e) {
         console.warn('[MeetingContext] failed to parse system message:', e)
@@ -111,13 +120,14 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
     isCreator: !!currentUserId && currentUserId === adminId,
     isAdmin: accesses.includes('admin') || accesses.includes('superadmin'),
     isModerator: accesses.includes('moderator'),
+    isServerDeafened,
     chatMessages,
     systemMessages,
     send,
     isSending,
     unreadCount,
     markRead,
-  }), [roomId, roomName, adminId, currentUserId, accesses, chatMessages, systemMessages, send, isSending, unreadCount, markRead])
+  }), [roomId, roomName, adminId, currentUserId, accesses, isServerDeafened, chatMessages, systemMessages, send, isSending, unreadCount, markRead])
 
   return <MeetingContext.Provider value={value}>{children}</MeetingContext.Provider>
 }
