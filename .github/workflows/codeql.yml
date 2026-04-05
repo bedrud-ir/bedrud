@@ -18,7 +18,6 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.allow_failure == true }}
     strategy:
       fail-fast: false
       matrix:
@@ -31,8 +30,7 @@ jobs:
             build-mode: none
           - language: kotlin
             os: ubuntu-latest
-            build-mode: manual
-            allow_failure: true  # CodeQL doesn't yet support Kotlin 2.3.20+
+            build-mode: none  # build-mode:manual fails with Kotlin 2.3.20+ (CodeQL limitation)
 
     steps:
       - uses: actions/checkout@v6
@@ -62,22 +60,6 @@ jobs:
         run: |
           bun install --frozen-lockfile
           bun run build:embed
-
-      # Kotlin: manual build via Gradle
-      - name: Set up Java (Kotlin analysis)
-        if: matrix.language == 'kotlin'
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - uses: gradle/actions/setup-gradle@v6
-        if: matrix.language == 'kotlin'
-
-      - name: Build Android (Kotlin analysis)
-        if: matrix.language == 'kotlin'
-        working-directory: apps/android
-        run: ./gradlew compileDebugKotlin
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
