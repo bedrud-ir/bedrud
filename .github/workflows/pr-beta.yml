@@ -264,26 +264,46 @@ jobs:
       - name: Package Linux (.deb)
         if: runner.os == 'Linux'
         run: |
-          mkdir -p deb/DEBIAN deb/usr/bin deb/usr/share/applications
+          mkdir -p deb/DEBIAN deb/usr/bin \
+            deb/usr/share/applications \
+            deb/usr/share/icons/hicolor/512x512/apps
+
           cp target/${{ matrix.target }}/release/bedrud-desktop deb/usr/bin/
-          cat > deb/DEBIAN/control <<EOF
-          Package: bedrud-desktop
-          Version: ${{ needs.prepare.outputs.tag }}
-          Architecture: ${{ matrix.deb_arch }}
-          Maintainer: Bedrud <info@bedrud.ir>
-          Description: Bedrud Desktop — self-hosted video meeting client
-           Native desktop client for the Bedrud video meeting platform.
-          Depends: libc6, libgcc1
-          EOF
-          cat > deb/usr/share/applications/bedrud.desktop <<EOF
-          [Desktop Entry]
-          Name=Bedrud
-          Exec=/usr/bin/bedrud-desktop
-          Type=Application
-          Categories=Network;VideoConference;
-          Comment=Self-hosted video meetings
-          EOF
+          cp apps/web/public/logo512.png deb/usr/share/icons/hicolor/512x512/apps/bedrud.png
+          cp apps/desktop/installer/linux/bedrud.desktop deb/usr/share/applications/
+
+          {
+            echo "Package: bedrud-desktop"
+            echo "Version: ${{ needs.prepare.outputs.tag }}"
+            echo "Architecture: ${{ matrix.deb_arch }}"
+            echo "Maintainer: Bedrud <info@bedrud.ir>"
+            echo "Description: Bedrud Desktop — self-hosted video meeting client"
+            echo " Native desktop client for the Bedrud video meeting platform."
+            echo "Depends: libc6, libgcc1, libfontconfig1, libxkbcommon0, libsecret-1-0, libasound2"
+          } > deb/DEBIAN/control
+
           dpkg-deb --build deb bedrud-desktop-${{ matrix.name }}.deb
+
+      - name: Package Linux (AppImage)
+        if: runner.os == 'Linux'
+        run: |
+          ARCH_TOOL=$([ "${{ matrix.name }}" = "linux-x86_64" ] && echo "x86_64" || echo "aarch64")
+
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH_TOOL}.AppImage" \
+            -O appimagetool
+          chmod +x appimagetool
+
+          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/512x512/apps
+
+          cp target/${{ matrix.target }}/release/bedrud-desktop AppDir/usr/bin/
+          cp apps/web/public/logo512.png AppDir/usr/share/icons/hicolor/512x512/apps/bedrud.png
+          cp apps/web/public/logo512.png AppDir/bedrud.png
+          cp apps/desktop/installer/linux/bedrud.desktop AppDir/bedrud.desktop
+          cp apps/desktop/installer/linux/AppRun AppDir/AppRun
+          chmod +x AppDir/AppRun
+
+          ARCH="${ARCH_TOOL}" APPIMAGE_EXTRACT_AND_RUN=1 \
+            ./appimagetool AppDir "bedrud-desktop-${{ matrix.name }}.AppImage"
 
       - uses: actions/upload-artifact@v7
         if: runner.os == 'Linux'
@@ -296,6 +316,12 @@ jobs:
         with:
           name: bedrud-desktop-${{ matrix.name }}-deb
           path: bedrud-desktop-${{ matrix.name }}.deb
+
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'Linux'
+        with:
+          name: bedrud-desktop-${{ matrix.name }}-appimage
+          path: bedrud-desktop-${{ matrix.name }}.AppImage
 
       # ── Windows packaging ────────────────────────────────────
       - name: Package Windows (portable zip)
@@ -408,8 +434,10 @@ jobs:
           | Android armeabi-v7a | [bedrud-android-armeabi-v7a.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-armeabi-v7a.apk) |
           | Android x86\_64 | [bedrud-android-x86_64.apk](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android-x86_64.apk) |
           | Android bundle (AAB) | [bedrud-android.aab](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-android.aab) |
+          | Desktop Linux x86_64 (AppImage) | [bedrud-desktop-linux-x86_64.AppImage](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-desktop-linux-x86_64.AppImage) |
           | Desktop Linux x86_64 (portable) | [bedrud-desktop-linux-x86_64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-desktop-linux-x86_64.tar.xz) |
           | Desktop Linux x86_64 (.deb) | [bedrud-desktop-linux-x86_64.deb](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-desktop-linux-x86_64.deb) |
+          | Desktop Linux ARM64 (AppImage) | [bedrud-desktop-linux-arm64.AppImage](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-desktop-linux-arm64.AppImage) |
           | Desktop Linux ARM64 (portable) | [bedrud-desktop-linux-arm64.tar.xz](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-desktop-linux-arm64.tar.xz) |
           | Desktop Linux ARM64 (.deb) | [bedrud-desktop-linux-arm64.deb](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-desktop-linux-arm64.deb) |
           | Desktop Windows x86_64 (installer) | [bedrud-desktop-windows-x86_64-setup.exe](https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/bedrud-desktop-windows-x86_64-setup.exe) |
@@ -467,8 +495,10 @@ jobs:
               `| Android armeabi-v7a | ${asset('bedrud-android-armeabi-v7a.apk')} |`,
               `| Android x86_64 | ${asset('bedrud-android-x86_64.apk')} |`,
               `| Android bundle (AAB) | ${asset('bedrud-android.aab')} |`,
+              `| Desktop Linux x86_64 (AppImage) | ${asset('bedrud-desktop-linux-x86_64.AppImage')} |`,
               `| Desktop Linux x86_64 (portable) | ${asset('bedrud-desktop-linux-x86_64.tar.xz')} |`,
               `| Desktop Linux x86_64 (.deb) | ${asset('bedrud-desktop-linux-x86_64.deb')} |`,
+              `| Desktop Linux ARM64 (AppImage) | ${asset('bedrud-desktop-linux-arm64.AppImage')} |`,
               `| Desktop Linux ARM64 (portable) | ${asset('bedrud-desktop-linux-arm64.tar.xz')} |`,
               `| Desktop Linux ARM64 (.deb) | ${asset('bedrud-desktop-linux-arm64.deb')} |`,
               `| Desktop Windows x86_64 (installer) | ${asset('bedrud-desktop-windows-x86_64-setup.exe')} |`,
@@ -551,6 +581,10 @@ jobs:
           <b>🪟 Desktop Windows (portable)</b>
           • <a href="${BASE}/bedrud-desktop-windows-x86_64.zip">x86_64 zip</a>
           • <a href="${BASE}/bedrud-desktop-windows-arm64.zip">ARM64 zip</a>
+
+          <b>🐧 Desktop Linux (AppImage)</b>
+          • <a href="${BASE}/bedrud-desktop-linux-x86_64.AppImage">x86_64 AppImage</a>
+          • <a href="${BASE}/bedrud-desktop-linux-arm64.AppImage">ARM64 AppImage</a>
 
           <b>🐧 Desktop Linux (portable)</b>
           • <a href="${BASE}/bedrud-desktop-linux-x86_64.tar.xz">x86_64 tar.xz</a>

@@ -1,0 +1,138 @@
+name: Apt Repository
+
+# Triggered after a production release publishes new .deb assets
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to pull .deb files from (e.g. v1.2.3)"
+        required: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: apt-repo
+  cancel-in-progress: false
+
+jobs:
+  update-apt-repo:
+    name: Publish apt repository
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout packages branch
+        uses: actions/checkout@v4
+        with:
+          ref: packages
+          path: repo
+          fetch-depth: 0
+
+      - name: Install apt-ftparchive and GPG tools
+        run: sudo apt-get install -y apt-utils dpkg-dev gnupg
+
+      - name: Import GPG signing key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+          GPG_KEY_ID: ${{ secrets.APT_GPG_KEY_ID }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo "GPG_KEY_ID=${GPG_KEY_ID}" >> "$GITHUB_ENV"
+
+      - name: Determine release tag
+        id: tag
+        env:
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          TAG="${EVENT_TAG:-$INPUT_TAG}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Download .deb packages from release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          mkdir -p debs
+          gh release download "$TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern "*.deb" \
+            --dir debs
+          ls -lh debs/
+
+      - name: Add packages to apt repository
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          POOL="repo/apt/pool/main/b/bedrud-desktop"
+          DISTS_AMD64="repo/apt/dists/stable/main/binary-amd64"
+          DISTS_ARM64="repo/apt/dists/stable/main/binary-arm64"
+
+          mkdir -p "$POOL" "$DISTS_AMD64" "$DISTS_ARM64"
+
+          # Copy .deb files into pool
+          for deb in debs/*.deb; do
+            cp "$deb" "$POOL/"
+            echo "Added $(basename "$deb")"
+          done
+
+          # Generate Packages index per architecture
+          (cd repo/apt && apt-ftparchive packages pool/main > dists/stable/main/binary-amd64/Packages)
+          (cd repo/apt && apt-ftparchive packages pool/main > dists/stable/main/binary-arm64/Packages)
+          gzip -k repo/apt/dists/stable/main/binary-amd64/Packages
+          gzip -k repo/apt/dists/stable/main/binary-arm64/Packages
+
+          # Generate Release file
+          {
+            echo "Origin: Bedrud"
+            echo "Label: Bedrud"
+            echo "Suite: stable"
+            echo "Codename: stable"
+            echo "Date: $(date -Ru)"
+            echo "Architectures: amd64 arm64"
+            echo "Components: main"
+            echo "Description: Bedrud Desktop official apt repository"
+          } > repo/apt/dists/stable/Release
+
+          # Append checksums
+          (cd repo/apt && apt-ftparchive release dists/stable >> dists/stable/Release)
+
+          # Sign Release file
+          gpg --batch --yes --armor --detach-sign \
+            --local-user "$GPG_KEY_ID" \
+            -o repo/apt/dists/stable/Release.gpg \
+            repo/apt/dists/stable/Release
+
+          gpg --batch --yes --armor --clearsign \
+            --local-user "$GPG_KEY_ID" \
+            -o repo/apt/dists/stable/InRelease \
+            repo/apt/dists/stable/Release
+
+      - name: Export GPG public key
+        run: |
+          gpg --armor --export "$GPG_KEY_ID" > repo/apt/bedrud.gpg.key
+
+      - name: Commit and push packages branch
+        working-directory: repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apt/
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "apt: add packages from ${{ steps.tag.outputs.tag }}"
+          git push
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: repo/apt
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

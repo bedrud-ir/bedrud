@@ -1,0 +1,46 @@
+# Maintainer: Bedrud <info@bedrud.ir>
+# Binary package — downloads pre-built release from GitHub
+pkgname=bedrud-desktop-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Self-hosted video meeting client (native desktop)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/bedrud-ir/bedrud"
+license=('Apache-2.0')
+depends=(
+    'glibc'
+    'gcc-libs'
+    'fontconfig'
+    'libxkbcommon'
+    'wayland'
+    'libsecret'
+    'alsa-lib'
+)
+provides=('bedrud-desktop')
+conflicts=('bedrud-desktop')
+options=('!strip')
+
+source_x86_64=("${pkgname}-${pkgver}-x86_64.tar.xz::https://github.com/bedrud-ir/bedrud/releases/download/v${pkgver}/bedrud-desktop-linux-x86_64.tar.xz")
+source_aarch64=("${pkgname}-${pkgver}-aarch64.tar.xz::https://github.com/bedrud-ir/bedrud/releases/download/v${pkgver}/bedrud-desktop-linux-arm64.tar.xz")
+
+# Checksums are updated automatically by the release workflow
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+package() {
+    install -Dm755 bedrud-desktop "${pkgdir}/usr/bin/bedrud-desktop"
+
+    install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/bedrud.desktop" <<'EOF'
+[Desktop Entry]
+Name=Bedrud
+GenericName=Video Meeting Client
+Comment=Self-hosted video meetings
+Exec=bedrud-desktop %u
+Icon=bedrud
+Type=Application
+Categories=Network;VideoConference;
+MimeType=x-scheme-handler/bedrud;
+StartupNotify=true
+StartupWMClass=bedrud-desktop
+EOF
+}

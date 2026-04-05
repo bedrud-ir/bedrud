@@ -1,0 +1,24 @@
+pkgbase = bedrud-desktop-bin
+	pkgdesc = Self-hosted video meeting client (native desktop)
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/bedrud-ir/bedrud
+	arch = x86_64
+	arch = aarch64
+	license = Apache-2.0
+	depends = glibc
+	depends = gcc-libs
+	depends = fontconfig
+	depends = libxkbcommon
+	depends = wayland
+	depends = libsecret
+	depends = alsa-lib
+	provides = bedrud-desktop
+	conflicts = bedrud-desktop
+	options = !strip
+	source_x86_64 = bedrud-desktop-bin-0.1.0-x86_64.tar.xz::https://github.com/bedrud-ir/bedrud/releases/download/v0.1.0/bedrud-desktop-linux-x86_64.tar.xz
+	sha256sums_x86_64 = SKIP
+	source_aarch64 = bedrud-desktop-bin-0.1.0-aarch64.tar.xz::https://github.com/bedrud-ir/bedrud/releases/download/v0.1.0/bedrud-desktop-linux-arm64.tar.xz
+	sha256sums_aarch64 = SKIP
+
+pkgname = bedrud-desktop-bin
