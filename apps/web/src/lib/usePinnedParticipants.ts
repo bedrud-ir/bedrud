@@ -5,7 +5,6 @@ export interface UsePinnedParticipants {
   toggle: (identity: string) => void
   unpin: (identity: string) => void
   clear: () => void
-  isPinned: (identity: string) => boolean
 }
 
 export function usePinnedParticipants(): UsePinnedParticipants {
@@ -30,7 +29,5 @@ export function usePinnedParticipants(): UsePinnedParticipants {
 
   const clear = useCallback(() => setPinned(new Set()), [])
 
-  const isPinned = useCallback((identity: string) => pinned.has(identity), [pinned])
-
-  return { pinned, toggle, unpin, clear, isPinned }
+  return { pinned, toggle, unpin, clear }
 }
