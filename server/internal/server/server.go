@@ -168,6 +168,11 @@ func Run(configPath string) error {
 	api.Put("/auth/me", middleware.Protected(), authHandler.UpdateProfile)
 	api.Put("/auth/password", middleware.Protected(), authHandler.ChangePassword)
 
+	prefsRepo := repository.NewUserPreferencesRepository(database.GetDB())
+	preferencesHandler := handlers.NewPreferencesHandler(prefsRepo)
+	api.Get("/auth/preferences", middleware.Protected(), preferencesHandler.GetPreferences)
+	api.Put("/auth/preferences", middleware.Protected(), preferencesHandler.UpdatePreferences)
+
 	// Passkey routes
 	api.Post("/auth/passkey/register/begin", middleware.Protected(), authHandler.PasskeyRegisterBegin)
 	api.Post("/auth/passkey/register/finish", middleware.Protected(), authHandler.PasskeyRegisterFinish)

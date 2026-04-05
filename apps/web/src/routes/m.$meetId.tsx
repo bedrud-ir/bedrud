@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -25,6 +25,8 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { PhoneOff, LogOut, Radio, Users, Wifi } from 'lucide-react'
+import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
+import { AudioProcessorManager } from '@/components/meeting/AudioProcessorManager'
 
 interface JoinResponse {
   id: string
@@ -49,6 +51,38 @@ function MeetingPage() {
   const [guestName, setGuestName] = useState<string | null>(tokens ? '' : null)
   const [guestInput, setGuestInput] = useState('')
   const [wasKicked, setWasKicked] = useState(false)
+
+  // Audio preferences — derive MediaTrackConstraints from stored settings
+  const noiseMode          = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
+  const echoCancellation   = useAudioPreferencesStore((s) => s.echoCancellation)
+  const autoGainControl    = useAudioPreferencesStore((s) => s.autoGainControl)
+  const mergeAudioPrefs    = useAudioPreferencesStore((s) => s.merge)
+
+  // When using a LiveKit audio processor (rnnoise/krisp), disable browser-level
+  // noise processing to avoid double-processing artifacts.
+  const audioConstraints: MediaTrackConstraints | boolean =
+    noiseMode === 'browser'
+      ? { noiseSuppression: true, echoCancellation, autoGainControl }
+      : { noiseSuppression: false, echoCancellation: false, autoGainControl: false }
+
+  // One-shot preferences sync from backend. useRef guard ensures this runs exactly
+  // once even if joinData is replaced (e.g. reconnect), so a mid-session local
+  // change is never overwritten by a stale backend fetch.
+  const prefsFetchedRef = useRef(false)
+  useEffect(() => {
+    if (!joinData || !tokens || prefsFetchedRef.current) return
+    prefsFetchedRef.current = true
+    api.get<{ preferencesJson: string }>('/api/auth/preferences')
+      .then((r) => {
+        if (!r.preferencesJson) return
+        try {
+          const parsed = JSON.parse(r.preferencesJson)
+          if (parsed?.audio) mergeAudioPrefs(parsed.audio)
+        } catch { /* use local defaults */ }
+      })
+      .catch(() => { /* use local defaults on network failure */ })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joinData])
 
   useEffect(() => {
     if (joinData) return
@@ -219,12 +253,13 @@ function MeetingPage() {
   }
 
   return (
-    <LiveKitRoom token={token} serverUrl={wsUrl} connect audio video={false}>
+    <LiveKitRoom token={token} serverUrl={wsUrl} connect audio={audioConstraints} video={false}>
       <RoomAudioRenderer />
       {/* LiveKitRoom renders as display:contents — this div is the actual viewport container */}
       <div className="fixed inset-0 overflow-hidden" style={{ background: '#07070f' }}>
       <MeetingProvider roomId={id} roomName={roomName} adminId={adminId ?? ''}>
         <KickDetector onKicked={() => setWasKicked(true)} />
+        <AudioProcessorManager />
         {/* Ambient depth gradients */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <div style={{

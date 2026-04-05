@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useUserStore } from '#/lib/user.store'
 import { api } from '#/lib/api'
-import { Loader2, Check, User, Lock, Shield, LogIn } from 'lucide-react'
+import { Loader2, Check, User, Lock, Shield, LogIn, Mic, ChevronRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -250,6 +250,20 @@ function SettingsPage() {
       <ProfileSection />
       <PasswordSection />
       <AccountInfoSection />
+
+      <Section title="Audio" sub="Noise suppression and microphone processing" icon={Mic}>
+        <Link
+          to={'/dashboard/settings/audio' as never}
+          className="flex items-center justify-between rounded-xl px-4 py-3 transition-colors hover:bg-white/5"
+          style={{ border: '1px solid hsl(var(--border))' }}
+        >
+          <div>
+            <p className="text-sm font-medium">Noise suppression</p>
+            <p className="text-xs text-muted-foreground">Browser built-in, RNNoise, or Krisp AI</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+      </Section>
     </div>
   )
 }
