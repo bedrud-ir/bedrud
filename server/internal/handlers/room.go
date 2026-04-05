@@ -137,6 +137,7 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
+	req.RoomName = strings.ToLower(strings.TrimSpace(req.RoomName))
 	claims := c.Locals("user").(*auth.Claims)
 	room, err := h.roomRepo.GetRoomByName(req.RoomName)
 	if err != nil {
@@ -182,6 +183,7 @@ func (h *RoomHandler) GuestJoinRoom(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
 	}
+	req.RoomName = strings.ToLower(strings.TrimSpace(req.RoomName))
 	req.GuestName = strings.TrimSpace(req.GuestName)
 	if req.GuestName == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "Guest name is required"})

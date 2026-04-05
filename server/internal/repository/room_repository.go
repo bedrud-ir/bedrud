@@ -122,10 +122,10 @@ func (r *RoomRepository) GetRoom(id string) (*models.Room, error) {
 	return &room, nil
 }
 
-// GetRoomByName retrieves a room by name
+// GetRoomByName retrieves a room by name (case-insensitive)
 func (r *RoomRepository) GetRoomByName(name string) (*models.Room, error) {
 	var room models.Room
-	result := r.db.First(&room, "name = ?", name)
+	result := r.db.First(&room, "name = ?", strings.ToLower(strings.TrimSpace(name)))
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
