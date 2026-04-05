@@ -1,0 +1,78 @@
+import { theme } from "../theme.slint";
+import { Button, ButtonVariant } from "../components/button.slint";
+import { UserTable, AdminUserRow } from "user_table.slint";
+
+export component AdminScreen inherits Rectangle {
+    background: theme.bg-primary;
+
+    in property <[AdminUserRow]> users: [];
+    in property <int> online-count: 0;
+    in property <bool> loading;
+
+    callback back-clicked;
+    callback toggle-user-status(string, bool);
+
+    VerticalLayout {
+        // Toolbar
+        Rectangle {
+            height: 56px;
+            background: theme.bg-secondary;
+            border-width: 1px;
+            border-color: theme.border;
+
+            HorizontalLayout {
+                padding-left: theme.space-md;
+                padding-right: theme.space-md;
+                spacing: theme.space-md;
+
+                Button {
+                    text: "← Back";
+                    variant: ButtonVariant.secondary;
+                    height: 32px;
+                    clicked => { back-clicked(); }
+                }
+                Text {
+                    text: "Admin Panel";
+                    font-size: theme.font-lg;
+                    font-weight: 700;
+                    color: theme.text-primary;
+                    vertical-alignment: center;
+                    height: parent.height;
+                    horizontal-stretch: 1;
+                }
+                Text {
+                    text: online-count + " online";
+                    font-size: theme.font-sm;
+                    color: theme.success;
+                    vertical-alignment: center;
+                    height: parent.height;
+                }
+            }
+        }
+
+        // Content
+        VerticalLayout {
+            vertical-stretch: 1;
+            padding: theme.space-lg;
+            spacing: theme.space-lg;
+
+            Text {
+                text: "Users";
+                font-size: theme.font-xl;
+                font-weight: 700;
+                color: theme.text-primary;
+            }
+
+            if loading: Text {
+                text: "Loading…";
+                color: theme.text-secondary;
+            }
+
+            if !loading: UserTable {
+                vertical-stretch: 1;
+                users: users;
+                toggle-status(id, status) => { toggle-user-status(id, status); }
+            }
+        }
+    }
+}

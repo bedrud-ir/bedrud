@@ -1,0 +1,68 @@
+import { theme } from "../theme.slint";
+import { Avatar } from "../components/avatar.slint";
+
+export struct ParticipantData {
+    identity: string,
+    name: string,
+    is-muted: bool,
+    is-video-off: bool,
+    is-speaking: bool,
+    is-local: bool,
+    video-frame: image,
+}
+
+export component ParticipantTile inherits Rectangle {
+    in property <ParticipantData> participant;
+
+    background: theme.bg-card;
+    border-radius: theme.radius-md;
+    border-width: participant.is-speaking ? 2px : 0px;
+    border-color: theme.accent;
+    clip: true;
+
+    // Show video frame if available
+    if !participant.is-video-off && participant.video-frame.width > 0: Image {
+        source: participant.video-frame;
+        width: parent.width;
+        height: parent.height;
+        image-fit: cover;
+    }
+
+    // Show avatar if no video
+    if participant.is-video-off || participant.video-frame.width < 1: Avatar {
+        name: participant.name;
+        // Use ternary for min() since Math.min() is not available
+        size: parent.width < parent.height ? parent.width * 0.4 : parent.height * 0.4;
+        x: (parent.width - self.size) / 2;
+        y: (parent.height - self.size) / 2;
+    }
+
+    // Name + mute indicators overlay at bottom
+    Rectangle {
+        y: parent.height - 32px;
+        height: 32px;
+        width: parent.width;
+        background: #000000aa;
+
+        HorizontalLayout {
+            padding-left: theme.space-sm;
+            padding-right: theme.space-sm;
+            spacing: theme.space-xs;
+
+            Text {
+                text: participant.is-local ? participant.name + " (You)" : participant.name;
+                color: #ffffff;
+                font-size: theme.font-sm;
+                overflow: elide;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+
+            if participant.is-muted: Text {
+                text: "🔇";
+                font-size: 14px;
+                vertical-alignment: center;
+            }
+        }
+    }
+}

@@ -1,0 +1,28 @@
+import { theme } from "../theme.slint";
+
+export component Avatar inherits Rectangle {
+    in property <string> name;
+    in property <image> photo;
+    in property <length> size: 40px;
+
+    width: size;
+    height: size;
+    border-radius: size / 2;
+    background: theme.accent;
+    clip: true;
+
+    // Show initials placeholder when no photo is set
+    if photo.width == 0: Text {
+        text: name == "" ? "?" : name;
+        color: theme.text-primary;
+        font-size: size * 0.4;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    if photo.width > 0: Image {
+        source: photo;
+        width: size;
+        height: size;
+        image-fit: ImageFit.cover;
+    }
+}

@@ -1,0 +1,148 @@
+import { theme } from "theme.slint";
+import { LoginScreen } from "auth/login.slint";
+import { RegisterScreen } from "auth/register.slint";
+import { RoomData } from "dashboard/room_card.slint";
+import { DashboardScreen } from "dashboard/dashboard.slint";
+import { ParticipantData } from "meeting/participant_tile.slint";
+import { ChatMessage } from "meeting/chat_panel.slint";
+import { MeetingScreen } from "meeting/meeting.slint";
+import { AdminUserRow } from "admin/user_table.slint";
+import { AdminScreen } from "admin/admin.slint";
+import { SettingsScreen } from "settings.slint";
+
+export enum NavScreen { AddInstance, Login, Register, Dashboard, Meeting, Admin, Settings }
+
+export component AppWindow inherits Window {
+    title: "Bedrud";
+    preferred-width: 1024px;
+    preferred-height: 768px;
+    min-width: 800px;
+    min-height: 600px;
+    background: theme.bg-primary;
+
+    // Navigation
+    in-out property <NavScreen> current-screen: NavScreen.Login;
+
+    // Login
+    in property <string> instance-url: "";
+    in property <string> login-error: "";
+    in property <bool> login-loading: false;
+
+    // Dashboard
+    in property <[RoomData]> rooms: [];
+    in property <string> user-name: "";
+    in property <bool> dashboard-loading: false;
+    in property <bool> is-admin: false;
+
+    // Meeting
+    in property <[ParticipantData]> participants: [];
+    in property <[ChatMessage]> chat-messages: [];
+    in property <bool> mic-enabled: true;
+    in property <bool> cam-enabled: false;
+    in property <bool> is-creator: false;
+    in property <string> meeting-room-name: "";
+    in-out property <bool> chat-open: false;
+
+    // Admin
+    in property <[AdminUserRow]> admin-users: [];
+    in property <int> online-count: 0;
+
+    // Settings
+    in property <[string]> mic-devices: [];
+    in property <[string]> speaker-devices: [];
+    in-out property <string> selected-mic: "";
+    in-out property <string> selected-speaker: "";
+
+    // Callbacks (wired from bridge.rs)
+    callback login(string, string);
+    callback passkey-login;
+    callback guest-login(string);
+    callback register(string, string, string, string);
+    callback logout;
+    callback join-room(string);
+    callback create-room(string, bool, int);
+    callback delete-room(string);
+    callback end-call;
+    callback toggle-mic;
+    callback toggle-cam;
+    callback send-chat(string);
+    callback load-rooms;
+    callback navigate-to(NavScreen);
+    callback save-settings;
+
+    if current-screen == NavScreen.Login: LoginScreen {
+        width: parent.width; height: parent.height;
+        instance-url: instance-url;
+        error-message: login-error;
+        loading: login-loading;
+        login-clicked(email, pass) => { login(email, pass); }
+        passkey-clicked => { passkey-login(); }
+        guest-clicked => { guest-login(""); }
+        register-clicked => { navigate-to(NavScreen.Register); }
+    }
+
+    if current-screen == NavScreen.Register: RegisterScreen {
+        width: parent.width; height: parent.height;
+        back-clicked => { navigate-to(NavScreen.Login); }
+        register-clicked(email, name, pass, token) => { register(email, name, pass, token); }
+    }
+
+    if current-screen == NavScreen.Dashboard: DashboardScreen {
+        width: parent.width; height: parent.height;
+        rooms: rooms;
+        user-name: user-name;
+        loading: dashboard-loading;
+        is-admin: is-admin;
+        create-room-clicked => { create-room("", false, 20); }
+        join-room-clicked(name) => { join-room(name); }
+        delete-room-clicked(id) => { delete-room(id); }
+        settings-clicked => { navigate-to(NavScreen.Settings); }
+        admin-clicked => { navigate-to(NavScreen.Admin); }
+        logout-clicked => { logout(); }
+    }
+
+    if current-screen == NavScreen.Meeting: MeetingScreen {
+        width: parent.width; height: parent.height;
+        participants: participants;
+        chat-messages: chat-messages;
+        mic-enabled: mic-enabled;
+        cam-enabled: cam-enabled;
+        is-creator: is-creator;
+        room-name: meeting-room-name;
+        chat-open <=> chat-open;
+        toggle-mic => { toggle-mic(); }
+        toggle-cam => { toggle-cam(); }
+        end-call => { end-call(); }
+        send-chat(msg) => { send-chat(msg); }
+    }
+
+    if current-screen == NavScreen.Admin: AdminScreen {
+        width: parent.width; height: parent.height;
+        users: admin-users;
+        online-count: online-count;
+        loading: dashboard-loading;
+        back-clicked => { navigate-to(NavScreen.Dashboard); }
+    }
+
+    if current-screen == NavScreen.Settings: SettingsScreen {
+        width: parent.width; height: parent.height;
+        mic-devices: mic-devices;
+        speaker-devices: speaker-devices;
+        selected-mic <=> selected-mic;
+        selected-speaker <=> selected-speaker;
+        back-clicked => { navigate-to(NavScreen.Dashboard); }
+        save-clicked => { save-settings(); }
+    }
+
+    if current-screen == NavScreen.AddInstance: Rectangle {
+        width: parent.width; height: parent.height;
+        background: theme.bg-primary;
+        Text {
+            text: "Add an instance to get started";
+            color: theme.text-muted;
+            font-size: theme.font-lg;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
