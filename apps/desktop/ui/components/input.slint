@@ -1,0 +1,58 @@
+import { theme } from "../theme.slint";
+
+export component Input inherits Rectangle {
+    in property <string> label;
+    in property <string> placeholder;
+    in-out property <string> value;
+    in property <string> error;
+    in property <bool> password: false;
+    in property <bool> enabled: true;
+
+    height: 64px;
+    VerticalLayout {
+        spacing: theme.space-xs;
+
+        if label != "": Text {
+            text: label;
+            color: theme.text-secondary;
+            font-size: theme.font-sm;
+        }
+
+        field := Rectangle {
+            height: 36px;
+            border-radius: theme.radius-md;
+            border-width: 1px;
+            border-color: error != "" ? theme.destructive : theme.border;
+            background: theme.bg-card;
+
+            // Placeholder overlay
+            if root.value == "": Text {
+                x: theme.space-sm;
+                width: parent.width - theme.space-md;
+                height: parent.height;
+                text: root.placeholder;
+                color: theme.text-muted;
+                font-size: theme.font-base;
+                vertical-alignment: center;
+            }
+
+            TextInput {
+                x: theme.space-sm;
+                width: parent.width - theme.space-md;
+                height: parent.height;
+                text <=> root.value;
+                input-type: root.password ? InputType.password : InputType.text;
+                color: theme.text-primary;
+                font-size: theme.font-base;
+                enabled: root.enabled;
+                vertical-alignment: center;
+            }
+        }
+
+        if error != "": Text {
+            text: error;
+            color: theme.destructive;
+            font-size: theme.font-sm;
+        }
+    }
+}
