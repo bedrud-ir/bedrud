@@ -4,8 +4,6 @@ Release:        1%{?dist}
 Summary:        Bedrud Desktop — self-hosted video meeting client
 License:        Apache-2.0
 URL:            https://github.com/bedrud-ir/bedrud
-BuildArch:      ARCH_PLACEHOLDER
-
 Requires:       glibc, fontconfig, libxkbcommon, libsecret, alsa-lib
 
 %description

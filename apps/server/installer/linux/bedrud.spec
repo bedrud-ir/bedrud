@@ -8,8 +8,6 @@ Release:        1%{?dist}
 Summary:        Self-hosted video meeting server
 License:        Apache-2.0
 URL:            https://github.com/bedrud-ir/bedrud
-BuildArch:      ARCH_PLACEHOLDER
-
 Requires:       glibc
 
 %description
