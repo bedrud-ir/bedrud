@@ -335,6 +335,7 @@ function MeetingPanels({ navigate }: { navigate: () => void }) {
       {chatOpen && (
         <ChatPanel onClose={() => setChatOpen(false)} />
       )}
+      <ChatToastNotifier chatOpen={chatOpen} />
       <MeetingControls
         chatOpen={chatOpen}
         participantsOpen={participantsOpen}
@@ -343,6 +344,91 @@ function MeetingPanels({ navigate }: { navigate: () => void }) {
         onNavigate={navigate}
       />
     </>
+  )
+}
+
+// ── Chat toast notifier ───────────────────────────────────────
+
+interface ChatToast {
+  id: number
+  sender: string
+  message: string
+}
+
+function ChatToastNotifier({ chatOpen }: { chatOpen: boolean }) {
+  const { chatMessages } = useMeetingContext()
+  const seenRef = useRef(chatMessages.length)
+  const [toasts, setToasts] = useState<ChatToast[]>([])
+  const nextId = useRef(0)
+
+  useEffect(() => {
+    // On first mount, mark all existing messages as seen without toasting
+    seenRef.current = chatMessages.length
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (chatMessages.length <= seenRef.current) return
+    const newMsgs = chatMessages.slice(seenRef.current)
+    seenRef.current = chatMessages.length
+    if (chatOpen) return  // panel is open — user can see the messages
+
+    newMsgs.forEach((msg) => {
+      const id = nextId.current++
+      const sender = msg.from?.name ?? msg.from?.identity ?? 'Someone'
+      setToasts((t) => [...t.slice(-3), { id, sender, message: msg.message }])
+      setTimeout(() => {
+        setToasts((t) => t.filter((x) => x.id !== id))
+      }, 4500)
+    })
+  }, [chatMessages, chatOpen])
+
+  if (toasts.length === 0) return null
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 68,
+      right: 16,
+      zIndex: 50,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+      pointerEvents: 'none',
+    }}>
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className="chat-toast"
+          style={{
+            background: 'rgba(15,15,28,0.96)',
+            border: '1px solid rgba(99,102,241,0.35)',
+            borderRadius: 12,
+            padding: '10px 14px',
+            maxWidth: 280,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(16px)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+          }}
+        >
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#a5b4fc' }}>
+            {toast.sender}
+          </span>
+          <span style={{
+            fontSize: 13,
+            color: 'rgba(255,255,255,0.75)',
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            wordBreak: 'break-word',
+          }}>
+            {toast.message}
+          </span>
+        </div>
+      ))}
+    </div>
   )
 }
 
