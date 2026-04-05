@@ -730,12 +730,43 @@ jobs:
           generate_release_notes: true
           files: release-assets/*
 
+  # ── Secret availability check ────────────────────────────────
+  check-secrets:
+    name: Check available secrets
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.result == 'success'
+    outputs:
+      has_aur: ${{ steps.check.outputs.has_aur }}
+      has_snap: ${{ steps.check.outputs.has_snap }}
+      has_choco: ${{ steps.check.outputs.has_choco }}
+      has_homebrew: ${{ steps.check.outputs.has_homebrew }}
+      has_winget: ${{ steps.check.outputs.has_winget }}
+      has_telegram: ${{ steps.check.outputs.has_telegram }}
+    steps:
+      - name: Check secrets
+        id: check
+        env:
+          AUR_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          SNAP_CREDS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+          CHOCO_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+          HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          WINGET_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          echo "has_aur=${{ env.AUR_KEY != '' }}" >> "$GITHUB_OUTPUT"
+          echo "has_snap=${{ env.SNAP_CREDS != '' }}" >> "$GITHUB_OUTPUT"
+          echo "has_choco=${{ env.CHOCO_KEY != '' }}" >> "$GITHUB_OUTPUT"
+          echo "has_homebrew=${{ env.HOMEBREW_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+          echo "has_winget=${{ env.WINGET_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+          echo "has_telegram=${{ env.TG_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
   # ── Telegram notification ─────────────────────────────────────
   telegram:
     name: Notify Telegram
     runs-on: ubuntu-latest
-    needs: release
-    if: needs.release.result == 'success'
+    needs: [release, check-secrets]
+    if: needs.check-secrets.outputs.has_telegram == 'true'
     steps:
       - name: Send Telegram notification
         env:
@@ -815,8 +846,8 @@ jobs:
   aur-desktop:
     name: AUR – bedrud-desktop-bin
     runs-on: ubuntu-latest
-    needs: release
-    if: needs.release.result == 'success' && secrets.AUR_SSH_PRIVATE_KEY != ''
+    needs: [release, check-secrets]
+    if: needs.check-secrets.outputs.has_aur == 'true'
     steps:
       - uses: actions/checkout@v6
 
@@ -858,8 +889,8 @@ jobs:
   aur-server:
     name: AUR – bedrud-bin
     runs-on: ubuntu-latest
-    needs: release
-    if: needs.release.result == 'success' && secrets.AUR_SSH_PRIVATE_KEY != ''
+    needs: [release, check-secrets]
+    if: needs.check-secrets.outputs.has_aur == 'true'
     steps:
       - uses: actions/checkout@v6
 
@@ -899,8 +930,8 @@ jobs:
   snap-publish:
     name: Snap Store – bedrud-desktop
     runs-on: ubuntu-latest
-    needs: release
-    if: needs.release.result == 'success' && secrets.SNAPCRAFT_STORE_CREDENTIALS != ''
+    needs: [release, check-secrets]
+    if: needs.check-secrets.outputs.has_snap == 'true'
     steps:
       - uses: actions/checkout@v6
 
@@ -941,8 +972,8 @@ jobs:
   flatpak-bundle:
     name: Flatpak Bundle
     runs-on: ubuntu-latest
-    needs: release
-    if: needs.release.result == 'success'
+    needs: [release, check-secrets]
+    if: needs.check-secrets.result == 'success'
     steps:
       - uses: actions/checkout@v6
 
@@ -1031,8 +1062,8 @@ jobs:
   chocolatey-push:
     name: Chocolatey – bedrud-desktop
     runs-on: windows-latest
-    needs: release
-    if: needs.release.result == 'success' && secrets.CHOCOLATEY_API_KEY != ''
+    needs: [release, check-secrets]
+    if: needs.check-secrets.outputs.has_choco == 'true'
     steps:
       - uses: actions/checkout@v6
 
@@ -1081,8 +1112,8 @@ jobs:
   homebrew-update:
     name: Homebrew Tap – bedrud-desktop
     runs-on: ubuntu-latest
-    needs: release
-    if: needs.release.result == 'success' && secrets.HOMEBREW_TAP_TOKEN != ''
+    needs: [release, check-secrets]
+    if: needs.check-secrets.outputs.has_homebrew == 'true'
     steps:
       - uses: actions/checkout@v6
 
@@ -1135,8 +1166,8 @@ jobs:
   winget-submit:
     name: WinGet – Bedrud.BedrudDesktop
     runs-on: ubuntu-latest
-    needs: release
-    if: needs.release.result == 'success' && secrets.WINGET_GITHUB_TOKEN != ''
+    needs: [release, check-secrets]
+    if: needs.check-secrets.outputs.has_winget == 'true'
     steps:
       - uses: actions/checkout@v6
 
