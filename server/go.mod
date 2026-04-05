@@ -7,7 +7,7 @@ require (
 	github.com/go-passkeys/go-passkeys v0.4.1
 	github.com/gofiber/fiber/v2 v2.52.11
 	github.com/gofiber/swagger v1.1.1
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/livekit/protocol v1.32.1-0.20250127091625-9a579a69ba38
