@@ -6,8 +6,9 @@ import {
   useConnectionState,
   useParticipants,
   useRoomContext,
+  useTracks,
 } from '@livekit/components-react'
-import { ConnectionState, DisconnectReason, RoomEvent } from 'livekit-client'
+import { ConnectionState, DisconnectReason, RoomEvent, Track } from 'livekit-client'
 import type { AudioCaptureOptions } from 'livekit-client'
 import { useAuthStore } from '#/lib/auth.store'
 import { api } from '#/lib/api'
@@ -16,6 +17,8 @@ import { ControlsBar } from '@/components/meeting/ControlsBar'
 import { ChatPanel } from '@/components/meeting/ChatPanel'
 import { ParticipantsList } from '@/components/meeting/ParticipantsList'
 import { MeetingProvider, useMeetingContext } from '@/components/meeting/MeetingContext'
+import { FocusLayout } from '@/components/meeting/FocusLayout'
+import { usePinnedParticipants } from '#/lib/usePinnedParticipants'
 import {
   Dialog,
   DialogContent,
@@ -275,7 +278,7 @@ function MeetingPage() {
           }} />
         </div>
 
-        <ParticipantGrid />
+        <MeetingLayout />
 
         {/* Vignettes for header/controls legibility */}
         <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 h-24"
@@ -291,6 +294,20 @@ function MeetingPage() {
       </div>
     </LiveKitRoom>
   )
+}
+
+// ── Layout switcher (inside LiveKitRoom context) ───────────────
+function MeetingLayout() {
+  const { pinned, toggle, clear } = usePinnedParticipants()
+  const screenShareTracks = useTracks([Track.Source.ScreenShare])
+  const isFocusMode = screenShareTracks.length > 0 || pinned.size > 0
+
+  useEffect(() => () => clear(), [clear])
+
+  if (isFocusMode) {
+    return <FocusLayout pinnedIdentities={pinned} onTogglePin={toggle} />
+  }
+  return <ParticipantGrid pinnedIdentities={pinned} onTogglePin={toggle} />
 }
 
 // ── Panels + Controls (separate so they can share state cleanly) ──
