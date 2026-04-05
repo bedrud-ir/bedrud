@@ -1,17 +1,13 @@
 import { create } from 'zustand'
 
 interface ParticipantOverridesState {
-  // volume override: 0.0–1.0. Absent = use default (1.0)
   volumes: Map<string, number>
-  // identities that are client-muted (volume forced to 0)
   muted: Set<string>
   setVolume: (identity: string, vol: number) => void
   toggleMute: (identity: string) => void
-  isMuted: (identity: string) => boolean
-  getVolume: (identity: string) => number
 }
 
-export const useParticipantOverridesStore = create<ParticipantOverridesState>((set, get) => ({
+export const useParticipantOverridesStore = create<ParticipantOverridesState>((set) => ({
   volumes: new Map(),
   muted: new Set(),
 
@@ -29,12 +25,15 @@ export const useParticipantOverridesStore = create<ParticipantOverridesState>((s
       else muted.add(identity)
       return { muted }
     }),
-
-  isMuted: (identity) => get().muted.has(identity),
-
-  getVolume: (identity) => {
-    const { muted, volumes } = get()
-    if (muted.has(identity)) return 0
-    return volumes.get(identity) ?? 1
-  },
 }))
+
+// Selector factories — use these in components so they re-render on changes:
+// const isMuted = useParticipantOverridesStore(selectIsMuted(identity))
+// const volume = useParticipantOverridesStore(selectVolume(identity))
+export const selectIsMuted = (identity: string) => (s: ParticipantOverridesState) =>
+  s.muted.has(identity)
+
+export const selectVolume = (identity: string) => (s: ParticipantOverridesState) => {
+  if (s.muted.has(identity)) return 0
+  return s.volumes.get(identity) ?? 1
+}
