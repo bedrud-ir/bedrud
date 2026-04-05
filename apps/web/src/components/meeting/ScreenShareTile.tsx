@@ -1,6 +1,5 @@
-// apps/web/src/components/meeting/ScreenShareTile.tsx
-import type { TrackReferenceOrPlaceholder } from '@livekit/components-react'
-import { VideoTrack, useParticipantInfo, type TrackReference } from '@livekit/components-react'
+import type { TrackReferenceOrPlaceholder, TrackReference } from '@livekit/components-react'
+import { VideoTrack, useParticipantInfo } from '@livekit/components-react'
 import { Monitor } from 'lucide-react'
 
 interface ScreenShareTileProps {
@@ -10,6 +9,9 @@ interface ScreenShareTileProps {
 export function ScreenShareTile({ trackRef }: ScreenShareTileProps) {
   const { name, identity } = useParticipantInfo({ participant: trackRef.participant })
   const displayName = name ?? identity ?? '?'
+
+  // Placeholders have no publication yet — nothing to render
+  if (!trackRef.publication) return null
 
   return (
     <div style={{
@@ -21,7 +23,7 @@ export function ScreenShareTile({ trackRef }: ScreenShareTileProps) {
       overflow: 'hidden',
     }}>
       <VideoTrack
-        trackRef={trackRef as TrackReference | undefined}
+        trackRef={trackRef as TrackReference}
         style={{
           position: 'absolute', inset: 0,
           width: '100%', height: '100%',
