@@ -1,15 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useParticipants } from '@livekit/components-react'
-import { X, Mic, MicOff, Video, VideoOff, MoreVertical, UserX, Ban, Users } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { X, Mic, MicOff, Video, VideoOff, Users } from 'lucide-react'
 import { useMeetingContext } from '@/components/meeting/MeetingContext'
-import { api } from '#/lib/api'
+import { ParticipantMenuButton } from '@/components/meeting/ParticipantContextMenu'
 
 interface Props {
   onClose: () => void
@@ -49,24 +42,7 @@ const panel: React.CSSProperties = {
 
 export function ParticipantsList({ onClose }: Props) {
   const participants = useParticipants()
-  const { adminId, roomId, isAdmin, isModerator } = useMeetingContext()
-  const canModerate = isAdmin || isModerator
-  const [loadingIdentity, setLoadingIdentity] = useState<string | null>(null)
-
-  async function handleMute(identity: string) {
-    setLoadingIdentity(identity)
-    try { await api.post(`/api/room/${roomId}/mute/${identity}`) } finally { setLoadingIdentity(null) }
-  }
-
-  async function handleKick(identity: string) {
-    setLoadingIdentity(identity)
-    try { await api.post(`/api/room/${roomId}/kick/${identity}`) } finally { setLoadingIdentity(null) }
-  }
-
-  async function handleBan(identity: string) {
-    setLoadingIdentity(identity)
-    try { await api.post(`/api/room/${roomId}/ban/${identity}`) } finally { setLoadingIdentity(null) }
-  }
+  const { adminId } = useMeetingContext()
 
   return (
     <aside className="meet-panel" style={panel}>
@@ -114,12 +90,6 @@ export function ParticipantsList({ onClose }: Props) {
             key={p.identity}
             p={p}
             adminId={adminId}
-            canModerate={canModerate}
-            isAdmin={isAdmin}
-            loading={loadingIdentity === p.identity}
-            onMute={handleMute}
-            onKick={handleKick}
-            onBan={handleBan}
           />
         ))}
       </div>
@@ -130,15 +100,9 @@ export function ParticipantsList({ onClose }: Props) {
 interface RowProps {
   p: ReturnType<typeof useParticipants>[number]
   adminId: string
-  canModerate: boolean
-  isAdmin: boolean
-  loading: boolean
-  onMute: (id: string) => void
-  onKick: (id: string) => void
-  onBan: (id: string) => void
 }
 
-function ParticipantRow({ p, adminId, canModerate, isAdmin, loading, onMute, onKick, onBan }: RowProps) {
+function ParticipantRow({ p, adminId }: RowProps) {
   const displayName = p.name ?? p.identity
   const initial = displayName.charAt(0).toUpperCase()
   const gradient = useMemo(() => getPalette(displayName), [displayName])
@@ -229,57 +193,10 @@ function ParticipantRow({ p, adminId, canModerate, isAdmin, loading, onMute, onK
           : <VideoOff size={13} style={{ color: 'rgba(255,255,255,0.18)' }} />
         }
 
-        {canModerate && !p.isLocal && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                disabled={loading}
-                style={{
-                  width: 24, height: 24, borderRadius: 6,
-                  background: 'transparent', border: 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
-                  opacity: 0, transition: 'opacity 0.15s',
-                }}
-                className="group-hover:!opacity-100"
-                aria-label={`Moderate ${displayName}`}
-              >
-                <MoreVertical size={13} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              style={{
-                background: 'rgba(15,15,28,0.98)', border: '1px solid rgba(255,255,255,0.1)',
-                backdropFilter: 'blur(16px)',
-              }}
-            >
-              <DropdownMenuItem
-                onClick={() => onMute(p.identity)}
-                style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13 }}
-              >
-                <MicOff size={13} style={{ marginRight: 8 }} />
-                Mute Audio
-              </DropdownMenuItem>
-              <DropdownMenuSeparator style={{ background: 'rgba(255,255,255,0.07)' }} />
-              <DropdownMenuItem
-                onClick={() => onKick(p.identity)}
-                style={{ color: '#f87171', fontSize: 13 }}
-              >
-                <UserX size={13} style={{ marginRight: 8 }} />
-                Kick
-              </DropdownMenuItem>
-              {isAdmin && (
-                <DropdownMenuItem
-                  onClick={() => onBan(p.identity)}
-                  style={{ color: '#f87171', fontSize: 13 }}
-                >
-                  <Ban size={13} style={{ marginRight: 8 }} />
-                  Ban
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {!p.isLocal && (
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <ParticipantMenuButton participant={p} />
+          </div>
         )}
       </div>
     </div>
