@@ -14,7 +14,7 @@ export const useParticipantOverridesStore = create<ParticipantOverridesState>((s
   setVolume: (identity, vol) =>
     set((s) => {
       const volumes = new Map(s.volumes)
-      volumes.set(identity, Math.max(0, Math.min(1, vol)))
+      volumes.set(identity, Math.max(0, Math.min(2, vol)))
       return { volumes }
     }),
 

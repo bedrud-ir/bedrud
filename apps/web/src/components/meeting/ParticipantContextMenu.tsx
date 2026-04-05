@@ -314,22 +314,24 @@ export function ParticipantMenuContent({
             {isMuted ? 'Unmute (local)' : 'Mute (local)'}
           </Item>
 
-          {/* 4 — Volume slider (client-side, like Discord) */}
+          {/* 4 — Volume slider (client-side, like Discord) — up to 200% */}
           <div
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
-            style={{ padding: '4px 10px 6px', display: 'flex', alignItems: 'center', gap: 8 }}
+            style={{ padding: '2px 10px 6px', display: 'flex', alignItems: 'center', gap: 8 }}
           >
             <VolumeX size={12} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
             <input
               type="range"
               min={0}
-              max={100}
+              max={200}
               value={Math.round(volume * 100)}
               onChange={(e) => setVolume(identity, Number(e.target.value) / 100)}
               style={{ flex: 1, accentColor: '#6366f1', height: 3, cursor: 'pointer' }}
             />
-            <Volume2 size={12} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', minWidth: 32, textAlign: 'right', fontFamily: 'monospace' }}>
+              {Math.round(volume * 100)}%
+            </span>
           </div>
 
           {/* 5 — Server mute / deafen (admin / mod) */}

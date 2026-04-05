@@ -117,7 +117,11 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
     roomName,
     adminId,
     currentUserId,
-    isCreator: !!currentUserId && currentUserId === adminId,
+    // Use LiveKit local participant identity as the source of truth — it's set
+    // directly from the JWT claims.UserID and avoids any user-store format mismatch.
+    isCreator: !!adminId && (
+      currentUserId === adminId || room.localParticipant.identity === adminId
+    ),
     isAdmin: accesses.includes('admin') || accesses.includes('superadmin'),
     isModerator: accesses.includes('moderator'),
     isServerDeafened,
