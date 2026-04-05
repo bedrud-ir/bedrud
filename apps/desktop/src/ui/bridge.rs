@@ -31,7 +31,7 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
             let api = api.clone();
             let session = session.clone();
             let ww = ww.clone();
-            ww.upgrade_in_event_loop(|w| w.set_login_loading(true)).ok();
+            if let Some(w) = ww.upgrade() { w.set_login_loading(true); }
             rt.spawn(async move {
                 let result = auth::login(&api, &email, &password).await;
                 slint::invoke_from_event_loop(move || {
@@ -68,7 +68,7 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
         window.on_load_rooms(move || {
             let api = api.clone();
             let ww = ww.clone();
-            ww.upgrade_in_event_loop(|w| w.set_dashboard_loading(true)).ok();
+            if let Some(w) = ww.upgrade() { w.set_dashboard_loading(true); }
             rt.spawn(async move {
                 let result = rooms::list_rooms(&api).await;
                 slint::invoke_from_event_loop(move || {
@@ -95,7 +95,7 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
     {
         let ww = w.clone();
         window.on_navigate_to(move |screen| {
-            ww.upgrade_in_event_loop(move |w| w.set_current_screen(screen)).ok();
+            if let Some(w) = ww.upgrade() { w.set_current_screen(screen); }
         });
     }
 
@@ -117,7 +117,7 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
             }
             api.set_token(None);
             let _ = session.clear();
-            ww.upgrade_in_event_loop(|w| w.set_current_screen(NavScreen::Login)).ok();
+            if let Some(w) = ww.upgrade() { w.set_current_screen(NavScreen::Login); }
         });
     }
 
@@ -147,10 +147,10 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
     {
         let ww = w.clone();
         window.on_end_call(move || {
-            ww.upgrade_in_event_loop(|w| {
+            if let Some(w) = ww.upgrade() {
                 w.set_current_screen(NavScreen::Dashboard);
                 w.invoke_load_rooms();
-            }).ok();
+            }
         });
     }
 
@@ -158,10 +158,10 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
     {
         let ww = w.clone();
         window.on_toggle_mic(move || {
-            ww.upgrade_in_event_loop(|w| {
+            if let Some(w) = ww.upgrade() {
                 let current = w.get_mic_enabled();
                 w.set_mic_enabled(!current);
-            }).ok();
+            }
         });
     }
 
@@ -169,10 +169,10 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
     {
         let ww = w.clone();
         window.on_toggle_cam(move || {
-            ww.upgrade_in_event_loop(|w| {
+            if let Some(w) = ww.upgrade() {
                 let current = w.get_cam_enabled();
                 w.set_cam_enabled(!current);
-            }).ok();
+            }
         });
     }
 
@@ -180,9 +180,9 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
     {
         let ww = w.clone();
         window.on_save_settings(move || {
-            ww.upgrade_in_event_loop(|w| {
+            if let Some(w) = ww.upgrade() {
                 w.set_current_screen(NavScreen::Dashboard);
-            }).ok();
+            }
         });
     }
 }

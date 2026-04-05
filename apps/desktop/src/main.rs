@@ -33,7 +33,15 @@ fn main() -> anyhow::Result<()> {
 
         window.set_instance_url(base_url.into());
 
-        // Auto-login if saved token exists
+        let ctx = Arc::new(AppContext {
+            rt: rt.clone(),
+            api: api.clone(),
+            session: session.clone(),
+            instances: Arc::new(Mutex::new(instances)),
+        });
+        wire(&window, ctx);
+
+        // Auto-login if saved token exists (spawned AFTER wire so on_load_rooms is registered)
         if let Some(token) = session.load_access_token() {
             api.set_token(Some(token));
             let api_clone = api.clone();
@@ -56,6 +64,7 @@ fn main() -> anyhow::Result<()> {
                         let _ = session_clone.clear();
                         slint::invoke_from_event_loop(move || {
                             if let Some(w) = ww.upgrade() {
+                                w.set_login_error("Session expired. Please log in again.".into());
                                 w.set_current_screen(NavScreen::Login);
                             }
                         }).ok();
@@ -65,14 +74,6 @@ fn main() -> anyhow::Result<()> {
         } else {
             window.set_current_screen(NavScreen::Login);
         }
-
-        let ctx = Arc::new(AppContext {
-            rt,
-            api,
-            session,
-            instances: Arc::new(Mutex::new(instances)),
-        });
-        wire(&window, ctx);
     } else {
         window.set_current_screen(NavScreen::AddInstance);
     }
