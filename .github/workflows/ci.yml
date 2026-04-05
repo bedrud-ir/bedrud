@@ -190,3 +190,33 @@ jobs:
           name: ios-coverage-report
           path: apps/ios/coverage-report.txt
           retention-days: 30
+
+  # ── Desktop (Rust/Slint) ──────────────────────────────────────
+  desktop:
+    name: Desktop – Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+      - name: Install Slint dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libfontconfig1-dev \
+            libxkbcommon-dev \
+            libxkbcommon-x11-dev \
+            libwayland-dev \
+            libgles2-mesa-dev \
+            libegl1-mesa-dev
+      - name: Build
+        run: cargo build -p bedrud-desktop
+      - name: Test
+        run: cargo test -p bedrud-desktop
