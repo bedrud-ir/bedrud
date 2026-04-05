@@ -97,6 +97,20 @@ updates:
           - "*"
     open-pull-requests-limit: 3
 
+  # Rust desktop app
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(desktop)"
+    groups:
+      cargo-all:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
+
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"

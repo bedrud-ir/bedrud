@@ -155,10 +155,10 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
 
-      - name: Build debug APK
+      - name: Build debug APKs
         run: ./gradlew assembleDebug
 
-      - name: Build release APK
+      - name: Build release APKs
         run: |
           if [ -f keystore.properties ]; then
             ./gradlew assembleRelease
@@ -168,14 +168,47 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: android-debug-apk
-          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+          name: android-debug-universal
+          path: apps/android/app/build/outputs/apk/debug/app-universal-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-arm64-v8a
+          path: apps/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-armeabi-v7a
+          path: apps/android/app/build/outputs/apk/debug/app-armeabi-v7a-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-x86_64
+          path: apps/android/app/build/outputs/apk/debug/app-x86_64-debug.apk
 
       - uses: actions/upload-artifact@v4
         if: ${{ hashFiles('apps/android/keystore.properties') != '' }}
         with:
-          name: android-release-apk
-          path: apps/android/app/build/outputs/apk/release/app-release.apk
+          name: android-release-universal
+          path: apps/android/app/build/outputs/apk/release/app-universal-release.apk
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('apps/android/keystore.properties') != '' }}
+        with:
+          name: android-release-arm64-v8a
+          path: apps/android/app/build/outputs/apk/release/app-arm64-v8a-release.apk
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('apps/android/keystore.properties') != '' }}
+        with:
+          name: android-release-armeabi-v7a
+          path: apps/android/app/build/outputs/apk/release/app-armeabi-v7a-release.apk
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('apps/android/keystore.properties') != '' }}
+        with:
+          name: android-release-x86_64
+          path: apps/android/app/build/outputs/apk/release/app-x86_64-release.apk
 
   # ── iOS IPA ──────────────────────────────────────────────────
   ios:
@@ -196,21 +229,18 @@ jobs:
           KEYCHAIN_PASSWORD: ${{ github.run_id }}
         run: |
           if [ -z "$P12_BASE64" ]; then
-            echo "⚠ No iOS signing certificate configured — building unsigned archive"
+            echo "⚠ No iOS signing certificate configured"
             exit 0
           fi
-
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
           CERT_PATH=$RUNNER_TEMP/certificate.p12
           echo "$P12_BASE64" | base64 --decode > "$CERT_PATH"
           security import "$CERT_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
-
           if [ -n "$PROVISION_PROFILE_BASE64" ]; then
             PP_PATH=$RUNNER_TEMP/profile.mobileprovision
             echo "$PROVISION_PROFILE_BASE64" | base64 --decode > "$PP_PATH"
@@ -282,41 +312,44 @@ jobs:
             security delete-keychain "$KEYCHAIN_PATH"
           fi
 
-  # ── Desktop Windows ───────────────────────────────────────────
-  desktop-windows:
-    name: Desktop – Windows x86_64
-    runs-on: windows-latest
+  # ── Desktop (multi-platform) ──────────────────────────────────
+  desktop:
+    name: Desktop – ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: linux-x86_64
+            deb_arch: amd64
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            name: linux-arm64
+            deb_arch: arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: windows-x86_64
+            nsis_arch: x64
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            name: windows-arm64
+            nsis_arch: arm64
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          targets: x86_64-pc-windows-msvc
-      - uses: Swatinem/rust-cache@v2
-      - name: Build release binary
-        run: cargo build -p bedrud-desktop --release --target x86_64-pc-windows-msvc
-      - name: Package
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist
-          Copy-Item target\x86_64-pc-windows-msvc\release\bedrud-desktop.exe dist\
-          Compress-Archive -Path dist\* -DestinationPath bedrud-desktop-windows-x86_64.zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: bedrud-desktop-windows-x86_64
-          path: bedrud-desktop-windows-x86_64.zip
 
-  # ── Desktop Linux ─────────────────────────────────────────────
-  desktop-linux:
-    name: Desktop – Linux x86_64
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
+          targets: ${{ matrix.target }}
+
       - uses: Swatinem/rust-cache@v2
-      - name: Install Slint dependencies
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install Slint dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -324,43 +357,141 @@ jobs:
             libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
             libdbus-1-dev libsecret-1-dev \
             libasound2-dev
+
+      - name: Install NSIS (Windows ARM64)
+        if: matrix.os == 'windows-11-arm'
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
       - name: Build release binary
-        run: cargo build -p bedrud-desktop --release
-      - name: Package
+        run: cargo build -p bedrud-desktop --release --target ${{ matrix.target }}
+
+      # ── Linux packaging ─────────────────────────────────────
+      - name: Package Linux (portable tar.xz)
+        if: runner.os == 'Linux'
         run: |
           mkdir -p dist
-          cp target/release/bedrud-desktop dist/
-          tar -cJf bedrud-desktop-linux-x86_64.tar.xz -C dist .
+          cp target/${{ matrix.target }}/release/bedrud-desktop dist/
+          tar -cJf bedrud-desktop-${{ matrix.name }}.tar.xz -C dist .
+
+      - name: Package Linux (.deb)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p deb/DEBIAN
+          mkdir -p deb/usr/bin
+          mkdir -p deb/usr/share/applications
+
+          cp target/${{ matrix.target }}/release/bedrud-desktop deb/usr/bin/
+
+          cat > deb/DEBIAN/control <<EOF
+          Package: bedrud-desktop
+          Version: ${{ github.ref_name }}
+          Architecture: ${{ matrix.deb_arch }}
+          Maintainer: Bedrud <info@bedrud.ir>
+          Description: Bedrud Desktop — self-hosted video meeting client
+           Native desktop client for the Bedrud video meeting platform.
+          Depends: libc6, libgcc1
+          EOF
+
+          cat > deb/usr/share/applications/bedrud.desktop <<EOF
+          [Desktop Entry]
+          Name=Bedrud
+          Exec=/usr/bin/bedrud-desktop
+          Type=Application
+          Categories=Network;VideoConference;
+          Comment=Self-hosted video meetings
+          EOF
+
+          dpkg-deb --build deb bedrud-desktop-${{ matrix.name }}.deb
+
       - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
         with:
-          name: bedrud-desktop-linux-x86_64
-          path: bedrud-desktop-linux-x86_64.tar.xz
+          name: bedrud-desktop-${{ matrix.name }}-portable
+          path: bedrud-desktop-${{ matrix.name }}.tar.xz
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: bedrud-desktop-${{ matrix.name }}-deb
+          path: bedrud-desktop-${{ matrix.name }}.deb
+
+      # ── Windows packaging ────────────────────────────────────
+      - name: Package Windows (portable zip)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item "target\${{ matrix.target }}\release\bedrud-desktop.exe" dist\
+          Compress-Archive -Path dist\* -DestinationPath "bedrud-desktop-${{ matrix.name }}.zip"
+
+      - name: Package Windows (NSIS installer)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Copy-Item "target\${{ matrix.target }}\release\bedrud-desktop.exe" apps\desktop\installer\windows\
+          cd apps\desktop\installer\windows
+          makensis /DARCH=${{ matrix.nsis_arch }} bedrud.nsi
+          Move-Item "bedrud-desktop-setup-${{ matrix.nsis_arch }}.exe" "${{ github.workspace }}\bedrud-desktop-${{ matrix.name }}-setup.exe"
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: bedrud-desktop-${{ matrix.name }}-portable
+          path: bedrud-desktop-${{ matrix.name }}.zip
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: bedrud-desktop-${{ matrix.name }}-setup
+          path: bedrud-desktop-${{ matrix.name }}-setup.exe
 
   # ── GitHub Release ───────────────────────────────────────────
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [server-binary, docker, android, desktop-windows, desktop-linux]
+    needs: [server-binary, docker, android, desktop]
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-          pattern: "{server-*,android-*,web-*,ios-*,bedrud-desktop-*}"
+          pattern: "{server-*,android-debug-*,android-release-*,ios-*,bedrud-desktop-*}"
 
       - name: Collect release assets
         run: |
           mkdir -p release-assets
+
+          # Server binaries
           find artifacts/server-* -name "*.tar.xz" -exec cp {} release-assets/ \;
-          find artifacts/server-* -not -name "*.tar.xz" -not -name "." -type f -exec cp {} release-assets/ \;
-          [ -f artifacts/android-debug-apk/app-debug.apk ] && \
-            cp artifacts/android-debug-apk/app-debug.apk release-assets/bedrud-debug.apk
-          [ -f artifacts/android-release-apk/app-release.apk ] && \
-            cp artifacts/android-release-apk/app-release.apk release-assets/bedrud-release.apk
-          [ -f artifacts/ios-ipa/Bedrud.ipa ] && \
-            cp artifacts/ios-ipa/Bedrud.ipa release-assets/Bedrud.ipa
+
+          # Android debug APKs
+          for f in \
+            "android-debug-universal/app-universal-debug.apk:bedrud-android-universal-debug.apk" \
+            "android-debug-arm64-v8a/app-arm64-v8a-debug.apk:bedrud-android-arm64-v8a-debug.apk" \
+            "android-debug-armeabi-v7a/app-armeabi-v7a-debug.apk:bedrud-android-armeabi-v7a-debug.apk" \
+            "android-debug-x86_64/app-x86_64-debug.apk:bedrud-android-x86_64-debug.apk"; do
+            src="${f%%:*}" dst="${f##*:}"
+            [ -f "artifacts/${src}" ] && cp "artifacts/${src}" "release-assets/${dst}" || true
+          done
+
+          # Android release APKs (signed)
+          for f in \
+            "android-release-universal/app-universal-release.apk:bedrud-android-universal-release.apk" \
+            "android-release-arm64-v8a/app-arm64-v8a-release.apk:bedrud-android-arm64-v8a-release.apk" \
+            "android-release-armeabi-v7a/app-armeabi-v7a-release.apk:bedrud-android-armeabi-v7a-release.apk" \
+            "android-release-x86_64/app-x86_64-release.apk:bedrud-android-x86_64-release.apk"; do
+            src="${f%%:*}" dst="${f##*:}"
+            [ -f "artifacts/${src}" ] && cp "artifacts/${src}" "release-assets/${dst}" || true
+          done
+
+          # iOS IPA (optional — may not exist without signing certs)
+          [ -f artifacts/ios-ipa/Bedrud.ipa ] && cp artifacts/ios-ipa/Bedrud.ipa release-assets/Bedrud.ipa || true
+
+          # Desktop: portable + installers + deb packages
           find artifacts/bedrud-desktop-* -type f -exec cp {} release-assets/ \;
+
           ls -la release-assets/
 
       - name: Create GitHub release
@@ -376,41 +507,55 @@ jobs:
     needs: release
     if: needs.release.result == 'success'
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: "{server-*,android-*,ios-*}"
-
-      - name: Collect assets
-        run: |
-          mkdir -p tg-assets
-          find artifacts/server-* -name "*.tar.xz" -exec cp {} tg-assets/ \; 2>/dev/null || true
-          [ -f artifacts/android-debug-apk/app-debug.apk ]     && cp artifacts/android-debug-apk/app-debug.apk     tg-assets/bedrud-debug.apk   || true
-          [ -f artifacts/android-release-apk/app-release.apk ] && cp artifacts/android-release-apk/app-release.apk tg-assets/bedrud-release.apk || true
-          [ -f artifacts/ios-ipa/Bedrud.ipa ]                   && cp artifacts/ios-ipa/Bedrud.ipa                  tg-assets/Bedrud.ipa          || true
-          ls -lh tg-assets/
-
-      - name: Send message and files to Telegram
+      - name: Send Telegram notification
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
+          BASE="https://github.com/${REPO}/releases/download/${TAG}"
           RELEASE_URL="https://github.com/${REPO}/releases/tag/${TAG}"
 
           MSG=$(cat <<EOF
-          🚀 <b>Bedrud ${TAG} released</b>
+          🚀 <b>Bedrud ${TAG} released!</b>
 
-          <a href="${RELEASE_URL}">View release on GitHub</a>
+          <a href="${RELEASE_URL}">📦 View full release on GitHub</a>
 
-          <b>Server binaries</b>
-          • <a href="https://github.com/${REPO}/releases/download/${TAG}/bedrud_linux_amd64.tar.xz">Linux x86_64</a>
-          • <a href="https://github.com/${REPO}/releases/download/${TAG}/bedrud_linux_arm64.tar.xz">Linux ARM64</a>
+          <b>🖥 Server binaries</b>
+          • <a href="${BASE}/bedrud_linux_amd64.tar.xz">Linux x86_64</a>
+          • <a href="${BASE}/bedrud_linux_arm64.tar.xz">Linux ARM64</a>
 
-          <b>Android</b>
-          • <a href="https://github.com/${REPO}/releases/download/${TAG}/bedrud-release.apk">Release APK</a>
-          • <a href="https://github.com/${REPO}/releases/download/${TAG}/bedrud-debug.apk">Debug APK</a>
+          <b>🤖 Android (release)</b>
+          • <a href="${BASE}/bedrud-android-universal-release.apk">Universal APK</a>
+          • <a href="${BASE}/bedrud-android-arm64-v8a-release.apk">arm64-v8a</a>
+          • <a href="${BASE}/bedrud-android-armeabi-v7a-release.apk">armeabi-v7a</a>
+          • <a href="${BASE}/bedrud-android-x86_64-release.apk">x86_64</a>
+
+          <b>🤖 Android (debug)</b>
+          • <a href="${BASE}/bedrud-android-universal-debug.apk">Universal APK</a>
+          • <a href="${BASE}/bedrud-android-arm64-v8a-debug.apk">arm64-v8a</a>
+          • <a href="${BASE}/bedrud-android-armeabi-v7a-debug.apk">armeabi-v7a</a>
+          • <a href="${BASE}/bedrud-android-x86_64-debug.apk">x86_64</a>
+
+          <b>🪟 Desktop Windows (installer)</b>
+          • <a href="${BASE}/bedrud-desktop-windows-x86_64-setup.exe">x86_64 Setup</a>
+          • <a href="${BASE}/bedrud-desktop-windows-arm64-setup.exe">ARM64 Setup</a>
+
+          <b>🪟 Desktop Windows (portable)</b>
+          • <a href="${BASE}/bedrud-desktop-windows-x86_64.zip">x86_64 zip</a>
+          • <a href="${BASE}/bedrud-desktop-windows-arm64.zip">ARM64 zip</a>
+
+          <b>🐧 Desktop Linux (portable)</b>
+          • <a href="${BASE}/bedrud-desktop-linux-x86_64.tar.xz">x86_64 tar.xz</a>
+          • <a href="${BASE}/bedrud-desktop-linux-arm64.tar.xz">ARM64 tar.xz</a>
+
+          <b>🐧 Desktop Linux (.deb)</b>
+          • <a href="${BASE}/bedrud-desktop-linux-x86_64.deb">x86_64 .deb</a>
+          • <a href="${BASE}/bedrud-desktop-linux-arm64.deb">ARM64 .deb</a>
+
+          <b>🐳 Docker</b>
+          <code>docker pull ghcr.io/${REPO}:${TAG}</code>
           EOF
           )
 
@@ -419,23 +564,3 @@ jobs:
             -d "parse_mode=HTML" \
             -d "disable_web_page_preview=true" \
             --data-urlencode "text=${MSG}"
-
-          MAX=49000000
-          upload() {
-            local f="$1" caption="$2"
-            local size
-            size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f")
-            if [ "$size" -le "$MAX" ]; then
-              echo "Uploading $(basename "$f") (${size} bytes)"
-              curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
-                -F "chat_id=${CHAT_ID}" \
-                -F "document=@${f}" \
-                -F "caption=${caption}" || echo "⚠ upload failed for $(basename "$f")"
-            else
-              echo "⚠ $(basename "$f") is ${size} bytes — too large for direct upload, linked in message"
-            fi
-          }
-
-          for f in tg-assets/*.apk tg-assets/*.ipa tg-assets/*.tar.xz; do
-            [ -f "$f" ] && upload "$f" "Bedrud ${TAG} — $(basename "$f")"
-          done
