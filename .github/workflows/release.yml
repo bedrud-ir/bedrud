@@ -99,7 +99,7 @@ jobs:
 
           {
             echo "Package: bedrud"
-            echo "Version: ${{ github.ref_name }}"
+            echo "Version: ${GITHUB_REF_NAME#v}"
             echo "Architecture: ${{ matrix.deb_arch }}"
             echo "Maintainer: Bedrud <info@bedrud.ir>"
             echo "Homepage: https://github.com/bedrud-ir/bedrud"
@@ -465,7 +465,7 @@ jobs:
 
           {
             echo "Package: bedrud-desktop"
-            echo "Version: ${{ github.ref_name }}"
+            echo "Version: ${GITHUB_REF_NAME#v}"
             echo "Architecture: ${{ matrix.deb_arch }}"
             echo "Maintainer: Bedrud <info@bedrud.ir>"
             echo "Description: Bedrud Desktop — self-hosted video meeting client"
