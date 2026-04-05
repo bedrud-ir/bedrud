@@ -1,0 +1,47 @@
+import { theme } from "../theme.slint";
+import { Button, ButtonVariant } from "../components/button.slint";
+
+export component ControlsBar inherits Rectangle {
+    height: 64px;
+    background: theme.bg-secondary;
+    border-width: 1px;
+    border-color: theme.border;
+
+    in property <bool> mic-enabled: true;
+    in property <bool> cam-enabled: false;
+    in property <bool> chat-open: false;
+    in property <bool> is-creator: false;
+
+    callback toggle-mic;
+    callback toggle-cam;
+    callback toggle-chat;
+    callback end-call;
+
+    HorizontalLayout {
+        alignment: center;
+        spacing: theme.space-md;
+        padding-top: theme.space-md;
+        padding-bottom: theme.space-md;
+
+        Button {
+            text: mic-enabled ? "🎤 Mute" : "🔇 Unmute";
+            variant: mic-enabled ? ButtonVariant.secondary : ButtonVariant.primary;
+            clicked => { toggle-mic(); }
+        }
+        Button {
+            text: cam-enabled ? "📷 Stop Video" : "📷 Start Video";
+            variant: cam-enabled ? ButtonVariant.secondary : ButtonVariant.primary;
+            clicked => { toggle-cam(); }
+        }
+        Button {
+            text: chat-open ? "💬 Hide Chat" : "💬 Chat";
+            variant: ButtonVariant.secondary;
+            clicked => { toggle-chat(); }
+        }
+        Button {
+            text: is-creator ? "End Meeting" : "Leave";
+            variant: ButtonVariant.destructive;
+            clicked => { end-call(); }
+        }
+    }
+}

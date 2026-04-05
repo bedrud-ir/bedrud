@@ -1,0 +1,88 @@
+import { theme } from "../theme.slint";
+import { ParticipantTile, ParticipantData } from "participant_tile.slint";
+import { ControlsBar } from "controls_bar.slint";
+import { ChatPanel, ChatMessage } from "chat_panel.slint";
+
+export component MeetingScreen inherits Rectangle {
+    background: theme.bg-primary;
+
+    in property <[ParticipantData]> participants: [];
+    in property <[ChatMessage]> chat-messages: [];
+    in property <bool> mic-enabled: true;
+    in property <bool> cam-enabled: false;
+    in property <bool> is-creator: false;
+    in property <string> room-name;
+    in-out property <bool> chat-open: false;
+    in-out property <string> chat-input;
+
+    callback toggle-mic;
+    callback toggle-cam;
+    callback toggle-chat;
+    callback end-call;
+    callback send-chat(string);
+
+    HorizontalLayout {
+        // Left: participant grid + controls
+        VerticalLayout {
+            horizontal-stretch: 1;
+
+            // Room name bar
+            Rectangle {
+                height: 40px;
+                background: theme.bg-secondary;
+                Text {
+                    text: room-name;
+                    color: theme.text-secondary;
+                    font-size: theme.font-sm;
+                    x: theme.space-md;
+                    vertical-alignment: center;
+                    height: parent.height;
+                }
+            }
+
+            // Participant grid
+            Rectangle {
+                vertical-stretch: 1;
+                clip: true;
+
+                HorizontalLayout {
+                    spacing: theme.space-xs;
+                    padding: theme.space-xs;
+
+                    for p in participants: ParticipantTile {
+                        participant: p;
+                        width: 240px;
+                        height: 180px;
+                    }
+
+                    if participants.length == 0: Text {
+                        text: "Waiting for participants…";
+                        color: theme.text-muted;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        width: parent.width;
+                        height: parent.height;
+                    }
+                }
+            }
+
+            ControlsBar {
+                mic-enabled: mic-enabled;
+                cam-enabled: cam-enabled;
+                chat-open: chat-open;
+                is-creator: is-creator;
+                toggle-mic => { toggle-mic(); }
+                toggle-cam => { toggle-cam(); }
+                toggle-chat => { chat-open = !chat-open; toggle-chat(); }
+                end-call => { end-call(); }
+            }
+        }
+
+        // Right: chat panel (conditional)
+        if chat-open: ChatPanel {
+            messages: chat-messages;
+            input-text <=> chat-input;
+            send-clicked(msg) => { send-chat(msg); }
+        }
+    }
+}

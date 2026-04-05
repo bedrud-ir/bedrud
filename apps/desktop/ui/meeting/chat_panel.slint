@@ -1,0 +1,105 @@
+import { theme } from "../theme.slint";
+import { Button, ButtonVariant } from "../components/button.slint";
+
+export struct ChatMessage {
+    sender: string,
+    content: string,
+    timestamp: string,
+    is-system: bool,
+}
+
+export component ChatPanel inherits Rectangle {
+    width: 280px;
+    background: theme.bg-secondary;
+    border-width: 1px;
+    border-color: theme.border;
+
+    in property <[ChatMessage]> messages: [];
+    in-out property <string> input-text;
+
+    callback send-clicked(string);
+
+    VerticalLayout {
+        // Header
+        Rectangle {
+            height: 48px;
+            border-width: 1px;
+            border-color: theme.border;
+
+            Text {
+                text: "Chat";
+                color: theme.text-primary;
+                font-size: theme.font-base;
+                font-weight: 600;
+                x: theme.space-md;
+                vertical-alignment: center;
+                height: parent.height;
+            }
+        }
+
+        // Message list
+        ListView {
+            vertical-stretch: 1;
+            for msg in messages: Rectangle {
+                height: 60px;
+
+                VerticalLayout {
+                    x: theme.space-sm;
+                    y: theme.space-sm;
+                    spacing: 2px;
+
+                    if !msg.is-system: HorizontalLayout {
+                        spacing: theme.space-xs;
+                        Text {
+                            text: msg.sender;
+                            color: theme.accent;
+                            font-size: theme.font-sm;
+                            font-weight: 600;
+                        }
+                        Text {
+                            text: msg.timestamp;
+                            color: theme.text-muted;
+                            font-size: theme.font-sm;
+                        }
+                    }
+                    Text {
+                        text: msg.content;
+                        color: msg.is-system ? theme.text-muted : theme.text-primary;
+                        font-size: theme.font-sm;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+
+        // Input area — wrapped in Rectangle so border-width/border-color work
+        Rectangle {
+            height: 52px;
+            border-width: 1px;
+            border-color: theme.border;
+
+            HorizontalLayout {
+                padding-left: theme.space-sm;
+                padding-right: theme.space-sm;
+                padding-top: theme.space-sm;
+                padding-bottom: theme.space-sm;
+                spacing: theme.space-sm;
+
+                TextInput {
+                    text <=> input-text;
+                    color: theme.text-primary;
+                    font-size: theme.font-sm;
+                    height: 32px;
+                    horizontal-stretch: 1;
+                    accepted => { send-clicked(input-text); input-text = ""; }
+                }
+                Button {
+                    text: "↵";
+                    width: 36px;
+                    height: 32px;
+                    clicked => { send-clicked(input-text); input-text = ""; }
+                }
+            }
+        }
+    }
+}
