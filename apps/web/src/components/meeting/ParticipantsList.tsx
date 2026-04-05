@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useParticipants } from '@livekit/components-react'
 import { X, Mic, MicOff, Video, VideoOff, Users } from 'lucide-react'
 import { useMeetingContext } from '@/components/meeting/MeetingContext'
-import { ParticipantMenuButton } from '@/components/meeting/ParticipantContextMenu'
+import { ParticipantMenuButton, ParticipantContextMenu } from '@/components/meeting/ParticipantContextMenu'
 
 interface Props {
   onClose: () => void
@@ -102,7 +102,7 @@ interface RowProps {
   adminId: string
 }
 
-function ParticipantRow({ p, adminId }: RowProps) {
+function ParticipantRow({ p, adminId }: RowProps): React.ReactElement {
   const displayName = p.name ?? p.identity
   const initial = displayName.charAt(0).toUpperCase()
   const gradient = useMemo(() => getPalette(displayName), [displayName])
@@ -113,7 +113,7 @@ function ParticipantRow({ p, adminId }: RowProps) {
   const isMod = !isRoomAdmin && participantAccesses.includes('moderator')
   const isGuest = !isRoomAdmin && !isMod && participantAccesses.includes('guest')
 
-  return (
+  const row = (
     <div
       className="group"
       style={{
@@ -201,4 +201,6 @@ function ParticipantRow({ p, adminId }: RowProps) {
       </div>
     </div>
   )
+
+  return p.isLocal ? row : <ParticipantContextMenu participant={p}>{row}</ParticipantContextMenu>
 }
