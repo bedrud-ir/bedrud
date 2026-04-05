@@ -1,7 +1,6 @@
-import { useMemo, useState, useEffect } from 'react'
-import type { RemoteParticipant } from 'livekit-client'
+import { useMemo, useState, useEffect, useCallback } from 'react'
+import type { RemoteParticipant, Participant } from 'livekit-client'
 import { Track, ParticipantEvent } from 'livekit-client'
-import type { Participant } from 'livekit-client'
 import { useParticipantInfo, useIsSpeaking, VideoTrack } from '@livekit/components-react'
 import { MicOff, Pin } from 'lucide-react'
 import { useParticipantOverridesStore, selectVolume } from '#/lib/participant-overrides.store'
@@ -41,12 +40,17 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
 
   useEffect(() => {
     if (participant.isLocal) return
-    ;(participant as RemoteParticipant).setVolume(volume)
+    const remote = participant as RemoteParticipant
+    remote.setVolume(volume)
+    return () => {
+      remote.setVolume(1)
+    }
   }, [participant, volume])
 
-  const longPressHandlers = useLongPress(() => {
+  const noopLongPress = useCallback(() => {
     // No-op: Radix ContextMenu handles contextmenu event natively on mobile long-press
-  }, 500)
+  }, [])
+  const longPressHandlers = useLongPress(noopLongPress, 500)
 
   const [cameraTrack, setCameraTrack] = useState(
     () => participant.getTrackPublication(Track.Source.Camera)
