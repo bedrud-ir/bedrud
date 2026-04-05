@@ -1,3 +1,5 @@
+mod app;
+
 slint::include_modules!();
 
 fn main() -> anyhow::Result<()> {
