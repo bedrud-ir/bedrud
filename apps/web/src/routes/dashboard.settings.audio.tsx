@@ -8,8 +8,7 @@ import { api } from '#/lib/api'
 import { useAudioPreferencesStore, type NoiseSuppressionMode } from '#/lib/audio-preferences.store'
 import { AudioProcessorService } from '#/lib/audio-processor.service'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = (createFileRoute as any)('/dashboard/settings/audio')({ component: AudioSettingsPage })
+export const Route = createFileRoute('/dashboard/settings/audio')({ component: AudioSettingsPage })
 
 /* ── Section wrapper (local copy — same shape as dashboard.settings.tsx) ─ */
 function Section({
