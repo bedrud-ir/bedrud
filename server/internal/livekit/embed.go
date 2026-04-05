@@ -1,3 +1,5 @@
+//go:build !windows
+
 package livekit
 
 import "embed"
@@ -6,3 +8,6 @@ import "embed"
 //
 //go:embed bin/livekit-server
 var Bin embed.FS
+
+const lkBinKey = "bin/livekit-server"
+const lkExeName = "bedrud-livekit-server"

@@ -90,12 +90,23 @@ jobs:
             cgo: "1"
             cc: aarch64-linux-gnu-gcc
             lk_arch: arm64
+          - goos: windows
+            goarch: amd64
+            suffix: windows_amd64
+            cgo: "1"
+            cc: x86_64-w64-mingw32-gcc
     steps:
       - uses: actions/checkout@v6
 
       - name: Install cross-compiler
-        if: matrix.goarch == 'arm64' && matrix.goos == 'linux'
-        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+        if: matrix.goarch == 'arm64' || matrix.goos == 'windows'
+        run: |
+          sudo apt-get update
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            sudo apt-get install -y gcc-mingw-w64-x86-64
+          else
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+          fi
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -115,13 +126,19 @@ jobs:
       - name: Download LiveKit binary
         env:
           LIVEKIT_VERSION: "1.10.1"
-          LK_ARCH: ${{ matrix.lk_arch }}
         run: |
           mkdir -p server/internal/livekit/bin
-          LK_FILENAME="livekit_${LIVEKIT_VERSION}_linux_${LK_ARCH}.tar.gz"
-          curl -fsSL "https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/${LK_FILENAME}" -o "/tmp/${LK_FILENAME}"
-          tar -xzf "/tmp/${LK_FILENAME}" -C server/internal/livekit/bin/ livekit-server
-          chmod +x server/internal/livekit/bin/livekit-server
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            curl -fsSL "https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/livekit_${LIVEKIT_VERSION}_windows_amd64.zip" \
+              -o /tmp/lk.zip
+            unzip /tmp/lk.zip livekit-server.exe -d server/internal/livekit/bin/
+          else
+            LK_FILENAME="livekit_${LIVEKIT_VERSION}_linux_${{ matrix.lk_arch }}.tar.gz"
+            curl -fsSL "https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/${LK_FILENAME}" \
+              -o "/tmp/${LK_FILENAME}"
+            tar -xzf "/tmp/${LK_FILENAME}" -C server/internal/livekit/bin/ livekit-server
+            chmod +x server/internal/livekit/bin/livekit-server
+          fi
 
       - name: Build server binary
         working-directory: server
@@ -131,11 +148,16 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
         run: |
-          go build -ldflags="-s -w" -o ../dist/bedrud ./cmd/bedrud/main.go
+          EXT=$([[ "${{ matrix.goos }}" == "windows" ]] && echo ".exe" || echo "")
+          go build -ldflags="-s -w" -o "../dist/bedrud${EXT}" ./cmd/bedrud/main.go
 
-      - name: Package server (tar.xz + .deb)
+      - name: Package server (Linux)
+        if: matrix.goos == 'linux'
         run: |
-          # .deb — must be built before binary is removed from dist/
+          # Keep raw binary alongside tar.xz
+          cp dist/bedrud dist/bedrud_${{ matrix.suffix }}
+
+          # .deb
           mkdir -p deb/DEBIAN deb/usr/bin deb/usr/lib/systemd/system \
             deb/etc/bedrud deb/var/lib/bedrud deb/var/log/bedrud
 
@@ -157,17 +179,36 @@ jobs:
 
           dpkg-deb --build deb bedrud_${{ matrix.deb_arch }}.deb
 
-          # tar.xz portable
+          # tar.xz portable (contains plain 'bedrud' for AUR/script compat)
           cd dist
           tar -cJf bedrud_${{ matrix.suffix }}.tar.xz bedrud
           rm bedrud
 
-      - uses: actions/upload-artifact@v7
-        with:
-          name: server-${{ matrix.suffix }}
-          path: dist/bedrud_${{ matrix.suffix }}.tar.xz
+      - name: Package server (Windows)
+        if: matrix.goos == 'windows'
+        run: |
+          cd dist
+          mv bedrud.exe bedrud_${{ matrix.suffix }}.exe
+          zip bedrud_${{ matrix.suffix }}.zip bedrud_${{ matrix.suffix }}.exe
 
       - uses: actions/upload-artifact@v7
+        if: matrix.goos == 'linux'
+        with:
+          name: server-${{ matrix.suffix }}
+          path: |
+            dist/bedrud_${{ matrix.suffix }}.tar.xz
+            dist/bedrud_${{ matrix.suffix }}
+
+      - uses: actions/upload-artifact@v7
+        if: matrix.goos == 'windows'
+        with:
+          name: server-${{ matrix.suffix }}
+          path: |
+            dist/bedrud_${{ matrix.suffix }}.zip
+            dist/bedrud_${{ matrix.suffix }}.exe
+
+      - uses: actions/upload-artifact@v7
+        if: matrix.goos == 'linux'
         with:
           name: server-deb-${{ matrix.deb_arch }}
           path: bedrud_${{ matrix.deb_arch }}.deb
@@ -482,8 +523,10 @@ jobs:
         run: |
           mkdir -p release-assets
 
-          # Server binaries (tar.xz + .deb)
-          find artifacts/server-linux_* -name "*.tar.xz" -exec cp {} release-assets/ \;
+          # Server binaries (tar.xz + raw Linux + Windows zip/exe)
+          find artifacts/server-linux_* artifacts/server-windows_* -type f \
+            -exec cp {} release-assets/ \; 2>/dev/null || true
+          # Server .deb packages
           find artifacts/server-deb-* -name "*.deb" -exec cp {} release-assets/ \; 2>/dev/null || true
 
           # Android debug APKs
@@ -578,6 +621,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           body: ${{ steps.changelog.outputs.body }}
           files: release-assets/*
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
 
   # ── Telegram notification ─────────────────────────────────────
   telegram:

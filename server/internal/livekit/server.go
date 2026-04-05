@@ -13,7 +13,7 @@ import (
 
 // ExportBinary writes the embedded LiveKit server binary to the specified path
 func ExportBinary(destPath string) error {
-	binData, err := Bin.ReadFile("bin/livekit-server")
+	binData, err := Bin.ReadFile(lkBinKey)
 	if err != nil {
 		return fmt.Errorf("failed to read embedded LiveKit binary: %w", err)
 	}
@@ -29,7 +29,7 @@ func ExportBinary(destPath string) error {
 
 // RunLiveKit starts the embedded LiveKit server directly with the provided config
 func RunLiveKit(configPath string) error {
-	lkPath := filepath.Join(os.TempDir(), "bedrud-livekit-server")
+	lkPath := filepath.Join(os.TempDir(), lkExeName)
 	if err := ExportBinary(lkPath); err != nil {
 		return err
 	}
@@ -57,11 +57,11 @@ func StartInternalServer(ctx context.Context, apiKey, apiSecret string, port int
 	}
 
 	tempDir := os.TempDir()
-	lkPath := filepath.Join(tempDir, "bedrud-livekit-server")
+	lkPath := filepath.Join(tempDir, lkExeName)
 	if err := ExportBinary(lkPath); err != nil {
 		log.Error().Err(err).Msg("Failed to export embedded LiveKit binary")
-		// Fallback to path if export fails
-		lkPath = "livekit-server"
+		// Fallback to PATH if export fails
+		lkPath = lkExeName
 	} else {
 		os.Chmod(lkPath, 0755)
 	}
