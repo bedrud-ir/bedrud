@@ -1,4 +1,4 @@
-import { type ComponentType, type ReactNode, useMemo, useState } from 'react'
+import { type ComponentType, type ReactNode, useMemo, useRef, useState } from 'react'
 import { ConnectionQuality, Track, type Participant } from 'livekit-client'
 import {
   Mic, MicOff, Video, Pin, PinOff, ShieldCheck, ShieldOff,
@@ -18,6 +18,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -38,6 +39,24 @@ interface ParticipantMeta {
 function parseMeta(raw: string | undefined): ParticipantMeta {
   try { return JSON.parse(raw ?? '{}') } catch { return {} }
 }
+
+const QUAL_COLOR: Record<'excellent' | 'good' | 'poor' | 'unknown', string> = {
+  excellent: '#34d399',
+  good: '#fbbf24',
+  poor: '#f87171',
+  unknown: 'rgba(255,255,255,0.3)',
+}
+
+const LABEL_STYLE: React.CSSProperties = {
+  color: 'rgba(255,255,255,0.3)',
+  fontSize: 10,
+  padding: '4px 8px 2px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+}
+
+const ITEM_STYLE: React.CSSProperties = { color: 'rgba(255,255,255,0.75)', fontSize: 13 }
+const SEP_STYLE: React.CSSProperties = { background: 'rgba(255,255,255,0.07)' }
 
 interface ConnectionInfo {
   quality: 'excellent' | 'good' | 'poor' | 'unknown'
@@ -102,6 +121,7 @@ export function ParticipantMenuContent({
   const [statsOpen, setStatsOpen] = useState(false)
   const [connInfo, setConnInfo] = useState<ConnectionInfo | null>(null)
   const [statsLoading, setStatsLoading] = useState(false)
+  const statsAbortRef = useRef<{ aborted: boolean }>({ aborted: false })
 
   const hasScreenShare = !!participant.getTrackPublication(Track.Source.ScreenShare)
 
@@ -110,6 +130,8 @@ export function ParticipantMenuContent({
     try {
       await api.post(path)
       onClose?.()
+    } catch (e) {
+      console.error('[ParticipantContextMenu] action failed:', e)
     } finally {
       setLoading(null)
     }
@@ -122,7 +144,6 @@ export function ParticipantMenuContent({
     }
     setStatsOpen(true)
 
-    // Map LiveKit ConnectionQuality enum to display string
     let quality: ConnectionInfo['quality'] = 'unknown'
     if (participant.connectionQuality === ConnectionQuality.Excellent) quality = 'excellent'
     else if (participant.connectionQuality === ConnectionQuality.Good) quality = 'good'
@@ -130,49 +151,37 @@ export function ParticipantMenuContent({
 
     const info: ConnectionInfo = { quality }
 
-    // Admin: fetch server-side info including IP
     if (isAdmin) {
+      // Cancel any previous in-flight request
+      const guard = { aborted: false }
+      statsAbortRef.current = guard
+
       setStatsLoading(true)
       try {
         const data = await api.get<ParticipantInfoResponse>(`/api/room/${roomId}/participant/${identity}/info`)
-        info.serverMuted = data?.muted
-        info.ip = data?.ip
+        if (!guard.aborted) {
+          info.serverMuted = data?.muted
+          info.ip = data?.ip
+        }
       } catch {
-        // ignore, just show what we have
+        // ignore
       } finally {
-        setStatsLoading(false)
+        if (!guard.aborted) setStatsLoading(false)
       }
     }
 
     setConnInfo(info)
   }
 
-  const qualityColor: Record<ConnectionInfo['quality'], string> = {
-    excellent: '#34d399',
-    good: '#fbbf24',
-    poor: '#f87171',
-    unknown: 'rgba(255,255,255,0.3)',
-  }
-
-  const labelStyle: React.CSSProperties = {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 10,
-    padding: '4px 8px 2px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
-  }
-  const itemStyle: React.CSSProperties = { color: 'rgba(255,255,255,0.75)', fontSize: 13 }
-  const sepStyle: React.CSSProperties = { background: 'rgba(255,255,255,0.07)' }
-
   return (
     <>
       {/* ── Section 1: Local audio (remote only) ─────────────────────────── */}
       {!isSelf && (
         <>
-          <Label style={labelStyle}>Local Audio</Label>
+          <Label style={LABEL_STYLE}>Local Audio</Label>
 
           {/* Mute toggle */}
-          <Item onClick={() => toggleMute(identity)} style={itemStyle}>
+          <Item onClick={() => toggleMute(identity)} style={ITEM_STYLE}>
             {isMuted
               ? <VolumeX size={13} style={{ marginRight: 8, flexShrink: 0 }} />
               : <Volume2 size={13} style={{ marginRight: 8, flexShrink: 0 }} />
@@ -205,36 +214,36 @@ export function ParticipantMenuContent({
             />
             <Volume2 size={12} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
           </div>
-          <Separator style={sepStyle} />
+          <Separator style={SEP_STYLE} />
         </>
       )}
 
       {/* ── Section 2: Pin / Unpin ──────────────────────────────────────── */}
       {onTogglePin && (
         <>
-          <Item onClick={onTogglePin} style={itemStyle}>
+          <Item onClick={onTogglePin} style={ITEM_STYLE}>
             {isPinned
               ? <PinOff size={13} style={{ marginRight: 8 }} />
               : <Pin size={13} style={{ marginRight: 8 }} />
             }
             {isPinned ? 'Unpin' : 'Pin'}
           </Item>
-          <Separator style={sepStyle} />
+          <Separator style={SEP_STYLE} />
         </>
       )}
 
       {/* ── Section 3: Moderation ──────────────────────────────────────── */}
       {canModerate && !isSelf && !isRoomAdmin && (
         <>
-          <Label style={labelStyle}>Moderate</Label>
+          <Label style={LABEL_STYLE}>Moderate</Label>
 
           <Item
             disabled={loading === 'srvmute'}
             onClick={() => act('srvmute', `/api/room/${roomId}/mute/${identity}`)}
-            style={itemStyle}
+            style={ITEM_STYLE}
           >
             {loading === 'srvmute'
-              ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
               : <MicOff size={13} style={{ marginRight: 8 }} />
             }
             Mute Audio
@@ -243,10 +252,10 @@ export function ParticipantMenuContent({
           <Item
             disabled={loading === 'videooff'}
             onClick={() => act('videooff', `/api/room/${roomId}/video/${identity}/off`)}
-            style={itemStyle}
+            style={ITEM_STYLE}
           >
             {loading === 'videooff'
-              ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
               : <Video size={13} style={{ marginRight: 8 }} />
             }
             Disable Camera
@@ -255,10 +264,10 @@ export function ParticipantMenuContent({
           <Item
             disabled={loading === 'chatblock'}
             onClick={() => act('chatblock', `/api/room/${roomId}/chat/${identity}/block`)}
-            style={itemStyle}
+            style={ITEM_STYLE}
           >
             {loading === 'chatblock'
-              ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
               : <MessageSquareOff size={13} style={{ marginRight: 8 }} />
             }
             Block Chat
@@ -267,10 +276,10 @@ export function ParticipantMenuContent({
           <Item
             disabled={loading === 'deafen'}
             onClick={() => act('deafen', `/api/room/${roomId}/deafen/${identity}`)}
-            style={itemStyle}
+            style={ITEM_STYLE}
           >
             {loading === 'deafen'
-              ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
               : <EarOff size={13} style={{ marginRight: 8 }} />
             }
             Deafen
@@ -279,10 +288,10 @@ export function ParticipantMenuContent({
           <Item
             disabled={loading === 'askunmute'}
             onClick={() => act('askunmute', `/api/room/${roomId}/ask/${identity}/unmute`)}
-            style={itemStyle}
+            style={ITEM_STYLE}
           >
             {loading === 'askunmute'
-              ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
               : <Mic size={13} style={{ marginRight: 8 }} />
             }
             Ask to Unmute
@@ -291,10 +300,10 @@ export function ParticipantMenuContent({
           <Item
             disabled={loading === 'askcamera'}
             onClick={() => act('askcamera', `/api/room/${roomId}/ask/${identity}/camera`)}
-            style={itemStyle}
+            style={ITEM_STYLE}
           >
             {loading === 'askcamera'
-              ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
               : <Camera size={13} style={{ marginRight: 8 }} />
             }
             Ask Camera On
@@ -303,10 +312,10 @@ export function ParticipantMenuContent({
           <Item
             disabled={loading === 'spotlight'}
             onClick={() => act('spotlight', `/api/room/${roomId}/spotlight/${identity}`)}
-            style={itemStyle}
+            style={ITEM_STYLE}
           >
             {loading === 'spotlight'
-              ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
               : <Megaphone size={13} style={{ marginRight: 8 }} />
             }
             Spotlight for All
@@ -316,34 +325,34 @@ export function ParticipantMenuContent({
             <Item
               disabled={loading === 'stopscreen'}
               onClick={() => act('stopscreen', `/api/room/${roomId}/screenshare/${identity}/stop`)}
-              style={itemStyle}
+              style={ITEM_STYLE}
             >
               {loading === 'stopscreen'
-                ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
+                ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
                 : <ScreenShareOff size={13} style={{ marginRight: 8 }} />
               }
               Stop Screen Share
             </Item>
           )}
 
-          <Separator style={sepStyle} />
+          <Separator style={SEP_STYLE} />
         </>
       )}
 
       {/* ── Section 4: Role management (admin only, non-self, non-room-admin) */}
       {isAdmin && !isSelf && !isRoomAdmin && (
         <>
-          <Label style={labelStyle}>Role</Label>
+          <Label style={LABEL_STYLE}>Role</Label>
 
           {isMod ? (
             <Item
               disabled={loading === 'demote'}
               onClick={() => act('demote', `/api/room/${roomId}/demote/${identity}`)}
-              style={itemStyle}
+              style={ITEM_STYLE}
             >
               {loading === 'demote'
-                ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
-                : <ShieldOff size={13} style={{ marginRight: 8 }} />
+                ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
+                : <ShieldOff size={13} style={{ marginRight: 8, flexShrink: 0 }} />
               }
               Demote from Moderator
             </Item>
@@ -351,17 +360,17 @@ export function ParticipantMenuContent({
             <Item
               disabled={loading === 'promote'}
               onClick={() => act('promote', `/api/room/${roomId}/promote/${identity}`)}
-              style={itemStyle}
+              style={ITEM_STYLE}
             >
               {loading === 'promote'
-                ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
-                : <ShieldCheck size={13} style={{ marginRight: 8 }} />
+                ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
+                : <ShieldCheck size={13} style={{ marginRight: 8, flexShrink: 0 }} />
               }
               Promote to Moderator
             </Item>
           )}
 
-          <Separator style={sepStyle} />
+          <Separator style={SEP_STYLE} />
         </>
       )}
 
@@ -374,8 +383,8 @@ export function ParticipantMenuContent({
             style={{ color: '#f87171', fontSize: 13 }}
           >
             {loading === 'kick'
-              ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
-              : <UserX size={13} style={{ marginRight: 8 }} />
+              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
+              : <UserX size={13} style={{ marginRight: 8, flexShrink: 0 }} />
             }
             Kick
           </Item>
@@ -386,13 +395,13 @@ export function ParticipantMenuContent({
             style={{ color: '#f87171', fontSize: 13 }}
           >
             {loading === 'ban'
-              ? <Loader2 size={13} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
-              : <Ban size={13} style={{ marginRight: 8 }} />
+              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
+              : <Ban size={13} style={{ marginRight: 8, flexShrink: 0 }} />
             }
             Ban
           </Item>
 
-          <Separator style={sepStyle} />
+          <Separator style={SEP_STYLE} />
         </>
       )}
 
@@ -442,7 +451,7 @@ export function ParticipantMenuContent({
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Quality</span>
-                <span style={{ color: qualityColor[connInfo.quality], fontWeight: 600 }}>
+                <span style={{ color: QUAL_COLOR[connInfo.quality], fontWeight: 600 }}>
                   {connInfo.quality}
                 </span>
               </div>
@@ -556,20 +565,20 @@ export function ParticipantMenuButton({ participant, isPinned, onTogglePin }: Bu
             <DropdownMenuSeparator className={className} style={style} />
           )}
           Label={({ className, style, children: c }) => (
-            <div
+            <DropdownMenuLabel
               className={className}
               style={{
-                padding: '4px 8px 2px',
                 fontSize: 10,
                 fontWeight: 600,
                 letterSpacing: '0.08em',
-                textTransform: 'uppercase',
+                textTransform: 'uppercase' as const,
                 color: 'rgba(255,255,255,0.3)',
+                padding: '4px 8px 2px',
                 ...style,
               }}
             >
               {c}
-            </div>
+            </DropdownMenuLabel>
           )}
         />
       </DropdownMenuContent>
