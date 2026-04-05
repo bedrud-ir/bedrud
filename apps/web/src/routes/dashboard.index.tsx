@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { ArrowRight, Plus, Radio, Search, Sparkles } from 'lucide-react'
 import { RoomCard } from '@/components/dashboard/RoomCard'
 import { CreateRoomDialog } from '@/components/dashboard/CreateRoomDialog'
+import { RoomSettingsDialog } from '@/components/dashboard/RoomSettingsDialog'
 import { useUserStore } from '#/lib/user.store'
 import { api } from '#/lib/api'
 
@@ -156,6 +157,7 @@ function DashboardPage() {
   const queryClient = useQueryClient()
   const user = useUserStore((s) => s.user)
   const [createOpen, setCreateOpen] = useState(false)
+  const [settingsRoom, setSettingsRoom] = useState<Room | null>(null)
   const [filter, setFilter] = useState<'all' | 'active' | 'private'>('all')
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
@@ -177,6 +179,14 @@ function DashboardPage() {
       setDeleteError(msg)
       setTimeout(() => setDeleteError(null), 4000)
     }
+  }
+
+  async function handleUpdateSettings(
+    roomId: string,
+    data: { isPublic: boolean; maxParticipants: number; settings: Room['settings'] },
+  ) {
+    await api.put(`/api/room/${roomId}/settings`, data)
+    queryClient.invalidateQueries({ queryKey: ['rooms'] })
   }
 
   async function handleCreate(data: {
@@ -291,7 +301,13 @@ function DashboardPage() {
       ) : filtered && filtered.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((room) => (
-            <RoomCard key={room.id} room={room} onJoin={() => handleJoin(room.name)} onDelete={() => handleDelete(room.id)} />
+            <RoomCard
+              key={room.id}
+              room={room}
+              onJoin={() => handleJoin(room.name)}
+              onDelete={() => handleDelete(room.id)}
+              onSettings={() => setSettingsRoom(room)}
+            />
           ))}
         </div>
       ) : rooms && rooms.length > 0 ? (
@@ -303,6 +319,15 @@ function DashboardPage() {
       )}
 
       <CreateRoomDialog open={createOpen} onOpenChange={setCreateOpen} onCreate={handleCreate} />
+
+      {settingsRoom && (
+        <RoomSettingsDialog
+          room={settingsRoom}
+          open={!!settingsRoom}
+          onOpenChange={(open) => { if (!open) setSettingsRoom(null) }}
+          onSave={handleUpdateSettings}
+        />
+      )}
     </div>
   )
 }

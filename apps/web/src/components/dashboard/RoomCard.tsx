@@ -1,4 +1,4 @@
-import { Copy, Check, Users, Lock, Globe, MessageSquare, Mic, Video, ArrowRight, ShieldCheck, Trash2 } from 'lucide-react'
+import { Copy, Check, Users, Lock, Globe, MessageSquare, Mic, Video, ArrowRight, ShieldCheck, Trash2, Settings2 } from 'lucide-react'
 import { useState } from 'react'
 
 interface Room {
@@ -19,9 +19,10 @@ interface Props {
   room: Room
   onJoin: () => void
   onDelete?: () => void
+  onSettings?: () => void
 }
 
-export function RoomCard({ room, onJoin, onDelete }: Props) {
+export function RoomCard({ room, onJoin, onDelete, onSettings }: Props) {
   const [copied, setCopied] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -145,6 +146,18 @@ export function RoomCard({ room, onJoin, onDelete }: Props) {
               ? <Check className="h-4 w-4 text-emerald-500" />
               : <Copy className="h-4 w-4 text-muted-foreground" />}
           </button>
+
+          {onSettings && (
+            <button
+              onClick={onSettings}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all duration-150 hover:bg-muted active:scale-95"
+              style={{ borderColor: 'hsl(var(--border))' }}
+              aria-label="Room settings"
+              title="Room settings"
+            >
+              <Settings2 className="h-4 w-4 text-muted-foreground" />
+            </button>
+          )}
 
           {onDelete && (
             confirmDelete ? (
