@@ -15,8 +15,9 @@ pub fn i420_to_rgba(
     for row in 0..height {
         for col in 0..width {
             let yv = y_plane[row * width + col] as f32;
-            let uv = u_plane[(row / 2) * (width / 2) + (col / 2)] as f32 - 128.0;
-            let vv = v_plane[(row / 2) * (width / 2) + (col / 2)] as f32 - 128.0;
+            let uv_stride = (width + 1) / 2;  // ceil(width/2)
+            let uv = u_plane[(row / 2) * uv_stride + (col / 2)] as f32 - 128.0;
+            let vv = v_plane[(row / 2) * uv_stride + (col / 2)] as f32 - 128.0;
 
             let r = (yv + 1.402 * vv).clamp(0.0, 255.0) as u8;
             let g = (yv - 0.344_136 * uv - 0.714_136 * vv).clamp(0.0, 255.0) as u8;
@@ -59,6 +60,20 @@ mod tests {
         let y = vec![128u8; w * h];
         let u = vec![128u8; (w / 2) * (h / 2)];
         let v = vec![128u8; (w / 2) * (h / 2)];
+        let rgba = i420_to_rgba(&y, &u, &v, w, h);
+        assert_eq!(rgba.len(), w * h * 4);
+    }
+
+    #[test]
+    fn i420_to_rgba_odd_dimensions() {
+        let w = 3usize;
+        let h = 3usize;
+        // uv_stride = ceil(3/2) = 2, so U/V planes are 2*2 = 4 bytes
+        let y = vec![128u8; w * h];
+        let uv_stride = (w + 1) / 2;
+        let uv_h = (h + 1) / 2;
+        let u = vec![128u8; uv_stride * uv_h];
+        let v = vec![128u8; uv_stride * uv_h];
         let rgba = i420_to_rgba(&y, &u, &v, w, h);
         assert_eq!(rgba.len(), w * h * 4);
     }
