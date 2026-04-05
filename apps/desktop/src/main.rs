@@ -1,6 +1,7 @@
 mod api;
 mod app;
 mod auth;
+mod livekit;
 mod store;
 
 slint::include_modules!();
