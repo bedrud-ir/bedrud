@@ -1,3 +1,4 @@
+import { ScrollView } from "std-widgets.slint";
 import { theme } from "../theme.slint";
 import { Button, ButtonVariant } from "../components/button.slint";
 import { Input } from "../components/input.slint";
@@ -106,12 +107,16 @@ export component DashboardScreen inherits Rectangle {
                 horizontal-alignment: center;
             }
 
-            if !loading: HorizontalLayout {
-                spacing: theme.space-md;
-                for room in rooms: RoomCard {
-                    room: room;
-                    join-clicked(id) => { join-room-clicked(id); }
-                    delete-clicked(id) => { delete-room-clicked(id); }
+            if !loading && rooms.length > 0: ScrollView {
+                vertical-stretch: 1;
+                HorizontalLayout {
+                    spacing: theme.space-md;
+                    padding: theme.space-xs;
+                    for room in rooms: RoomCard {
+                        room: room;
+                        join-clicked(id) => { join-room-clicked(id); }
+                        delete-clicked(id) => { delete-room-clicked(id); }
+                    }
                 }
             }
         }
