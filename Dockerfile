@@ -21,7 +21,7 @@ RUN mkdir -p internal/livekit/bin && \
     chmod +x internal/livekit/bin/livekit-server && \
     rm /tmp/lk.tar.gz
 COPY server/ ./
-COPY --from=frontend /build/apps/web/build ./frontend/
+COPY --from=frontend /build/apps/web/dist/client ./frontend/
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /bedrud ./cmd/bedrud/main.go
 
 # Stage 3: Minimal runtime image
