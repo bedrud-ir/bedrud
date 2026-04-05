@@ -1,9 +1,11 @@
-import { useState } from 'react'
-import type { Participant } from 'livekit-client'
 import { useParticipants } from '@livekit/components-react'
 import { Video } from 'lucide-react'
 import { ParticipantTile } from './ParticipantTile'
-import { SpotlightView } from './SpotlightView'
+
+interface ParticipantGridProps {
+  pinnedIdentities: Set<string>
+  onTogglePin: (identity: string) => void
+}
 
 function gridCols(count: number): string {
   if (count === 1) return 'grid-cols-1'
@@ -12,8 +14,6 @@ function gridCols(count: number): string {
   return 'grid-cols-4'
 }
 
-// Fills the viewport minus the floating header (56px) and controls (88px).
-// absolute inset-0 gives it a definite height so grid-auto-rows: 1fr works.
 const gridArea: React.CSSProperties = {
   position: 'absolute',
   inset: 0,
@@ -22,17 +22,8 @@ const gridArea: React.CSSProperties = {
   zIndex: 0,
 }
 
-export function ParticipantGrid() {
+export function ParticipantGrid({ pinnedIdentities, onTogglePin }: ParticipantGridProps) {
   const participants = useParticipants()
-  const [spotlighted, setSpotlighted] = useState<Participant | null>(null)
-
-  if (spotlighted) {
-    return (
-      <div style={gridArea}>
-        <SpotlightView participant={spotlighted} onClose={() => setSpotlighted(null)} />
-      </div>
-    )
-  }
 
   if (participants.length === 0) {
     return (
@@ -69,7 +60,8 @@ export function ParticipantGrid() {
             participant={p}
             totalCount={participants.length}
             index={i}
-            onSpotlight={setSpotlighted}
+            isPinned={pinnedIdentities.has(p.identity)}
+            onTogglePin={() => onTogglePin(p.identity)}
           />
         ))}
       </div>
