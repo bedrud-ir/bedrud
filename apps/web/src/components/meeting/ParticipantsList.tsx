@@ -33,11 +33,12 @@ function getPalette(name: string) {
 
 const panel: React.CSSProperties = {
   position: 'absolute', right: 0, top: 0, bottom: 0,
-  width: 288, zIndex: 30,
+  width: 'min(288px, 100vw)', zIndex: 30,
   display: 'flex', flexDirection: 'column',
   background: 'rgba(10,10,22,0.94)',
   backdropFilter: 'blur(24px)',
   borderLeft: '1px solid rgba(255,255,255,0.07)',
+  paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
 }
 
 export function ParticipantsList({ onClose }: Props) {
