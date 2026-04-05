@@ -1,8 +1,12 @@
 import { useMemo, useState, useEffect } from 'react'
-import type { Participant } from 'livekit-client'
+import type { RemoteParticipant } from 'livekit-client'
 import { Track, ParticipantEvent } from 'livekit-client'
+import type { Participant } from 'livekit-client'
 import { useParticipantInfo, useIsSpeaking, VideoTrack } from '@livekit/components-react'
 import { MicOff, Pin } from 'lucide-react'
+import { useParticipantOverridesStore, selectVolume } from '#/lib/participant-overrides.store'
+import { useLongPress } from '#/lib/useLongPress'
+import { ParticipantContextMenu, ParticipantMenuButton } from '@/components/meeting/ParticipantContextMenu'
 
 interface Props {
   participant: Participant
@@ -32,6 +36,17 @@ function getPalette(name: string) {
 export function ParticipantTile({ participant, totalCount, index, isPinned = false, onTogglePin }: Props) {
   const { name, identity } = useParticipantInfo({ participant })
   const isSpeaking = useIsSpeaking(participant)
+
+  const volume = useParticipantOverridesStore(selectVolume(identity ?? ''))
+
+  useEffect(() => {
+    if (participant.isLocal) return
+    ;(participant as RemoteParticipant).setVolume(volume)
+  }, [participant, volume])
+
+  const longPressHandlers = useLongPress(() => {
+    // No-op: Radix ContextMenu handles contextmenu event natively on mobile long-press
+  }, 500)
 
   const [cameraTrack, setCameraTrack] = useState(
     () => participant.getTrackPublication(Track.Source.Camera)
@@ -65,113 +80,134 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
   const fontSizePx = totalCount === 1 ? 44  : totalCount <= 4 ? 26 : 18
 
   return (
-    <div
-      className={`meet-tile group${isSpeaking ? ' meet-speaking' : ''}`}
-      style={{
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: totalCount === 1 ? 0 : 10,
-        background: `radial-gradient(ellipse 90% 70% at 50% 35%, ${palette.tile}, #08080f 72%)`,
-        animationDelay: `${index * 0.04}s`,
-      }}
+    <ParticipantContextMenu
+      participant={participant}
+      isPinned={isPinned}
+      onTogglePin={onTogglePin}
     >
-      {hasCameraVideo && cameraTrack ? (
-        /* Video stream */
-        <VideoTrack
-          trackRef={{ participant, source: Track.Source.Camera, publication: cameraTrack }}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      ) : (
-        /* No video: gradient avatar */
-        <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 14,
-        }}>
+      <div
+        className={`meet-tile group${isSpeaking ? ' meet-speaking' : ''}`}
+        {...longPressHandlers}
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: totalCount === 1 ? 0 : 10,
+          background: `radial-gradient(ellipse 90% 70% at 50% 35%, ${palette.tile}, #08080f 72%)`,
+          animationDelay: `${index * 0.04}s`,
+        }}
+      >
+        {hasCameraVideo && cameraTrack ? (
+          /* Video stream */
+          <VideoTrack
+            trackRef={{ participant, source: Track.Source.Camera, publication: cameraTrack }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          /* No video: gradient avatar */
           <div style={{
-            width: avatarPx, height: avatarPx, borderRadius: '50%',
-            background: palette.avatar, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: fontSizePx, fontWeight: 700, color: 'white',
-            boxShadow: isSpeaking
-              ? `0 0 0 3px rgba(255,255,255,0.18), 0 0 ${avatarPx * 0.6}px ${palette.glow}`
-              : `0 0 ${avatarPx * 0.4}px ${palette.glow}`,
-            transition: 'box-shadow 0.3s ease',
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 14,
           }}>
-            {initial}
-          </div>
+            <div style={{
+              width: avatarPx, height: avatarPx, borderRadius: '50%',
+              background: palette.avatar, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: fontSizePx, fontWeight: 700, color: 'white',
+              boxShadow: isSpeaking
+                ? `0 0 0 3px rgba(255,255,255,0.18), 0 0 ${avatarPx * 0.6}px ${palette.glow}`
+                : `0 0 ${avatarPx * 0.4}px ${palette.glow}`,
+              transition: 'box-shadow 0.3s ease',
+            }}>
+              {initial}
+            </div>
 
-          {/* Name label (only when large enough to be readable) */}
-          {totalCount <= 2 && (
-            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 500 }}>
+            {/* Name label (only when large enough to be readable) */}
+            {totalCount <= 2 && (
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 500 }}>
+                {displayName}
+                {participant.isLocal && (
+                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginLeft: 6 }}>you</span>
+                )}
+              </span>
+            )}
+
+            {/* Speaking waveform bars */}
+            {isSpeaking && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <span key={i} style={{
+                    display: 'inline-block', width: 3, height: 18, borderRadius: 2,
+                    background: '#6366f1', transformOrigin: 'bottom center',
+                    animation: `meet-speak-bar 0.7s ease-in-out ${i * 0.12}s infinite`,
+                  }} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Name + mute badge at bottom-left — for video tiles or dense grids */}
+        {(hasCameraVideo || totalCount > 2) && (
+          <div style={{
+            position: 'absolute', bottom: 8, left: 8,
+            display: 'flex', alignItems: 'center', gap: 5,
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+            borderRadius: 7, padding: '3px 8px',
+            maxWidth: 'calc(100% - 50px)',
+          }}>
+            <span style={{
+              color: 'white', fontSize: 12, fontWeight: 500,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
               {displayName}
               {participant.isLocal && (
-                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginLeft: 6 }}>you</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginLeft: 4 }}>you</span>
               )}
             </span>
-          )}
-
-          {/* Speaking waveform bars */}
-          {isSpeaking && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              {[0, 1, 2, 3, 4].map((i) => (
-                <span key={i} style={{
-                  display: 'inline-block', width: 3, height: 18, borderRadius: 2,
-                  background: '#6366f1', transformOrigin: 'bottom center',
-                  animation: `meet-speak-bar 0.7s ease-in-out ${i * 0.12}s infinite`,
-                }} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Name + mute badge at bottom-left — for video tiles or dense grids */}
-      {(hasCameraVideo || totalCount > 2) && (
-        <div style={{
-          position: 'absolute', bottom: 8, left: 8,
-          display: 'flex', alignItems: 'center', gap: 5,
-          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-          borderRadius: 7, padding: '3px 8px',
-          maxWidth: 'calc(100% - 50px)',
-        }}>
-          <span style={{
-            color: 'white', fontSize: 12, fontWeight: 500,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {displayName}
-            {participant.isLocal && (
-              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginLeft: 4 }}>you</span>
+            {!participant.isMicrophoneEnabled && (
+              <MicOff size={11} style={{ color: '#f87171', flexShrink: 0 }} />
             )}
-          </span>
-          {!participant.isMicrophoneEnabled && (
-            <MicOff size={11} style={{ color: '#f87171', flexShrink: 0 }} />
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Pin button — always visible when pinned, appears on hover otherwise */}
-      {onTogglePin && (
-        <button
-          onClick={onTogglePin}
-          className={isPinned ? undefined : 'group-hover:opacity-100'}
-          style={{
-            position: 'absolute', top: 8, right: 8,
-            width: 30, height: 30, borderRadius: 8,
-            background: isPinned ? 'rgba(99,102,241,0.7)' : 'rgba(0,0,0,0.55)',
-            backdropFilter: 'blur(8px)',
-            border: `1px solid ${isPinned ? 'rgba(165,180,252,0.5)' : 'rgba(255,255,255,0.1)'}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: isPinned ? '#e0e7ff' : 'rgba(255,255,255,0.8)',
-            cursor: 'pointer',
-            opacity: isPinned ? 1 : 0,
-            transition: 'opacity 0.15s ease, background 0.15s ease',
-          }}
-          aria-label={isPinned ? 'Unpin participant' : 'Pin participant'}
-        >
-          <Pin size={13} style={{ fill: isPinned ? 'currentColor' : 'none' }} />
-        </button>
-      )}
-    </div>
+        {/* Pin button — always visible when pinned, appears on hover otherwise */}
+        {onTogglePin && (
+          <button
+            onClick={onTogglePin}
+            className={isPinned ? undefined : 'group-hover:opacity-100'}
+            style={{
+              position: 'absolute', top: 8, right: 8,
+              width: 30, height: 30, borderRadius: 8,
+              background: isPinned ? 'rgba(99,102,241,0.7)' : 'rgba(0,0,0,0.55)',
+              backdropFilter: 'blur(8px)',
+              border: `1px solid ${isPinned ? 'rgba(165,180,252,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: isPinned ? '#e0e7ff' : 'rgba(255,255,255,0.8)',
+              cursor: 'pointer',
+              opacity: isPinned ? 1 : 0,
+              transition: 'opacity 0.15s ease, background 0.15s ease',
+            }}
+            aria-label={isPinned ? 'Unpin participant' : 'Pin participant'}
+          >
+            <Pin size={13} style={{ fill: isPinned ? 'currentColor' : 'none' }} />
+          </button>
+        )}
+
+        {/* 3-dot button — top-left corner (pin button is top-right) */}
+        {!participant.isLocal && (
+          <div
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+            style={{ position: 'absolute', top: 8, left: 8 }}
+          >
+            <ParticipantMenuButton
+              participant={participant}
+              isPinned={isPinned}
+              onTogglePin={onTogglePin}
+            />
+          </div>
+        )}
+      </div>
+    </ParticipantContextMenu>
   )
 }
