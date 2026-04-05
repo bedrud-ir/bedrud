@@ -55,3 +55,7 @@ mod tests {
         assert!(matches!(state.screen, Screen::Meeting { .. }));
     }
 }
+
+impl Default for AppState {
+    fn default() -> Self { Self::new() }
+}
