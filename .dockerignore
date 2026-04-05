@@ -1,9 +1,8 @@
-# Dependencies & build artifacts
-node_modules
-apps/web/build
-apps/web/.svelte-kit
-server/dist
+# Build artifacts (generated during Docker build stages)
+apps/web/dist
+apps/web/node_modules
 server/frontend
+server/dist
 dist
 
 # Mobile apps (not needed for server image)
