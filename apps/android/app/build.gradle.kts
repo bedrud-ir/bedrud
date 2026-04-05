@@ -55,10 +55,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -72,6 +68,10 @@ android {
             isUniversalApk = true
         }
     }
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 dependencies {
