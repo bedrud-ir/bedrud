@@ -268,6 +268,278 @@ func (h *RoomHandler) sendSystemMessage(ctx context.Context, roomName, event, ac
 	})
 }
 
+// sendTargetedSystemMessage sends a system data message to only the target identity.
+func (h *RoomHandler) sendTargetedSystemMessage(ctx context.Context, roomName, event, actor, target string) {
+	type sysMsg struct {
+		Type   string `json:"type"`
+		Event  string `json:"event"`
+		Actor  string `json:"actor"`
+		Target string `json:"target"`
+	}
+	b, _ := json.Marshal(sysMsg{Type: "system", Event: event, Actor: actor, Target: target})
+	topic := "system"
+	_, _ = h.client.SendData(ctx, &livekit.SendDataRequest{
+		Room:                    roomName,
+		Data:                    b,
+		Kind:                    livekit.DataPacket_RELIABLE,
+		Topic:                   &topic,
+		DestinationIdentities:   []string{target},
+	})
+}
+
+// resolveRoom loads a room by ID and returns (room, adminId, error response). Returns nil room + wrote response on error.
+func (h *RoomHandler) resolveRoom(c *fiber.Ctx, roomID string) (*models.Room, string, error) {
+	room, err := h.roomRepo.GetRoom(roomID)
+	if err != nil {
+		log.Error().Err(err).Str("roomId", roomID).Msg("Failed to look up room")
+		_ = c.Status(500).JSON(fiber.Map{"error": "Failed to look up room"})
+		return nil, "", err
+	}
+	if room == nil {
+		_ = c.SendStatus(404)
+		return nil, "", fmt.Errorf("room not found")
+	}
+	adminId := room.AdminID
+	if adminId == "" {
+		adminId = room.CreatedBy
+	}
+	return room, adminId, nil
+}
+
+func (h *RoomHandler) PromoteParticipant(c *fiber.Ctx) error {
+	roomID, identity := c.Params("roomId"), c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
+	room, adminId, err := h.resolveRoom(c, roomID)
+	if err != nil {
+		return nil
+	}
+	if claims.UserID != adminId && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
+	p, err := h.client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Participant not found"})
+	}
+	var meta map[string]interface{}
+	if err := json.Unmarshal([]byte(p.Metadata), &meta); err != nil || meta == nil {
+		meta = map[string]interface{}{}
+	}
+	accesses, _ := meta["accesses"].([]interface{})
+	for _, a := range accesses {
+		if a == "moderator" {
+			return c.JSON(fiber.Map{"status": "already_moderator"})
+		}
+	}
+	meta["accesses"] = append(accesses, "moderator")
+	newMeta, _ := json.Marshal(meta)
+	_, err = h.client.UpdateParticipant(ctx, &livekit.UpdateParticipantRequest{
+		Room: room.Name, Identity: identity, Metadata: string(newMeta),
+	})
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "success"})
+}
+
+func (h *RoomHandler) DemoteParticipant(c *fiber.Ctx) error {
+	roomID, identity := c.Params("roomId"), c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
+	room, adminId, err := h.resolveRoom(c, roomID)
+	if err != nil {
+		return nil
+	}
+	if claims.UserID != adminId && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
+	p, err := h.client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Participant not found"})
+	}
+	var meta map[string]interface{}
+	if err := json.Unmarshal([]byte(p.Metadata), &meta); err != nil || meta == nil {
+		meta = map[string]interface{}{}
+	}
+	accesses, _ := meta["accesses"].([]interface{})
+	filtered := make([]interface{}, 0, len(accesses))
+	for _, a := range accesses {
+		if a != "moderator" {
+			filtered = append(filtered, a)
+		}
+	}
+	meta["accesses"] = filtered
+	newMeta, _ := json.Marshal(meta)
+	_, err = h.client.UpdateParticipant(ctx, &livekit.UpdateParticipantRequest{
+		Room: room.Name, Identity: identity, Metadata: string(newMeta),
+	})
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "success"})
+}
+
+func (h *RoomHandler) BlockChat(c *fiber.Ctx) error {
+	roomID, identity := c.Params("roomId"), c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
+	room, adminId, err := h.resolveRoom(c, roomID)
+	if err != nil {
+		return nil
+	}
+	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
+	p, err := h.client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Participant not found"})
+	}
+	var meta map[string]interface{}
+	if err := json.Unmarshal([]byte(p.Metadata), &meta); err != nil || meta == nil {
+		meta = map[string]interface{}{}
+	}
+	meta["chatBlocked"] = true
+	newMeta, _ := json.Marshal(meta)
+	_, err = h.client.UpdateParticipant(ctx, &livekit.UpdateParticipantRequest{
+		Room: room.Name, Identity: identity, Metadata: string(newMeta),
+	})
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "success"})
+}
+
+func (h *RoomHandler) DeafenParticipant(c *fiber.Ctx) error {
+	roomID, identity := c.Params("roomId"), c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
+	room, adminId, err := h.resolveRoom(c, roomID)
+	if err != nil {
+		return nil
+	}
+	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
+	h.sendTargetedSystemMessage(ctx, room.Name, "deafen", claims.UserID, identity)
+	return c.JSON(fiber.Map{"status": "success"})
+}
+
+func (h *RoomHandler) UndeafenParticipant(c *fiber.Ctx) error {
+	roomID, identity := c.Params("roomId"), c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
+	room, adminId, err := h.resolveRoom(c, roomID)
+	if err != nil {
+		return nil
+	}
+	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
+	h.sendTargetedSystemMessage(ctx, room.Name, "undeafen", claims.UserID, identity)
+	return c.JSON(fiber.Map{"status": "success"})
+}
+
+func (h *RoomHandler) AskParticipantAction(c *fiber.Ctx) error {
+	roomID, identity, action := c.Params("roomId"), c.Params("identity"), c.Params("action")
+	if action != "unmute" && action != "camera" {
+		return c.Status(400).JSON(fiber.Map{"error": "Unknown action"})
+	}
+	claims := c.Locals("user").(*auth.Claims)
+	room, adminId, err := h.resolveRoom(c, roomID)
+	if err != nil {
+		return nil
+	}
+	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+	event := "ask_" + action
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
+	h.sendTargetedSystemMessage(ctx, room.Name, event, claims.UserID, identity)
+	return c.JSON(fiber.Map{"status": "success"})
+}
+
+func (h *RoomHandler) SpotlightParticipant(c *fiber.Ctx) error {
+	roomID, identity := c.Params("roomId"), c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
+	room, adminId, err := h.resolveRoom(c, roomID)
+	if err != nil {
+		return nil
+	}
+	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
+	// Broadcast to entire room so all clients pin this participant
+	h.sendSystemMessage(ctx, room.Name, "spotlight", claims.UserID, identity)
+	return c.JSON(fiber.Map{"status": "success"})
+}
+
+func (h *RoomHandler) StopScreenShare(c *fiber.Ctx) error {
+	roomID, identity := c.Params("roomId"), c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
+	room, adminId, err := h.resolveRoom(c, roomID)
+	if err != nil {
+		return nil
+	}
+	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
+	p, err := h.client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Participant not found"})
+	}
+	for _, track := range p.Tracks {
+		if track.Source == livekit.TrackSource_SCREEN_SHARE || track.Source == livekit.TrackSource_SCREEN_SHARE_AUDIO {
+			_, _ = h.client.MutePublishedTrack(ctx, &livekit.MuteRoomTrackRequest{
+				Room: room.Name, Identity: identity, TrackSid: track.Sid, Muted: true,
+			})
+		}
+	}
+	return c.JSON(fiber.Map{"status": "success"})
+}
+
+func (h *RoomHandler) GetParticipantInfo(c *fiber.Ctx) error {
+	roomID, identity := c.Params("roomId"), c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
+	room, adminId, err := h.resolveRoom(c, roomID)
+	if err != nil {
+		return nil
+	}
+	// Self-access always allowed; admin/mod can view anyone
+	if claims.UserID != identity && claims.UserID != adminId &&
+		!containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
+	p, err := h.client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Participant not found"})
+	}
+	type TrackInfo struct {
+		Sid    string `json:"sid"`
+		Type   string `json:"type"`
+		Source string `json:"source"`
+		Muted  bool   `json:"muted"`
+	}
+	tracks := make([]TrackInfo, 0, len(p.Tracks))
+	for _, t := range p.Tracks {
+		tracks = append(tracks, TrackInfo{
+			Sid:    t.Sid,
+			Type:   t.Type.String(),
+			Source: t.Source.String(),
+			Muted:  t.Muted,
+		})
+	}
+	return c.JSON(fiber.Map{
+		"identity": p.Identity,
+		"name":     p.Name,
+		"state":    p.State.String(),
+		"joinedAt": p.JoinedAt,
+		"tracks":   tracks,
+	})
+}
+
 func (h *RoomHandler) KickParticipant(c *fiber.Ctx) error {
 	roomID, identity := c.Params("roomId"), c.Params("identity")
 	claims := c.Locals("user").(*auth.Claims)
@@ -401,6 +673,27 @@ func containsAccess(accesses []string, target string) bool {
 	return false
 }
 func (h *RoomHandler) DisableParticipantVideo(c *fiber.Ctx) error {
+	roomID, identity := c.Params("roomId"), c.Params("identity")
+	claims := c.Locals("user").(*auth.Claims)
+	room, adminId, err := h.resolveRoom(c, roomID)
+	if err != nil {
+		return nil
+	}
+	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
+	p, err := h.client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Participant not found"})
+	}
+	for _, track := range p.Tracks {
+		if track.Type == livekit.TrackType_VIDEO && track.Source == livekit.TrackSource_CAMERA {
+			_, _ = h.client.MutePublishedTrack(ctx, &livekit.MuteRoomTrackRequest{
+				Room: room.Name, Identity: identity, TrackSid: track.Sid, Muted: true,
+			})
+		}
+	}
 	return c.JSON(fiber.Map{"status": "success"})
 }
 func (h *RoomHandler) BringToStage(c *fiber.Ctx) error { return c.JSON(fiber.Map{"status": "success"}) }
@@ -408,7 +701,51 @@ func (h *RoomHandler) RemoveFromStage(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "success"})
 }
 func (h *RoomHandler) UpdateSettings(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"status": "success"})
+	roomID := c.Params("roomId")
+	claims := c.Locals("user").(*auth.Claims)
+
+	var input struct {
+		IsPublic        *bool                `json:"isPublic"`
+		MaxParticipants *int                 `json:"maxParticipants"`
+		Settings        *models.RoomSettings `json:"settings"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+
+	room, err := h.roomRepo.GetRoom(roomID)
+	if err != nil {
+		log.Error().Err(err).Str("roomId", roomID).Msg("Failed to look up room")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to look up room"})
+	}
+	if room == nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
+	}
+
+	adminID := room.AdminID
+	if adminID == "" {
+		adminID = room.CreatedBy
+	}
+	if claims.UserID != adminID && !containsAccess(claims.Accesses, "superadmin") {
+		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	}
+
+	if input.IsPublic != nil {
+		room.IsPublic = *input.IsPublic
+	}
+	if input.MaxParticipants != nil {
+		room.MaxParticipants = *input.MaxParticipants
+	}
+	if input.Settings != nil {
+		room.Settings = *input.Settings
+	}
+
+	if err := h.roomRepo.UpdateRoom(room); err != nil {
+		log.Error().Err(err).Str("roomId", roomID).Msg("Failed to update room settings")
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to update room settings"})
+	}
+
+	return c.JSON(room)
 }
 func (h *RoomHandler) AdminListRooms(c *fiber.Ctx) error {
 	rooms, err := h.roomRepo.GetAllRooms()
