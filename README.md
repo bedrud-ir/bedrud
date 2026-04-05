@@ -118,7 +118,8 @@ Requires Rust stable. On Linux, install native UI dependencies first:
 sudo apt-get install -y \
   libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
   libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
-  libdbus-1-dev libsecret-1-dev
+  libdbus-1-dev libsecret-1-dev \
+  libasound2-dev
 ```
 
 On Windows, Visual Studio Build Tools (MSVC) with C++ workload is required.

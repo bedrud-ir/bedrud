@@ -181,7 +181,8 @@ The desktop app lives in `apps/desktop/` and is a Rust crate in the workspace.
 sudo apt-get install -y \
   libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
   libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
-  libdbus-1-dev libsecret-1-dev
+  libdbus-1-dev libsecret-1-dev \
+  libasound2-dev
 ```
 
 Windows requires Visual Studio Build Tools with the C++ workload (MSVC).

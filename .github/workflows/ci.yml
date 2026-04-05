@@ -217,7 +217,8 @@ jobs:
             libgles2-mesa-dev \
             libegl1-mesa-dev \
             libdbus-1-dev \
-            libsecret-1-dev
+            libsecret-1-dev \
+            libasound2-dev
       - name: Build
         run: cargo build -p bedrud-desktop
       - name: Test
