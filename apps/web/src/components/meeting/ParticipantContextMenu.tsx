@@ -109,9 +109,9 @@ export function ParticipantMenuContent({
     setLoading(key)
     try {
       await api.post(path)
+      onClose?.()
     } finally {
       setLoading(null)
-      onClose?.()
     }
   }
 
@@ -397,10 +397,27 @@ export function ParticipantMenuContent({
       )}
 
       {/* ── Section 6: Connection stats (always shown, togglable inline) ── */}
-      <Item onClick={handleToggleStats} style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
+      <div
+        role="menuitem"
+        tabIndex={0}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); handleToggleStats() }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggleStats() }}
+        style={{
+          display: 'flex', alignItems: 'center',
+          padding: '6px 8px',
+          borderRadius: 4,
+          cursor: 'pointer',
+          color: 'rgba(255,255,255,0.6)',
+          fontSize: 13,
+          userSelect: 'none',
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)' }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+      >
         <Activity size={13} style={{ marginRight: 8 }} />
         {statsOpen ? 'Hide Stats' : 'Connection Stats'}
-      </Item>
+      </div>
 
       {statsOpen && (
         <div
