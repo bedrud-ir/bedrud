@@ -1,3 +1,7 @@
+# Define systemd unit dir if the macro is not provided by the build environment
+# (e.g. Ubuntu's rpm package lacks systemd-rpm-macros)
+%{!?_unitdir: %define _unitdir /usr/lib/systemd/system}
+
 Name:           bedrud
 Version:        VERSION_PLACEHOLDER
 Release:        1%{?dist}
