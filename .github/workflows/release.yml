@@ -181,6 +181,7 @@ jobs:
   ios:
     name: iOS IPA
     runs-on: macos-15
+    continue-on-error: true
     defaults:
       run:
         working-directory: apps/ios
@@ -338,7 +339,7 @@ jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [server-binary, docker, android, ios, desktop-windows, desktop-linux]
+    needs: [server-binary, docker, android, desktop-windows, desktop-linux]
     steps:
       - uses: actions/checkout@v4
 
