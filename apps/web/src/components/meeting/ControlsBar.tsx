@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocalParticipant } from '@livekit/components-react'
-import { Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, Users, Volume2, Mic2, Check } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, Users, Volume2, Mic2, Check, MonitorUp, MonitorOff } from 'lucide-react'
 import { DeviceSelector } from '@/components/meeting/DeviceSelector'
 import { useAudioPreferencesStore, type NoiseSuppressionMode } from '#/lib/audio-preferences.store'
+import { useAuthStore } from '#/lib/auth.store'
 import { AudioProcessorService } from '#/lib/audio-processor.service'
 import {
   Tooltip,
@@ -90,6 +91,16 @@ export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatO
   const { localParticipant } = useLocalParticipant()
   const micEnabled = localParticipant?.isMicrophoneEnabled ?? false
   const camEnabled = localParticipant?.isCameraEnabled ?? false
+  const isScreenShareEnabled = localParticipant?.isScreenShareEnabled ?? false
+  const tokens    = useAuthStore((s) => s.tokens)
+  const canShare  = Boolean(tokens) && Boolean(navigator.mediaDevices?.getDisplayMedia)
+  const shareTip  = !tokens
+    ? 'Sign in to share screen'
+    : !navigator.mediaDevices?.getDisplayMedia
+      ? 'Screen sharing not supported on this device'
+      : isScreenShareEnabled
+        ? 'Stop sharing'
+        : 'Share screen'
 
   const noiseMode = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
   const setMode   = useAudioPreferencesStore((s) => s.setMode)
@@ -221,6 +232,15 @@ export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatO
             })}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* ── Screen share ── */}
+        <CtrlBtn
+          tip={shareTip}
+          style={{ ...iconBtn(false, isScreenShareEnabled), opacity: canShare ? 1 : 0.4, cursor: canShare ? 'pointer' : 'not-allowed' }}
+          onClick={canShare ? () => localParticipant?.setScreenShareEnabled(!isScreenShareEnabled) : undefined}
+        >
+          {isScreenShareEnabled ? <MonitorOff size={17} /> : <MonitorUp size={17} />}
+        </CtrlBtn>
 
         <div style={divider} />
 
