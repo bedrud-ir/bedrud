@@ -97,10 +97,10 @@ export function ParticipantMenuContent({
   Label,
   onClose,
 }: ParticipantMenuContentProps) {
-  const { roomId, adminId, isAdmin, isModerator } = useMeetingContext()
+  const { roomId, adminId, isAdmin, isModerator, isCreator } = useMeetingContext()
   const identity = participant.identity
   const isSelf = participant.isLocal
-  const canModerate = isAdmin || isModerator
+  const canModerate = isAdmin || isModerator || isCreator
 
   // Metadata parsing — same pattern as ParticipantsList.tsx
   const meta = useMemo(() => parseMeta(participant.metadata), [participant.metadata])
@@ -339,8 +339,8 @@ export function ParticipantMenuContent({
         </>
       )}
 
-      {/* ── Section 4: Role management (admin only, non-self, non-room-admin) */}
-      {isAdmin && !isSelf && !isRoomAdmin && (
+      {/* ── Section 4: Role management (admin/creator only, non-self, non-room-admin) */}
+      {(isAdmin || isCreator) && !isSelf && !isRoomAdmin && (
         <>
           <Label style={LABEL_STYLE}>Role</Label>
 
@@ -374,8 +374,8 @@ export function ParticipantMenuContent({
         </>
       )}
 
-      {/* ── Section 5: Kick / Ban (admin only, non-self, non-room-admin) ─── */}
-      {isAdmin && !isSelf && !isRoomAdmin && (
+      {/* ── Section 5: Kick / Ban (admin/creator only, non-self, non-room-admin) ─── */}
+      {(isAdmin || isCreator) && !isSelf && !isRoomAdmin && (
         <>
           <Item
             disabled={loading === 'kick'}
