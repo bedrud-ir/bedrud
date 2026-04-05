@@ -150,6 +150,8 @@
 
 .meet-tile {
   animation: meet-tile-in 0.28s ease-out forwards;
+  width: 100%;
+  height: 100%;
 }
 
 @keyframes meet-ptt-pulse {
