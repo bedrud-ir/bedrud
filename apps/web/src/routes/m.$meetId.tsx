@@ -8,6 +8,7 @@ import {
   useRoomContext,
 } from '@livekit/components-react'
 import { ConnectionState, DisconnectReason, RoomEvent } from 'livekit-client'
+import type { AudioCaptureOptions } from 'livekit-client'
 import { useAuthStore } from '#/lib/auth.store'
 import { api } from '#/lib/api'
 import { ParticipantGrid } from '@/components/meeting/ParticipantGrid'
@@ -60,7 +61,7 @@ function MeetingPage() {
 
   // When using a LiveKit audio processor (rnnoise/krisp), disable browser-level
   // noise processing to avoid double-processing artifacts.
-  const audioConstraints: MediaTrackConstraints | boolean =
+  const audioConstraints: AudioCaptureOptions | boolean =
     noiseMode === 'browser'
       ? { noiseSuppression: true, echoCancellation, autoGainControl }
       : { noiseSuppression: false, echoCancellation: false, autoGainControl: false }
