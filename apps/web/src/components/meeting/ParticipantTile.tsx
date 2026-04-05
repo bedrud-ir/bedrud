@@ -205,8 +205,7 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
         )}
 
         {/* 3-dot button — top-left corner (pin button is top-right) */}
-        {!participant.isLocal && (
-          <div
+        <div
             className="opacity-0 group-hover:opacity-100 transition-opacity duration-150"
             style={{ position: 'absolute', top: 8, left: 8 }}
           >
@@ -216,7 +215,6 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
               onTogglePin={onTogglePin}
             />
           </div>
-        )}
       </div>
     </ParticipantContextMenu>
   )

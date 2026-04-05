@@ -193,14 +193,12 @@ function ParticipantRow({ p, adminId }: RowProps): React.ReactElement {
           : <VideoOff size={13} style={{ color: 'rgba(255,255,255,0.18)' }} />
         }
 
-        {!p.isLocal && (
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
             <ParticipantMenuButton participant={p} />
           </div>
-        )}
       </div>
     </div>
   )
 
-  return p.isLocal ? row : <ParticipantContextMenu participant={p}>{row}</ParticipantContextMenu>
+  return <ParticipantContextMenu participant={p}>{row}</ParticipantContextMenu>
 }

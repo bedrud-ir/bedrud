@@ -138,7 +138,7 @@ export function ParticipantMenuContent({
   const isSelf = participant.isLocal
   const canModerate = isAdmin || isModerator || isCreator
   const canManageRole = isAdmin || isCreator
-  const canViewStats = isAdmin || isCreator || isSelf
+  const canViewStats = true // everyone sees stats; IP is gated separately
 
   // Metadata
   const meta = useMemo(() => parseMeta(participant.metadata), [participant.metadata])
