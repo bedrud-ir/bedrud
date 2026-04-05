@@ -9,7 +9,7 @@
 
 - **Video & Audio Meetings** — WebRTC-powered rooms via an embedded LiveKit media server
 - **Single Binary** — Go server with the Svelte frontend and LiveKit compiled in; no runtime dependencies
-- **Native Mobile Apps** — Android (Jetpack Compose) and iOS (SwiftUI) with picture-in-picture, deep linking, and call management
+- **Native Client Apps** — Android (Jetpack Compose), iOS (SwiftUI), and desktop (Rust + Slint for Windows/Linux) with picture-in-picture, deep linking, and call management
 - **Multiple Auth Methods** — Email/password, OAuth (Google, GitHub, Twitter), guest access, and FIDO2 passkeys
 - **Room Controls** — Public/private rooms, admin kick/mute/video-off, participant management
 - **Multi-Instance** — Mobile apps can connect to multiple Bedrud servers simultaneously
@@ -23,9 +23,10 @@
 bedrud/
 ├── server/          Go backend (Fiber, GORM, embedded LiveKit)
 ├── apps/
-│   ├── web/         SvelteKit frontend (Svelte 5, TailwindCSS)
+│   ├── web/         React frontend (TanStack Start, TailwindCSS)
 │   ├── android/     Jetpack Compose app (Koin, Retrofit, LiveKit SDK)
-│   └── ios/         SwiftUI app (KeychainAccess, LiveKit SDK)
+│   ├── ios/         SwiftUI app (KeychainAccess, LiveKit SDK)
+│   └── desktop/     Native desktop app (Rust, Slint, LiveKit SDK)
 ├── agents/          Python bots (music, radio, video stream)
 ├── packages/        Shared TypeScript types (@bedrud/api-types)
 ├── tools/cli/       Deployment CLI (pyinfra, Click)
@@ -104,6 +105,24 @@ make build-ios-sim          # Build for simulator
 
 Requires Xcode. Deployment target iOS 18.0.
 
+### Desktop (Windows / Linux)
+
+```bash
+make dev-desktop            # Build and run immediately
+make build-desktop          # Optimised release binary
+```
+
+Requires Rust stable. On Linux, install native UI dependencies first:
+
+```bash
+sudo apt-get install -y \
+  libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+  libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
+  libdbus-1-dev libsecret-1-dev
+```
+
+On Windows, Visual Studio Build Tools (MSVC) with C++ workload is required.
+
 ## Bot Agents
 
 Stream media into meeting rooms using Python agents:
@@ -133,6 +152,8 @@ Full documentation is available at the [Bedrud Docs](https://bedrud-ir.github.io
 | `make build-android` | Build Android release APK |
 | `make build-ios` | Build iOS archive |
 | `make build-ios-sim` | Build for iOS simulator |
+| `make build-desktop` | Build desktop release binary |
+| `make dev-desktop` | Run desktop app in development |
 | `make deploy ARGS=...` | Run deployment CLI |
 
 ## Tech Stack
@@ -143,6 +164,7 @@ Full documentation is available at the [Bedrud Docs](https://bedrud-ir.github.io
 | Web Frontend | SvelteKit 2, Svelte 5, TailwindCSS, Vite |
 | Android | Kotlin, Jetpack Compose, Koin, Retrofit, LiveKit SDK |
 | iOS | Swift, SwiftUI, KeychainAccess, LiveKit SDK |
+| Desktop | Rust, Slint, reqwest, LiveKit Rust SDK |
 | Auth | JWT, OAuth2 (Goth), WebAuthn Passkeys |
 | Database | SQLite (default), PostgreSQL (production) |
 | Media | LiveKit (embedded WebRTC server) |

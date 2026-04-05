@@ -237,7 +237,7 @@ jobs:
           xcodebuild test \
             -project Bedrud.xcodeproj \
             -scheme Bedrud \
-            -destination "platform=iOS Simulator,name=iPhone 16 Pro" \
+            -destination "platform=iOS Simulator,name=iPhone 17 Pro" \
             -clonedSourcePackagesDirPath .spm-cache \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO

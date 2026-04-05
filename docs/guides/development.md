@@ -10,11 +10,13 @@ bedrud/
 ├── apps/
 │   ├── web/         # React frontend (TanStack Start)
 │   ├── android/     # Android app
-│   └── ios/         # iOS app
+│   ├── ios/         # iOS app
+│   └── desktop/     # Desktop app (Rust + Slint)
 ├── agents/          # Python bot agents
 ├── packages/        # Shared TypeScript types
 ├── tools/cli/       # Deployment CLI
 ├── docs/            # Documentation (MkDocs)
+├── Cargo.toml       # Rust workspace root
 ├── Makefile         # Build orchestration
 └── Dockerfile       # Container build
 ```
@@ -28,6 +30,7 @@ bedrud/
 | LiveKit Server | Local media server |
 | Android Studio + JDK 17 | Android app |
 | Xcode | iOS app |
+| Rust (stable) | Desktop app |
 | Python 3.10+ | Bot agents |
 | FFmpeg | Radio and video agents |
 
@@ -168,6 +171,39 @@ make build-ios-sim      # Simulator build
 make export-ios         # Export IPA
 ```
 
+## Desktop Development
+
+The desktop app lives in `apps/desktop/` and is a Rust crate in the workspace.
+
+### Prerequisites (Linux)
+
+```bash
+sudo apt-get install -y \
+  libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+  libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
+  libdbus-1-dev libsecret-1-dev
+```
+
+Windows requires Visual Studio Build Tools with the C++ workload (MSVC).
+
+### Running
+
+```bash
+make dev-desktop    # cargo run -p bedrud-desktop
+```
+
+### Building
+
+```bash
+make build-desktop           # optimised binary for the current platform
+```
+
+### Key Patterns
+
+- All UI is defined in `.slint` files under `apps/desktop/ui/`; compiled to Rust at build time by `build.rs`
+- `apps/desktop/src/ui/bridge.rs` is the only place where Slint callbacks are wired to Rust logic — keep business logic out of the `.slint` files
+- Use `Weak<AppWindow>` when spawning background tasks that need to update the UI
+
 ## Bot Agent Development
 
 Agents are in `agents/` with one directory per agent.
@@ -188,8 +224,9 @@ GitHub Actions runs on every push to `main` and on pull requests:
 |-----|---------------|
 | Server | `go vet`, build, tests |
 | Web | Type check, build |
-| Android | Lint, unit tests |
-| iOS | Build, test (simulator) |
+| Android | Lint, unit tests, debug APK |
+| iOS | Build + test (simulator, with coverage) |
+| Desktop | `cargo build`, `cargo test` |
 
 Release builds are triggered by version tags (`v*`).
 

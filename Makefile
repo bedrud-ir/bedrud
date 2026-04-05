@@ -1,4 +1,4 @@
-.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim deploy test-back push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open clean full-clean
+.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android dev-desktop build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim build-desktop deploy test-back push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open clean full-clean
 
 # Show available targets
 help:
@@ -44,6 +44,10 @@ help:
 	@echo "  build-ios            Build iOS archive (Release)"
 	@echo "  export-ios           Export IPA from archive"
 	@echo "  build-ios-sim        Build for iOS Simulator (Debug)"
+	@echo ""
+	@echo "Desktop (Rust + Slint):"
+	@echo "  dev-desktop          Build and run desktop app"
+	@echo "  build-desktop        Build optimised release binary"
 	@echo ""
 	@echo "Test:"
 	@echo "  test-back            Run backend tests"
@@ -197,6 +201,14 @@ export-ios:
 		-exportOptionsPlist ExportOptions.plist
 	@echo "IPA: apps/ios/build/export/Bedrud.ipa"
 
+# Build and run desktop app (debug)
+dev-desktop:
+	cargo run -p bedrud-desktop
+
+# Build optimised desktop release binary
+build-desktop:
+	cargo build -p bedrud-desktop --release
+
 # Build iOS for simulator (debug)
 build-ios-sim:
 	cd apps/ios && xcodebuild build \
@@ -280,6 +292,7 @@ clean:
 	@find server/frontend -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
 	@rm -rf apps/android/app/build/
 	@rm -rf apps/ios/build/
+	@rm -rf target/
 	@echo "✅ Clean complete"
 
 # Remove artifacts + installed dependencies (node_modules, gradle cache, go cache)

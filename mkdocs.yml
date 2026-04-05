@@ -64,6 +64,7 @@ nav:
       - Web Frontend: architecture/web.md
       - Android App: architecture/android.md
       - iOS App: architecture/ios.md
+      - Desktop App: architecture/desktop.md
       - Bot Agents: architecture/agents.md
   - Guides:
       - Development Workflow: guides/development.md

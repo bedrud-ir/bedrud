@@ -5,18 +5,18 @@ Bedrud is a monorepo containing a Go server, three client applications, Python b
 ## High-Level Diagram
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      Clients                            │
-│                                                         │
-│  ┌──────────┐   ┌───────────┐   ┌──────────────────┐   │
-│  │  Web      │   │  Android  │   │  iOS             │   │
-│  │  React 19 │   │  Compose  │   │  SwiftUI         │   │
-│  └─────┬─────┘   └─────┬─────┘   └───────┬──────────┘   │
-│        │               │                 │              │
-│        └───────────────┼─────────────────┘              │
-│                        │                                │
-│              REST API + WebSocket                       │
-└────────────────────────┼────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                          Clients                             │
+│                                                              │
+│  ┌─────────┐  ┌──────────┐  ┌────────┐  ┌───────────────┐   │
+│  │  Web    │  │ Android  │  │  iOS   │  │ Desktop       │   │
+│  │ React   │  │ Compose  │  │SwiftUI │  │ Rust + Slint  │   │
+│  └────┬────┘  └────┬─────┘  └───┬────┘  └──────┬────────┘   │
+│       │            │            │              │             │
+│       └────────────┼────────────┼──────────────┘             │
+│                    │                                         │
+│               REST API + WebSocket                          │
+└────────────────────┼────────────────────────────────────────┘
                          │
 ┌────────────────────────┼────────────────────────────────┐
 │                   Bedrud Server                         │
@@ -93,6 +93,19 @@ Key capabilities:
 - Keychain-based secure storage
 
 See [iOS App](ios.md) for details.
+
+### Desktop App (`apps/desktop/`)
+
+A native Windows and Linux desktop application built with **Rust** and the **Slint** UI toolkit. Compiles to a single binary with no runtime dependencies.
+
+Key capabilities:
+
+- Full video meeting experience via LiveKit Rust SDK
+- Native Windows (Direct3D 11) and Linux (OpenGL/Vulkan) rendering
+- Multi-instance support (connect to multiple Bedrud servers)
+- OS keyring integration for secure credential storage
+
+See [Desktop App](desktop.md) for details.
 
 ### Bot Agents (`agents/`)
 
