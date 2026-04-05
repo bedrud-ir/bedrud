@@ -1,0 +1,16 @@
+import { theme } from "theme.slint";
+
+export component AppWindow inherits Window {
+    title: "Bedrud";
+    width: 1024px;
+    height: 768px;
+    background: theme.bg-primary;
+
+    Text {
+        text: "Bedrud Desktop";
+        color: theme.text-primary;
+        font-size: 24px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
