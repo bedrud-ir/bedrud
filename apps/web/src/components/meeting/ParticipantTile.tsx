@@ -2,13 +2,14 @@ import { useMemo, useState, useEffect } from 'react'
 import type { Participant } from 'livekit-client'
 import { Track, ParticipantEvent } from 'livekit-client'
 import { useParticipantInfo, useIsSpeaking, VideoTrack } from '@livekit/components-react'
-import { MicOff, Maximize2 } from 'lucide-react'
+import { MicOff, Pin } from 'lucide-react'
 
 interface Props {
   participant: Participant
   totalCount: number
   index: number
-  onSpotlight?: (p: Participant) => void
+  isPinned?: boolean
+  onTogglePin?: () => void
 }
 
 // Unique gradient per participant — determined by name hash
@@ -28,7 +29,7 @@ function getPalette(name: string) {
   return PALETTES[Math.abs(hash) % PALETTES.length]
 }
 
-export function ParticipantTile({ participant, totalCount, index, onSpotlight }: Props) {
+export function ParticipantTile({ participant, totalCount, index, isPinned = false, onTogglePin }: Props) {
   const { name, identity } = useParticipantInfo({ participant })
   const isSpeaking = useIsSpeaking(participant)
 
@@ -149,23 +150,26 @@ export function ParticipantTile({ participant, totalCount, index, onSpotlight }:
         </div>
       )}
 
-      {/* Spotlight trigger — fade in on hover */}
-      {onSpotlight && (
+      {/* Pin button — always visible when pinned, appears on hover otherwise */}
+      {onTogglePin && (
         <button
-          onClick={() => onSpotlight(participant)}
-          className="group-hover:opacity-100"
+          onClick={onTogglePin}
+          className={isPinned ? undefined : 'group-hover:opacity-100'}
           style={{
             position: 'absolute', top: 8, right: 8,
             width: 30, height: 30, borderRadius: 8,
-            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: isPinned ? 'rgba(99,102,241,0.7)' : 'rgba(0,0,0,0.55)',
+            backdropFilter: 'blur(8px)',
+            border: `1px solid ${isPinned ? 'rgba(165,180,252,0.5)' : 'rgba(255,255,255,0.1)'}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'rgba(255,255,255,0.8)', cursor: 'pointer',
-            opacity: 0, transition: 'opacity 0.15s ease',
+            color: isPinned ? '#e0e7ff' : 'rgba(255,255,255,0.8)',
+            cursor: 'pointer',
+            opacity: isPinned ? 1 : 0,
+            transition: 'opacity 0.15s ease, background 0.15s ease',
           }}
-          aria-label={`Spotlight ${displayName}`}
+          aria-label={isPinned ? 'Unpin participant' : 'Pin participant'}
         >
-          <Maximize2 size={13} />
+          <Pin size={13} style={{ fill: isPinned ? 'currentColor' : 'none' }} />
         </button>
       )}
     </div>
