@@ -194,7 +194,7 @@ function ParticipantRow({ p, adminId }: RowProps): React.ReactElement {
         }
 
         {!p.isLocal && (
-          <div className="[@media(pointer:fine)]:hidden transition-opacity duration-150">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
             <ParticipantMenuButton participant={p} />
           </div>
         )}

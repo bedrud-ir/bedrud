@@ -204,10 +204,10 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
           </button>
         )}
 
-        {/* 3-dot button — mobile only (desktop uses right-click ContextMenu) */}
+        {/* 3-dot button — top-left corner (pin button is top-right) */}
         {!participant.isLocal && (
           <div
-            className="[@media(pointer:fine)]:hidden transition-opacity duration-150"
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-150"
             style={{ position: 'absolute', top: 8, left: 8 }}
           >
             <ParticipantMenuButton
