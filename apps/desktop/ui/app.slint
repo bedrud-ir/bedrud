@@ -1,16 +1,84 @@
 import { theme } from "theme.slint";
+import { LoginScreen } from "auth/login.slint";
+import { RegisterScreen } from "auth/register.slint";
+
+export enum NavScreen { AddInstance, Login, Register, Dashboard, Meeting, Settings, Admin }
 
 export component AppWindow inherits Window {
     title: "Bedrud";
-    width: 1024px;
-    height: 768px;
+    preferred-width: 1024px;
+    preferred-height: 768px;
+    min-width: 800px;
+    min-height: 600px;
     background: theme.bg-primary;
 
-    Text {
-        text: "Bedrud Desktop";
-        color: theme.text-primary;
-        font-size: 24px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
+    in-out property <NavScreen> current-screen: NavScreen.Login;
+    in property <string> instance-url: "";
+    in property <string> login-error: "";
+    in property <bool> login-loading: false;
+    in property <string> user-name: "";
+    in property <bool> is-admin: false;
+
+    in-out property <string> login-email;
+    in-out property <string> login-password;
+    in-out property <string> reg-email;
+    in-out property <string> reg-name;
+    in-out property <string> reg-password;
+    in-out property <string> reg-invite-token;
+    in property <bool> reg-loading: false;
+    in property <string> reg-error: "";
+    in property <bool> token-required: false;
+
+    callback login(string, string);
+    callback passkey-login;
+    callback guest-login(string);
+    callback register(string, string, string, string);
+    callback navigate-to(NavScreen);
+    callback logout;
+
+    if current-screen == NavScreen.Login: LoginScreen {
+        width: parent.width;
+        height: parent.height;
+        instance-url: instance-url;
+        error-message: login-error;
+        loading: login-loading;
+        email <=> login-email;
+        password <=> login-password;
+        login-clicked(e, p) => { login(e, p); }
+        passkey-clicked => { passkey-login(); }
+        guest-clicked => { guest-login(""); }
+        register-clicked => { navigate-to(NavScreen.Register); }
+    }
+
+    if current-screen == NavScreen.Register: RegisterScreen {
+        width: parent.width;
+        height: parent.height;
+        email <=> reg-email;
+        name <=> reg-name;
+        password <=> reg-password;
+        invite-token <=> reg-invite-token;
+        error-message: reg-error;
+        loading: reg-loading;
+        token-required: token-required;
+        back-clicked => { navigate-to(NavScreen.Login); }
+        register-clicked(e, n, p, t) => { register(e, n, p, t); }
+        passkey-signup-clicked(e, n, t) => { }
+    }
+
+    if current-screen == NavScreen.AddInstance ||
+       current-screen == NavScreen.Dashboard ||
+       current-screen == NavScreen.Meeting ||
+       current-screen == NavScreen.Settings ||
+       current-screen == NavScreen.Admin: Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: theme.bg-primary;
+        Text {
+            text: "Coming soon";
+            color: theme.text-muted;
+            font-size: theme.font-lg;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
     }
 }

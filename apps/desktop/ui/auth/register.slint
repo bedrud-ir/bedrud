@@ -1,0 +1,80 @@
+import { theme } from "../theme.slint";
+import { Button, ButtonVariant } from "../components/button.slint";
+import { Input } from "../components/input.slint";
+
+export component RegisterScreen inherits Rectangle {
+    background: theme.bg-primary;
+
+    in-out property <string> email;
+    in-out property <string> name;
+    in-out property <string> password;
+    in-out property <string> invite-token;
+    in property <string> error-message;
+    in property <bool> loading;
+    in property <bool> token-required;
+
+    callback register-clicked(string, string, string, string);
+    callback passkey-signup-clicked(string, string, string);
+    callback back-clicked;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: theme.space-md;
+        padding: theme.space-xl;
+        width: 400px;
+        x: (parent.width - 400px) / 2;
+
+        Text {
+            text: "Create Account";
+            font-size: theme.font-2xl;
+            font-weight: 700;
+            color: theme.text-primary;
+            horizontal-alignment: center;
+        }
+
+        if error-message != "": Rectangle {
+            background: #3f0000;
+            border-radius: theme.radius-md;
+            border-width: 1px;
+            border-color: theme.destructive;
+            padding-left: theme.space-sm;
+            padding-right: theme.space-sm;
+            padding-top: theme.space-sm;
+            padding-bottom: theme.space-sm;
+            height: 40px;
+            Text {
+                text: error-message;
+                color: theme.destructive;
+                font-size: theme.font-sm;
+                x: theme.space-sm;
+                y: theme.space-sm;
+            }
+        }
+
+        Input { label: "Display Name"; placeholder: "Your Name"; value <=> name; }
+        Input { label: "Email"; placeholder: "you@example.com"; value <=> email; }
+        Input { label: "Password"; placeholder: "••••••••"; value <=> password; password: true; }
+
+        if token-required: Input {
+            label: "Invite Token";
+            placeholder: "Enter invite token";
+            value <=> invite-token;
+        }
+
+        Button {
+            text: "Create Account";
+            loading: loading;
+            clicked => { register-clicked(email, name, password, invite-token); }
+        }
+        Button {
+            text: "Sign up with Passkey";
+            variant: ButtonVariant.secondary;
+            clicked => { passkey-signup-clicked(email, name, invite-token); }
+        }
+        Button {
+            text: "Back to Login";
+            variant: ButtonVariant.secondary;
+            clicked => { back-clicked(); }
+        }
+    }
+}

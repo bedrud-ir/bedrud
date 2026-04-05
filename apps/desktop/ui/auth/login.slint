@@ -1,0 +1,103 @@
+import { theme } from "../theme.slint";
+import { Button, ButtonVariant } from "../components/button.slint";
+import { Input } from "../components/input.slint";
+
+export component LoginScreen inherits Rectangle {
+    background: theme.bg-primary;
+
+    in-out property <string> email;
+    in-out property <string> password;
+    in property <string> error-message;
+    in property <bool> loading;
+    in property <string> instance-url;
+
+    callback login-clicked(string, string);
+    callback passkey-clicked;
+    callback guest-clicked;
+    callback register-clicked;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: theme.space-lg;
+        padding: theme.space-xl;
+        width: 400px;
+        x: (parent.width - 400px) / 2;
+
+        Text {
+            text: "Bedrud";
+            font-size: theme.font-2xl;
+            font-weight: 700;
+            color: theme.text-primary;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: instance-url;
+            font-size: theme.font-sm;
+            color: theme.text-muted;
+            horizontal-alignment: center;
+        }
+
+        if error-message != "": Rectangle {
+            background: #3f0000;
+            border-radius: theme.radius-md;
+            border-width: 1px;
+            border-color: theme.destructive;
+            padding-left: theme.space-sm;
+            padding-right: theme.space-sm;
+            padding-top: theme.space-sm;
+            padding-bottom: theme.space-sm;
+            height: 40px;
+            Text {
+                text: error-message;
+                color: theme.destructive;
+                font-size: theme.font-sm;
+                wrap: word-wrap;
+                x: theme.space-sm;
+                y: theme.space-sm;
+            }
+        }
+
+        Input {
+            label: "Email";
+            placeholder: "you@example.com";
+            value <=> email;
+        }
+
+        Input {
+            label: "Password";
+            placeholder: "••••••••";
+            value <=> password;
+            password: true;
+        }
+
+        Button {
+            text: "Sign in";
+            loading: loading;
+            clicked => { login-clicked(email, password); }
+        }
+
+        HorizontalLayout {
+            spacing: theme.space-sm;
+            alignment: center;
+            Rectangle { height: 1px; width: 80px; background: theme.border; }
+            Text { text: "or"; color: theme.text-muted; font-size: theme.font-sm; }
+            Rectangle { height: 1px; width: 80px; background: theme.border; }
+        }
+
+        Button {
+            text: "Sign in with Passkey";
+            variant: ButtonVariant.secondary;
+            clicked => { passkey-clicked(); }
+        }
+        Button {
+            text: "Join as Guest";
+            variant: ButtonVariant.secondary;
+            clicked => { guest-clicked(); }
+        }
+        Button {
+            text: "Create account";
+            variant: ButtonVariant.secondary;
+            clicked => { register-clicked(); }
+        }
+    }
+}
