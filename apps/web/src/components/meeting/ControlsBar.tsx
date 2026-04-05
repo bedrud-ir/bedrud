@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocalParticipant } from '@livekit/components-react'
-import { Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, Users, Volume2 } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, Users, Volume2, Mic2 } from 'lucide-react'
 import { DeviceSelector } from '@/components/meeting/DeviceSelector'
+import { useAudioPreferencesStore, type NoiseSuppressionMode } from '#/lib/audio-preferences.store'
+import { AudioProcessorService } from '#/lib/audio-processor.service'
 
 interface Props {
   onToggleChat: () => void
@@ -33,10 +35,21 @@ const divider: React.CSSProperties = {
   flexShrink: 0,
 }
 
+// Cycles through modes in order, skipping krisp if unsupported
+const MODES: NoiseSuppressionMode[] = ['none', 'browser', 'rnnoise', 'krisp']
+function nextNoiseMode(current: NoiseSuppressionMode): NoiseSuppressionMode {
+  const supported = MODES.filter((m) => m !== 'krisp' || AudioProcessorService.isKrispSupported())
+  const idx = supported.indexOf(current)
+  return supported[(idx + 1) % supported.length]
+}
+
 export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatOpen, participantsOpen, unreadCount = 0 }: Props) {
   const { localParticipant } = useLocalParticipant()
   const micEnabled = localParticipant?.isMicrophoneEnabled ?? false
   const camEnabled = localParticipant?.isCameraEnabled ?? false
+
+  const noiseMode = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
+  const setMode   = useAudioPreferencesStore((s) => s.setMode)
 
   const pttActiveRef   = useRef(false)
   const pttInitMicRef  = useRef(false)
@@ -131,6 +144,16 @@ export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatO
           </button>
           <DeviceSelector kind="videoinput" />
         </div>
+
+        {/* ── Noise suppression cycle ── */}
+        <button
+          onClick={() => setMode(nextNoiseMode(noiseMode))}
+          style={iconBtn(noiseMode !== 'none')}
+          title={`Noise suppression: ${noiseMode}`}
+          aria-label="Cycle noise suppression mode"
+        >
+          <Mic2 size={17} />
+        </button>
 
         <div style={divider} />
 
