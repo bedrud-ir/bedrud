@@ -215,7 +215,9 @@ jobs:
             libxkbcommon-x11-dev \
             libwayland-dev \
             libgles2-mesa-dev \
-            libegl1-mesa-dev
+            libegl1-mesa-dev \
+            libdbus-1-dev \
+            libsecret-1-dev
       - name: Build
         run: cargo build -p bedrud-desktop
       - name: Test
