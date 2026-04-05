@@ -1,9 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocalParticipant } from '@livekit/components-react'
-import { Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, Users, Volume2, Mic2 } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, Users, Volume2, Mic2, Check } from 'lucide-react'
 import { DeviceSelector } from '@/components/meeting/DeviceSelector'
 import { useAudioPreferencesStore, type NoiseSuppressionMode } from '#/lib/audio-preferences.store'
 import { AudioProcessorService } from '#/lib/audio-processor.service'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface Props {
   onToggleChat: () => void
@@ -35,12 +47,43 @@ const divider: React.CSSProperties = {
   flexShrink: 0,
 }
 
-// Cycles through modes in order, skipping krisp if unsupported
-const MODES: NoiseSuppressionMode[] = ['none', 'browser', 'rnnoise', 'krisp']
-function nextNoiseMode(current: NoiseSuppressionMode): NoiseSuppressionMode {
-  const supported = MODES.filter((m) => m !== 'krisp' || AudioProcessorService.isKrispSupported())
-  const idx = supported.indexOf(current)
-  return supported[(idx + 1) % supported.length]
+const NOISE_MODES: { value: NoiseSuppressionMode; label: string }[] = [
+  { value: 'none',    label: 'Off (RAW)' },
+  { value: 'browser', label: 'Browser built-in' },
+  { value: 'rnnoise', label: 'RNNoise' },
+  { value: 'krisp',   label: 'Krisp AI' },
+]
+const MODE_LABELS: Record<NoiseSuppressionMode, string> = {
+  none:    'Noise suppression: Off',
+  browser: 'Noise suppression: Browser',
+  rnnoise: 'Noise suppression: RNNoise',
+  krisp:   'Noise suppression: Krisp AI',
+}
+
+/* ── Tooltip-wrapped control button ────────────────────────────────────────── */
+function CtrlBtn({
+  tip,
+  style,
+  onClick,
+  children,
+}: {
+  tip: string
+  style: React.CSSProperties
+  onClick?: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button onClick={onClick} style={style} aria-label={tip}>
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={8}>
+        {tip}
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatOpen, participantsOpen, unreadCount = 0 }: Props) {
@@ -84,7 +127,7 @@ export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatO
   }, [localParticipant])
 
   return (
-    <>
+    <TooltipProvider delayDuration={300}>
       {/* Push-to-talk badge */}
       {pttVisible && (
         <div
@@ -121,106 +164,138 @@ export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatO
       >
         {/* ── Mic + device caret ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <button
-            onClick={() => localParticipant?.setMicrophoneEnabled(!micEnabled)}
+          <CtrlBtn
+            tip={micEnabled ? 'Mute (Space)' : 'Unmute (Space)'}
             style={iconBtn(false, !micEnabled)}
-            title={micEnabled ? 'Mute (Space)' : 'Unmute (Space)'}
-            aria-label={micEnabled ? 'Mute microphone' : 'Unmute microphone'}
+            onClick={() => localParticipant?.setMicrophoneEnabled(!micEnabled)}
           >
             {micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
-          </button>
+          </CtrlBtn>
           <DeviceSelector kind="audioinput" />
         </div>
 
         {/* ── Camera + device caret ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 2 }}>
-          <button
-            onClick={() => localParticipant?.setCameraEnabled(!camEnabled)}
+          <CtrlBtn
+            tip={camEnabled ? 'Disable camera' : 'Enable camera'}
             style={iconBtn(false, !camEnabled)}
-            title={camEnabled ? 'Disable camera' : 'Enable camera'}
-            aria-label={camEnabled ? 'Disable camera' : 'Enable camera'}
+            onClick={() => localParticipant?.setCameraEnabled(!camEnabled)}
           >
             {camEnabled ? <Video size={18} /> : <VideoOff size={18} />}
-          </button>
+          </CtrlBtn>
           <DeviceSelector kind="videoinput" />
         </div>
 
-        {/* ── Noise suppression cycle ── */}
-        <button
-          onClick={() => setMode(nextNoiseMode(noiseMode))}
-          style={iconBtn(noiseMode !== 'none')}
-          title={`Noise suppression: ${noiseMode}`}
-          aria-label="Cycle noise suppression mode"
-        >
-          <Mic2 size={17} />
-        </button>
+        {/* ── Noise suppression dropdown ── */}
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <button style={iconBtn(noiseMode !== 'none')} aria-label={MODE_LABELS[noiseMode]}>
+                  <Mic2 size={17} />
+                </button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8}>{MODE_LABELS[noiseMode]}</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent side="top" align="center" sideOffset={12}
+            style={{ minWidth: 180, background: 'rgba(18,18,30,0.97)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
+            {NOISE_MODES.map(({ value, label }) => {
+              const disabled = value === 'krisp' && !AudioProcessorService.isKrispSupported()
+              return (
+                <DropdownMenuItem
+                  key={value}
+                  disabled={disabled}
+                  onSelect={() => setMode(value)}
+                  style={{ borderRadius: 8, gap: 10, cursor: disabled ? 'not-allowed' : 'pointer' }}
+                >
+                  <Check size={13} style={{ opacity: noiseMode === value ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13 }}>{label}</span>
+                  {disabled && (
+                    <span style={{ fontSize: 10, color: '#f87171', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '1px 5px' }}>
+                      N/A
+                    </span>
+                  )}
+                </DropdownMenuItem>
+              )
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <div style={divider} />
 
         {/* ── Leave button ── */}
-        <button
-          onClick={onLeave}
-          style={{
-            height: 44, borderRadius: 12, border: 'none', cursor: 'pointer',
-            padding: '0 18px', marginLeft: 2, marginRight: 2,
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'rgba(239,68,68,0.82)',
-            color: 'white', fontSize: 13, fontWeight: 600,
-            boxShadow: '0 2px 12px rgba(239,68,68,0.35)',
-            transition: 'background 0.15s, box-shadow 0.15s',
-          }}
-          aria-label="Leave meeting"
-        >
-          <PhoneOff size={16} />
-          Leave
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onLeave}
+              style={{
+                height: 44, borderRadius: 12, border: 'none', cursor: 'pointer',
+                padding: '0 18px', marginLeft: 2, marginRight: 2,
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'rgba(239,68,68,0.82)',
+                color: 'white', fontSize: 13, fontWeight: 600,
+                boxShadow: '0 2px 12px rgba(239,68,68,0.35)',
+                transition: 'background 0.15s, box-shadow 0.15s',
+              }}
+              aria-label="Leave meeting"
+            >
+              <PhoneOff size={16} />
+              Leave
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>
+            Leave meeting
+          </TooltipContent>
+        </Tooltip>
 
         <div style={divider} />
 
         {/* ── Speaker + Chat + Participants ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <button
-              style={iconBtn()}
-              title="Audio output"
-              aria-label="Select speaker output"
-            >
+            <CtrlBtn tip="Select speaker output" style={iconBtn()}>
               <Volume2 size={17} />
-            </button>
+            </CtrlBtn>
             <DeviceSelector kind="audiooutput" />
           </div>
 
-          <button
-            onClick={onToggleChat}
-            style={{ ...iconBtn(chatOpen), position: 'relative' }}
-            title="Chat"
-            aria-label={chatOpen ? 'Close chat' : 'Open chat'}
-          >
-            <MessageSquare size={17} />
-            {unreadCount > 0 && !chatOpen && (
-              <span style={{
-                position: 'absolute', top: 6, right: 6,
-                minWidth: 14, height: 14, borderRadius: 7,
-                background: '#6366f1', color: 'white',
-                fontSize: 9, fontWeight: 700, lineHeight: '14px',
-                textAlign: 'center', padding: '0 3px',
-                pointerEvents: 'none',
-              }}>
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onToggleChat}
+                style={{ ...iconBtn(chatOpen), position: 'relative' }}
+                aria-label={chatOpen ? 'Close chat' : 'Open chat'}
+              >
+                <MessageSquare size={17} />
+                {unreadCount > 0 && !chatOpen && (
+                  <span style={{
+                    position: 'absolute', top: 6, right: 6,
+                    minWidth: 14, height: 14, borderRadius: 7,
+                    background: '#6366f1', color: 'white',
+                    fontSize: 9, fontWeight: 700, lineHeight: '14px',
+                    textAlign: 'center', padding: '0 3px',
+                    pointerEvents: 'none',
+                  }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8}>
+              {chatOpen ? 'Close chat' : unreadCount > 0 ? `Chat (${unreadCount} unread)` : 'Open chat'}
+            </TooltipContent>
+          </Tooltip>
 
-          <button
-            onClick={onToggleParticipants}
+          <CtrlBtn
+            tip={participantsOpen ? 'Close participants' : 'Show participants'}
             style={iconBtn(participantsOpen)}
-            title="Participants"
-            aria-label={participantsOpen ? 'Close participants' : 'Open participants'}
+            onClick={onToggleParticipants}
           >
             <Users size={17} />
-          </button>
+          </CtrlBtn>
         </div>
       </div>
-    </>
+    </TooltipProvider>
   )
 }

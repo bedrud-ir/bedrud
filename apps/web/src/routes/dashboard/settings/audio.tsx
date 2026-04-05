@@ -1,20 +1,28 @@
+import React, { useEffect, useRef } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Mic, Check, Loader2, Zap, Globe, Brain, Shield } from 'lucide-react'
+import { Mic, Check, Loader2, Zap, Globe, Brain, Shield, SlidersHorizontal } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { api } from '#/lib/api'
 import { useAudioPreferencesStore, type NoiseSuppressionMode } from '#/lib/audio-preferences.store'
 import { AudioProcessorService } from '#/lib/audio-processor.service'
 
-export const Route = createFileRoute('/dashboard/settings/audio')({ component: AudioSettingsPage })
+export const Route = createFileRoute('/dashboard/settings/audio')({
+  component: AudioPage,
+})
 
-/* ── Section wrapper (local copy — same shape as dashboard.settings.tsx) ─ */
+/* ── Shared section wrapper ───────────────────────────────────────────────── */
 function Section({
-  title, sub, icon: Icon, children,
+  title,
+  sub,
+  icon: Icon,
+  children,
 }: {
-  title: string; sub: string; icon: React.ElementType; children: React.ReactNode
+  title: string
+  sub: string
+  icon: React.ElementType
+  children: React.ReactNode
 }) {
   return (
     <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'hsl(var(--border))' }}>
@@ -38,38 +46,17 @@ function Section({
   )
 }
 
-/* ── Mode option card ─────────────────────────────────────────────────────── */
+/* ── Mode option cards ────────────────────────────────────────────────────── */
 const MODE_OPTIONS: {
   value: NoiseSuppressionMode
   label: string
   description: string
   icon: React.ElementType
-  badge?: string
 }[] = [
-  {
-    value: 'none',
-    label: 'Off',
-    description: 'No noise filtering applied.',
-    icon: Shield,
-  },
-  {
-    value: 'browser',
-    label: 'Browser built-in',
-    description: 'WebRTC native noise suppression. Works everywhere, no extra setup.',
-    icon: Globe,
-  },
-  {
-    value: 'rnnoise',
-    label: 'RNNoise',
-    description: 'Mozilla\'s open-source neural net. Runs locally in your browser.',
-    icon: Brain,
-  },
-  {
-    value: 'krisp',
-    label: 'Krisp AI',
-    description: 'Commercial AI noise cancellation. Best quality for busy environments.',
-    icon: Zap,
-  },
+  { value: 'none',    label: 'Off (RAW)',         description: 'No noise filtering. Raw microphone signal.',                            icon: Shield },
+  { value: 'browser', label: 'Browser built-in',  description: 'WebRTC native noise suppression. Works everywhere, no extra setup.',   icon: Globe  },
+  { value: 'rnnoise', label: 'RNNoise',            description: "Mozilla's open-source neural net. Runs locally in your browser.",      icon: Brain  },
+  { value: 'krisp',   label: 'Krisp AI',           description: 'Commercial AI noise cancellation. Best quality for busy environments.', icon: Zap   },
 ]
 
 function ModeCard({
@@ -143,19 +130,81 @@ function ModeCard({
   )
 }
 
-/* ── Main page ─────────────────────────────────────────────────────────────── */
-function AudioSettingsPage() {
-  const mode               = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
-  const echoCancellation   = useAudioPreferencesStore((s) => s.echoCancellation)
-  const autoGainControl    = useAudioPreferencesStore((s) => s.autoGainControl)
-  const setMode            = useAudioPreferencesStore((s) => s.setMode)
+/* ── Slider row ───────────────────────────────────────────────────────────── */
+function SliderRow({
+  label,
+  description,
+  value,
+  min,
+  max,
+  step,
+  unit,
+  onChange,
+  accent,
+}: {
+  label: string
+  description: string
+  value: number
+  min: number
+  max: number
+  step: number
+  unit: string
+  onChange: (v: number) => void
+  accent?: string
+}) {
+  const color = accent ?? '#6366f1'
+  const pct = ((value - min) / (max - min)) * 100
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-sm font-medium">{label}</Label>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+        <span
+          className="text-sm font-semibold tabular-nums min-w-[48px] text-right"
+          style={{ color }}
+        >
+          {value}{unit}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+        style={{
+          background: `linear-gradient(to right, ${color} ${pct}%, rgba(255,255,255,0.12) ${pct}%)`,
+          outline: 'none',
+        }}
+      />
+      <div className="flex justify-between text-[10px] text-muted-foreground">
+        <span>{min}{unit}</span>
+        <span>{max}{unit}</span>
+      </div>
+    </div>
+  )
+}
+
+/* ── Page ─────────────────────────────────────────────────────────────────── */
+function AudioPage() {
+  const mode              = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
+  const echoCancellation  = useAudioPreferencesStore((s) => s.echoCancellation)
+  const autoGainControl   = useAudioPreferencesStore((s) => s.autoGainControl)
+  const inputGain         = useAudioPreferencesStore((s) => s.inputGain)
+  const noiseGate         = useAudioPreferencesStore((s) => s.noiseGate)
+  const setMode             = useAudioPreferencesStore((s) => s.setMode)
   const setEchoCancellation = useAudioPreferencesStore((s) => s.setEchoCancellation)
   const setAutoGainControl  = useAudioPreferencesStore((s) => s.setAutoGainControl)
-  const merge              = useAudioPreferencesStore((s) => s.merge)
+  const setInputGain        = useAudioPreferencesStore((s) => s.setInputGain)
+  const setNoiseGate        = useAudioPreferencesStore((s) => s.setNoiseGate)
+  const merge               = useAudioPreferencesStore((s) => s.merge)
 
   const krispSupported = AudioProcessorService.isKrispSupported()
 
-  // Load remote preferences on mount and merge into local store
   const { data: remotePrefs } = useQuery({
     queryKey: ['preferences'],
     queryFn: () => api.get<{ preferencesJson: string }>('/api/auth/preferences'),
@@ -166,51 +215,33 @@ function AudioSettingsPage() {
     try {
       const parsed = JSON.parse(remotePrefs.preferencesJson)
       if (parsed?.audio) merge(parsed.audio)
-    } catch { /* ignore malformed stored data */ }
+    } catch { /* ignore malformed data */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remotePrefs])
 
-  // Debounced sync to backend whenever prefs change
   const syncMutation = useMutation({
     mutationFn: (prefsJson: string) =>
       api.put('/api/auth/preferences', { preferencesJson: prefsJson }),
   })
+  const mutateRef = useRef(syncMutation.mutate)
+  mutateRef.current = syncMutation.mutate
 
   useEffect(() => {
-    const prefs = { audio: { noiseSuppressionMode: mode, echoCancellation, autoGainControl } }
-    const timer = setTimeout(() => {
-      syncMutation.mutate(JSON.stringify(prefs))
-    }, 1000)
+    const prefs = {
+      audio: { noiseSuppressionMode: mode, echoCancellation, autoGainControl, inputGain, noiseGate },
+    }
+    const timer = setTimeout(() => mutateRef.current(JSON.stringify(prefs)), 1000)
     return () => clearTimeout(timer)
-  // syncMutation is stable; omitting it from deps is intentional
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, echoCancellation, autoGainControl])
+  }, [mode, echoCancellation, autoGainControl, inputGain, noiseGate])
 
-  const syncStatus = syncMutation.isPending
-    ? 'saving'
-    : syncMutation.isError
-      ? 'error'
-      : syncMutation.isSuccess
-        ? 'saved'
-        : 'idle'
+  const syncStatus = syncMutation.isPending ? 'saving'
+    : syncMutation.isError   ? 'error'
+    : syncMutation.isSuccess ? 'saved'
+    : 'idle'
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Audio{' '}
-          <span
-            className="bg-clip-text text-transparent"
-            style={{ backgroundImage: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)' }}
-          >
-            settings
-          </span>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Configure noise suppression for your microphone.</p>
-      </div>
-
-      {/* Noise suppression */}
+    <div className="space-y-6">
+      {/* ── Noise suppression mode ── */}
       <Section title="Noise suppression" sub="Choose how your microphone audio is processed" icon={Mic}>
         <div className="space-y-2">
           {MODE_OPTIONS.map((option) => (
@@ -224,7 +255,6 @@ function AudioSettingsPage() {
           ))}
         </div>
 
-        {/* Browser-only sub-options */}
         {mode === 'browser' && (
           <div
             className="mt-4 space-y-3 rounded-xl border p-4"
@@ -238,26 +268,47 @@ function AudioSettingsPage() {
                 <Label className="text-sm font-medium">Echo cancellation</Label>
                 <p className="text-xs text-muted-foreground">Remove echo from your microphone signal.</p>
               </div>
-              <Switch
-                checked={echoCancellation}
-                onCheckedChange={setEchoCancellation}
-              />
+              <Switch checked={echoCancellation} onCheckedChange={setEchoCancellation} />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm font-medium">Auto gain control</Label>
                 <p className="text-xs text-muted-foreground">Automatically adjust microphone volume.</p>
               </div>
-              <Switch
-                checked={autoGainControl}
-                onCheckedChange={setAutoGainControl}
-              />
+              <Switch checked={autoGainControl} onCheckedChange={setAutoGainControl} />
             </div>
           </div>
         )}
       </Section>
 
-      {/* Sync status */}
+      {/* ── Gain & gate controls (all modes) ── */}
+      <Section title="Signal processing" sub="Applied on top of the selected noise suppression mode" icon={SlidersHorizontal}>
+        <div className="space-y-6">
+          <SliderRow
+            label="Input gain"
+            description="Amplify or attenuate the microphone signal. 100% = unity gain."
+            value={inputGain}
+            min={0}
+            max={300}
+            step={1}
+            unit="%"
+            onChange={setInputGain}
+            accent="#6366f1"
+          />
+          <SliderRow
+            label="Noise gate"
+            description="Silence the mic when the signal drops below this threshold. 0% = disabled."
+            value={noiseGate}
+            min={0}
+            max={100}
+            step={1}
+            unit="%"
+            onChange={setNoiseGate}
+            accent="#8b5cf6"
+          />
+        </div>
+      </Section>
+
       {syncStatus !== 'idle' && (
         <div className="flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
           {syncStatus === 'saving' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
