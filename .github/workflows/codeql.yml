@@ -28,9 +28,8 @@ jobs:
           - language: javascript-typescript
             os: ubuntu-latest
             build-mode: none
-          - language: kotlin
-            os: ubuntu-latest
-            build-mode: none  # build-mode:manual fails with Kotlin 2.3.20+ (CodeQL limitation)
+          # Kotlin omitted: CodeQL 2.25.1 doesn't support Kotlin 2.3.20+.
+          # Re-add once CodeQL ships support for it.
 
     steps:
       - uses: actions/checkout@v6
