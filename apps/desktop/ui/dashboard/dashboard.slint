@@ -1,0 +1,119 @@
+import { theme } from "../theme.slint";
+import { Button, ButtonVariant } from "../components/button.slint";
+import { Input } from "../components/input.slint";
+import { Avatar } from "../components/avatar.slint";
+import { RoomCard, RoomData } from "room_card.slint";
+
+export component DashboardScreen inherits Rectangle {
+    background: theme.bg-primary;
+
+    in property <[RoomData]> rooms: [];
+    in property <string> user-name;
+    in property <bool> loading;
+    in-out property <string> join-room-name;
+    in property <bool> is-admin: false;
+
+    callback create-room-clicked;
+    callback join-room-clicked(string);
+    callback delete-room-clicked(string);
+    callback settings-clicked;
+    callback admin-clicked;
+    callback logout-clicked;
+    callback instance-switch-clicked;
+
+    VerticalLayout {
+        // Toolbar
+        Rectangle {
+            height: 56px;
+            background: theme.bg-secondary;
+            border-width: 1px;
+            border-color: theme.border;
+
+            HorizontalLayout {
+                padding-left: theme.space-md;
+                padding-right: theme.space-md;
+                spacing: theme.space-sm;
+
+                Text {
+                    text: "Bedrud";
+                    font-size: theme.font-lg;
+                    font-weight: 700;
+                    color: theme.text-primary;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+
+                Button {
+                    text: "⚙ Settings";
+                    variant: ButtonVariant.secondary;
+                    height: 32px;
+                    clicked => { settings-clicked(); }
+                }
+                if is-admin: Button {
+                    text: "Admin";
+                    variant: ButtonVariant.secondary;
+                    height: 32px;
+                    clicked => { admin-clicked(); }
+                }
+                Button {
+                    text: "Logout";
+                    variant: ButtonVariant.secondary;
+                    height: 32px;
+                    clicked => { logout-clicked(); }
+                }
+                Avatar { name: user-name; size: 32px; }
+            }
+        }
+
+        // Main content
+        VerticalLayout {
+            vertical-stretch: 1;
+            padding: theme.space-lg;
+            spacing: theme.space-lg;
+
+            // Actions bar
+            HorizontalLayout {
+                spacing: theme.space-sm;
+
+                Input {
+                    width: 200px;
+                    placeholder: "Room name to join";
+                    value <=> join-room-name;
+                }
+                Button {
+                    text: "Join";
+                    clicked => { join-room-clicked(join-room-name); }
+                }
+
+                Rectangle { horizontal-stretch: 1; }
+
+                Button {
+                    text: "+ New Room";
+                    clicked => { create-room-clicked(); }
+                }
+            }
+
+            // Room list
+            if loading: Text {
+                text: "Loading rooms…";
+                color: theme.text-secondary;
+                horizontal-alignment: center;
+            }
+
+            if !loading && rooms.length == 0: Text {
+                text: "No rooms yet. Create one!";
+                color: theme.text-muted;
+                horizontal-alignment: center;
+            }
+
+            if !loading: HorizontalLayout {
+                spacing: theme.space-md;
+                for room in rooms: RoomCard {
+                    room: room;
+                    join-clicked(id) => { join-room-clicked(id); }
+                    delete-clicked(id) => { delete-room-clicked(id); }
+                }
+            }
+        }
+    }
+}

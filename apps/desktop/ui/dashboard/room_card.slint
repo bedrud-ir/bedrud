@@ -1,0 +1,76 @@
+import { theme } from "../theme.slint";
+import { Button, ButtonVariant } from "../components/button.slint";
+import { Card } from "../components/card.slint";
+
+export struct RoomData {
+    id: string,
+    name: string,
+    is-active: bool,
+    is-public: bool,
+    max-participants: int,
+    participant-count: int,
+}
+
+export component RoomCard inherits Card {
+    in property <RoomData> room;
+    callback join-clicked(string);
+    callback delete-clicked(string);
+
+    width: 280px;
+    height: 140px;
+
+    VerticalLayout {
+        padding: theme.space-md;
+        spacing: theme.space-sm;
+
+        HorizontalLayout {
+            spacing: theme.space-sm;
+
+            Text {
+                text: room.name;
+                font-size: theme.font-base;
+                font-weight: 600;
+                color: theme.text-primary;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if room.is-active: Rectangle {
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: theme.success;
+                y: 4px;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: theme.space-sm;
+            Text {
+                text: room.is-public ? "Public" : "Private";
+                font-size: theme.font-sm;
+                color: theme.text-muted;
+            }
+            Text { text: "·"; color: theme.text-muted; font-size: theme.font-sm; }
+            Text {
+                text: room.participant-count + " / " + room.max-participants;
+                font-size: theme.font-sm;
+                color: theme.text-muted;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: theme.space-sm;
+            Button {
+                text: "Join";
+                height: 28px;
+                clicked => { join-clicked(room.id); }
+            }
+            Button {
+                text: "Delete";
+                variant: ButtonVariant.destructive;
+                height: 28px;
+                clicked => { delete-clicked(room.id); }
+            }
+        }
+    }
+}

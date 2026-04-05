@@ -1,0 +1,93 @@
+import { theme } from "../theme.slint";
+import { Button, ButtonVariant } from "../components/button.slint";
+import { Input } from "../components/input.slint";
+import { CheckBox } from "std-widgets.slint";
+
+export component CreateRoomDialog inherits Rectangle {
+    background: theme.bg-secondary;
+    border-radius: theme.radius-lg;
+    border-width: 1px;
+    border-color: theme.border;
+
+    width: 420px;
+    height: 340px;
+
+    in-out property <string> room-name;
+    in-out property <bool> is-public: false;
+    in-out property <int> max-participants: 20;
+    in property <bool> loading;
+
+    callback create-clicked(string, bool, int);
+    callback cancel-clicked;
+
+    VerticalLayout {
+        padding: theme.space-lg;
+        spacing: theme.space-md;
+
+        Text {
+            text: "Create Room";
+            font-size: theme.font-xl;
+            font-weight: 700;
+            color: theme.text-primary;
+        }
+
+        Input {
+            label: "Room name (optional)";
+            placeholder: "my-room";
+            value <=> room-name;
+        }
+
+        CheckBox {
+            text: "Public room";
+            checked <=> is-public;
+        }
+
+        HorizontalLayout {
+            spacing: theme.space-sm;
+            Text {
+                text: "Max participants: " + max-participants;
+                color: theme.text-secondary;
+                font-size: theme.font-sm;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            Button {
+                text: "-";
+                variant: ButtonVariant.secondary;
+                width: 32px;
+                height: 32px;
+                clicked => {
+                    if max-participants > 2 {
+                        max-participants -= 1;
+                    }
+                }
+            }
+            Button {
+                text: "+";
+                variant: ButtonVariant.secondary;
+                width: 32px;
+                height: 32px;
+                clicked => {
+                    if max-participants < 500 {
+                        max-participants += 1;
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: theme.space-sm;
+            alignment: end;
+            Button {
+                text: "Cancel";
+                variant: ButtonVariant.secondary;
+                clicked => { cancel-clicked(); }
+            }
+            Button {
+                text: "Create";
+                loading: loading;
+                clicked => { create-clicked(room-name, is-public, max-participants); }
+            }
+        }
+    }
+}
