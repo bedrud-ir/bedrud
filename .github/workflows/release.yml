@@ -376,7 +376,13 @@ jobs:
             CODE_SIGNING_REQUIRED=NO
 
       - name: Build archive
+        env:
+          P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
         run: |
+          if [ -z "$P12_BASE64" ]; then
+            echo "⚠ No iOS signing certificate — skipping archive build"
+            exit 0
+          fi
           xcodebuild archive \
             -project Bedrud.xcodeproj \
             -scheme Bedrud \
