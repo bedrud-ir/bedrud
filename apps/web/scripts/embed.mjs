@@ -52,9 +52,28 @@ cpSync(clientDir, targetDir, { recursive: true })
 // ── 5. Write index.html ───────────────────────────────────────────────────────
 writeFileSync(resolve(targetDir, 'index.html'), shell, 'utf8')
 
+// ── 6. Generate shell.html (no pre-rendered route content) ───────────────────
+// Served for non-root routes so users don't see the homepage flash while JS loads.
+const shellHtml = generateShell(shell)
+writeFileSync(resolve(targetDir, 'shell.html'), shellHtml, 'utf8')
+
 console.log('✅ server/frontend/ updated — restart `go run ./cmd/server` to pick up changes.')
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Strip pre-rendered route content from the SSR'd HTML, keeping only <head>,
+ * scripts, and the theme-init snippet. The result is a minimal shell that
+ * TanStack Router will hydrate against the actual URL.
+ */
+function generateShell(html) {
+  // Replace everything between <!--$--> and <!--/$--> (the SSR'd route markup)
+  // with an empty container that won't flash any route-specific content.
+  return html.replace(
+    /<!--\$-->[\s\S]*?<!--\/\$-->/,
+    '<!--$--><!--/$-->',
+  )
+}
 
 async function waitAndFetch(url, timeoutMs) {
   const deadline = Date.now() + timeoutMs

@@ -231,13 +231,25 @@ func Run(configPath string) error {
 	adminGroup.Delete("/invite-tokens/:id", adminHandler.DeleteInviteToken)
 
 	app.Use("/", filesystem.New(filesystem.Config{Root: http.FS(root.UI), PathPrefix: "frontend"}))
+
+	// Pre-read both HTML files: index.html has SSR'd homepage content (for SEO),
+	// shell.html has the same <head>/scripts but no pre-rendered route markup
+	// (avoids flashing the homepage when loading /m/*, /dashboard/*, etc.).
+	indexHTML, _ := root.UI.ReadFile("frontend/index.html")
+	shellHTML, _ := root.UI.ReadFile("frontend/shell.html")
+	if len(shellHTML) == 0 {
+		shellHTML = indexHTML // fallback if shell.html hasn't been generated yet
+	}
+
 	app.Get("*", func(c *fiber.Ctx) error {
 		if strings.HasPrefix(c.Path(), "/api") {
 			return c.Next()
 		}
-		file, _ := root.UI.ReadFile("frontend/index.html")
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-		return c.Status(200).Send(file)
+		if c.Path() == "/" {
+			return c.Status(200).Send(indexHTML)
+		}
+		return c.Status(200).Send(shellHTML)
 	})
 
 	go func() {
