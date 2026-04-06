@@ -1,19 +1,31 @@
 # Build artifacts (generated during Docker build stages)
 apps/web/dist
 apps/web/node_modules
+apps/web/.vinxi
 server/frontend
 server/dist
 dist
+target
 
 # Mobile apps (not needed for server image)
 apps/android
 apps/ios
+apps/desktop
+apps/server
 
 # Python agents
 agents
 tools
 .venv
 __pycache__
+
+# Test files
+**/*.test.*
+**/*.spec.*
+**/__tests__
+**/testutil
+**/testdata
+**/*_test.go
 
 # Dev & IDE
 .git
@@ -23,4 +35,14 @@ __pycache__
 .claude
 *.md
 .env
+.env.*
 .DS_Store
+.gitignore
+.editorconfig
+.eslintrc*
+.prettierrc*
+LICENSE
+
+# Docker files (prevent recursive context)
+Dockerfile*
+docker-compose*

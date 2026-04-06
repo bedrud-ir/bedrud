@@ -96,15 +96,24 @@ jobs:
           bun install --frozen-lockfile
           bun run build:embed
 
+      - name: Cache LiveKit binary
+        uses: actions/cache@v5
+        with:
+          path: /tmp/livekit-cache
+          key: livekit-1.10.1-${{ matrix.goos }}-${{ matrix.goarch }}
+
       - name: Download LiveKit binary
         env:
           LIVEKIT_VERSION: "1.10.1"
           LK_ARCH: ${{ matrix.lk_arch }}
         run: |
-          mkdir -p server/internal/livekit/bin
-          LK_FILENAME="livekit_${LIVEKIT_VERSION}_linux_${LK_ARCH}.tar.gz"
-          curl -fsSL "https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/${LK_FILENAME}" -o "/tmp/${LK_FILENAME}"
-          tar -xzf "/tmp/${LK_FILENAME}" -C server/internal/livekit/bin/ livekit-server
+          mkdir -p server/internal/livekit/bin /tmp/livekit-cache
+          LK_FILE="livekit_${LIVEKIT_VERSION}_linux_${LK_ARCH}.tar.gz"
+          if [ ! -f "/tmp/livekit-cache/${LK_FILE}" ]; then
+            curl -fsSL "https://github.com/livekit/livekit/releases/download/v${LIVEKIT_VERSION}/${LK_FILE}" \
+              -o "/tmp/livekit-cache/${LK_FILE}"
+          fi
+          tar -xzf "/tmp/livekit-cache/${LK_FILE}" -C server/internal/livekit/bin/ livekit-server
           chmod +x server/internal/livekit/bin/livekit-server
 
       - name: Build server binary
