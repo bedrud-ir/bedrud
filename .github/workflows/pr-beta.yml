@@ -294,7 +294,9 @@ jobs:
       - name: Install NSIS (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: choco install nsis -y --no-progress
+        run: |
+          choco install nsis -y --no-progress
+          echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build release binary
         run: cargo build -p bedrud-desktop --release --target ${{ matrix.target }}
 
