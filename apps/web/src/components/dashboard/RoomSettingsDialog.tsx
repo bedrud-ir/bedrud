@@ -1,13 +1,9 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Globe, Lock, MessageSquare, Mic, ShieldCheck, Users, Video, Loader2, Settings2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
+import { Globe, Lock, MessageSquare, Mic, ShieldCheck, Users, Video, Loader2, AlertCircle } from 'lucide-react'
 
 interface RoomSettings {
   allowChat: boolean
@@ -32,54 +28,48 @@ interface Props {
   onSave: (roomId: string, data: { isPublic: boolean; maxParticipants: number; settings: RoomSettings }) => Promise<void>
 }
 
+function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className={cn(
+        'relative h-4 w-7 shrink-0 rounded-full transition-colors',
+        checked ? 'bg-primary' : 'bg-muted-foreground/30',
+      )}
+    >
+      <span className={cn('absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-all', checked ? 'left-3.5' : 'left-0.5')} />
+    </button>
+  )
+}
+
 function ToggleRow({
   icon: Icon,
   label,
-  sub,
   checked,
   onChange,
-  accentColor = '#6366f1',
 }: {
   icon: React.ElementType
   label: string
-  sub?: string
   checked: boolean
   onChange: () => void
-  accentColor?: string
 }) {
   return (
     <button
       type="button"
       onClick={onChange}
-      className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-150"
-      style={{
-        borderColor: checked ? `${accentColor}35` : 'hsl(var(--border))',
-        background: checked ? `${accentColor}08` : undefined,
-      }}
+      className={cn(
+        'flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-colors',
+        checked ? 'border-primary/30 bg-primary/5' : 'hover:bg-accent',
+      )}
     >
-      <div
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all"
-        style={
-          checked
-            ? { background: `${accentColor}20`, color: accentColor }
-            : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
-        }
-      >
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">{label}</p>
-        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
-      </div>
-      <div
-        className="relative h-5 w-9 shrink-0 rounded-full transition-all duration-200"
-        style={{ background: checked ? accentColor : 'hsl(var(--muted))' }}
-      >
-        <span
-          className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all duration-200"
-          style={{ left: checked ? '18px' : '2px' }}
-        />
-      </div>
+      <Icon className={cn('h-3.5 w-3.5 shrink-0', checked ? 'text-primary' : 'text-muted-foreground')} />
+      <span className={cn('flex-1 text-xs font-medium', checked ? 'text-foreground' : 'text-muted-foreground')}>
+        {label}
+      </span>
+      <Toggle checked={checked} onChange={() => {}} />
     </button>
   )
 }
@@ -91,7 +81,6 @@ export function RoomSettingsDialog({ room, open, onOpenChange, onSave }: Props) 
   const [maxParticipants, setMaxParticipants] = useState(room.maxParticipants)
   const [settings, setSettings] = useState<RoomSettings>({ ...room.settings })
 
-  // Reset to room values when dialog opens
   function handleOpenChange(open: boolean) {
     if (open) {
       setIsPublic(room.isPublic)
@@ -122,33 +111,20 @@ export function RoomSettingsDialog({ room, open, onOpenChange, onSave }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0">
-        {/* Header */}
-        <div
-          className="px-6 py-5"
-          style={{ background: 'linear-gradient(135deg, #6366f108 0%, #8b5cf608 50%, #06b6d408 100%)' }}
-        >
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <Settings2 className="h-5 w-5" style={{ color: '#818cf8' }} />
-              Room{' '}
-              <span
-                className="bg-clip-text text-transparent font-mono"
-                style={{ backgroundImage: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)' }}
-              >
-                {room.name}
-              </span>
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground">Changes take effect immediately.</p>
-          </DialogHeader>
-        </div>
+      <DialogContent className="sm:max-w-sm gap-0 p-0 overflow-hidden">
+        <DialogHeader className="border-b px-4 py-3">
+          <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+            <span className="font-mono text-muted-foreground">{room.name}</span>
+            <span className="text-muted-foreground/40">·</span>
+            Settings
+          </DialogTitle>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Max participants */}
-          <div className="space-y-1.5">
-            <Label htmlFor="settings-max" className="flex items-center gap-2 text-sm font-medium">
-              <Users className="h-3.5 w-3.5 text-muted-foreground" />
-              Max participants
+          <div className="space-y-1">
+            <Label htmlFor="settings-max" className="flex items-center gap-1.5 text-xs font-medium">
+              <Users className="h-3 w-3 text-muted-foreground" /> Max participants
             </Label>
             <Input
               id="settings-max"
@@ -157,77 +133,50 @@ export function RoomSettingsDialog({ room, open, onOpenChange, onSave }: Props) 
               max={500}
               value={maxParticipants}
               onChange={(e) => setMaxParticipants(parseInt(e.target.value, 10) || 20)}
+              className="h-8 text-xs"
             />
           </div>
 
           {/* Visibility */}
-          <div className="space-y-2">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Visibility</p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: false, icon: Lock, label: 'Private', color: '#8b5cf6' },
-                { value: true, icon: Globe, label: 'Public', color: '#06b6d4' },
-              ].map(({ value, icon: Icon, label, color }) => (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Visibility</p>
+            <div className="flex rounded-md border overflow-hidden">
+              {([
+                { value: false, icon: Lock, label: 'Private' },
+                { value: true, icon: Globe, label: 'Public' },
+              ] as const).map(({ value, icon: Icon, label }) => (
                 <button
                   key={label}
                   type="button"
                   onClick={() => setIsPublic(value)}
-                  className="flex items-center gap-2 rounded-xl border p-3 transition-all"
-                  style={{
-                    borderColor: isPublic === value ? `${color}45` : 'hsl(var(--border))',
-                    background: isPublic === value ? `${color}10` : undefined,
-                    boxShadow: isPublic === value ? `0 0 0 1px ${color}25` : undefined,
-                  }}
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-1.5 py-1.5 text-xs font-medium transition-colors',
+                    isPublic === value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  )}
                 >
-                  <Icon className="h-4 w-4" style={{ color: isPublic === value ? color : undefined }} />
-                  <span className="text-sm font-medium" style={{ color: isPublic === value ? color : undefined }}>
-                    {label}
-                  </span>
+                  <Icon className="h-3 w-3" /> {label}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Features */}
-          <div className="space-y-2">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Features</p>
-            <div className="space-y-2">
-              <ToggleRow
-                icon={Mic}
-                label="Audio"
-                sub="Participants can speak"
-                checked={settings.allowAudio}
-                onChange={() => toggle('allowAudio')}
-              />
-              <ToggleRow
-                icon={Video}
-                label="Video"
-                sub="Participants can share camera"
-                checked={settings.allowVideo}
-                onChange={() => toggle('allowVideo')}
-                accentColor="#8b5cf6"
-              />
-              <ToggleRow
-                icon={MessageSquare}
-                label="Chat"
-                sub="In-room text chat"
-                checked={settings.allowChat}
-                onChange={() => toggle('allowChat')}
-                accentColor="#06b6d4"
-              />
-              <ToggleRow
-                icon={ShieldCheck}
-                label="End-to-end encryption"
-                sub="E2EE for all media"
-                checked={settings.e2ee}
-                onChange={() => toggle('e2ee')}
-                accentColor="#10b981"
-              />
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Features</p>
+            <div className="space-y-1">
+              <ToggleRow icon={Mic} label="Audio" checked={settings.allowAudio} onChange={() => toggle('allowAudio')} />
+              <ToggleRow icon={Video} label="Video" checked={settings.allowVideo} onChange={() => toggle('allowVideo')} />
+              <ToggleRow icon={MessageSquare} label="Chat" checked={settings.allowChat} onChange={() => toggle('allowChat')} />
+              <ToggleRow icon={ShieldCheck} label="End-to-end encryption" checked={settings.e2ee} onChange={() => toggle('e2ee')} />
             </div>
           </div>
 
           {error && (
-            <p className="text-xs text-destructive">{error}</p>
+            <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {error}
+            </div>
           )}
 
           {/* Actions */}
@@ -235,24 +184,16 @@ export function RoomSettingsDialog({ room, open, onOpenChange, onSave }: Props) 
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="flex-1 rounded-xl border py-2.5 text-sm font-medium transition-all hover:bg-muted active:scale-95"
+              className="flex-1 rounded-md border py-1.5 text-xs font-medium transition-colors hover:bg-accent"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-60"
-              style={{
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                boxShadow: '0 4px 16px #6366f140',
-              }}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {isLoading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
-              ) : (
-                'Save changes'
-              )}
+              {isLoading ? <><Loader2 className="h-3 w-3 animate-spin" /> Saving…</> : 'Save changes'}
             </button>
           </div>
         </form>

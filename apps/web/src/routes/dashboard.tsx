@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { LayoutDashboard, LogOut, Radio, Settings, Shield, Users, Video, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { LayoutDashboard, LogOut, Radio, Settings, Shield, Users, Video } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -34,35 +35,16 @@ const ADMIN_NAV = [
   { to: '/admin/rooms' as const, label: 'Rooms', icon: Video },
 ]
 
-function NavLink({
-  to,
-  label,
-  icon: Icon,
-  exact,
-}: {
-  to: string
-  label: string
-  icon: React.ElementType
-  exact?: boolean
-}) {
+function NavLink({ to, label, icon: Icon, exact }: { to: string; label: string; icon: React.ElementType; exact?: boolean }) {
   const { location } = useRouterState()
   const active = exact ? location.pathname === to : location.pathname.startsWith(to)
-
   return (
     <Link to={to}>
-      <div
-        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 text-muted-foreground hover:text-foreground hover:bg-muted/60"
-        style={
-          active
-            ? {
-                background: 'linear-gradient(135deg, #6366f115 0%, #8b5cf615 100%)',
-                color: '#818cf8',
-                boxShadow: 'inset 0 0 0 1px #6366f125',
-              }
-            : undefined
-        }
-      >
-        <Icon className="h-4 w-4 shrink-0" style={{ color: active ? '#818cf8' : undefined }} />
+      <div className={cn(
+        'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
+        active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+      )}>
+        <Icon className="h-3.5 w-3.5 shrink-0" />
         {label}
       </div>
     </Link>
@@ -75,70 +57,51 @@ function Sidebar({ user, onLogout }: { user: User | null; onLogout: () => void }
     : '?'
 
   return (
-    <aside className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-60 flex-col border-r" style={{ background: 'hsl(var(--card))', backdropFilter: 'blur(12px)' }}>
-      {/* Logo */}
-      <div className="flex h-16 shrink-0 items-center gap-3 border-b px-5">
-        <div
-          className="flex h-8 w-8 items-center justify-center rounded-lg"
-          style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', boxShadow: '0 2px 12px #6366f140' }}
-        >
-          <Radio className="h-4 w-4 text-white" />
+    <aside className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-52 flex-col border-r bg-card">
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b px-4">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
+          <Radio className="h-3 w-3 text-primary-foreground" />
         </div>
-        <span className="font-mono text-sm font-semibold tracking-tight">bedrud</span>
+        <span className="font-mono text-xs font-semibold tracking-tight">bedrud</span>
       </div>
 
-      {/* Nav */}
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
-        {/* User section */}
-        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+      <nav className="flex flex-1 flex-col gap-px overflow-y-auto p-2">
+        <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
           Main
         </p>
         {USER_NAV.map((item) => <NavLink key={item.to} {...item} />)}
 
-        {/* Admin section — only visible to admins */}
         {user?.isAdmin && (
-          <div className="mt-4">
-            <div className="mb-1 flex items-center gap-1.5 px-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                Admin
-              </p>
-              <span
-                className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                style={{ background: '#ef444415', color: '#f87171', border: '1px solid #ef444425' }}
-              >
-                <Shield className="h-2.5 w-2.5" />
+          <div className="mt-3">
+            <div className="mb-1 flex items-center gap-2 px-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">Admin</p>
+              <span className="rounded border border-destructive/30 bg-destructive/10 px-1 py-px text-[9px] font-semibold uppercase text-destructive">
                 Restricted
               </span>
             </div>
-            {ADMIN_NAV.map((item) => (
-              <NavLink key={item.to} {...item} />
-            ))}
+            {ADMIN_NAV.map((item) => <NavLink key={item.to} {...item} />)}
           </div>
         )}
       </nav>
 
-      {/* User footer */}
-      <div className="shrink-0 border-t p-3">
-        <div className="flex items-center gap-3 rounded-xl p-2 hover:bg-muted/50 transition-colors group">
-          <Avatar className="h-8 w-8 shrink-0">
+      <div className="shrink-0 border-t p-2">
+        <div className="group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-accent">
+          <Avatar className="h-6 w-6 shrink-0">
             {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
-            <AvatarFallback
-              className="text-xs font-semibold text-white"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
-            >
+            <AvatarFallback className="bg-primary text-[9px] font-semibold text-primary-foreground">
               {initials}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{user?.name ?? '…'}</p>
-            <p className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</p>
+            <p className="truncate text-xs font-medium">{user?.name ?? '…'}</p>
+            <p className="truncate text-[10px] text-muted-foreground">{user?.email ?? ''}</p>
           </div>
           <button
             onClick={onLogout}
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100"
+            className="rounded p-1 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
             title="Sign out"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-3 w-3" />
           </button>
         </div>
       </div>
@@ -152,67 +115,51 @@ function TopBar({ user, onLogout }: { user: User | null; onLogout: () => void })
     : '?'
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b px-4 lg:pl-64"
-      style={{ background: 'hsl(var(--background) / 0.9)', backdropFilter: 'blur(16px)' }}
-    >
+    <header className="sticky top-0 z-40 flex h-11 items-center justify-between border-b bg-background/90 px-4 backdrop-blur-sm lg:pl-[13.5rem]">
       <Link to="/dashboard" className="flex items-center gap-2 lg:hidden">
-        <div
-          className="flex h-7 w-7 items-center justify-center rounded-lg"
-          style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}
-        >
-          <Radio className="h-3.5 w-3.5 text-white" />
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
+          <Radio className="h-3 w-3 text-primary-foreground" />
         </div>
-        <span className="font-mono text-sm font-semibold">bedrud</span>
+        <span className="font-mono text-xs font-semibold">bedrud</span>
       </Link>
 
-      {/* Breadcrumb-style page context on desktop */}
-      <div className="hidden lg:flex items-center gap-1.5 text-sm text-muted-foreground">
-        <span>bedrud</span>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium">Dashboard</span>
-      </div>
-
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-1.5">
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="rounded-full outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring">
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-6 w-6">
                 {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
-                <AvatarFallback
-                  className="text-xs font-semibold text-white"
-                  style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
-                >
+                <AvatarFallback className="bg-primary text-[9px] font-semibold text-primary-foreground">
                   {initials}
                 </AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <div className="px-2 py-2">
-              <p className="truncate text-sm font-semibold">{user?.name ?? '…'}</p>
-              <p className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</p>
+          <DropdownMenuContent align="end" className="w-48">
+            <div className="px-2 py-1.5">
+              <p className="truncate text-xs font-semibold">{user?.name ?? '…'}</p>
+              <p className="truncate text-[10px] text-muted-foreground">{user?.email ?? ''}</p>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/dashboard/settings" className="flex items-center gap-2 cursor-pointer">
-                <Settings className="h-4 w-4" /> Settings
+              <Link to="/dashboard/settings" className="flex cursor-pointer items-center gap-2 text-xs">
+                <Settings className="h-3.5 w-3.5" /> Settings
               </Link>
             </DropdownMenuItem>
             {user?.isAdmin && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
-                    <Shield className="h-4 w-4" style={{ color: '#818cf8' }} />
-                    <span style={{ color: '#818cf8' }}>Admin panel</span>
+                  <Link to="/admin" className="flex cursor-pointer items-center gap-2 text-xs">
+                    <Shield className="h-3.5 w-3.5" /> Admin panel
                   </Link>
                 </DropdownMenuItem>
               </>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive cursor-pointer" onClick={onLogout}>
-              <LogOut className="h-4 w-4" /> Sign out
+            <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={onLogout}>
+              <LogOut className="h-3.5 w-3.5" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -233,13 +180,9 @@ function DashboardLayout() {
     queryFn: async () => {
       const u = await api.get<User & { accesses?: string[] }>('/api/auth/me')
       setUser({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        provider: u.provider,
+        id: u.id, email: u.email, name: u.name, provider: u.provider,
         isAdmin: u.accesses?.includes('superadmin') ?? false,
-        accesses: u.accesses ?? [],
-        avatarUrl: u.avatarUrl,
+        accesses: u.accesses ?? [], avatarUrl: u.avatarUrl,
       })
       return u
     },
@@ -251,8 +194,7 @@ function DashboardLayout() {
       const refreshToken = useAuthStore.getState().tokens?.refreshToken
       if (refreshToken) await api.post('/api/auth/logout', { refresh_token: refreshToken })
     } catch { /* ignore */ } finally {
-      clearAuth()
-      clearUser()
+      clearAuth(); clearUser()
       navigate({ to: '/auth' })
     }
   }
@@ -261,7 +203,7 @@ function DashboardLayout() {
     <div className="min-h-screen bg-background">
       <Sidebar user={user} onLogout={handleLogout} />
       <TopBar user={user} onLogout={handleLogout} />
-      <main className="lg:pl-60 p-5 lg:p-8">
+      <main className="p-4 lg:pl-52 lg:p-6">
         <Outlet />
       </main>
     </div>
