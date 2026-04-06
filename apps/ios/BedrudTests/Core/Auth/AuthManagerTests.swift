@@ -555,8 +555,12 @@ final class AuthManagerTests: XCTestCase {
         }
 
         let manager = makeAuthManager()
-        // Wait for the background /auth/me validation task to complete
-        try await Task.sleep(nanoseconds: 100_000_000)
+
+        // Poll for background /auth/me task to populate currentUser (avoids fixed-sleep race)
+        for _ in 0..<20 {
+            if manager.currentUser != nil { break }
+            try await Task.sleep(nanoseconds: 50_000_000) // 50ms per tick, up to 1s
+        }
 
         // Should still restore session successfully via /auth/me
         XCTAssertTrue(manager.isAuthenticated)
