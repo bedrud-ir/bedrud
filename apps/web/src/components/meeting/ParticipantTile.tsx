@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import type { RemoteParticipant, Participant } from 'livekit-client'
 import { Track, ParticipantEvent } from 'livekit-client'
 import { useParticipantInfo, useIsSpeaking, VideoTrack } from '@livekit/components-react'
@@ -45,14 +45,49 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
     try { return JSON.parse(participant.metadata ?? '{}').deafened === true } catch { return false }
   }, [participant.metadata])
 
+  // Web Audio boost: GainNode for volume > 100%
+  const gainRef = useRef<{ ctx: AudioContext; gain: GainNode } | null>(null)
+
   useEffect(() => {
     if (participant.isLocal) return
     const remote = participant as RemoteParticipant
-    remote.setVolume(isSelfDeafened ? 0 : volume)
-    return () => {
+    const effective = isSelfDeafened ? 0 : volume
+
+    if (effective <= 1) {
+      // Normal range — native volume handles it, reset gain if active
+      remote.setVolume(effective)
+      if (gainRef.current) gainRef.current.gain.gain.value = 1
+    } else {
+      // Boost: set native volume to 1, let GainNode amplify beyond
       remote.setVolume(1)
+
+      if (gainRef.current) {
+        gainRef.current.gain.gain.value = effective
+      } else {
+        // Lazily create AudioContext + GainNode on first boost
+        const pub = remote.getTrackPublication(Track.Source.Microphone)
+        const el = pub?.track?.attachedElements?.[0] as HTMLMediaElement | undefined
+        if (el) {
+          const ctx = new AudioContext()
+          const source = ctx.createMediaElementSource(el)
+          const gain = ctx.createGain()
+          gain.gain.value = effective
+          source.connect(gain).connect(ctx.destination)
+          gainRef.current = { ctx, gain }
+        }
+      }
     }
   }, [participant, volume, isSelfDeafened])
+
+  // Cleanup AudioContext on unmount
+  useEffect(() => {
+    return () => {
+      if (gainRef.current) {
+        gainRef.current.ctx.close()
+        gainRef.current = null
+      }
+    }
+  }, [])
 
   const noopLongPress = useCallback(() => {
     // No-op: Radix ContextMenu handles contextmenu event natively on mobile long-press
