@@ -1,7 +1,8 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, LogOut, Radio, Settings, Shield, Users, Video } from 'lucide-react'
+import { LayoutDashboard, LogOut, Menu, Radio, Settings, Shield, Users, Video } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -11,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useAuthStore } from '#/lib/auth.store'
 import { useUserStore } from '#/lib/user.store'
 import { api } from '#/lib/api'
@@ -30,16 +32,19 @@ const USER_NAV = [
 ]
 
 const ADMIN_NAV = [
-  { to: '/admin' as const, label: 'Overview', icon: Shield, exact: true },
-  { to: '/admin/users' as const, label: 'Users', icon: Users },
-  { to: '/admin/rooms' as const, label: 'Rooms', icon: Video },
+  { to: '/dashboard/admin' as const, label: 'Overview', icon: Shield, exact: true },
+  { to: '/dashboard/admin/users' as const, label: 'Users', icon: Users },
+  { to: '/dashboard/admin/rooms' as const, label: 'Rooms', icon: Video },
+  { to: '/dashboard/admin/settings' as const, label: 'Settings', icon: Settings },
 ]
 
-function NavLink({ to, label, icon: Icon, exact }: { to: string; label: string; icon: React.ElementType; exact?: boolean }) {
+function NavLink({ to, label, icon: Icon, exact, onClick }: { to: string; label: string; icon: React.ElementType; exact?: boolean; onClick?: () => void }) {
   const { location } = useRouterState()
-  const active = exact ? location.pathname === to : location.pathname.startsWith(to)
+  const active = exact
+    ? location.pathname === to || location.pathname === to + '/'
+    : location.pathname.startsWith(to)
   return (
-    <Link to={to}>
+    <Link to={to} onClick={onClick}>
       <div className={cn(
         'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
         active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
@@ -51,25 +56,18 @@ function NavLink({ to, label, icon: Icon, exact }: { to: string; label: string; 
   )
 }
 
-function Sidebar({ user, onLogout }: { user: User | null; onLogout: () => void }) {
+function SidebarContent({ user, onLogout, onNavClick }: { user: User | null; onLogout: () => void; onNavClick?: () => void }) {
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : '?'
 
   return (
-    <aside className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-52 flex-col border-r bg-card">
-      <div className="flex h-11 shrink-0 items-center gap-2 border-b px-4">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
-          <Radio className="h-3 w-3 text-primary-foreground" />
-        </div>
-        <span className="font-mono text-xs font-semibold tracking-tight">bedrud</span>
-      </div>
-
+    <>
       <nav className="flex flex-1 flex-col gap-px overflow-y-auto p-2">
         <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
           Main
         </p>
-        {USER_NAV.map((item) => <NavLink key={item.to} {...item} />)}
+        {USER_NAV.map((item) => <NavLink key={item.to} {...item} onClick={onNavClick} />)}
 
         {user?.isAdmin && (
           <div className="mt-3">
@@ -79,7 +77,7 @@ function Sidebar({ user, onLogout }: { user: User | null; onLogout: () => void }
                 Restricted
               </span>
             </div>
-            {ADMIN_NAV.map((item) => <NavLink key={item.to} {...item} />)}
+            {ADMIN_NAV.map((item) => <NavLink key={item.to} {...item} onClick={onNavClick} />)}
           </div>
         )}
       </nav>
@@ -105,7 +103,49 @@ function Sidebar({ user, onLogout }: { user: User | null; onLogout: () => void }
           </button>
         </div>
       </div>
+    </>
+  )
+}
+
+function Sidebar({ user, onLogout }: { user: User | null; onLogout: () => void }) {
+  return (
+    <aside className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-52 flex-col border-r bg-card">
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b px-4">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
+          <Radio className="h-3 w-3 text-primary-foreground" />
+        </div>
+        <span className="font-mono text-xs font-semibold tracking-tight">bedrud</span>
+      </div>
+      <SidebarContent user={user} onLogout={onLogout} />
     </aside>
+  )
+}
+
+function MobileNav({ user, onLogout }: { user: User | null; onLogout: () => void }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="lg:hidden rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        aria-label="Open navigation"
+      >
+        <Menu className="h-4 w-4" />
+      </button>
+
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="left" className="w-52 p-0 flex flex-col">
+          <SheetHeader className="flex h-11 shrink-0 flex-row items-center gap-2 border-b px-4 space-y-0">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
+              <Radio className="h-3 w-3 text-primary-foreground" />
+            </div>
+            <SheetTitle className="font-mono text-xs font-semibold tracking-tight">bedrud</SheetTitle>
+          </SheetHeader>
+          <SidebarContent user={user} onLogout={onLogout} onNavClick={() => setOpen(false)} />
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }
 
@@ -115,7 +155,9 @@ function TopBar({ user, onLogout }: { user: User | null; onLogout: () => void })
     : '?'
 
   return (
-    <header className="sticky top-0 z-40 flex h-11 items-center justify-between border-b bg-background/90 px-4 backdrop-blur-sm lg:pl-[13.5rem]">
+    <header className="sticky top-0 z-40 flex h-11 items-center gap-2 border-b bg-background/90 px-4 backdrop-blur-sm lg:pl-52">
+      <MobileNav user={user} onLogout={onLogout} />
+
       <Link to="/dashboard" className="flex items-center gap-2 lg:hidden">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
           <Radio className="h-3 w-3 text-primary-foreground" />
@@ -151,7 +193,7 @@ function TopBar({ user, onLogout }: { user: User | null; onLogout: () => void })
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/admin" className="flex cursor-pointer items-center gap-2 text-xs">
+                  <Link to="/dashboard/admin" className="flex cursor-pointer items-center gap-2 text-xs">
                     <Shield className="h-3.5 w-3.5" /> Admin panel
                   </Link>
                 </DropdownMenuItem>

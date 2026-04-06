@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { useLocalParticipant } from '@livekit/components-react'
-import { Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, Users, Volume2, Mic2, Check, MonitorUp, MonitorOff } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocalParticipant, useRoomContext } from '@livekit/components-react'
+import { ConnectionState, RoomEvent } from 'livekit-client'
+import {
+  Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, VolumeX,
+  Check, MonitorUp, MonitorOff, ChevronDown, Settings,
+  MoreVertical, Link2, Maximize, Keyboard,
+} from 'lucide-react'
 import { DeviceSelector } from '@/components/meeting/DeviceSelector'
 import { useAudioPreferencesStore, type NoiseSuppressionMode } from '#/lib/audio-preferences.store'
 import { useAuthStore } from '#/lib/auth.store'
+import { useMeetingContext } from '@/components/meeting/MeetingContext'
 import { AudioProcessorService } from '#/lib/audio-processor.service'
 import {
   Tooltip,
@@ -15,21 +21,33 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
 interface Props {
-  onToggleChat: () => void
-  onToggleParticipants: () => void
   onLeave: () => void
-  chatOpen: boolean
-  participantsOpen: boolean
-  unreadCount?: number
 }
 
-// Shared icon-button style
-const iconBtn = (active = false, danger = false): React.CSSProperties => ({
-  width: 44, height: 44, borderRadius: 12,
+/* ── Mobile detection ──────────────────────────────────────────────────────── */
+
+function useIsMobile(breakpoint = 640) {
+  const [mobile, setMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+    setMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [breakpoint])
+  return mobile
+}
+
+/* ── Shared styles ─────────────────────────────────────────────────────────── */
+
+const iconBtn = (active = false, danger = false, size = 44): React.CSSProperties => ({
+  width: size, height: size, borderRadius: size > 40 ? 12 : 10,
   border: 'none', cursor: 'pointer',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   background: danger
@@ -38,7 +56,8 @@ const iconBtn = (active = false, danger = false): React.CSSProperties => ({
       ? 'rgba(99,102,241,0.25)'
       : 'rgba(255,255,255,0.07)',
   color: danger ? '#f87171' : active ? '#a5b4fc' : 'rgba(255,255,255,0.75)',
-  transition: 'background 0.15s, color 0.15s, transform 0.1s',
+  transition: 'background 0.15s, color 0.15s',
+  flexShrink: 0,
 })
 
 const divider: React.CSSProperties = {
@@ -48,65 +67,128 @@ const divider: React.CSSProperties = {
   flexShrink: 0,
 }
 
+const darkMenuStyle: React.CSSProperties = {
+  minWidth: 240, maxWidth: 'calc(100vw - 24px)',
+  background: 'rgba(15,15,28,0.98)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 12,
+  backdropFilter: 'blur(16px)',
+}
+
+const menuLabelStyle: React.CSSProperties = {
+  color: 'rgba(255,255,255,0.3)', fontSize: 10,
+  textTransform: 'uppercase', letterSpacing: '0.08em',
+  padding: '6px 8px 2px',
+}
+
+const menuItemStyle: React.CSSProperties = {
+  borderRadius: 6, gap: 8, fontSize: 12,
+  color: 'rgba(255,255,255,0.75)',
+}
+
+const menuSepStyle: React.CSSProperties = { background: 'rgba(255,255,255,0.06)' }
+
 const NOISE_MODES: { value: NoiseSuppressionMode; label: string }[] = [
-  { value: 'none',    label: 'Off (RAW)' },
-  { value: 'browser', label: 'Browser built-in' },
+  { value: 'none',    label: 'Off' },
+  { value: 'browser', label: 'Browser' },
   { value: 'rnnoise', label: 'RNNoise' },
   { value: 'krisp',   label: 'Krisp AI' },
 ]
-const MODE_LABELS: Record<NoiseSuppressionMode, string> = {
-  none:    'Noise suppression: Off',
-  browser: 'Noise suppression: Browser',
-  rnnoise: 'Noise suppression: RNNoise',
-  krisp:   'Noise suppression: Krisp AI',
+
+const STORAGE_KEYS: Record<string, string> = {
+  audioinput: 'bedrud_mic_device',
+  audiooutput: 'bedrud_speaker_device',
 }
 
 /* ── Tooltip-wrapped control button ────────────────────────────────────────── */
-function CtrlBtn({
-  tip,
-  style,
-  onClick,
-  children,
-}: {
-  tip: string
-  style: React.CSSProperties
-  onClick?: () => void
-  children: React.ReactNode
+
+function CtrlBtn({ tip, style, onClick, children }: {
+  tip: string; style: React.CSSProperties; onClick?: () => void; children: React.ReactNode
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button onClick={onClick} style={style} aria-label={tip}>
-          {children}
-        </button>
+        <button onClick={onClick} style={style} aria-label={tip}>{children}</button>
       </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={8}>
-        {tip}
-      </TooltipContent>
+      <TooltipContent side="top" sideOffset={8}>{tip}</TooltipContent>
     </Tooltip>
   )
 }
 
-export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatOpen, participantsOpen, unreadCount = 0 }: Props) {
+/* ── Device list hook (replaces individual DeviceSelector for audio) ──────── */
+
+function useDeviceList(kind: 'audioinput' | 'audiooutput') {
+  const room = useRoomContext()
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+  const [activeId, setActiveId] = useState(() => localStorage.getItem(STORAGE_KEYS[kind]) ?? '')
+
+  useEffect(() => {
+    const refresh = async () => {
+      try {
+        const all = await navigator.mediaDevices.enumerateDevices()
+        setDevices(all.filter((d) => d.kind === kind))
+      } catch { /* permissions not yet granted */ }
+    }
+    refresh()
+    navigator.mediaDevices.addEventListener('devicechange', refresh)
+    return () => navigator.mediaDevices.removeEventListener('devicechange', refresh)
+  }, [kind])
+
+  // Restore saved device on room connect
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS[kind])
+    if (!saved) return
+    if (room.state === ConnectionState.Connected) {
+      room.switchActiveDevice(kind, saved).catch(() => {})
+      return
+    }
+    const handler = () => { room.switchActiveDevice(kind, saved!).catch(() => {}) }
+    room.once(RoomEvent.Connected, handler)
+    return () => { room.off(RoomEvent.Connected, handler) }
+  }, [room, kind])
+
+  const select = useCallback(async (deviceId: string) => {
+    await room.switchActiveDevice(kind, deviceId).catch(() => {})
+    setActiveId(deviceId)
+    localStorage.setItem(STORAGE_KEYS[kind], deviceId)
+  }, [room, kind])
+
+  return { devices, activeId, select }
+}
+
+/* ── ControlsBar ──────────────────────────────────────────────────────────── */
+
+export function ControlsBar({ onLeave }: Props) {
+  const isMobile = useIsMobile()
   const { localParticipant } = useLocalParticipant()
+  const { isSelfDeafened, toggleSelfDeafen } = useMeetingContext()
+
   const micEnabled = localParticipant?.isMicrophoneEnabled ?? false
   const camEnabled = localParticipant?.isCameraEnabled ?? false
   const isScreenShareEnabled = localParticipant?.isScreenShareEnabled ?? false
-  const tokens    = useAuthStore((s) => s.tokens)
-  const canShare  = Boolean(tokens) && Boolean(navigator.mediaDevices?.getDisplayMedia)
-  const shareTip  = !tokens
+
+  const tokens   = useAuthStore((s) => s.tokens)
+  const canShare = Boolean(tokens) && Boolean(navigator.mediaDevices?.getDisplayMedia)
+  const shareTip = !tokens
     ? 'Sign in to share screen'
     : !navigator.mediaDevices?.getDisplayMedia
-      ? 'Screen sharing not supported on this device'
-      : isScreenShareEnabled
-        ? 'Stop sharing'
-        : 'Share screen'
+      ? 'Screen sharing not supported'
+      : isScreenShareEnabled ? 'Stop sharing' : 'Share screen'
 
   const noiseMode = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
   const setMode   = useAudioPreferencesStore((s) => s.setMode)
 
-  const pttActiveRef   = useRef(false)
-  const pttInitMicRef  = useRef(false)
+  const mics     = useDeviceList('audioinput')
+  const speakers = useDeviceList('audiooutput')
+
+  // Responsive sizes
+  const btnSize = isMobile ? 38 : 44
+  const iconSize = isMobile ? 16 : 18
+  const iconSizeSm = isMobile ? 15 : 17
+
+  // ── Push-to-talk ──
+  const pttActiveRef  = useRef(false)
+  const pttInitMicRef = useRef(false)
   const [pttInitMic, setPttInitMic] = useState(false)
   const [pttVisible, setPttVisible] = useState(false)
 
@@ -115,7 +197,7 @@ export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatO
       if (e.code !== 'Space' || e.repeat || pttActiveRef.current) return
       const tgt = e.target as HTMLElement
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tgt.tagName) || tgt.isContentEditable) return
-      if (!localParticipant) return
+      if (!localParticipant || isSelfDeafened) return
       pttActiveRef.current  = true
       pttInitMicRef.current = localParticipant.isMicrophoneEnabled
       setPttInitMic(localParticipant.isMicrophoneEnabled)
@@ -135,186 +217,253 @@ export function ControlsBar({ onToggleChat, onToggleParticipants, onLeave, chatO
       document.removeEventListener('keydown', handleKeyDown)
       document.removeEventListener('keyup', handleKeyUp)
     }
-  }, [localParticipant])
+  }, [localParticipant, isSelfDeafened])
+
+  // ── Copy link feedback ──
+  const [linkCopied, setLinkCopied] = useState(false)
 
   return (
     <TooltipProvider delayDuration={300}>
       {/* Push-to-talk badge */}
       {pttVisible && (
-        <div
-          className="meet-ptt"
-          style={{
-            position: 'fixed', bottom: 80, left: '50%',
-            zIndex: 50,
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'rgba(99,102,241,0.9)',
-            border: '1px solid rgba(165,180,252,0.4)',
-            borderRadius: 24, padding: '7px 16px',
-            color: 'white', fontSize: 12, fontWeight: 600,
-            boxShadow: '0 4px 24px rgba(99,102,241,0.5)',
-          }}
-        >
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', zIndex: 50,
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'rgba(99,102,241,0.9)',
+          border: '1px solid rgba(165,180,252,0.4)',
+          borderRadius: 24, padding: '7px 16px',
+          color: 'white', fontSize: 12, fontWeight: 600,
+          boxShadow: '0 4px 24px rgba(99,102,241,0.5)',
+        }}>
           <Mic size={13} />
           {pttInitMic ? 'Push-to-Mute active' : 'Push-to-Talk active'}
         </div>
       )}
 
       {/* Floating controls pill */}
-      <div
-        style={{
-          position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-          display: 'flex', alignItems: 'center', gap: 3,
-          background: 'rgba(12,12,22,0.88)',
-          backdropFilter: 'blur(24px)',
-          border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 18, padding: '8px 10px',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset',
-          zIndex: 30,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {/* ── Mic + device caret ── */}
+      <div style={{
+        position: 'absolute',
+        bottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom, 0px))' : 20,
+        left: '50%', transform: 'translateX(-50%)',
+        display: 'flex', alignItems: 'center', gap: isMobile ? 2 : 3,
+        background: 'rgba(12,12,22,0.88)',
+        backdropFilter: 'blur(24px)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: isMobile ? 16 : 18,
+        padding: isMobile ? '6px 8px' : '8px 10px',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset',
+        zIndex: 30, whiteSpace: 'nowrap',
+        maxWidth: 'calc(100vw - 16px)',
+      }}>
+        {/* ── Left: Video + Screen Share ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <CtrlBtn
-            tip={micEnabled ? 'Mute (Space)' : 'Unmute (Space)'}
-            style={iconBtn(false, !micEnabled)}
-            onClick={() => localParticipant?.setMicrophoneEnabled(!micEnabled)}
-          >
-            {micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
-          </CtrlBtn>
-          <DeviceSelector kind="audioinput" />
-        </div>
-
-        {/* ── Camera + device caret ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 2 }}>
-          <CtrlBtn
             tip={camEnabled ? 'Disable camera' : 'Enable camera'}
-            style={iconBtn(false, !camEnabled)}
+            style={iconBtn(false, !camEnabled, btnSize)}
             onClick={() => localParticipant?.setCameraEnabled(!camEnabled)}
           >
-            {camEnabled ? <Video size={18} /> : <VideoOff size={18} />}
+            {camEnabled ? <Video size={iconSize} /> : <VideoOff size={iconSize} />}
           </CtrlBtn>
-          <DeviceSelector kind="videoinput" />
+          {!isMobile && <DeviceSelector kind="videoinput" />}
         </div>
 
-        {/* ── Noise suppression dropdown ── */}
-        <DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <button style={iconBtn(noiseMode !== 'none')} aria-label={MODE_LABELS[noiseMode]}>
-                  <Mic2 size={17} />
-                </button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8}>{MODE_LABELS[noiseMode]}</TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent side="top" align="center" sideOffset={12}
-            style={{ minWidth: 180, background: 'rgba(18,18,30,0.97)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
-            {NOISE_MODES.map(({ value, label }) => {
-              const disabled = value === 'krisp' && !AudioProcessorService.isKrispSupported()
-              return (
-                <DropdownMenuItem
-                  key={value}
-                  disabled={disabled}
-                  onSelect={() => setMode(value)}
-                  style={{ borderRadius: 8, gap: 10, cursor: disabled ? 'not-allowed' : 'pointer' }}
-                >
-                  <Check size={13} style={{ opacity: noiseMode === value ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 13 }}>{label}</span>
-                  {disabled && (
-                    <span style={{ fontSize: 10, color: '#f87171', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '1px 5px' }}>
-                      N/A
-                    </span>
-                  )}
-                </DropdownMenuItem>
-              )
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* ── Screen share ── */}
         <CtrlBtn
           tip={shareTip}
-          style={{ ...iconBtn(false, isScreenShareEnabled), opacity: canShare ? 1 : 0.4, cursor: canShare ? 'pointer' : 'not-allowed' }}
+          style={{ ...iconBtn(false, isScreenShareEnabled, btnSize), opacity: canShare ? 1 : 0.4, cursor: canShare ? 'pointer' : 'not-allowed' }}
           onClick={canShare ? () => localParticipant?.setScreenShareEnabled(!isScreenShareEnabled) : undefined}
         >
-          {isScreenShareEnabled ? <MonitorOff size={17} /> : <MonitorUp size={17} />}
+          {isScreenShareEnabled ? <MonitorOff size={iconSizeSm} /> : <MonitorUp size={iconSizeSm} />}
         </CtrlBtn>
 
-        <div style={divider} />
+        {!isMobile && <div style={divider} />}
 
-        {/* ── Leave button ── */}
+        {/* ── Center: Leave ── */}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={onLeave}
               style={{
-                height: 44, borderRadius: 12, border: 'none', cursor: 'pointer',
-                padding: '0 18px', marginLeft: 2, marginRight: 2,
+                height: btnSize, borderRadius: isMobile ? 10 : 12,
+                border: 'none', cursor: 'pointer',
+                padding: isMobile ? '0 12px' : '0 18px',
+                marginLeft: isMobile ? 2 : 2, marginRight: isMobile ? 2 : 2,
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: 'rgba(239,68,68,0.82)',
                 color: 'white', fontSize: 13, fontWeight: 600,
                 boxShadow: '0 2px 12px rgba(239,68,68,0.35)',
                 transition: 'background 0.15s, box-shadow 0.15s',
+                flexShrink: 0,
               }}
               aria-label="Leave meeting"
             >
-              <PhoneOff size={16} />
-              Leave
+              <PhoneOff size={isMobile ? 15 : 16} />
+              {!isMobile && 'Leave'}
             </button>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            Leave meeting
-          </TooltipContent>
+          <TooltipContent side="top" sideOffset={8}>Leave meeting</TooltipContent>
         </Tooltip>
 
-        <div style={divider} />
+        {!isMobile && <div style={divider} />}
 
-        {/* ── Speaker + Chat + Participants ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CtrlBtn tip="Select speaker output" style={iconBtn()}>
-              <Volume2 size={17} />
-            </CtrlBtn>
-            <DeviceSelector kind="audiooutput" />
-          </div>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={onToggleChat}
-                style={{ ...iconBtn(chatOpen), position: 'relative' }}
-                aria-label={chatOpen ? 'Close chat' : 'Open chat'}
-              >
-                <MessageSquare size={17} />
-                {unreadCount > 0 && !chatOpen && (
-                  <span style={{
-                    position: 'absolute', top: 6, right: 6,
-                    minWidth: 14, height: 14, borderRadius: 7,
-                    background: '#6366f1', color: 'white',
-                    fontSize: 9, fontWeight: 700, lineHeight: '14px',
-                    textAlign: 'center', padding: '0 3px',
-                    pointerEvents: 'none',
-                  }}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8}>
-              {chatOpen ? 'Close chat' : unreadCount > 0 ? `Chat (${unreadCount} unread)` : 'Open chat'}
-            </TooltipContent>
-          </Tooltip>
+        {/* ── Right: Mic + Speaker/Deafen + Combined Audio Dropdown ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CtrlBtn
+            tip={isSelfDeafened ? 'Undeafen & Unmute' : micEnabled ? 'Mute (Space)' : 'Unmute (Space)'}
+            style={iconBtn(false, !micEnabled || isSelfDeafened, btnSize)}
+            onClick={() => {
+              if (isSelfDeafened) { toggleSelfDeafen(); return }
+              localParticipant?.setMicrophoneEnabled(!micEnabled)
+            }}
+          >
+            {micEnabled ? <Mic size={iconSize} /> : <MicOff size={iconSize} />}
+          </CtrlBtn>
 
           <CtrlBtn
-            tip={participantsOpen ? 'Close participants' : 'Show participants'}
-            style={iconBtn(participantsOpen)}
-            onClick={onToggleParticipants}
+            tip={isSelfDeafened ? 'Undeafen' : 'Deafen'}
+            style={iconBtn(false, isSelfDeafened, btnSize)}
+            onClick={toggleSelfDeafen}
           >
-            <Users size={17} />
+            {isSelfDeafened ? <VolumeX size={iconSizeSm} /> : <Volume2 size={iconSizeSm} />}
           </CtrlBtn>
+
+          {/* Combined audio dropdown: devices + noise mode + settings */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                style={{
+                  width: isMobile ? 20 : 24, height: btnSize, borderRadius: 8,
+                  background: 'transparent', border: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'rgba(255,255,255,0.35)', cursor: 'pointer',
+                  transition: 'color 0.15s', flexShrink: 0,
+                }}
+                aria-label="Audio settings"
+              >
+                <ChevronDown size={isMobile ? 12 : 13} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" sideOffset={12} style={darkMenuStyle}>
+              {/* Microphone devices */}
+              {mics.devices.length > 0 && (
+                <>
+                  <DropdownMenuLabel style={menuLabelStyle}>Microphone</DropdownMenuLabel>
+                  {mics.devices.map((d, i) => (
+                    <DropdownMenuItem
+                      key={d.deviceId}
+                      onClick={() => mics.select(d.deviceId)}
+                      style={menuItemStyle}
+                    >
+                      <Check size={12} style={{ opacity: mics.activeId === d.deviceId ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }} />
+                      <span className="truncate">{d.label || `Microphone ${i + 1}`}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator style={menuSepStyle} />
+                </>
+              )}
+
+              {/* Speaker devices */}
+              {speakers.devices.length > 0 && (
+                <>
+                  <DropdownMenuLabel style={menuLabelStyle}>Speaker</DropdownMenuLabel>
+                  {speakers.devices.map((d, i) => (
+                    <DropdownMenuItem
+                      key={d.deviceId}
+                      onClick={() => speakers.select(d.deviceId)}
+                      style={menuItemStyle}
+                    >
+                      <Check size={12} style={{ opacity: speakers.activeId === d.deviceId ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }} />
+                      <span className="truncate">{d.label || `Speaker ${i + 1}`}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator style={menuSepStyle} />
+                </>
+              )}
+
+              {/* Noise suppression */}
+              <DropdownMenuLabel style={menuLabelStyle}>Noise Suppression</DropdownMenuLabel>
+              {NOISE_MODES.map(({ value, label }) => {
+                const disabled = value === 'krisp' && !AudioProcessorService.isKrispSupported()
+                return (
+                  <DropdownMenuItem
+                    key={value}
+                    disabled={disabled}
+                    onSelect={() => setMode(value)}
+                    style={{ ...menuItemStyle, cursor: disabled ? 'not-allowed' : 'pointer' }}
+                  >
+                    <Check size={12} style={{ opacity: noiseMode === value ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>{label}</span>
+                    {disabled && (
+                      <span style={{ fontSize: 9, color: '#f87171', background: 'rgba(239,68,68,0.15)', borderRadius: 3, padding: '1px 4px' }}>
+                        N/A
+                      </span>
+                    )}
+                  </DropdownMenuItem>
+                )
+              })}
+
+              <DropdownMenuSeparator style={menuSepStyle} />
+
+              {/* Settings link */}
+              <DropdownMenuItem
+                onClick={() => window.open('/dashboard/settings/audio', '_blank')}
+                style={{ ...menuItemStyle, color: 'rgba(255,255,255,0.5)' }}
+              >
+                <Settings size={12} style={{ flexShrink: 0 }} />
+                Audio settings
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+
+        {!isMobile && <div style={divider} />}
+
+        {/* ── Far right: More options ── */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              style={{ ...iconBtn(false, false, isMobile ? 34 : 44), width: isMobile ? 34 : 36 }}
+              aria-label="More options"
+            >
+              <MoreVertical size={iconSizeSm} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="end" sideOffset={12} style={{ ...darkMenuStyle, minWidth: 200 }}>
+            <DropdownMenuItem
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href)
+                setLinkCopied(true)
+                setTimeout(() => setLinkCopied(false), 2000)
+              }}
+              style={menuItemStyle}
+            >
+              {linkCopied
+                ? <Check size={13} style={{ flexShrink: 0, color: '#34d399' }} />
+                : <Link2 size={13} style={{ flexShrink: 0 }} />
+              }
+              {linkCopied ? 'Copied!' : 'Copy room link'}
+            </DropdownMenuItem>
+
+            {typeof document !== 'undefined' && document.fullscreenEnabled && (
+              <DropdownMenuItem
+                onClick={() => {
+                  if (document.fullscreenElement) document.exitFullscreen()
+                  else document.documentElement.requestFullscreen()
+                }}
+                style={menuItemStyle}
+              >
+                <Maximize size={13} style={{ flexShrink: 0 }} />
+                {typeof document !== 'undefined' && document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen'}
+              </DropdownMenuItem>
+            )}
+
+            <DropdownMenuSeparator style={menuSepStyle} />
+
+            <DropdownMenuItem disabled style={{ ...menuItemStyle, fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
+              <Keyboard size={12} style={{ flexShrink: 0 }} />
+              Space — Push to talk/mute
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </TooltipProvider>
   )

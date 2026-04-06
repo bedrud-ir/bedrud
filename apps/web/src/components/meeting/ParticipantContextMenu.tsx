@@ -35,6 +35,7 @@ import { api } from '#/lib/api'
 
 interface ParticipantMeta {
   accesses?: string[]
+  deafened?: boolean
 }
 
 function parseMeta(raw: string | undefined): ParticipantMeta {

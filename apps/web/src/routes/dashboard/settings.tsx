@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router'
+import { cn } from '@/lib/utils'
 import { User, Lock, Mic } from 'lucide-react'
 
 export const Route = createFileRoute('/dashboard/settings')({
@@ -16,56 +17,35 @@ function SettingsLayout() {
   const path = location.pathname
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Account{' '}
-          <span
-            className="bg-clip-text text-transparent"
-            style={{ backgroundImage: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)' }}
-          >
-            settings
-          </span>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage your profile, security, and audio preferences.
-        </p>
+    <div className="mx-auto max-w-4xl space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
       </div>
 
       {/* Tab strip */}
-      <div
-        className="flex gap-1 rounded-xl border p-1"
-        style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--card))' }}
-      >
+      <div className="flex gap-px rounded-lg bg-muted p-0.5 w-fit">
         {TABS.map(({ to, label, icon: Icon, isIndex }) => {
           const active = isIndex
             ? path === '/dashboard/settings' || path === '/dashboard/settings/'
             : path.startsWith(to)
-
           return (
             <Link
               key={to}
               to={to}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150"
-              style={
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                 active
-                  ? {
-                      background: 'linear-gradient(135deg, #6366f115 0%, #8b5cf615 100%)',
-                      color: '#818cf8',
-                      boxShadow: 'inset 0 0 0 1px #6366f125',
-                    }
-                  : { color: 'hsl(var(--muted-foreground))' }
-              }
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
             >
-              <Icon className="h-4 w-4 shrink-0" style={{ color: active ? '#818cf8' : undefined }} />
+              <Icon className="h-3.5 w-3.5 shrink-0" />
               {label}
             </Link>
           )
         })}
       </div>
 
-      {/* Active tab content */}
       <Outlet />
     </div>
   )

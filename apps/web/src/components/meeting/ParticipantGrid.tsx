@@ -9,16 +9,16 @@ interface ParticipantGridProps {
 
 function gridCols(count: number): string {
   if (count === 1) return 'grid-cols-1'
-  if (count <= 4) return 'grid-cols-2'
-  if (count <= 9) return 'grid-cols-3'
-  return 'grid-cols-4'
+  if (count <= 4) return 'grid-cols-1 sm:grid-cols-2'
+  if (count <= 9) return 'grid-cols-2 sm:grid-cols-3'
+  return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
 }
 
 const gridArea: React.CSSProperties = {
   position: 'absolute',
   inset: 0,
-  paddingTop: 56,
-  paddingBottom: 88,
+  paddingTop: 'calc(56px + env(safe-area-inset-top, 0px))',
+  paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
   zIndex: 0,
 }
 

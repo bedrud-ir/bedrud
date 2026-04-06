@@ -75,6 +75,26 @@ function RegisterPage() {
     setFieldErrors((p) => ({ ...p, [field]: undefined }))
   }
 
+  if (settings?.registrationEnabled === false) {
+    return (
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">Registration closed</h1>
+          <p className="text-sm text-muted-foreground">This instance is not accepting new accounts.</p>
+        </div>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          The administrator has disabled new registrations.
+        </div>
+        <p className="text-center text-sm text-muted-foreground">
+          Already have an account?{' '}
+          <Link to="/auth/login" search={{ redirect: undefined }} className="font-medium text-foreground underline-offset-4 hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-7">
       {/* Header */}
@@ -190,7 +210,7 @@ function RegisterPage() {
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link to="/auth/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+        <Link to="/auth/login" search={{ redirect: undefined }} className="font-medium text-foreground underline-offset-4 hover:underline">
           Sign in
         </Link>
         {' · '}

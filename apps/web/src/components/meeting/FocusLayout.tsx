@@ -65,8 +65,8 @@ export function FocusLayout({ pinnedIdentities, onTogglePin }: FocusLayoutProps)
     <div style={{
       position: 'absolute',
       inset: 0,
-      paddingTop: 56,
-      paddingBottom: 88,
+      paddingTop: 'calc(56px + env(safe-area-inset-top, 0px))',
+      paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
       display: 'flex',
       flexDirection: 'column',
       gap: 0,

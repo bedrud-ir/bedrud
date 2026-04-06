@@ -26,6 +26,9 @@ interface MeetingContextValue {
   isModerator: boolean
   // Server-deafened: admin/mod sent a deafen system message targeting this user
   isServerDeafened: boolean
+  // Self-deafened: user toggled deafen from controls bar
+  isSelfDeafened: boolean
+  toggleSelfDeafen: () => void
   // Chat — always live, regardless of panel visibility
   chatMessages: ChatMessages
   systemMessages: SystemMessage[]
@@ -60,6 +63,8 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
   const { chatMessages, send, isSending } = useChat()
   const [systemMessages, setSystemMessages] = useState<SystemMessage[]>([])
   const [isServerDeafened, setIsServerDeafened] = useState(false)
+  const [isSelfDeafened, setIsSelfDeafened] = useState(false)
+  const micBeforeDeafenRef = useRef(true)
   const [unreadCount, setUnreadCount] = useState(0)
 
   // Track how many messages existed at the last markRead() so we only count new arrivals
@@ -112,6 +117,24 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
     setUnreadCount(0)
   }, [chatMessages.length, systemMessages.length])
 
+  const toggleSelfDeafen = useCallback(() => {
+    const lp = room.localParticipant
+    const newDeafened = !isSelfDeafened
+
+    if (newDeafened) {
+      micBeforeDeafenRef.current = lp.isMicrophoneEnabled
+      lp.setMicrophoneEnabled(false)
+    } else {
+      lp.setMicrophoneEnabled(micBeforeDeafenRef.current)
+    }
+
+    // Broadcast deafened state to all participants via metadata
+    let meta: Record<string, unknown> = {}
+    try { meta = JSON.parse(lp.metadata ?? '{}') } catch { /* ignore */ }
+    lp.setMetadata(JSON.stringify({ ...meta, deafened: newDeafened }))
+    setIsSelfDeafened(newDeafened)
+  }, [room, isSelfDeafened])
+
   const value = useMemo<MeetingContextValue>(() => ({
     roomId,
     roomName,
@@ -125,13 +148,15 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
     isAdmin: accesses.includes('admin') || accesses.includes('superadmin'),
     isModerator: accesses.includes('moderator'),
     isServerDeafened,
+    isSelfDeafened,
+    toggleSelfDeafen,
     chatMessages,
     systemMessages,
     send,
     isSending,
     unreadCount,
     markRead,
-  }), [roomId, roomName, adminId, currentUserId, accesses, isServerDeafened, chatMessages, systemMessages, send, isSending, unreadCount, markRead])
+  }), [roomId, roomName, adminId, currentUserId, accesses, isServerDeafened, isSelfDeafened, toggleSelfDeafen, chatMessages, systemMessages, send, isSending, unreadCount, markRead])
 
   return <MeetingContext.Provider value={value}>{children}</MeetingContext.Provider>
 }

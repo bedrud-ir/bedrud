@@ -92,8 +92,7 @@ const panel: React.CSSProperties = {
   background: 'rgba(10,10,22,0.94)',
   backdropFilter: 'blur(24px)',
   borderLeft: '1px solid rgba(255,255,255,0.07)',
-  // On mobile the panel fills full height but the input box must clear the controls bar
-  // (bottom:20 + ~60px tall) plus device safe-area
+  paddingTop: 'env(safe-area-inset-top, 0px)',
   paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
 }
 

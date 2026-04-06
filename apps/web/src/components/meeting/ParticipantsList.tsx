@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useParticipants } from '@livekit/components-react'
-import { X, Mic, MicOff, Video, VideoOff, Users } from 'lucide-react'
+import { X, Mic, MicOff, Video, VideoOff, VolumeX, Users } from 'lucide-react'
 import { useMeetingContext } from '@/components/meeting/MeetingContext'
 import { ParticipantMenuButton, ParticipantContextMenu } from '@/components/meeting/ParticipantContextMenu'
 
@@ -10,6 +10,7 @@ interface Props {
 
 interface ParticipantMeta {
   accesses?: string[]
+  deafened?: boolean
 }
 
 function parseMeta(raw: string | undefined): ParticipantMeta {
@@ -38,6 +39,7 @@ const panel: React.CSSProperties = {
   background: 'rgba(10,10,22,0.94)',
   backdropFilter: 'blur(24px)',
   borderLeft: '1px solid rgba(255,255,255,0.07)',
+  paddingTop: 'env(safe-area-inset-top, 0px)',
   paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
 }
 
@@ -185,6 +187,9 @@ function ParticipantRow({ p, adminId }: RowProps): React.ReactElement {
 
       {/* Status icons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        {meta.deafened && (
+          <VolumeX size={13} style={{ color: '#f87171' }} />
+        )}
         {p.isMicrophoneEnabled
           ? <Mic size={13} style={{ color: 'rgba(255,255,255,0.3)' }} />
           : <MicOff size={13} style={{ color: '#f87171' }} />

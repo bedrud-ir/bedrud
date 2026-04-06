@@ -1,12 +1,26 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { AlertCircle, ArrowRight, Plus, Radio } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowRight,
+  Check,
+  Clock,
+  Copy,
+  Globe,
+  Lock,
+  Plus,
+  Search,
+  Settings2,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { RoomCard } from '@/components/dashboard/RoomCard'
 import { CreateRoomDialog } from '@/components/dashboard/CreateRoomDialog'
 import { RoomSettingsDialog } from '@/components/dashboard/RoomSettingsDialog'
+import { getErrorMessage } from '@/lib/errors'
 import { useUserStore } from '#/lib/user.store'
+import { useRecentRoomsStore, type RecentRoom } from '#/lib/recent-rooms.store'
 import { api } from '#/lib/api'
 
 interface Room {
@@ -27,10 +41,31 @@ interface Room {
 
 export const Route = createFileRoute('/dashboard/')({ component: DashboardPage })
 
-function QuickJoin({ onJoin }: { onJoin: (name: string) => void }) {
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+// ── Quick Join Bar ───────────────────────────────────────────────────────────
+
+function QuickJoinBar({
+  onJoin,
+  onCreate,
+}: {
+  onJoin: (name: string) => void
+  onCreate: () => void
+}) {
   const [value, setValue] = useState('')
 
-  function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const slug = value.trim().toLowerCase().replace(/\s+/g, '-')
     if (!slug) return
@@ -38,70 +73,240 @@ function QuickJoin({ onJoin }: { onJoin: (name: string) => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-0 rounded-md border border-input bg-background focus-within:ring-1 focus-within:ring-ring">
-      <input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Join by room name or code…"
-        autoComplete="off"
-        spellCheck={false}
-        className="h-8 flex-1 bg-transparent px-3 font-mono text-xs outline-none placeholder:text-muted-foreground/40"
-      />
+    <div className="flex items-center gap-2">
+      <form
+        onSubmit={handleSubmit}
+        className="flex h-9 flex-1 items-center gap-2 rounded-lg border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring"
+      >
+        <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Join by room name or invite code..."
+          autoComplete="off"
+          spellCheck={false}
+          className="h-full flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+        />
+        {value.trim() && (
+          <button
+            type="submit"
+            className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            Join <ArrowRight className="h-3 w-3" />
+          </button>
+        )}
+      </form>
       <button
-        type="submit"
-        disabled={!value.trim()}
-        className="m-0.5 inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-sm bg-primary px-2.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-30"
+        onClick={onCreate}
+        className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">New room</span>
+      </button>
+    </div>
+  )
+}
+
+// ── Room Row ─────────────────────────────────────────────────────────────────
+
+function RoomRow({
+  room,
+  onJoin,
+  onDelete,
+  onSettings,
+}: {
+  room: Room
+  onJoin: () => void
+  onDelete: () => void
+  onSettings: () => void
+}) {
+  const [copied, setCopied] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  function copyLink() {
+    void navigator.clipboard.writeText(`${window.location.origin}/m/${room.name}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  if (confirmDelete) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+        <p className="text-sm text-destructive">
+          Delete <span className="font-mono font-medium">{room.name}</span>?
+        </p>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setConfirmDelete(false)}
+            className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onDelete()
+              setConfirmDelete(false)
+            }}
+            className="rounded-md bg-destructive px-2 py-1 text-xs font-medium text-destructive-foreground"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-accent/50">
+      {/* Status dot + name */}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <span
+          className={cn(
+            'h-2 w-2 shrink-0 rounded-full',
+            room.isActive ? 'bg-emerald-500' : 'bg-muted-foreground/20',
+          )}
+          title={room.isActive ? 'Live' : 'Inactive'}
+        />
+        <button
+          onClick={onJoin}
+          className="min-w-0 truncate font-mono text-sm font-medium hover:underline"
+        >
+          {room.name}
+        </button>
+      </div>
+
+      {/* Badges */}
+      <div className="hidden items-center gap-1.5 sm:flex">
+        <span
+          className={cn(
+            'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium',
+            room.isPublic
+              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+          )}
+        >
+          {room.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+          {room.isPublic ? 'Public' : 'Private'}
+        </span>
+        {room.isActive && (
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+            Live
+          </span>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+        <button
+          onClick={copyLink}
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+          title={copied ? 'Copied!' : 'Copy link'}
+        >
+          {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+        </button>
+        <button
+          onClick={onSettings}
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+          title="Settings"
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => setConfirmDelete(true)}
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          title="Delete"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Join button */}
+      <button
+        onClick={onJoin}
+        className={cn(
+          'inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2.5 text-xs font-medium transition-colors',
+          room.isActive
+            ? 'bg-primary text-primary-foreground hover:opacity-90'
+            : 'border text-muted-foreground hover:bg-accent hover:text-foreground',
+        )}
+      >
+        {room.isActive ? 'Join' : 'Open'}
+        <ArrowRight className="h-3 w-3" />
+      </button>
+    </div>
+  )
+}
+
+// ── Recent Room Row ──────────────────────────────────────────────────────────
+
+function RecentRoomRow({
+  recent,
+  onJoin,
+  onRemove,
+}: {
+  recent: RecentRoom
+  onJoin: () => void
+  onRemove: () => void
+}) {
+  return (
+    <div className="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-accent/50">
+      <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+      <button
+        onClick={onJoin}
+        className="min-w-0 flex-1 truncate text-left font-mono text-sm font-medium hover:underline"
+      >
+        {recent.name}
+      </button>
+      <span className="text-xs text-muted-foreground/50">{timeAgo(recent.joinedAt)}</span>
+      <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+        <button
+          onClick={onRemove}
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          title="Remove from recent"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <button
+        onClick={onJoin}
+        className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         Join <ArrowRight className="h-3 w-3" />
       </button>
-    </form>
-  )
-}
-
-function EmptyState({ onCreate }: { onCreate: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-14 text-center">
-      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-        <Radio className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <p className="text-sm font-medium">No rooms yet</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">Create a room and share the link.</p>
-      <button
-        onClick={onCreate}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
-      >
-        <Plus className="h-3.5 w-3.5" /> New room
-      </button>
     </div>
   )
 }
 
-function SkeletonCard() {
+// ── Skeleton ─────────────────────────────────────────────────────────────────
+
+function SkeletonRows() {
   return (
-    <div className="animate-pulse rounded-lg border p-3 space-y-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="h-3 w-28 rounded bg-muted" />
-        <div className="h-4 w-14 rounded bg-muted" />
-      </div>
-      <div className="flex gap-1.5">
-        <div className="h-4 w-10 rounded bg-muted" />
-        <div className="h-4 w-12 rounded bg-muted" />
-      </div>
-      <div className="flex gap-2">
-        <div className="h-7 flex-1 rounded-md bg-muted" />
-        <div className="h-7 w-7 rounded-md bg-muted" />
-      </div>
+    <div className="space-y-1">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex animate-pulse items-center gap-3 rounded-lg px-3 py-2.5">
+          <div className="h-2 w-2 rounded-full bg-muted" />
+          <div className="h-4 w-32 rounded bg-muted" />
+          <div className="ml-auto h-4 w-16 rounded bg-muted" />
+        </div>
+      ))}
     </div>
   )
 }
+
+// ── Main Page ────────────────────────────────────────────────────────────────
 
 function DashboardPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useUserStore((s) => s.user)
+  const recentRooms = useRecentRoomsStore((s) => s.rooms)
+  const addRecent = useRecentRoomsStore((s) => s.add)
+  const removeRecent = useRecentRoomsStore((s) => s.remove)
+
   const [createOpen, setCreateOpen] = useState(false)
   const [settingsRoom, setSettingsRoom] = useState<Room | null>(null)
-  const [filter, setFilter] = useState<'all' | 'active' | 'private'>('all')
+  const [tab, setTab] = useState<'rooms' | 'recent'>('rooms')
+  const [query, setQuery] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const { data: rooms, isLoading } = useQuery({
@@ -110,125 +315,207 @@ function DashboardPage() {
   })
 
   function handleJoin(roomName: string) {
+    addRecent(roomName)
     navigate({ to: '/m/$meetId', params: { meetId: roomName } })
   }
 
   async function handleDelete(roomId: string) {
     try {
       await api.delete(`/api/room/${roomId}`)
-      queryClient.invalidateQueries({ queryKey: ['rooms'] })
+      setDeleteError(null)
+      void queryClient.invalidateQueries({ queryKey: ['rooms'] })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete room'
-      setDeleteError(msg)
+      setDeleteError(getErrorMessage(err, 'Failed to delete room'))
       setTimeout(() => setDeleteError(null), 4000)
     }
   }
 
-  async function handleUpdateSettings(roomId: string, data: { isPublic: boolean; maxParticipants: number; settings: Room['settings'] }) {
+  async function handleUpdateSettings(
+    roomId: string,
+    data: { isPublic: boolean; maxParticipants: number; settings: Room['settings'] },
+  ) {
     await api.put(`/api/room/${roomId}/settings`, data)
-    queryClient.invalidateQueries({ queryKey: ['rooms'] })
+    void queryClient.invalidateQueries({ queryKey: ['rooms'] })
   }
 
-  async function handleCreate(data: { name?: string; isPublic: boolean; maxParticipants: number; settings: Room['settings'] }) {
+  async function handleCreate(data: {
+    name?: string
+    isPublic: boolean
+    maxParticipants: number
+    settings: Room['settings']
+  }) {
     const res = await api.post<Room>('/api/room/create', data)
     setCreateOpen(false)
-    queryClient.invalidateQueries({ queryKey: ['rooms'] })
+    void queryClient.invalidateQueries({ queryKey: ['rooms'] })
+    addRecent(res.name)
     navigate({ to: '/m/$meetId', params: { meetId: res.name } })
   }
 
-  const totalRooms = rooms?.length ?? 0
-  const activeRooms = rooms?.filter((r) => r.isActive).length ?? 0
-  const privateRooms = rooms?.filter((r) => !r.isPublic).length ?? 0
+  const normalizedQuery = query.trim().toLowerCase()
+  const filtered = (rooms ?? [])
+    .filter((r) => !normalizedQuery || r.name.toLowerCase().includes(normalizedQuery))
+    .sort((a, b) => {
+      if (a.isActive !== b.isActive) return Number(b.isActive) - Number(a.isActive)
+      return a.name.localeCompare(b.name)
+    })
 
-  const filtered = rooms?.filter((r) => {
-    if (filter === 'active') return r.isActive
-    if (filter === 'private') return !r.isPublic
-    return true
-  })
+  const filteredRecent = recentRooms.filter(
+    (r) => !normalizedQuery || r.name.toLowerCase().includes(normalizedQuery),
+  )
 
   const firstName = user?.name?.split(' ')[0]
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
-
+    <div className="mx-auto max-w-3xl space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-sm font-semibold">
+      <div>
+        <h1 className="text-lg font-semibold tracking-tight">
           {firstName ? `${firstName}'s rooms` : 'Rooms'}
         </h1>
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          <Plus className="h-3.5 w-3.5" /> New room
-        </button>
+        <p className="text-sm text-muted-foreground">
+          Create, join, or manage your meeting rooms.
+        </p>
       </div>
 
-      {/* Quick join */}
-      <QuickJoin onJoin={handleJoin} />
+      {/* Quick Join + New Room */}
+      <QuickJoinBar onJoin={handleJoin} onCreate={() => setCreateOpen(true)} />
 
-      {/* Stats + filters inline */}
-      {totalRooms > 0 && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span><span className="font-medium text-foreground">{totalRooms}</span> total</span>
-            <span><span className="font-medium text-emerald-500">{activeRooms}</span> live</span>
-            <span><span className="font-medium text-foreground">{privateRooms}</span> private</span>
-          </div>
-          <div className="flex items-center gap-px rounded-md bg-muted p-0.5">
-            {(['all', 'active', 'private'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={cn(
-                  'rounded px-2.5 py-1 text-[11px] font-medium capitalize transition-colors',
-                  filter === f ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Delete error */}
+      {/* Error banner */}
       {deleteError && (
-        <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" />
           {deleteError}
         </div>
       )}
 
-      {/* Room grid */}
-      {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+      {/* Tabs + Search */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-0.5 rounded-lg border bg-background p-0.5">
+          <button
+            onClick={() => setTab('rooms')}
+            className={cn(
+              'rounded-md px-3 py-1 text-sm font-medium transition-colors',
+              tab === 'rooms'
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            My Rooms
+            {rooms && <span className="ml-1.5 text-xs text-muted-foreground">{rooms.length}</span>}
+          </button>
+          <button
+            onClick={() => setTab('recent')}
+            className={cn(
+              'rounded-md px-3 py-1 text-sm font-medium transition-colors',
+              tab === 'recent'
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            Recent
+            {recentRooms.length > 0 && (
+              <span className="ml-1.5 text-xs text-muted-foreground">{recentRooms.length}</span>
+            )}
+          </button>
         </div>
-      ) : filtered && filtered.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((room) => (
-            <RoomCard
-              key={room.id}
-              room={room}
-              onJoin={() => handleJoin(room.name)}
-              onDelete={() => handleDelete(room.id)}
-              onSettings={() => setSettingsRoom(room)}
-            />
-          ))}
+
+        <div className="flex h-8 w-full max-w-48 items-center gap-2 rounded-lg border border-input bg-background px-2 focus-within:ring-2 focus-within:ring-ring">
+          <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter..."
+            className="h-full flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50"
+          />
         </div>
-      ) : rooms && rooms.length > 0 ? (
-        <p className="py-8 text-center text-xs text-muted-foreground">No rooms match this filter.</p>
-      ) : (
-        <EmptyState onCreate={() => setCreateOpen(true)} />
-      )}
+      </div>
+
+      {/* Content */}
+      <div className="rounded-xl border bg-card/50">
+        {tab === 'rooms' && (
+          <>
+            {isLoading ? (
+              <div className="p-2">
+                <SkeletonRows />
+              </div>
+            ) : filtered.length > 0 ? (
+              <div className="divide-y divide-border/50 p-1">
+                {filtered.map((room) => (
+                  <RoomRow
+                    key={room.id}
+                    room={room}
+                    onJoin={() => handleJoin(room.name)}
+                    onDelete={() => handleDelete(room.id)}
+                    onSettings={() => setSettingsRoom(room)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-12 text-center">
+                {(rooms?.length ?? 0) > 0 ? (
+                  <>
+                    <p className="text-sm font-medium">No rooms match "{query}"</p>
+                    <button
+                      onClick={() => setQuery('')}
+                      className="mt-2 text-sm text-primary hover:underline"
+                    >
+                      Clear filter
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium">No rooms yet</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Create your first room to get started.
+                    </p>
+                    <button
+                      onClick={() => setCreateOpen(true)}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      New room
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'recent' && (
+          <>
+            {filteredRecent.length > 0 ? (
+              <div className="divide-y divide-border/50 p-1">
+                {filteredRecent.map((recent) => (
+                  <RecentRoomRow
+                    key={recent.name}
+                    recent={recent}
+                    onJoin={() => handleJoin(recent.name)}
+                    onRemove={() => removeRecent(recent.name)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-12 text-center">
+                <Clock className="mx-auto h-5 w-5 text-muted-foreground/30" />
+                <p className="mt-2 text-sm font-medium">No recent rooms</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Rooms you join will appear here for quick access.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       <CreateRoomDialog open={createOpen} onOpenChange={setCreateOpen} onCreate={handleCreate} />
       {settingsRoom && (
         <RoomSettingsDialog
           room={settingsRoom}
           open={!!settingsRoom}
-          onOpenChange={(open) => { if (!open) setSettingsRoom(null) }}
+          onOpenChange={(open) => {
+            if (!open) setSettingsRoom(null)
+          }}
           onSave={handleUpdateSettings}
         />
       )}

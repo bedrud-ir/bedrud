@@ -10,7 +10,7 @@ import {
 } from 'recharts'
 import { api } from '#/lib/api'
 
-export const Route = createFileRoute('/admin/users_/$userId')({ component: UserDetailPage })
+export const Route = createFileRoute('/dashboard/admin/users_/$userId')({ component: UserDetailPage })
 
 interface UserDetail {
   id: string
@@ -125,7 +125,7 @@ function UserDetailPage() {
       {/* Back + header */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => navigate({ to: '/admin/users' })}
+          onClick={() => navigate({ to: '/dashboard/admin/users' })}
           className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -263,7 +263,7 @@ function UserDetailPage() {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={100}>
-                  <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                  <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="uGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.3} />
@@ -298,29 +298,31 @@ function UserDetailPage() {
               </div>
             ) : (
               <>
+                <div className="overflow-x-auto">
+                  <div className="min-w-[460px]">
                 {/* header row */}
                 <div
                   className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 border-b px-5 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
                   style={{ borderColor: 'hsl(var(--border))' }}
                 >
                   <span>Name</span>
-                  <span>Visibility</span>
+                  <span className="hidden sm:block">Visibility</span>
                   <span>Status</span>
                   <span>Cap.</span>
-                  <span>Created</span>
+                  <span className="hidden sm:block">Created</span>
                 </div>
                 <div className="divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
                   {rooms.map((room) => (
                     <div key={room.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 px-5 py-3 hover:bg-muted/20 transition-colors">
                       <Link
-                        to="/admin/rooms/$roomId"
+                        to="/dashboard/admin/rooms/$roomId"
                         params={{ roomId: room.id }}
                         className="text-sm font-mono font-medium hover:text-indigo-400 transition-colors truncate"
                       >
                         {room.name}
                       </Link>
                       <span
-                        className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        className="hidden sm:flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
                         style={room.isPublic
                           ? { background: '#06b6d415', color: '#06b6d4' }
                           : { background: '#8b5cf615', color: '#a78bfa' }
@@ -340,11 +342,13 @@ function UserDetailPage() {
                         {room.isActive ? 'Live' : 'Idle'}
                       </span>
                       <span className="text-xs text-muted-foreground text-center">{room.maxParticipants}</span>
-                      <p className="text-xs text-muted-foreground whitespace-nowrap">
+                      <p className="hidden sm:block text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(room.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>
                   ))}
+                </div>
+                  </div>
                 </div>
               </>
             )}
@@ -353,7 +357,7 @@ function UserDetailPage() {
       )}
 
       <p className="text-center text-xs text-muted-foreground">
-        <Link to="/admin/users" className="hover:text-foreground underline-offset-4 hover:underline">← Back to all users</Link>
+        <Link to="/dashboard/admin/users" className="hover:text-foreground underline-offset-4 hover:underline">← Back to all users</Link>
       </p>
     </div>
   )

@@ -4,7 +4,6 @@ import (
 	"bedrud/internal/models"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type SettingsRepository struct {
@@ -23,5 +22,5 @@ func (r *SettingsRepository) GetSettings() (*models.SystemSettings, error) {
 
 func (r *SettingsRepository) SaveSettings(s *models.SystemSettings) error {
 	s.ID = 1
-	return r.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(s).Error
+	return r.db.Save(s).Error
 }

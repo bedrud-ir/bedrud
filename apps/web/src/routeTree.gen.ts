@@ -11,24 +11,24 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
-import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as MMeetIdRouteImport } from './routes/m.$meetId'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard/settings'
+import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
 import { Route as AuthRegisterRouteImport } from './routes/auth.register'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
-import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
-import { Route as AdminRoomsRouteImport } from './routes/admin.rooms'
 import { Route as DashboardSettingsIndexRouteImport } from './routes/dashboard/settings/index'
+import { Route as DashboardAdminIndexRouteImport } from './routes/dashboard/admin/index'
 import { Route as DashboardSettingsSecurityRouteImport } from './routes/dashboard/settings/security'
 import { Route as DashboardSettingsAudioRouteImport } from './routes/dashboard/settings/audio'
-import { Route as AdminUsersUserIdRouteImport } from './routes/admin.users_.$userId'
-import { Route as AdminRoomsRoomIdRouteImport } from './routes/admin.rooms_.$roomId'
+import { Route as DashboardAdminUsersRouteImport } from './routes/dashboard/admin/users'
+import { Route as DashboardAdminSettingsRouteImport } from './routes/dashboard/admin/settings'
+import { Route as DashboardAdminRoomsRouteImport } from './routes/dashboard/admin/rooms'
+import { Route as DashboardAdminUsersUserIdRouteImport } from './routes/dashboard/admin/users_.$userId'
+import { Route as DashboardAdminRoomsRoomIdRouteImport } from './routes/dashboard/admin/rooms_.$roomId'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -38,11 +38,6 @@ const DashboardRoute = DashboardRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -60,11 +55,6 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthRoute,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRoute,
-} as any)
 const MMeetIdRoute = MMeetIdRouteImport.update({
   id: '/m/$meetId',
   path: '/m/$meetId',
@@ -73,6 +63,11 @@ const MMeetIdRoute = MMeetIdRouteImport.update({
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAdminRoute = DashboardAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => DashboardRoute,
 } as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
@@ -90,25 +85,15 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => AuthRoute,
 } as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminRoomsRoute = AdminRoomsRouteImport.update({
-  id: '/rooms',
-  path: '/rooms',
-  getParentRoute: () => AdminRoute,
-} as any)
 const DashboardSettingsIndexRoute = DashboardSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardSettingsRoute,
+} as any)
+const DashboardAdminIndexRoute = DashboardAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardAdminRoute,
 } as any)
 const DashboardSettingsSecurityRoute =
   DashboardSettingsSecurityRouteImport.update({
@@ -121,148 +106,164 @@ const DashboardSettingsAudioRoute = DashboardSettingsAudioRouteImport.update({
   path: '/audio',
   getParentRoute: () => DashboardSettingsRoute,
 } as any)
-const AdminUsersUserIdRoute = AdminUsersUserIdRouteImport.update({
-  id: '/users_/$userId',
-  path: '/users/$userId',
-  getParentRoute: () => AdminRoute,
+const DashboardAdminUsersRoute = DashboardAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => DashboardAdminRoute,
 } as any)
-const AdminRoomsRoomIdRoute = AdminRoomsRoomIdRouteImport.update({
-  id: '/rooms_/$roomId',
-  path: '/rooms/$roomId',
-  getParentRoute: () => AdminRoute,
+const DashboardAdminSettingsRoute = DashboardAdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DashboardAdminRoute,
 } as any)
+const DashboardAdminRoomsRoute = DashboardAdminRoomsRouteImport.update({
+  id: '/rooms',
+  path: '/rooms',
+  getParentRoute: () => DashboardAdminRoute,
+} as any)
+const DashboardAdminUsersUserIdRoute =
+  DashboardAdminUsersUserIdRouteImport.update({
+    id: '/users_/$userId',
+    path: '/users/$userId',
+    getParentRoute: () => DashboardAdminRoute,
+  } as any)
+const DashboardAdminRoomsRoomIdRoute =
+  DashboardAdminRoomsRoomIdRouteImport.update({
+    id: '/rooms_/$roomId',
+    path: '/rooms/$roomId',
+    getParentRoute: () => DashboardAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
-  '/admin/rooms': typeof AdminRoomsRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRouteWithChildren
   '/m/$meetId': typeof MMeetIdRoute
-  '/admin/': typeof AdminIndexRoute
   '/auth/': typeof AuthIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/admin/rooms/$roomId': typeof AdminRoomsRoomIdRoute
-  '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/dashboard/admin/rooms': typeof DashboardAdminRoomsRoute
+  '/dashboard/admin/settings': typeof DashboardAdminSettingsRoute
+  '/dashboard/admin/users': typeof DashboardAdminUsersRoute
   '/dashboard/settings/audio': typeof DashboardSettingsAudioRoute
   '/dashboard/settings/security': typeof DashboardSettingsSecurityRoute
+  '/dashboard/admin/': typeof DashboardAdminIndexRoute
   '/dashboard/settings/': typeof DashboardSettingsIndexRoute
+  '/dashboard/admin/rooms/$roomId': typeof DashboardAdminRoomsRoomIdRoute
+  '/dashboard/admin/users/$userId': typeof DashboardAdminUsersUserIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin/rooms': typeof AdminRoomsRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/m/$meetId': typeof MMeetIdRoute
-  '/admin': typeof AdminIndexRoute
   '/auth': typeof AuthIndexRoute
   '/dashboard': typeof DashboardIndexRoute
-  '/admin/rooms/$roomId': typeof AdminRoomsRoomIdRoute
-  '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/dashboard/admin/rooms': typeof DashboardAdminRoomsRoute
+  '/dashboard/admin/settings': typeof DashboardAdminSettingsRoute
+  '/dashboard/admin/users': typeof DashboardAdminUsersRoute
   '/dashboard/settings/audio': typeof DashboardSettingsAudioRoute
   '/dashboard/settings/security': typeof DashboardSettingsSecurityRoute
+  '/dashboard/admin': typeof DashboardAdminIndexRoute
   '/dashboard/settings': typeof DashboardSettingsIndexRoute
+  '/dashboard/admin/rooms/$roomId': typeof DashboardAdminRoomsRoomIdRoute
+  '/dashboard/admin/users/$userId': typeof DashboardAdminUsersUserIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
-  '/admin/rooms': typeof AdminRoomsRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRouteWithChildren
   '/m/$meetId': typeof MMeetIdRoute
-  '/admin/': typeof AdminIndexRoute
   '/auth/': typeof AuthIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/admin/rooms_/$roomId': typeof AdminRoomsRoomIdRoute
-  '/admin/users_/$userId': typeof AdminUsersUserIdRoute
+  '/dashboard/admin/rooms': typeof DashboardAdminRoomsRoute
+  '/dashboard/admin/settings': typeof DashboardAdminSettingsRoute
+  '/dashboard/admin/users': typeof DashboardAdminUsersRoute
   '/dashboard/settings/audio': typeof DashboardSettingsAudioRoute
   '/dashboard/settings/security': typeof DashboardSettingsSecurityRoute
+  '/dashboard/admin/': typeof DashboardAdminIndexRoute
   '/dashboard/settings/': typeof DashboardSettingsIndexRoute
+  '/dashboard/admin/rooms_/$roomId': typeof DashboardAdminRoomsRoomIdRoute
+  '/dashboard/admin/users_/$userId': typeof DashboardAdminUsersUserIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/auth'
     | '/dashboard'
-    | '/admin/rooms'
-    | '/admin/settings'
-    | '/admin/users'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/register'
+    | '/dashboard/admin'
     | '/dashboard/settings'
     | '/m/$meetId'
-    | '/admin/'
     | '/auth/'
     | '/dashboard/'
-    | '/admin/rooms/$roomId'
-    | '/admin/users/$userId'
+    | '/dashboard/admin/rooms'
+    | '/dashboard/admin/settings'
+    | '/dashboard/admin/users'
     | '/dashboard/settings/audio'
     | '/dashboard/settings/security'
+    | '/dashboard/admin/'
     | '/dashboard/settings/'
+    | '/dashboard/admin/rooms/$roomId'
+    | '/dashboard/admin/users/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin/rooms'
-    | '/admin/settings'
-    | '/admin/users'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/register'
     | '/m/$meetId'
-    | '/admin'
     | '/auth'
     | '/dashboard'
-    | '/admin/rooms/$roomId'
-    | '/admin/users/$userId'
+    | '/dashboard/admin/rooms'
+    | '/dashboard/admin/settings'
+    | '/dashboard/admin/users'
     | '/dashboard/settings/audio'
     | '/dashboard/settings/security'
+    | '/dashboard/admin'
     | '/dashboard/settings'
+    | '/dashboard/admin/rooms/$roomId'
+    | '/dashboard/admin/users/$userId'
   id:
     | '__root__'
     | '/'
-    | '/admin'
     | '/auth'
     | '/dashboard'
-    | '/admin/rooms'
-    | '/admin/settings'
-    | '/admin/users'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/register'
+    | '/dashboard/admin'
     | '/dashboard/settings'
     | '/m/$meetId'
-    | '/admin/'
     | '/auth/'
     | '/dashboard/'
-    | '/admin/rooms_/$roomId'
-    | '/admin/users_/$userId'
+    | '/dashboard/admin/rooms'
+    | '/dashboard/admin/settings'
+    | '/dashboard/admin/users'
     | '/dashboard/settings/audio'
     | '/dashboard/settings/security'
+    | '/dashboard/admin/'
     | '/dashboard/settings/'
+    | '/dashboard/admin/rooms_/$roomId'
+    | '/dashboard/admin/users_/$userId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   DashboardRoute: typeof DashboardRouteWithChildren
   MMeetIdRoute: typeof MMeetIdRoute
@@ -282,13 +283,6 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -312,13 +306,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/m/$meetId': {
       id: '/m/$meetId'
       path: '/m/$meetId'
@@ -331,6 +318,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/dashboard/settings'
       preLoaderRoute: typeof DashboardSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/admin': {
+      id: '/dashboard/admin'
+      path: '/admin'
+      fullPath: '/dashboard/admin'
+      preLoaderRoute: typeof DashboardAdminRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/auth/register': {
@@ -354,33 +348,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/settings': {
-      id: '/admin/settings'
-      path: '/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/rooms': {
-      id: '/admin/rooms'
-      path: '/rooms'
-      fullPath: '/admin/rooms'
-      preLoaderRoute: typeof AdminRoomsRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/dashboard/settings/': {
       id: '/dashboard/settings/'
       path: '/'
       fullPath: '/dashboard/settings/'
       preLoaderRoute: typeof DashboardSettingsIndexRouteImport
       parentRoute: typeof DashboardSettingsRoute
+    }
+    '/dashboard/admin/': {
+      id: '/dashboard/admin/'
+      path: '/'
+      fullPath: '/dashboard/admin/'
+      preLoaderRoute: typeof DashboardAdminIndexRouteImport
+      parentRoute: typeof DashboardAdminRoute
     }
     '/dashboard/settings/security': {
       id: '/dashboard/settings/security'
@@ -396,42 +376,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsAudioRouteImport
       parentRoute: typeof DashboardSettingsRoute
     }
-    '/admin/users_/$userId': {
-      id: '/admin/users_/$userId'
-      path: '/users/$userId'
-      fullPath: '/admin/users/$userId'
-      preLoaderRoute: typeof AdminUsersUserIdRouteImport
-      parentRoute: typeof AdminRoute
+    '/dashboard/admin/users': {
+      id: '/dashboard/admin/users'
+      path: '/users'
+      fullPath: '/dashboard/admin/users'
+      preLoaderRoute: typeof DashboardAdminUsersRouteImport
+      parentRoute: typeof DashboardAdminRoute
     }
-    '/admin/rooms_/$roomId': {
-      id: '/admin/rooms_/$roomId'
+    '/dashboard/admin/settings': {
+      id: '/dashboard/admin/settings'
+      path: '/settings'
+      fullPath: '/dashboard/admin/settings'
+      preLoaderRoute: typeof DashboardAdminSettingsRouteImport
+      parentRoute: typeof DashboardAdminRoute
+    }
+    '/dashboard/admin/rooms': {
+      id: '/dashboard/admin/rooms'
+      path: '/rooms'
+      fullPath: '/dashboard/admin/rooms'
+      preLoaderRoute: typeof DashboardAdminRoomsRouteImport
+      parentRoute: typeof DashboardAdminRoute
+    }
+    '/dashboard/admin/users_/$userId': {
+      id: '/dashboard/admin/users_/$userId'
+      path: '/users/$userId'
+      fullPath: '/dashboard/admin/users/$userId'
+      preLoaderRoute: typeof DashboardAdminUsersUserIdRouteImport
+      parentRoute: typeof DashboardAdminRoute
+    }
+    '/dashboard/admin/rooms_/$roomId': {
+      id: '/dashboard/admin/rooms_/$roomId'
       path: '/rooms/$roomId'
-      fullPath: '/admin/rooms/$roomId'
-      preLoaderRoute: typeof AdminRoomsRoomIdRouteImport
-      parentRoute: typeof AdminRoute
+      fullPath: '/dashboard/admin/rooms/$roomId'
+      preLoaderRoute: typeof DashboardAdminRoomsRoomIdRouteImport
+      parentRoute: typeof DashboardAdminRoute
     }
   }
 }
-
-interface AdminRouteChildren {
-  AdminRoomsRoute: typeof AdminRoomsRoute
-  AdminSettingsRoute: typeof AdminSettingsRoute
-  AdminUsersRoute: typeof AdminUsersRoute
-  AdminIndexRoute: typeof AdminIndexRoute
-  AdminRoomsRoomIdRoute: typeof AdminRoomsRoomIdRoute
-  AdminUsersUserIdRoute: typeof AdminUsersUserIdRoute
-}
-
-const AdminRouteChildren: AdminRouteChildren = {
-  AdminRoomsRoute: AdminRoomsRoute,
-  AdminSettingsRoute: AdminSettingsRoute,
-  AdminUsersRoute: AdminUsersRoute,
-  AdminIndexRoute: AdminIndexRoute,
-  AdminRoomsRoomIdRoute: AdminRoomsRoomIdRoute,
-  AdminUsersUserIdRoute: AdminUsersUserIdRoute,
-}
-
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AuthRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -449,6 +430,28 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface DashboardAdminRouteChildren {
+  DashboardAdminRoomsRoute: typeof DashboardAdminRoomsRoute
+  DashboardAdminSettingsRoute: typeof DashboardAdminSettingsRoute
+  DashboardAdminUsersRoute: typeof DashboardAdminUsersRoute
+  DashboardAdminIndexRoute: typeof DashboardAdminIndexRoute
+  DashboardAdminRoomsRoomIdRoute: typeof DashboardAdminRoomsRoomIdRoute
+  DashboardAdminUsersUserIdRoute: typeof DashboardAdminUsersUserIdRoute
+}
+
+const DashboardAdminRouteChildren: DashboardAdminRouteChildren = {
+  DashboardAdminRoomsRoute: DashboardAdminRoomsRoute,
+  DashboardAdminSettingsRoute: DashboardAdminSettingsRoute,
+  DashboardAdminUsersRoute: DashboardAdminUsersRoute,
+  DashboardAdminIndexRoute: DashboardAdminIndexRoute,
+  DashboardAdminRoomsRoomIdRoute: DashboardAdminRoomsRoomIdRoute,
+  DashboardAdminUsersUserIdRoute: DashboardAdminUsersUserIdRoute,
+}
+
+const DashboardAdminRouteWithChildren = DashboardAdminRoute._addFileChildren(
+  DashboardAdminRouteChildren,
+)
+
 interface DashboardSettingsRouteChildren {
   DashboardSettingsAudioRoute: typeof DashboardSettingsAudioRoute
   DashboardSettingsSecurityRoute: typeof DashboardSettingsSecurityRoute
@@ -465,11 +468,13 @@ const DashboardSettingsRouteWithChildren =
   DashboardSettingsRoute._addFileChildren(DashboardSettingsRouteChildren)
 
 interface DashboardRouteChildren {
+  DashboardAdminRoute: typeof DashboardAdminRouteWithChildren
   DashboardSettingsRoute: typeof DashboardSettingsRouteWithChildren
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAdminRoute: DashboardAdminRouteWithChildren,
   DashboardSettingsRoute: DashboardSettingsRouteWithChildren,
   DashboardIndexRoute: DashboardIndexRoute,
 }
@@ -480,7 +485,6 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   DashboardRoute: DashboardRouteWithChildren,
   MMeetIdRoute: MMeetIdRoute,

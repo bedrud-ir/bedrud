@@ -2,10 +2,11 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import type { RemoteParticipant, Participant } from 'livekit-client'
 import { Track, ParticipantEvent } from 'livekit-client'
 import { useParticipantInfo, useIsSpeaking, VideoTrack } from '@livekit/components-react'
-import { MicOff, Pin } from 'lucide-react'
+import { MicOff, VolumeX, Pin } from 'lucide-react'
 import { useParticipantOverridesStore, selectVolume } from '#/lib/participant-overrides.store'
 import { useLongPress } from '#/lib/useLongPress'
 import { ParticipantContextMenu, ParticipantMenuButton } from '@/components/meeting/ParticipantContextMenu'
+import { useMeetingContext } from '@/components/meeting/MeetingContext'
 
 interface Props {
   participant: Participant
@@ -35,17 +36,23 @@ function getPalette(name: string) {
 export function ParticipantTile({ participant, totalCount, index, isPinned = false, onTogglePin }: Props) {
   const { name, identity } = useParticipantInfo({ participant })
   const isSpeaking = useIsSpeaking(participant)
+  const { isSelfDeafened } = useMeetingContext()
 
   const volume = useParticipantOverridesStore(selectVolume(identity ?? ''))
+
+  // Parse participant metadata for deafened state (visible to all peers)
+  const isDeafened = useMemo(() => {
+    try { return JSON.parse(participant.metadata ?? '{}').deafened === true } catch { return false }
+  }, [participant.metadata])
 
   useEffect(() => {
     if (participant.isLocal) return
     const remote = participant as RemoteParticipant
-    remote.setVolume(volume)
+    remote.setVolume(isSelfDeafened ? 0 : volume)
     return () => {
       remote.setVolume(1)
     }
-  }, [participant, volume])
+  }, [participant, volume, isSelfDeafened])
 
   const noopLongPress = useCallback(() => {
     // No-op: Radix ContextMenu handles contextmenu event natively on mobile long-press
@@ -132,28 +139,45 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
               {initial}
             </div>
 
-            {/* Name label (only when large enough to be readable) */}
+            {/* Name label + mute indicator (only when large enough to be readable) */}
             {totalCount <= 2 && (
-              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 500 }}>
-                {displayName}
-                {participant.isLocal && (
-                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginLeft: 6 }}>you</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 500 }}>
+                  {displayName}
+                  {participant.isLocal && (
+                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginLeft: 6 }}>you</span>
+                  )}
+                </span>
+                {isDeafened && (
+                  <VolumeX size={13} style={{ color: '#f87171', flexShrink: 0 }} />
                 )}
-              </span>
-            )}
-
-            {/* Speaking waveform bars */}
-            {isSpeaking && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <span key={i} style={{
-                    display: 'inline-block', width: 3, height: 18, borderRadius: 2,
-                    background: '#6366f1', transformOrigin: 'bottom center',
-                    animation: `meet-speak-bar 0.7s ease-in-out ${i * 0.12}s infinite`,
-                  }} />
-                ))}
+                {!participant.isMicrophoneEnabled && (
+                  <MicOff size={13} style={{ color: '#f87171', flexShrink: 0 }} />
+                )}
               </div>
             )}
+
+            {/* Waveform bars — always visible, animated when speaking */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 18 }}>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <span key={i} style={{
+                  display: 'inline-block', width: 3, borderRadius: 2,
+                  transformOrigin: 'bottom center',
+                  ...(isSpeaking
+                    ? {
+                        height: 18,
+                        background: 'hsl(var(--primary))',
+                        animation: `meet-speak-bar 0.7s ease-in-out ${i * 0.12}s infinite`,
+                      }
+                    : {
+                        height: 5,
+                        background: 'rgba(255,255,255,0.15)',
+                        animation: 'none',
+                        transition: 'height 0.3s ease, background 0.3s ease',
+                      }),
+                }} />
+              ))}
+            </div>
           </div>
         )}
 
@@ -175,8 +199,32 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginLeft: 4 }}>you</span>
               )}
             </span>
-            {!participant.isMicrophoneEnabled && (
+            {isDeafened && (
+              <VolumeX size={11} style={{ color: '#f87171', flexShrink: 0 }} />
+            )}
+            {!participant.isMicrophoneEnabled ? (
               <MicOff size={11} style={{ color: '#f87171', flexShrink: 0 }} />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height: 12, flexShrink: 0 }}>
+                {[0, 1, 2].map((i) => (
+                  <span key={i} style={{
+                    display: 'inline-block', width: 2, borderRadius: 1,
+                    transformOrigin: 'bottom center',
+                    ...(isSpeaking
+                      ? {
+                          height: 12,
+                          background: 'hsl(var(--primary))',
+                          animation: `meet-speak-bar 0.7s ease-in-out ${i * 0.15}s infinite`,
+                        }
+                      : {
+                          height: 4,
+                          background: 'rgba(255,255,255,0.25)',
+                          animation: 'none',
+                          transition: 'height 0.3s ease, background 0.3s ease',
+                        }),
+                  }} />
+                ))}
+              </div>
             )}
           </div>
         )}

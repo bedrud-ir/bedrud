@@ -11,7 +11,7 @@ import {
 } from 'recharts'
 import { api } from '#/lib/api'
 
-export const Route = createFileRoute('/admin/rooms_/$roomId')({ component: RoomDetailPage })
+export const Route = createFileRoute('/dashboard/admin/rooms_/$roomId')({ component: RoomDetailPage })
 
 interface Track {
   sid: string
@@ -146,7 +146,7 @@ function RoomDetailPage() {
       {/* Back + header */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => navigate({ to: '/admin/rooms' })}
+          onClick={() => navigate({ to: '/dashboard/admin/rooms' })}
           className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -215,7 +215,7 @@ function RoomDetailPage() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={bitrateHistory} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+              <LineChart data={bitrateHistory} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
                   dataKey="time"
@@ -310,7 +310,7 @@ function RoomDetailPage() {
               const videoTracks = p.tracks.filter(t => t.type === 'VIDEO')
               const totalKbps = Math.round(p.tracks.reduce((s, t) => s + (!t.muted ? t.bitrate : 0), 0) / 1000)
               return (
-                <div key={p.sid} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/20 transition-colors">
+                <div key={p.sid} className="flex flex-wrap items-center gap-3 px-4 py-3 sm:flex-nowrap sm:gap-4 sm:px-5 sm:py-4 hover:bg-muted/20 transition-colors">
                   {/* Avatar */}
                   <div
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
@@ -419,7 +419,7 @@ function RoomDetailPage() {
       )}
 
       <p className="text-center text-xs text-muted-foreground">
-        <Link to="/admin/rooms" className="hover:text-foreground underline-offset-4 hover:underline">← Back to all rooms</Link>
+        <Link to="/dashboard/admin/rooms" className="hover:text-foreground underline-offset-4 hover:underline">← Back to all rooms</Link>
       </p>
     </div>
   )

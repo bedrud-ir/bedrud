@@ -28,9 +28,11 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { PhoneOff, LogOut, Radio, Users, Wifi, Mic, Video, X } from 'lucide-react'
+import { PhoneOff, LogOut, Radio, Users, Wifi, Mic, Video, X, MessageSquare } from 'lucide-react'
 import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
+import { useRecentRoomsStore } from '#/lib/recent-rooms.store'
 import { AudioProcessorManager } from '@/components/meeting/AudioProcessorManager'
+import { MeetingSoundEffects } from '@/components/meeting/MeetingSoundEffects'
 
 interface JoinResponse {
   id: string
@@ -100,20 +102,22 @@ function MeetingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joinData])
 
+  const addRecent = useRecentRoomsStore((s) => s.add)
+
   useEffect(() => {
     if (joinData) return
     if (tokens) {
       // Authenticated: join directly
       api.post<JoinResponse>('/api/room/join', { roomName: meetId })
-        .then(setJoinData)
+        .then((data) => { addRecent(meetId); setJoinData(data) })
         .catch((err: Error) => setJoinError(err.message))
     } else if (guestName !== null && guestName !== '') {
       // Guest with confirmed name
       api.post<JoinResponse>('/api/room/guest-join', { roomName: meetId, guestName })
-        .then(setJoinData)
+        .then((data) => { addRecent(meetId); setJoinData(data) })
         .catch((err: Error) => setJoinError(err.message))
     }
-  }, [meetId, tokens, guestName, joinData])
+  }, [meetId, tokens, guestName, joinData, addRecent])
 
   // Still on server or waiting for client mount — show neutral spinner to avoid SSR flash
   if (!mounted) {
@@ -147,7 +151,7 @@ function MeetingPage() {
           border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: 16,
           padding: '32px 28px',
-          width: 340,
+          width: 'min(340px, calc(100vw - 32px))',
           display: 'flex', flexDirection: 'column', gap: 20,
         }}>
           <div>
@@ -296,6 +300,7 @@ function MeetingPage() {
         <KickDetector onKicked={() => setWasKicked(true)} />
         <AskActionBanner />
         <AudioProcessorManager />
+        <MeetingSoundEffects />
         {/* Ambient depth gradients */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <div style={{
@@ -313,10 +318,10 @@ function MeetingPage() {
         <MeetingLayout />
 
         {/* Vignettes for header/controls legibility */}
-        <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 h-24"
-          style={{ background: 'linear-gradient(to bottom, rgba(7,7,15,0.65) 0%, transparent 100%)' }} />
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-32"
-          style={{ background: 'linear-gradient(to top, rgba(7,7,15,0.6) 0%, transparent 100%)' }} />
+        <div className="pointer-events-none absolute left-0 right-0 top-0 z-10"
+          style={{ height: 'calc(96px + env(safe-area-inset-top, 0px))', background: 'linear-gradient(to bottom, rgba(7,7,15,0.65) 0%, transparent 100%)' }} />
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10"
+          style={{ height: 'calc(128px + env(safe-area-inset-bottom, 0px))', background: 'linear-gradient(to top, rgba(7,7,15,0.6) 0%, transparent 100%)' }} />
 
         <MeetingHeader meetId={meetId} />
 
@@ -356,10 +361,19 @@ function MeetingLayout() {
 
 function MeetingPanels({ navigate }: { navigate: () => void }) {
   const [chatOpen, setChatOpen] = useState(false)
-  const [participantsOpen, setParticipantsOpen] = useState(true)
+  const [participantsOpen, setParticipantsOpen] = useState(false)
+
+  const toggleChat = () => { setChatOpen((o) => !o); setParticipantsOpen(false) }
+  const toggleParticipants = () => { setParticipantsOpen((o) => !o); setChatOpen(false) }
 
   return (
     <>
+      {/* Top-left: Participants button */}
+      <ParticipantsToggle isOpen={participantsOpen} onToggle={toggleParticipants} />
+
+      {/* Top-right: Chat button */}
+      <ChatToggle isOpen={chatOpen} onToggle={toggleChat} />
+
       {participantsOpen && !chatOpen && (
         <ParticipantsList onClose={() => setParticipantsOpen(false)} />
       )}
@@ -367,14 +381,71 @@ function MeetingPanels({ navigate }: { navigate: () => void }) {
         <ChatPanel onClose={() => setChatOpen(false)} />
       )}
       <ChatToastNotifier chatOpen={chatOpen} />
-      <MeetingControls
-        chatOpen={chatOpen}
-        participantsOpen={participantsOpen}
-        onToggleChat={() => { setChatOpen((o) => !o); setParticipantsOpen(false) }}
-        onToggleParticipants={() => { setParticipantsOpen((o) => !o); setChatOpen(false) }}
-        onNavigate={navigate}
-      />
+      <MeetingControls onNavigate={navigate} />
     </>
+  )
+}
+
+/* ── Top-left: Participants toggle button ─────────────────────── */
+
+function ParticipantsToggle({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
+  const participants = useParticipants()
+  return (
+    <button
+      onClick={onToggle}
+      style={{
+        position: 'absolute', top: 'calc(14px + env(safe-area-inset-top, 0px))', left: 'calc(14px + env(safe-area-inset-left, 0px))', zIndex: 25,
+        display: 'flex', alignItems: 'center', gap: 6,
+        background: isOpen ? 'rgba(99,102,241,0.25)' : 'rgba(12,12,22,0.7)',
+        border: `1px solid ${isOpen ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
+        borderRadius: 10, padding: '7px 12px',
+        color: isOpen ? '#a5b4fc' : 'rgba(255,255,255,0.55)',
+        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+        backdropFilter: 'blur(12px)',
+        transition: 'all 0.15s',
+      }}
+      aria-label={isOpen ? 'Close participants' : 'Show participants'}
+    >
+      <Users size={14} />
+      <span>{participants.length}</span>
+    </button>
+  )
+}
+
+/* ── Top-right: Chat toggle button ────────────────────────────── */
+
+function ChatToggle({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
+  const { unreadCount } = useMeetingContext()
+  return (
+    <button
+      onClick={onToggle}
+      style={{
+        position: 'absolute', top: 'calc(14px + env(safe-area-inset-top, 0px))', right: 'calc(14px + env(safe-area-inset-right, 0px))', zIndex: 25,
+        width: 38, height: 38,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: isOpen ? 'rgba(99,102,241,0.25)' : 'rgba(12,12,22,0.7)',
+        border: `1px solid ${isOpen ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
+        borderRadius: 10, cursor: 'pointer',
+        color: isOpen ? '#a5b4fc' : 'rgba(255,255,255,0.55)',
+        backdropFilter: 'blur(12px)',
+        transition: 'all 0.15s',
+      }}
+      aria-label={isOpen ? 'Close chat' : `Open chat${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+    >
+      <MessageSquare size={16} />
+      {unreadCount > 0 && !isOpen && (
+        <span style={{
+          position: 'absolute', top: -4, right: -4,
+          minWidth: 16, height: 16, borderRadius: 8,
+          background: '#6366f1', color: 'white',
+          fontSize: 9, fontWeight: 700, lineHeight: '16px',
+          textAlign: 'center', padding: '0 4px',
+          pointerEvents: 'none',
+        }}>
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      )}
+    </button>
   )
 }
 
@@ -418,8 +489,8 @@ function ChatToastNotifier({ chatOpen }: { chatOpen: boolean }) {
   return (
     <div style={{
       position: 'fixed',
-      top: 68,
-      right: 16,
+      top: 'calc(68px + env(safe-area-inset-top, 0px))',
+      right: 'calc(16px + env(safe-area-inset-right, 0px))',
       zIndex: 50,
       display: 'flex',
       flexDirection: 'column',
@@ -435,7 +506,7 @@ function ChatToastNotifier({ chatOpen }: { chatOpen: boolean }) {
             border: '1px solid rgba(99,102,241,0.35)',
             borderRadius: 14,
             padding: '13px 16px',
-            maxWidth: 340,
+            maxWidth: 'min(340px, calc(100vw - 32px))',
             boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
             backdropFilter: 'blur(16px)',
             display: 'flex',
@@ -467,7 +538,6 @@ function ChatToastNotifier({ chatOpen }: { chatOpen: boolean }) {
 
 function MeetingHeader({ meetId }: { meetId: string }) {
   const state = useConnectionState()
-  const participants = useParticipants()
   const [time, setTime] = useState(() =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   )
@@ -483,8 +553,8 @@ function MeetingHeader({ meetId }: { meetId: string }) {
 
   return (
     <header
-      className="absolute left-0 right-0 top-0 z-20 flex h-14 items-center justify-between px-4"
-      style={{ pointerEvents: 'none' }}
+      className="absolute left-0 right-0 top-0 z-20 flex items-center justify-center px-4"
+      style={{ pointerEvents: 'none', height: 'calc(56px + env(safe-area-inset-top, 0px))', paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       <div className="flex items-center gap-2.5" style={{ pointerEvents: 'auto' }}>
         <div style={{
@@ -499,14 +569,8 @@ function MeetingHeader({ meetId }: { meetId: string }) {
         <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>·</span>
         <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: 'monospace' }}>{meetId}</span>
         <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>·</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Users size={12} style={{ color: 'rgba(255,255,255,0.4)' }} />
-          <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>{participants.length}</span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3" style={{ pointerEvents: 'auto' }}>
         <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, fontFamily: 'monospace' }}>{time}</span>
+        <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>·</span>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 5,
           background: isConnected ? 'rgba(34,197,94,0.12)' : 'rgba(234,179,8,0.12)',
@@ -531,16 +595,8 @@ function MeetingHeader({ meetId }: { meetId: string }) {
 
 // ── Controls wrapper ──────────────────────────────────────────
 
-interface MeetingControlsProps {
-  chatOpen: boolean
-  participantsOpen: boolean
-  onToggleChat: () => void
-  onToggleParticipants: () => void
-  onNavigate: () => void
-}
-
-function MeetingControls({ chatOpen, participantsOpen, onToggleChat, onToggleParticipants, onNavigate }: MeetingControlsProps) {
-  const { isCreator, roomId, unreadCount } = useMeetingContext()
+function MeetingControls({ onNavigate }: { onNavigate: () => void }) {
+  const { isCreator, roomId } = useMeetingContext()
   const room = useRoomContext()
   const [endDialogOpen, setEndDialogOpen] = useState(false)
   const [isEnding, setIsEnding] = useState(false)
@@ -564,14 +620,7 @@ function MeetingControls({ chatOpen, participantsOpen, onToggleChat, onTogglePar
 
   return (
     <>
-      <ControlsBar
-        onToggleChat={onToggleChat}
-        onToggleParticipants={onToggleParticipants}
-        onLeave={handleLeaveRequest}
-        chatOpen={chatOpen}
-        participantsOpen={participantsOpen}
-        unreadCount={unreadCount}
-      />
+      <ControlsBar onLeave={handleLeaveRequest} />
       <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
         <DialogContent className="sm:max-w-sm" style={{ background: '#0f0f1e', border: '1px solid rgba(255,255,255,0.08)' }}>
           <DialogHeader>
@@ -631,7 +680,7 @@ function AskActionBanner() {
     <div
       role="alert"
       style={{
-        position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
+        position: 'fixed', bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))', left: '50%', transform: 'translateX(-50%)',
         zIndex: 60,
         background: 'rgba(15,15,30,0.95)',
         border: '1px solid rgba(99,102,241,0.4)',
@@ -640,7 +689,7 @@ function AskActionBanner() {
         display: 'flex', alignItems: 'center', gap: 12,
         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         backdropFilter: 'blur(16px)',
-        maxWidth: 340,
+        maxWidth: 'min(340px, calc(100vw - 32px))',
       }}
     >
       <div style={{
