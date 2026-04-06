@@ -69,10 +69,7 @@ console.log('✅ server/frontend/ updated — restart `go run ./cmd/server` to p
 function generateShell(html) {
   // Replace everything between <!--$--> and <!--/$--> (the SSR'd route markup)
   // with an empty container that won't flash any route-specific content.
-  return html.replace(
-    /<!--\$-->[\s\S]*?<!--\/\$-->/,
-    '<!--$--><!--/$-->',
-  )
+  return html.replace(/<!--\$-->[\s\S]*?<!--\/\$-->/, '<!--$--><!--/$-->')
 }
 
 async function waitAndFetch(url, timeoutMs) {
