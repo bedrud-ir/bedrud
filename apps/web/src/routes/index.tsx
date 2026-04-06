@@ -1,9 +1,9 @@
-import { createFileRoute, redirect, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
+import { AlertCircle, ArrowRight, Radio } from 'lucide-react'
 import { useState } from 'react'
-import { ArrowRight, Radio, AlertCircle } from 'lucide-react'
-import { ThemeToggle } from '@/components/ThemeToggle'
-import { useAuthStore } from '#/lib/auth.store'
 import { api } from '#/lib/api'
+import { useAuthStore } from '#/lib/auth.store'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export const Route = createFileRoute('/')({
   beforeLoad: () => {
@@ -39,7 +39,9 @@ function JoinForm() {
         try {
           const parsed = JSON.parse(jsonPart) as { error?: string; message?: string }
           friendlyMsg = parsed.error ?? parsed.message ?? friendlyMsg
-        } catch { /* use default */ }
+        } catch {
+          /* use default */
+        }
         setError(friendlyMsg)
         return
       }
@@ -51,17 +53,22 @@ function JoinForm() {
 
   return (
     <div className="space-y-2">
-      <form onSubmit={handleJoin} className="group flex items-center gap-0 rounded-xl border border-input bg-background/60 backdrop-blur-sm transition-all focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
+      <form
+        onSubmit={handleJoin}
+        className="group flex items-center gap-0 rounded-xl border border-input bg-background/60 backdrop-blur-sm transition-all focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20"
+      >
         <span className="pl-4 text-muted-foreground/50 font-mono text-sm select-none whitespace-nowrap">
           {typeof window !== 'undefined' ? window.location.host : ''}/m/
         </span>
         <input
           value={code}
-          onChange={(e) => { setCode(e.target.value); setError(null) }}
+          onChange={(e) => {
+            setCode(e.target.value)
+            setError(null)
+          }}
           placeholder="your-room"
           autoComplete="off"
           spellCheck={false}
-          autoFocus
           className="h-12 flex-1 bg-transparent px-2 font-mono text-sm outline-none placeholder:text-muted-foreground/40"
         />
         <button
@@ -69,7 +76,13 @@ function JoinForm() {
           disabled={!code.trim() || checking}
           className="m-1 inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-30"
         >
-          {checking ? 'Checking…' : <><span>Join</span> <ArrowRight className="h-3.5 w-3.5" /></>}
+          {checking ? (
+            'Checking…'
+          ) : (
+            <>
+              <span>Join</span> <ArrowRight className="h-3.5 w-3.5" />
+            </>
+          )}
         </button>
       </form>
       {error && (
@@ -85,7 +98,6 @@ function JoinForm() {
 function HomePage() {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
-
       {/* Glow — top right, slightly off-screen */}
       <div
         className="pointer-events-none absolute -right-32 -top-32 h-[600px] w-[600px] rounded-full opacity-[0.18] dark:opacity-[0.12] blur-[120px]"
@@ -120,14 +132,14 @@ function HomePage() {
       {/* Hero — left-aligned, top of the page */}
       <main className="relative z-10 flex flex-1 flex-col justify-center px-8 pb-20 pt-12 sm:px-16 lg:px-24">
         <div className="max-w-2xl space-y-10">
-
           {/* Headline */}
           <div className="space-y-2">
             <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
               Voice rooms · Self-hosted
             </p>
             <h1 className="text-5xl font-semibold leading-[1.1] tracking-tight sm:text-6xl">
-              Talk to people,<br />
+              Talk to people,
+              <br />
               <span className="text-muted-foreground">not the platform.</span>
             </h1>
           </div>
@@ -159,7 +171,6 @@ function HomePage() {
             <span className="h-3 w-px bg-border" />
             <span>Open source</span>
           </div>
-
         </div>
       </main>
 

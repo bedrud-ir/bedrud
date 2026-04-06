@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { Mic, MicOff, Check, Loader2, Zap, Globe, Brain, Shield } from 'lucide-react'
+import { Brain, Check, Globe, Loader2, Mic, MicOff, Shield, Zap } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { api } from '#/lib/api'
+import { type NoiseSuppressionMode, useAudioPreferencesStore } from '#/lib/audio-preferences.store'
+import { AudioProcessorService } from '#/lib/audio-processor.service'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { api } from '#/lib/api'
-import { useAudioPreferencesStore, type NoiseSuppressionMode } from '#/lib/audio-preferences.store'
-import { AudioProcessorService } from '#/lib/audio-processor.service'
 
 export const Route = createFileRoute('/dashboard/settings/audio')({
   component: AudioPage,
@@ -15,10 +15,10 @@ export const Route = createFileRoute('/dashboard/settings/audio')({
 /* ── Constants ────────────────────────────────────────────────────────────── */
 
 const MODES: { value: NoiseSuppressionMode; label: string; icon: React.ElementType }[] = [
-  { value: 'none',    label: 'Off',     icon: Shield },
-  { value: 'browser', label: 'Browser', icon: Globe  },
-  { value: 'rnnoise', label: 'RNNoise', icon: Brain  },
-  { value: 'krisp',   label: 'Krisp',   icon: Zap    },
+  { value: 'none', label: 'Off', icon: Shield },
+  { value: 'browser', label: 'Browser', icon: Globe },
+  { value: 'rnnoise', label: 'RNNoise', icon: Brain },
+  { value: 'krisp', label: 'Krisp', icon: Zap },
 ]
 
 const SEGMENTS = 32
@@ -30,19 +30,15 @@ function VolumeMeter({ volume }: { volume: number }) {
   return (
     <div className="flex gap-px">
       {Array.from({ length: SEGMENTS }).map((_, i) => {
-        const isLit   = i < lit
-        const isRed   = i >= SEGMENTS * 0.83
+        const isLit = i < lit
+        const isRed = i >= SEGMENTS * 0.83
         const isAmber = i >= SEGMENTS * 0.65
         return (
           <div
             key={i}
             className={cn(
               'flex-1 h-6 rounded-[2px] transition-colors duration-75',
-              isLit
-                ? isRed   ? 'bg-destructive'
-                : isAmber ? 'bg-amber-500'
-                :           'bg-emerald-500'
-                : 'bg-muted/60',
+              isLit ? (isRed ? 'bg-destructive' : isAmber ? 'bg-amber-500' : 'bg-emerald-500') : 'bg-muted/60',
             )}
           />
         )
@@ -54,19 +50,21 @@ function VolumeMeter({ volume }: { volume: number }) {
 /* ── Mic Test Hook ────────────────────────────────────────────────────────── */
 
 function useMicTest(mode: NoiseSuppressionMode, inputGain: number, noiseGate: number) {
-  const [testing, setTesting]   = useState(false)
-  const [volume, setVolume]     = useState(0)
-  const [error, setError]       = useState<string | null>(null)
-  const [devices, setDevices]   = useState<MediaDeviceInfo[]>([])
+  const [testing, setTesting] = useState(false)
+  const [volume, setVolume] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [deviceId, setDeviceId] = useState<string>('')
 
-  const streamRef    = useRef<MediaStream | null>(null)
-  const ctxRef       = useRef<AudioContext | null>(null)
-  const gainNodeRef  = useRef<GainNode | null>(null)
-  const gateNodeRef  = useRef<GainNode | null>(null)
-  const rafRef       = useRef<number>(0)
+  const streamRef = useRef<MediaStream | null>(null)
+  const ctxRef = useRef<AudioContext | null>(null)
+  const gainNodeRef = useRef<GainNode | null>(null)
+  const gateNodeRef = useRef<GainNode | null>(null)
+  const rafRef = useRef<number>(0)
   const noiseGateRef = useRef(noiseGate)
-  useEffect(() => { noiseGateRef.current = noiseGate }, [noiseGate])
+  useEffect(() => {
+    noiseGateRef.current = noiseGate
+  }, [noiseGate])
   useEffect(() => {
     if (gainNodeRef.current) gainNodeRef.current.gain.value = inputGain / 100
   }, [inputGain])
@@ -78,14 +76,16 @@ function useMicTest(mode: NoiseSuppressionMode, inputGain: number, noiseGate: nu
     if (inputs.length > 0) setDeviceId((prev) => prev || inputs[0].deviceId)
   }
 
-  useEffect(() => { enumerateDevices().catch(() => {}) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    enumerateDevices().catch(() => {})
+  }, [enumerateDevices]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stop = () => {
     cancelAnimationFrame(rafRef.current)
     streamRef.current?.getTracks().forEach((t) => t.stop())
     ctxRef.current?.close().catch(() => {})
     streamRef.current = null
-    ctxRef.current    = null
+    ctxRef.current = null
     gainNodeRef.current = null
     gateNodeRef.current = null
     setVolume(0)
@@ -101,7 +101,7 @@ function useMicTest(mode: NoiseSuppressionMode, inputGain: number, noiseGate: nu
           deviceId: deviceId ? { exact: deviceId } : undefined,
           noiseSuppression: withSuppression,
           echoCancellation: withSuppression,
-          autoGainControl:  withSuppression,
+          autoGainControl: withSuppression,
         },
       })
       streamRef.current = stream
@@ -110,7 +110,7 @@ function useMicTest(mode: NoiseSuppressionMode, inputGain: number, noiseGate: nu
       const ctx = new AudioContext()
       ctxRef.current = ctx
 
-      const source   = ctx.createMediaStreamSource(stream)
+      const source = ctx.createMediaStreamSource(stream)
       const gainNode = ctx.createGain()
       gainNode.gain.value = inputGain / 100
       gainNodeRef.current = gainNode
@@ -133,16 +133,16 @@ function useMicTest(mode: NoiseSuppressionMode, inputGain: number, noiseGate: nu
       gateNode.connect(postAnalyser)
       postAnalyser.connect(ctx.destination)
 
-      const preData  = new Uint8Array(preAnalyser.frequencyBinCount)
+      const preData = new Uint8Array(preAnalyser.frequencyBinCount)
       const postData = new Uint8Array(postAnalyser.frequencyBinCount)
 
       const tick = () => {
         preAnalyser.getByteFrequencyData(preData)
-        const preRms     = Math.sqrt(preData.reduce((s, v) => s + v * v, 0) / preData.length) / 128
-        const preVol     = Math.min(1, preRms * 2.5)
-        const threshold  = noiseGateRef.current / 100
+        const preRms = Math.sqrt(preData.reduce((s, v) => s + v * v, 0) / preData.length) / 128
+        const preVol = Math.min(1, preRms * 2.5)
+        const threshold = noiseGateRef.current / 100
         const targetGain = preVol < threshold ? 0 : 1
-        const timeConst  = targetGain === 0 ? 0.005 : 0.08
+        const timeConst = targetGain === 0 ? 0.005 : 0.08
         gateNodeRef.current?.gain.setTargetAtTime(targetGain, ctx.currentTime, timeConst)
 
         postAnalyser.getByteFrequencyData(postData)
@@ -158,7 +158,12 @@ function useMicTest(mode: NoiseSuppressionMode, inputGain: number, noiseGate: nu
     }
   }
 
-  useEffect(() => () => { stop() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(
+    () => () => {
+      stop()
+    },
+    [stop],
+  ) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { testing, volume, error, devices, deviceId, setDeviceId, start, stop }
 }
@@ -166,17 +171,17 @@ function useMicTest(mode: NoiseSuppressionMode, inputGain: number, noiseGate: nu
 /* ── Page ─────────────────────────────────────────────────────────────────── */
 
 function AudioPage() {
-  const mode              = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
-  const echoCancellation  = useAudioPreferencesStore((s) => s.echoCancellation)
-  const autoGainControl   = useAudioPreferencesStore((s) => s.autoGainControl)
-  const inputGain         = useAudioPreferencesStore((s) => s.inputGain)
-  const noiseGate         = useAudioPreferencesStore((s) => s.noiseGate)
-  const setMode             = useAudioPreferencesStore((s) => s.setMode)
+  const mode = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
+  const echoCancellation = useAudioPreferencesStore((s) => s.echoCancellation)
+  const autoGainControl = useAudioPreferencesStore((s) => s.autoGainControl)
+  const inputGain = useAudioPreferencesStore((s) => s.inputGain)
+  const noiseGate = useAudioPreferencesStore((s) => s.noiseGate)
+  const setMode = useAudioPreferencesStore((s) => s.setMode)
   const setEchoCancellation = useAudioPreferencesStore((s) => s.setEchoCancellation)
-  const setAutoGainControl  = useAudioPreferencesStore((s) => s.setAutoGainControl)
-  const setInputGain        = useAudioPreferencesStore((s) => s.setInputGain)
-  const setNoiseGate        = useAudioPreferencesStore((s) => s.setNoiseGate)
-  const merge               = useAudioPreferencesStore((s) => s.merge)
+  const setAutoGainControl = useAudioPreferencesStore((s) => s.setAutoGainControl)
+  const setInputGain = useAudioPreferencesStore((s) => s.setInputGain)
+  const setNoiseGate = useAudioPreferencesStore((s) => s.setNoiseGate)
+  const merge = useAudioPreferencesStore((s) => s.merge)
 
   const krispSupported = AudioProcessorService.isKrispSupported()
   const mic = useMicTest(mode, inputGain, noiseGate)
@@ -192,13 +197,14 @@ function AudioPage() {
     try {
       const parsed = JSON.parse(remotePrefs.preferencesJson)
       if (parsed?.audio) merge(parsed.audio)
-    } catch { /* ignore malformed data */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remotePrefs])
+    } catch {
+      /* ignore malformed data */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remotePrefs, merge])
 
   const syncMutation = useMutation({
-    mutationFn: (prefsJson: string) =>
-      api.put('/api/auth/preferences', { preferencesJson: prefsJson }),
+    mutationFn: (prefsJson: string) => api.put('/api/auth/preferences', { preferencesJson: prefsJson }),
   })
   const mutateRef = useRef(syncMutation.mutate)
   mutateRef.current = syncMutation.mutate
@@ -211,13 +217,16 @@ function AudioPage() {
     return () => clearTimeout(timer)
   }, [mode, echoCancellation, autoGainControl, inputGain, noiseGate])
 
-  const syncStatus = syncMutation.isPending ? 'saving'
-    : syncMutation.isError   ? 'error'
-    : syncMutation.isSuccess ? 'saved'
-    : 'idle'
+  const syncStatus = syncMutation.isPending
+    ? 'saving'
+    : syncMutation.isError
+      ? 'error'
+      : syncMutation.isSuccess
+        ? 'saved'
+        : 'idle'
 
-  const gainPct  = (inputGain / 300) * 100
-  const gatePct  = noiseGate
+  const gainPct = (inputGain / 300) * 100
+  const gatePct = noiseGate
 
   return (
     <div className="rounded-xl border bg-card/50">
@@ -226,7 +235,7 @@ function AudioPage() {
         <span className="text-xs font-medium text-muted-foreground">Processing</span>
         <div className="flex flex-wrap items-center gap-1">
           {MODES.map(({ value, label, icon: Icon }) => {
-            const active   = mode === value
+            const active = mode === value
             const disabled = value === 'krisp' && !krispSupported
             return (
               <button
@@ -287,21 +296,15 @@ function AudioPage() {
           onClick={mic.testing ? mic.stop : mic.start}
           className={cn(
             'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-            mic.testing
-              ? 'bg-destructive/10 text-destructive'
-              : 'bg-primary text-primary-foreground',
+            mic.testing ? 'bg-destructive/10 text-destructive' : 'bg-primary text-primary-foreground',
           )}
         >
           {mic.testing ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
           {mic.testing ? 'Stop' : 'Test mic'}
         </button>
 
-        {mic.testing && (
-          <span className="text-[11px] text-muted-foreground/60">Headphones recommended</span>
-        )}
-        {mic.error && (
-          <span className="text-[11px] text-destructive">{mic.error}</span>
-        )}
+        {mic.testing && <span className="text-[11px] text-muted-foreground/60">Headphones recommended</span>}
+        {mic.error && <span className="text-[11px] text-destructive">{mic.error}</span>}
       </div>
 
       {/* ── Row 3: Volume meter (the centerpiece) ── */}
@@ -369,11 +372,11 @@ function AudioPage() {
           {syncStatus !== 'idle' && (
             <div className="ml-auto flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
               {syncStatus === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}
-              {syncStatus === 'saved'  && <Check className="h-3 w-3 text-emerald-500" />}
+              {syncStatus === 'saved' && <Check className="h-3 w-3 text-emerald-500" />}
               <span>
                 {syncStatus === 'saving' && 'Saving...'}
-                {syncStatus === 'saved'  && 'Saved'}
-                {syncStatus === 'error'  && 'Sync failed'}
+                {syncStatus === 'saved' && 'Saved'}
+                {syncStatus === 'error' && 'Sync failed'}
               </span>
             </div>
           )}

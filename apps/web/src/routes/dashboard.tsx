@@ -1,8 +1,11 @@
-import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
-import { cn } from '@/lib/utils'
+import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from '@tanstack/react-router'
 import { LayoutDashboard, LogOut, Menu, Radio, Settings, Shield, Users, Video } from 'lucide-react'
+import { useState } from 'react'
+import { api } from '#/lib/api'
+import { useAuthStore } from '#/lib/auth.store'
+import type { User } from '#/lib/user.store'
+import { useUserStore } from '#/lib/user.store'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -13,10 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { useAuthStore } from '#/lib/auth.store'
-import { useUserStore } from '#/lib/user.store'
-import { api } from '#/lib/api'
-import type { User } from '#/lib/user.store'
+import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: () => {
@@ -38,17 +38,29 @@ const ADMIN_NAV = [
   { to: '/dashboard/admin/settings' as const, label: 'Settings', icon: Settings },
 ]
 
-function NavLink({ to, label, icon: Icon, exact, onClick }: { to: string; label: string; icon: React.ElementType; exact?: boolean; onClick?: () => void }) {
+function NavLink({
+  to,
+  label,
+  icon: Icon,
+  exact,
+  onClick,
+}: {
+  to: string
+  label: string
+  icon: React.ElementType
+  exact?: boolean
+  onClick?: () => void
+}) {
   const { location } = useRouterState()
-  const active = exact
-    ? location.pathname === to || location.pathname === to + '/'
-    : location.pathname.startsWith(to)
+  const active = exact ? location.pathname === to || location.pathname === to + '/' : location.pathname.startsWith(to)
   return (
     <Link to={to} onClick={onClick}>
-      <div className={cn(
-        'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
-        active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-      )}>
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
+          active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+        )}
+      >
         <Icon className="h-3.5 w-3.5 shrink-0" />
         {label}
       </div>
@@ -56,18 +68,31 @@ function NavLink({ to, label, icon: Icon, exact, onClick }: { to: string; label:
   )
 }
 
-function SidebarContent({ user, onLogout, onNavClick }: { user: User | null; onLogout: () => void; onNavClick?: () => void }) {
+function SidebarContent({
+  user,
+  onLogout,
+  onNavClick,
+}: {
+  user: User | null
+  onLogout: () => void
+  onNavClick?: () => void
+}) {
   const initials = user?.name
-    ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    ? user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
     : '?'
 
   return (
     <>
       <nav className="flex flex-1 flex-col gap-px overflow-y-auto p-2">
-        <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
-          Main
-        </p>
-        {USER_NAV.map((item) => <NavLink key={item.to} {...item} onClick={onNavClick} />)}
+        <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">Main</p>
+        {USER_NAV.map((item) => (
+          <NavLink key={item.to} {...item} onClick={onNavClick} />
+        ))}
 
         {user?.isAdmin && (
           <div className="mt-3">
@@ -77,7 +102,9 @@ function SidebarContent({ user, onLogout, onNavClick }: { user: User | null; onL
                 Restricted
               </span>
             </div>
-            {ADMIN_NAV.map((item) => <NavLink key={item.to} {...item} onClick={onNavClick} />)}
+            {ADMIN_NAV.map((item) => (
+              <NavLink key={item.to} {...item} onClick={onNavClick} />
+            ))}
           </div>
         )}
       </nav>
@@ -151,7 +178,12 @@ function MobileNav({ user, onLogout }: { user: User | null; onLogout: () => void
 
 function TopBar({ user, onLogout }: { user: User | null; onLogout: () => void }) {
   const initials = user?.name
-    ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    ? user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
     : '?'
 
   return (
@@ -200,7 +232,10 @@ function TopBar({ user, onLogout }: { user: User | null; onLogout: () => void })
               </>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive" onClick={onLogout}>
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
+              onClick={onLogout}
+            >
               <LogOut className="h-3.5 w-3.5" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -222,9 +257,13 @@ function DashboardLayout() {
     queryFn: async () => {
       const u = await api.get<User & { accesses?: string[] }>('/api/auth/me')
       setUser({
-        id: u.id, email: u.email, name: u.name, provider: u.provider,
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        provider: u.provider,
         isAdmin: u.accesses?.includes('superadmin') ?? false,
-        accesses: u.accesses ?? [], avatarUrl: u.avatarUrl,
+        accesses: u.accesses ?? [],
+        avatarUrl: u.avatarUrl,
       })
       return u
     },
@@ -235,8 +274,11 @@ function DashboardLayout() {
     try {
       const refreshToken = useAuthStore.getState().tokens?.refreshToken
       if (refreshToken) await api.post('/api/auth/logout', { refresh_token: refreshToken })
-    } catch { /* ignore */ } finally {
-      clearAuth(); clearUser()
+    } catch {
+      /* ignore */
+    } finally {
+      clearAuth()
+      clearUser()
       navigate({ to: '/auth' })
     }
   }

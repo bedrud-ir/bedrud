@@ -1,5 +1,3 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState, useEffect, useRef } from 'react'
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -8,31 +6,33 @@ import {
   useRoomContext,
   useTracks,
 } from '@livekit/components-react'
-import { ConnectionState, DisconnectReason, RoomEvent, Track } from 'livekit-client'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { AudioCaptureOptions } from 'livekit-client'
-import { useAuthStore } from '#/lib/auth.store'
+import { ConnectionState, DisconnectReason, RoomEvent, Track } from 'livekit-client'
+import { LogOut, MessageSquare, Mic, PhoneOff, Radio, Users, Video, Wifi, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '#/lib/api'
-import { ParticipantGrid } from '@/components/meeting/ParticipantGrid'
-import { ControlsBar } from '@/components/meeting/ControlsBar'
-import { ChatPanel } from '@/components/meeting/ChatPanel'
-import { ParticipantsList } from '@/components/meeting/ParticipantsList'
-import { MeetingProvider, useMeetingContext } from '@/components/meeting/MeetingContext'
-import { FocusLayout } from '@/components/meeting/FocusLayout'
+import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
+import { useAuthStore } from '#/lib/auth.store'
+import { useRecentRoomsStore } from '#/lib/recent-rooms.store'
 import { usePinnedParticipants } from '#/lib/usePinnedParticipants'
+import { AudioProcessorManager } from '@/components/meeting/AudioProcessorManager'
+import { ChatPanel } from '@/components/meeting/ChatPanel'
+import { ControlsBar } from '@/components/meeting/ControlsBar'
+import { FocusLayout } from '@/components/meeting/FocusLayout'
+import { MeetingProvider, useMeetingContext } from '@/components/meeting/MeetingContext'
+import { MeetingSoundEffects } from '@/components/meeting/MeetingSoundEffects'
+import { ParticipantGrid } from '@/components/meeting/ParticipantGrid'
+import { ParticipantsList } from '@/components/meeting/ParticipantsList'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { PhoneOff, LogOut, Radio, Users, Wifi, Mic, Video, X, MessageSquare } from 'lucide-react'
-import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
-import { useRecentRoomsStore } from '#/lib/recent-rooms.store'
-import { AudioProcessorManager } from '@/components/meeting/AudioProcessorManager'
-import { MeetingSoundEffects } from '@/components/meeting/MeetingSoundEffects'
 
 interface JoinResponse {
   id: string
@@ -67,14 +67,14 @@ function MeetingPage() {
   useEffect(() => {
     setGuestName(tokens ? '' : null)
     setMounted(true)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokens])
 
   // Audio preferences — derive MediaTrackConstraints from stored settings
-  const noiseMode          = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
-  const echoCancellation   = useAudioPreferencesStore((s) => s.echoCancellation)
-  const autoGainControl    = useAudioPreferencesStore((s) => s.autoGainControl)
-  const mergeAudioPrefs    = useAudioPreferencesStore((s) => s.merge)
+  const noiseMode = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
+  const echoCancellation = useAudioPreferencesStore((s) => s.echoCancellation)
+  const autoGainControl = useAudioPreferencesStore((s) => s.autoGainControl)
+  const mergeAudioPrefs = useAudioPreferencesStore((s) => s.merge)
 
   // When using a LiveKit audio processor (rnnoise/krisp), disable browser-level
   // noise processing to avoid double-processing artifacts.
@@ -90,17 +90,22 @@ function MeetingPage() {
   useEffect(() => {
     if (!joinData || !tokens || prefsFetchedRef.current) return
     prefsFetchedRef.current = true
-    api.get<{ preferencesJson: string }>('/api/auth/preferences')
+    api
+      .get<{ preferencesJson: string }>('/api/auth/preferences')
       .then((r) => {
         if (!r.preferencesJson) return
         try {
           const parsed = JSON.parse(r.preferencesJson)
           if (parsed?.audio) mergeAudioPrefs(parsed.audio)
-        } catch { /* use local defaults */ }
+        } catch {
+          /* use local defaults */
+        }
       })
-      .catch(() => { /* use local defaults on network failure */ })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joinData])
+      .catch(() => {
+        /* use local defaults on network failure */
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joinData, mergeAudioPrefs, tokens])
 
   const addRecent = useRecentRoomsStore((s) => s.add)
 
@@ -108,13 +113,21 @@ function MeetingPage() {
     if (joinData) return
     if (tokens) {
       // Authenticated: join directly
-      api.post<JoinResponse>('/api/room/join', { roomName: meetId })
-        .then((data) => { addRecent(meetId); setJoinData(data) })
+      api
+        .post<JoinResponse>('/api/room/join', { roomName: meetId })
+        .then((data) => {
+          addRecent(meetId)
+          setJoinData(data)
+        })
         .catch((err: Error) => setJoinError(err.message))
     } else if (guestName !== null && guestName !== '') {
       // Guest with confirmed name
-      api.post<JoinResponse>('/api/room/guest-join', { roomName: meetId, guestName })
-        .then((data) => { addRecent(meetId); setJoinData(data) })
+      api
+        .post<JoinResponse>('/api/room/guest-join', { roomName: meetId, guestName })
+        .then((data) => {
+          addRecent(meetId)
+          setJoinData(data)
+        })
         .catch((err: Error) => setJoinError(err.message))
     }
   }, [meetId, tokens, guestName, joinData, addRecent])
@@ -122,18 +135,28 @@ function MeetingPage() {
   // Still on server or waiting for client mount — show neutral spinner to avoid SSR flash
   if (!mounted) {
     return (
-      <div style={{
-        position: 'fixed', inset: 0,
-        background: '#07070f',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 14,
-      }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: '50%',
-          border: '2px solid rgba(99,102,241,0.3)',
-          borderTopColor: '#6366f1',
-          animation: 'meet-connecting-spin 0.9s linear infinite',
-        }} />
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#07070f',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 14,
+        }}
+      >
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: '50%',
+            border: '2px solid rgba(99,102,241,0.3)',
+            borderTopColor: '#6366f1',
+            animation: 'meet-connecting-spin 0.9s linear infinite',
+          }}
+        />
       </div>
     )
   }
@@ -141,19 +164,28 @@ function MeetingPage() {
   // Show guest name dialog for unauthenticated users
   if (!tokens && guestName === null) {
     return (
-      <div style={{
-        position: 'fixed', inset: 0,
-        background: '#07070f',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 16,
-          padding: '32px 28px',
-          width: 'min(340px, calc(100vw - 32px))',
-          display: 'flex', flexDirection: 'column', gap: 20,
-        }}>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#07070f',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 16,
+            padding: '32px 28px',
+            width: 'min(340px, calc(100vw - 32px))',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
+          }}
+        >
           <div>
             <p style={{ color: 'white', fontSize: 17, fontWeight: 600, margin: 0 }}>Join as guest</p>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '6px 0 0' }}>
@@ -161,10 +193,11 @@ function MeetingPage() {
             </p>
           </div>
           <input
-            autoFocus
             value={guestInput}
             onChange={(e) => setGuestInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && guestInput.trim()) setGuestName(guestInput.trim()) }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && guestInput.trim()) setGuestName(guestInput.trim())
+            }}
             placeholder="Your name"
             style={{
               background: 'rgba(255,255,255,0.06)',
@@ -181,9 +214,14 @@ function MeetingPage() {
               disabled={!guestInput.trim()}
               onClick={() => setGuestName(guestInput.trim())}
               style={{
-                flex: 1, padding: '10px 0', borderRadius: 9, border: 'none',
+                flex: 1,
+                padding: '10px 0',
+                borderRadius: 9,
+                border: 'none',
                 background: guestInput.trim() ? '#6366f1' : 'rgba(99,102,241,0.3)',
-                color: 'white', fontSize: 14, fontWeight: 500,
+                color: 'white',
+                fontSize: 14,
+                fontWeight: 500,
                 cursor: guestInput.trim() ? 'pointer' : 'not-allowed',
               }}
             >
@@ -192,10 +230,13 @@ function MeetingPage() {
             <button
               onClick={() => navigate({ to: '/auth/login', search: { redirect: `/m/${meetId}` } })}
               style={{
-                padding: '10px 14px', borderRadius: 9,
+                padding: '10px 14px',
+                borderRadius: 9,
                 border: '1px solid rgba(255,255,255,0.1)',
-                background: 'transparent', color: 'rgba(255,255,255,0.5)',
-                fontSize: 13, cursor: 'pointer',
+                background: 'transparent',
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: 13,
+                cursor: 'pointer',
               }}
             >
               Sign in
@@ -208,32 +249,45 @@ function MeetingPage() {
 
   if (joinError) {
     return (
-      <div style={{
-        position: 'fixed', inset: 0,
-        background: '#07070f',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 16,
-      }}>
-        <div style={{
-          width: 56, height: 56, borderRadius: '50%',
-          background: 'rgba(239,68,68,0.1)',
-          border: '1px solid rgba(239,68,68,0.25)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#07070f',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+        }}
+      >
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'rgba(239,68,68,0.1)',
+            border: '1px solid rgba(239,68,68,0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           <Wifi size={22} style={{ color: '#f87171' }} />
         </div>
-        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>
-          Failed to join room
-        </p>
-        <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, maxWidth: 320, textAlign: 'center' }}>
-          {joinError}
-        </p>
+        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>Failed to join room</p>
+        <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, maxWidth: 320, textAlign: 'center' }}>{joinError}</p>
         <button
           onClick={() => navigate({ to: '/dashboard' })}
           style={{
-            marginTop: 8, padding: '8px 20px', borderRadius: 10, border: 'none',
-            background: 'rgba(99,102,241,0.2)', color: '#a5b4fc',
-            fontSize: 13, cursor: 'pointer',
+            marginTop: 8,
+            padding: '8px 20px',
+            borderRadius: 10,
+            border: 'none',
+            background: 'rgba(99,102,241,0.2)',
+            color: '#a5b4fc',
+            fontSize: 13,
+            cursor: 'pointer',
           }}
         >
           Back to dashboard
@@ -244,18 +298,28 @@ function MeetingPage() {
 
   if (!joinData) {
     return (
-      <div style={{
-        position: 'fixed', inset: 0,
-        background: '#07070f',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 14,
-      }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: '50%',
-          border: '2px solid rgba(99,102,241,0.3)',
-          borderTopColor: '#6366f1',
-          animation: 'meet-connecting-spin 0.9s linear infinite',
-        }} />
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#07070f',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 14,
+        }}
+      >
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: '50%',
+            border: '2px solid rgba(99,102,241,0.3)',
+            borderTopColor: '#6366f1',
+            animation: 'meet-connecting-spin 0.9s linear infinite',
+          }}
+        />
         <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>Joining room…</p>
       </div>
     )
@@ -265,15 +329,30 @@ function MeetingPage() {
 
   if (wasKicked) {
     return (
-      <div style={{
-        position: 'fixed', inset: 0, background: '#07070f',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
-      }}>
-        <div style={{
-          width: 56, height: 56, borderRadius: '50%',
-          background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#07070f',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+        }}
+      >
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'rgba(239,68,68,0.1)',
+            border: '1px solid rgba(239,68,68,0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           <PhoneOff size={22} style={{ color: '#f87171' }} />
         </div>
         <p style={{ color: 'white', fontSize: 16, fontWeight: 600 }}>You were removed</p>
@@ -281,8 +360,14 @@ function MeetingPage() {
         <button
           onClick={() => navigate({ to: '/dashboard' })}
           style={{
-            marginTop: 8, padding: '8px 20px', borderRadius: 10, border: 'none',
-            background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', fontSize: 13, cursor: 'pointer',
+            marginTop: 8,
+            padding: '8px 20px',
+            borderRadius: 10,
+            border: 'none',
+            background: 'rgba(99,102,241,0.2)',
+            color: '#a5b4fc',
+            fontSize: 13,
+            cursor: 'pointer',
           }}
         >
           Back to dashboard
@@ -296,38 +381,60 @@ function MeetingPage() {
       <RoomAudioRenderer />
       {/* LiveKitRoom renders as display:contents — this div is the actual viewport container */}
       <div className="fixed inset-0 overflow-hidden" style={{ background: '#07070f' }}>
-      <MeetingProvider roomId={id} roomName={roomName} adminId={adminId ?? ''}>
-        <KickDetector onKicked={() => setWasKicked(true)} />
-        <AskActionBanner />
-        <AudioProcessorManager />
-        <MeetingSoundEffects />
-        {/* Ambient depth gradients */}
-        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          <div style={{
-            position: 'absolute', width: 900, height: 900, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(99,102,241,0.055) 0%, transparent 65%)',
-            top: '-300px', left: '-300px',
-          }} />
-          <div style={{
-            position: 'absolute', width: 700, height: 700, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(6,182,212,0.04) 0%, transparent 65%)',
-            bottom: '-200px', right: '-150px',
-          }} />
-        </div>
+        <MeetingProvider roomId={id} roomName={roomName} adminId={adminId ?? ''}>
+          <KickDetector onKicked={() => setWasKicked(true)} />
+          <AskActionBanner />
+          <AudioProcessorManager />
+          <MeetingSoundEffects />
+          {/* Ambient depth gradients */}
+          <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+            <div
+              style={{
+                position: 'absolute',
+                width: 900,
+                height: 900,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(99,102,241,0.055) 0%, transparent 65%)',
+                top: '-300px',
+                left: '-300px',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                width: 700,
+                height: 700,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(6,182,212,0.04) 0%, transparent 65%)',
+                bottom: '-200px',
+                right: '-150px',
+              }}
+            />
+          </div>
 
-        <MeetingLayout />
+          <MeetingLayout />
 
-        {/* Vignettes for header/controls legibility */}
-        <div className="pointer-events-none absolute left-0 right-0 top-0 z-10"
-          style={{ height: 'calc(96px + env(safe-area-inset-top, 0px))', background: 'linear-gradient(to bottom, rgba(7,7,15,0.65) 0%, transparent 100%)' }} />
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10"
-          style={{ height: 'calc(128px + env(safe-area-inset-bottom, 0px))', background: 'linear-gradient(to top, rgba(7,7,15,0.6) 0%, transparent 100%)' }} />
+          {/* Vignettes for header/controls legibility */}
+          <div
+            className="pointer-events-none absolute left-0 right-0 top-0 z-10"
+            style={{
+              height: 'calc(96px + env(safe-area-inset-top, 0px))',
+              background: 'linear-gradient(to bottom, rgba(7,7,15,0.65) 0%, transparent 100%)',
+            }}
+          />
+          <div
+            className="pointer-events-none absolute bottom-0 left-0 right-0 z-10"
+            style={{
+              height: 'calc(128px + env(safe-area-inset-bottom, 0px))',
+              background: 'linear-gradient(to top, rgba(7,7,15,0.6) 0%, transparent 100%)',
+            }}
+          />
 
-        <MeetingHeader meetId={meetId} />
+          <MeetingHeader meetId={meetId} />
 
-        {/* Side panels */}
-        <MeetingPanels navigate={() => navigate({ to: '/dashboard' })} />
-      </MeetingProvider>
+          {/* Side panels */}
+          <MeetingPanels navigate={() => navigate({ to: '/dashboard' })} />
+        </MeetingProvider>
       </div>
     </LiveKitRoom>
   )
@@ -363,8 +470,14 @@ function MeetingPanels({ navigate }: { navigate: () => void }) {
   const [chatOpen, setChatOpen] = useState(false)
   const [participantsOpen, setParticipantsOpen] = useState(false)
 
-  const toggleChat = () => { setChatOpen((o) => !o); setParticipantsOpen(false) }
-  const toggleParticipants = () => { setParticipantsOpen((o) => !o); setChatOpen(false) }
+  const toggleChat = () => {
+    setChatOpen((o) => !o)
+    setParticipantsOpen(false)
+  }
+  const toggleParticipants = () => {
+    setParticipantsOpen((o) => !o)
+    setChatOpen(false)
+  }
 
   return (
     <>
@@ -374,12 +487,8 @@ function MeetingPanels({ navigate }: { navigate: () => void }) {
       {/* Top-right: Chat button */}
       <ChatToggle isOpen={chatOpen} onToggle={toggleChat} />
 
-      {participantsOpen && !chatOpen && (
-        <ParticipantsList onClose={() => setParticipantsOpen(false)} />
-      )}
-      {chatOpen && (
-        <ChatPanel onClose={() => setChatOpen(false)} />
-      )}
+      {participantsOpen && !chatOpen && <ParticipantsList onClose={() => setParticipantsOpen(false)} />}
+      {chatOpen && <ChatPanel onClose={() => setChatOpen(false)} />}
       <ChatToastNotifier chatOpen={chatOpen} />
       <MeetingControls onNavigate={navigate} />
     </>
@@ -394,13 +503,21 @@ function ParticipantsToggle({ isOpen, onToggle }: { isOpen: boolean; onToggle: (
     <button
       onClick={onToggle}
       style={{
-        position: 'absolute', top: 'calc(14px + env(safe-area-inset-top, 0px))', left: 'calc(14px + env(safe-area-inset-left, 0px))', zIndex: 25,
-        display: 'flex', alignItems: 'center', gap: 6,
+        position: 'absolute',
+        top: 'calc(14px + env(safe-area-inset-top, 0px))',
+        left: 'calc(14px + env(safe-area-inset-left, 0px))',
+        zIndex: 25,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
         background: isOpen ? 'rgba(99,102,241,0.25)' : 'rgba(12,12,22,0.7)',
         border: `1px solid ${isOpen ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
-        borderRadius: 10, padding: '7px 12px',
+        borderRadius: 10,
+        padding: '7px 12px',
         color: isOpen ? '#a5b4fc' : 'rgba(255,255,255,0.55)',
-        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+        fontSize: 12,
+        fontWeight: 600,
+        cursor: 'pointer',
         backdropFilter: 'blur(12px)',
         transition: 'all 0.15s',
       }}
@@ -420,12 +537,19 @@ function ChatToggle({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => voi
     <button
       onClick={onToggle}
       style={{
-        position: 'absolute', top: 'calc(14px + env(safe-area-inset-top, 0px))', right: 'calc(14px + env(safe-area-inset-right, 0px))', zIndex: 25,
-        width: 38, height: 38,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'absolute',
+        top: 'calc(14px + env(safe-area-inset-top, 0px))',
+        right: 'calc(14px + env(safe-area-inset-right, 0px))',
+        zIndex: 25,
+        width: 38,
+        height: 38,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         background: isOpen ? 'rgba(99,102,241,0.25)' : 'rgba(12,12,22,0.7)',
         border: `1px solid ${isOpen ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
-        borderRadius: 10, cursor: 'pointer',
+        borderRadius: 10,
+        cursor: 'pointer',
         color: isOpen ? '#a5b4fc' : 'rgba(255,255,255,0.55)',
         backdropFilter: 'blur(12px)',
         transition: 'all 0.15s',
@@ -434,14 +558,24 @@ function ChatToggle({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => voi
     >
       <MessageSquare size={16} />
       {unreadCount > 0 && !isOpen && (
-        <span style={{
-          position: 'absolute', top: -4, right: -4,
-          minWidth: 16, height: 16, borderRadius: 8,
-          background: '#6366f1', color: 'white',
-          fontSize: 9, fontWeight: 700, lineHeight: '16px',
-          textAlign: 'center', padding: '0 4px',
-          pointerEvents: 'none',
-        }}>
+        <span
+          style={{
+            position: 'absolute',
+            top: -4,
+            right: -4,
+            minWidth: 16,
+            height: 16,
+            borderRadius: 8,
+            background: '#6366f1',
+            color: 'white',
+            fontSize: 9,
+            fontWeight: 700,
+            lineHeight: '16px',
+            textAlign: 'center',
+            padding: '0 4px',
+            pointerEvents: 'none',
+          }}
+        >
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
@@ -466,13 +600,13 @@ function ChatToastNotifier({ chatOpen }: { chatOpen: boolean }) {
   useEffect(() => {
     // On first mount, mark all existing messages as seen without toasting
     seenRef.current = chatMessages.length
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chatMessages.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (chatMessages.length <= seenRef.current) return
     const newMsgs = chatMessages.slice(seenRef.current)
     seenRef.current = chatMessages.length
-    if (chatOpen) return  // panel is open — user can see the messages
+    if (chatOpen) return // panel is open — user can see the messages
 
     newMsgs.forEach((msg) => {
       const id = nextId.current++
@@ -487,16 +621,18 @@ function ChatToastNotifier({ chatOpen }: { chatOpen: boolean }) {
   if (toasts.length === 0) return null
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 'calc(68px + env(safe-area-inset-top, 0px))',
-      right: 'calc(16px + env(safe-area-inset-right, 0px))',
-      zIndex: 50,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 8,
-      pointerEvents: 'none',
-    }}>
+    <div
+      style={{
+        position: 'fixed',
+        top: 'calc(68px + env(safe-area-inset-top, 0px))',
+        right: 'calc(16px + env(safe-area-inset-right, 0px))',
+        zIndex: 50,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        pointerEvents: 'none',
+      }}
+    >
       {toasts.map((toast) => (
         <div
           key={toast.id}
@@ -514,18 +650,18 @@ function ChatToastNotifier({ chatOpen }: { chatOpen: boolean }) {
             gap: 5,
           }}
         >
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#a5b4fc' }}>
-            {toast.sender}
-          </span>
-          <span style={{
-            fontSize: 14,
-            color: 'rgba(255,255,255,0.75)',
-            overflow: 'hidden',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            wordBreak: 'break-word',
-          }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#a5b4fc' }}>{toast.sender}</span>
+          <span
+            style={{
+              fontSize: 14,
+              color: 'rgba(255,255,255,0.75)',
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              wordBreak: 'break-word',
+            }}
+          >
             {toast.message}
           </span>
         </div>
@@ -538,9 +674,7 @@ function ChatToastNotifier({ chatOpen }: { chatOpen: boolean }) {
 
 function MeetingHeader({ meetId }: { meetId: string }) {
   const state = useConnectionState()
-  const [time, setTime] = useState(() =>
-    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  )
+  const [time, setTime] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -554,15 +688,24 @@ function MeetingHeader({ meetId }: { meetId: string }) {
   return (
     <header
       className="absolute left-0 right-0 top-0 z-20 flex items-center justify-center px-4"
-      style={{ pointerEvents: 'none', height: 'calc(56px + env(safe-area-inset-top, 0px))', paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      style={{
+        pointerEvents: 'none',
+        height: 'calc(56px + env(safe-area-inset-top, 0px))',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+      }}
     >
       <div className="flex items-center gap-2.5" style={{ pointerEvents: 'auto' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 5,
-          background: 'rgba(99,102,241,0.18)',
-          border: '1px solid rgba(99,102,241,0.35)',
-          borderRadius: 7, padding: '3px 9px',
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            background: 'rgba(99,102,241,0.18)',
+            border: '1px solid rgba(99,102,241,0.35)',
+            borderRadius: 7,
+            padding: '3px 9px',
+          }}
+        >
           <Radio size={11} style={{ color: '#818cf8' }} />
           <span style={{ color: '#a5b4fc', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>LIVE</span>
         </div>
@@ -571,14 +714,21 @@ function MeetingHeader({ meetId }: { meetId: string }) {
         <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>·</span>
         <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, fontFamily: 'monospace' }}>{time}</span>
         <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>·</span>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 5,
-          background: isConnected ? 'rgba(34,197,94,0.12)' : 'rgba(234,179,8,0.12)',
-          border: `1px solid ${isConnected ? 'rgba(34,197,94,0.25)' : 'rgba(234,179,8,0.25)'}`,
-          borderRadius: 7, padding: '3px 9px',
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            background: isConnected ? 'rgba(34,197,94,0.12)' : 'rgba(234,179,8,0.12)',
+            border: `1px solid ${isConnected ? 'rgba(34,197,94,0.25)' : 'rgba(234,179,8,0.25)'}`,
+            borderRadius: 7,
+            padding: '3px 9px',
+          }}
+        >
           {isConnected ? (
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+            <span
+              style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}
+            />
           ) : (
             <svg className="meet-connecting" width="10" height="10" viewBox="0 0 10 10">
               <circle cx="5" cy="5" r="4" fill="none" stroke="#eab308" strokeWidth="1.5" strokeDasharray="6 4" />
@@ -608,7 +758,11 @@ function MeetingControls({ onNavigate }: { onNavigate: () => void }) {
 
   async function handleEndMeeting() {
     setIsEnding(true)
-    try { await api.delete(`/api/room/${roomId}`) } catch { /* already closed */ }
+    try {
+      await api.delete(`/api/room/${roomId}`)
+    } catch {
+      /* already closed */
+    }
     room.disconnect()
     onNavigate()
   }
@@ -622,7 +776,10 @@ function MeetingControls({ onNavigate }: { onNavigate: () => void }) {
     <>
       <ControlsBar onLeave={handleLeaveRequest} />
       <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
-        <DialogContent className="sm:max-w-sm" style={{ background: '#0f0f1e', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <DialogContent
+          className="sm:max-w-sm"
+          style={{ background: '#0f0f1e', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
           <DialogHeader>
             <DialogTitle style={{ color: 'white' }}>Leave meeting?</DialogTitle>
             <DialogDescription style={{ color: 'rgba(255,255,255,0.45)' }}>
@@ -642,7 +799,11 @@ function MeetingControls({ onNavigate }: { onNavigate: () => void }) {
             <Button
               variant="outline"
               className="w-full gap-2"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)' }}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.8)',
+              }}
               onClick={handleLeaveMeeting}
             >
               <LogOut className="h-4 w-4" />
@@ -680,29 +841,37 @@ function AskActionBanner() {
     <div
       role="alert"
       style={{
-        position: 'fixed', bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))', left: '50%', transform: 'translateX(-50%)',
+        position: 'fixed',
+        bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
+        left: '50%',
+        transform: 'translateX(-50%)',
         zIndex: 60,
         background: 'rgba(15,15,30,0.95)',
         border: '1px solid rgba(99,102,241,0.4)',
         borderRadius: 12,
         padding: '12px 16px',
-        display: 'flex', alignItems: 'center', gap: 12,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         backdropFilter: 'blur(16px)',
         maxWidth: 'min(340px, calc(100vw - 32px))',
       }}
     >
-      <div style={{
-        width: 32, height: 32, borderRadius: 8,
-        background: 'rgba(99,102,241,0.15)',
-        border: '1px solid rgba(99,102,241,0.3)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-      }}>
-        {isUnmute
-          ? <Mic size={15} style={{ color: '#a5b4fc' }} />
-          : <Video size={15} style={{ color: '#a5b4fc' }} />
-        }
+      <div
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          background: 'rgba(99,102,241,0.15)',
+          border: '1px solid rgba(99,102,241,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        {isUnmute ? <Mic size={15} style={{ color: '#a5b4fc' }} /> : <Video size={15} style={{ color: '#a5b4fc' }} />}
       </div>
       <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, flex: 1 }}>
         {isUnmute ? 'A moderator is asking you to unmute.' : 'A moderator is asking you to turn on your camera.'}
@@ -710,9 +879,14 @@ function AskActionBanner() {
       <button
         onClick={() => setDismissed(lastAsk.ts)}
         style={{
-          background: 'none', border: 'none', padding: 4, cursor: 'pointer',
-          color: 'rgba(255,255,255,0.3)', flexShrink: 0,
-          display: 'flex', alignItems: 'center',
+          background: 'none',
+          border: 'none',
+          padding: 4,
+          cursor: 'pointer',
+          color: 'rgba(255,255,255,0.3)',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
         }}
         aria-label="Dismiss"
       >
@@ -733,7 +907,9 @@ function KickDetector({ onKicked }: { onKicked: () => void }) {
       }
     }
     room.on(RoomEvent.Disconnected, handler)
-    return () => { room.off(RoomEvent.Disconnected, handler) }
+    return () => {
+      room.off(RoomEvent.Disconnected, handler)
+    }
   }, [room, onKicked])
 
   return null

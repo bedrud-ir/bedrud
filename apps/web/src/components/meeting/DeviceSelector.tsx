@@ -1,14 +1,9 @@
-import { useEffect, useState } from 'react'
 import { useRoomContext } from '@livekit/components-react'
 import { ConnectionState, RoomEvent } from 'livekit-client'
-import { ChevronDown, Check } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Check, ChevronDown } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 const STORAGE_KEYS: Record<DeviceSelectorProps['kind'], string> = {
   audioinput: 'bedrud_mic_device',
@@ -23,9 +18,7 @@ export interface DeviceSelectorProps {
 export function DeviceSelector({ kind }: DeviceSelectorProps) {
   const room = useRoomContext()
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
-  const [activeId, setActiveId] = useState<string>(
-    () => localStorage.getItem(STORAGE_KEYS[kind]) ?? ''
-  )
+  const [activeId, setActiveId] = useState<string>(() => localStorage.getItem(STORAGE_KEYS[kind]) ?? '')
 
   async function refreshDevices() {
     try {
@@ -40,7 +33,7 @@ export function DeviceSelector({ kind }: DeviceSelectorProps) {
     refreshDevices()
     navigator.mediaDevices.addEventListener('devicechange', refreshDevices)
     return () => navigator.mediaDevices.removeEventListener('devicechange', refreshDevices)
-  }, [])
+  }, [refreshDevices])
 
   // Restore saved device — wait until the room is connected to avoid silent failures
   useEffect(() => {
@@ -56,7 +49,9 @@ export function DeviceSelector({ kind }: DeviceSelectorProps) {
       room.switchActiveDevice(kind, saved!).catch(() => {})
     }
     room.once(RoomEvent.Connected, onConnected)
-    return () => { room.off(RoomEvent.Connected, onConnected) }
+    return () => {
+      room.off(RoomEvent.Connected, onConnected)
+    }
   }, [room, kind])
 
   async function handleSelect(deviceId: string) {
@@ -87,7 +82,8 @@ export function DeviceSelector({ kind }: DeviceSelectorProps) {
             className="flex items-center justify-between gap-2"
           >
             <span className="truncate">
-              {d.label || `${kind === 'audioinput' ? 'Microphone' : kind === 'videoinput' ? 'Camera' : 'Speaker'} ${i + 1}`}
+              {d.label ||
+                `${kind === 'audioinput' ? 'Microphone' : kind === 'videoinput' ? 'Camera' : 'Speaker'} ${i + 1}`}
             </span>
             {activeId === d.deviceId && <Check className="h-3.5 w-3.5 shrink-0" />}
           </DropdownMenuItem>

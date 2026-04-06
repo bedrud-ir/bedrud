@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
 import { useEffect } from 'react'
-import { useAuthStore } from '#/lib/auth.store'
-import { useUserStore } from '#/lib/user.store'
 import { api } from '#/lib/api'
+import { useAuthStore } from '#/lib/auth.store'
 import type { User } from '#/lib/user.store'
+import { useUserStore } from '#/lib/user.store'
 
 interface MeResponse {
   id: string

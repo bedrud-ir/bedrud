@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
+import { Ban, Check, Clock, Copy, Globe, KeyRound, Loader2, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { KeyRound, Trash2, Copy, Check, Clock, Globe, Ban, Loader2 } from 'lucide-react'
 import { api } from '#/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -34,15 +34,15 @@ function getMode(s: SystemSettings): RegMode {
 }
 
 function modeToSettings(mode: RegMode): Pick<SystemSettings, 'registrationEnabled' | 'tokenRegistrationOnly'> {
-  if (mode === 'open')   return { registrationEnabled: true,  tokenRegistrationOnly: false }
-  if (mode === 'invite') return { registrationEnabled: true,  tokenRegistrationOnly: true }
-  return                        { registrationEnabled: false, tokenRegistrationOnly: false }
+  if (mode === 'open') return { registrationEnabled: true, tokenRegistrationOnly: false }
+  if (mode === 'invite') return { registrationEnabled: true, tokenRegistrationOnly: true }
+  return { registrationEnabled: false, tokenRegistrationOnly: false }
 }
 
 const MODES: { id: RegMode; icon: React.ElementType; label: string; description: string }[] = [
-  { id: 'open',   icon: Globe,    label: 'Open',        description: 'Anyone can create an account' },
+  { id: 'open', icon: Globe, label: 'Open', description: 'Anyone can create an account' },
   { id: 'invite', icon: KeyRound, label: 'Invite-only', description: 'Valid invite token required' },
-  { id: 'closed', icon: Ban,      label: 'Closed',      description: 'No new registrations' },
+  { id: 'closed', icon: Ban, label: 'Closed', description: 'No new registrations' },
 ]
 
 function tokenExpiry(tok: InviteToken): 'used' | 'expired' | 'valid' {
@@ -76,10 +76,11 @@ function AdminSettingsPage() {
   })
 
   const createToken = useMutation({
-    mutationFn: () => api.post<InviteToken>('/api/admin/invite-tokens', {
-      email: tokenEmail || undefined,
-      expiresInHours: expiresIn,
-    }),
+    mutationFn: () =>
+      api.post<InviteToken>('/api/admin/invite-tokens', {
+        email: tokenEmail || undefined,
+        expiresInHours: expiresIn,
+      }),
     onSuccess: (token) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'invite-tokens'] })
       setNewToken(token)
@@ -143,33 +144,39 @@ function AdminSettingsPage() {
                         : 'hover:bg-accent',
                     )}
                   >
-                    <div className={cn(
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
-                      active
-                        ? id === 'closed'
-                          ? 'bg-destructive/10 text-destructive'
-                          : 'bg-primary/10 text-primary'
-                        : 'bg-muted text-muted-foreground',
-                    )}>
+                    <div
+                      className={cn(
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
+                        active
+                          ? id === 'closed'
+                            ? 'bg-destructive/10 text-destructive'
+                            : 'bg-primary/10 text-primary'
+                          : 'bg-muted text-muted-foreground',
+                      )}
+                    >
                       <Icon className="h-3.5 w-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={cn(
-                        'text-sm font-medium',
-                        active
-                          ? id === 'closed' ? 'text-destructive' : 'text-primary'
-                          : 'text-foreground',
-                      )}>
+                      <p
+                        className={cn(
+                          'text-sm font-medium',
+                          active ? (id === 'closed' ? 'text-destructive' : 'text-primary') : 'text-foreground',
+                        )}
+                      >
                         {label}
                       </p>
                       <p className="text-xs text-muted-foreground">{description}</p>
                     </div>
-                    <div className={cn(
-                      'h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center',
-                      active
-                        ? id === 'closed' ? 'border-destructive bg-destructive' : 'border-primary bg-primary'
-                        : 'border-muted-foreground/30',
-                    )}>
+                    <div
+                      className={cn(
+                        'h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center',
+                        active
+                          ? id === 'closed'
+                            ? 'border-destructive bg-destructive'
+                            : 'border-primary bg-primary'
+                          : 'border-muted-foreground/30',
+                      )}
+                    >
                       {active && <Check className="h-2 w-2 text-white" />}
                     </div>
                   </button>
@@ -222,9 +229,15 @@ function AdminSettingsPage() {
                   disabled={createToken.isPending}
                   className="inline-flex h-8 flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 sm:flex-none"
                 >
-                  {createToken.isPending
-                    ? <><Loader2 className="h-3 w-3 animate-spin" /> Generating...</>
-                    : <><KeyRound className="h-3 w-3" /> Generate</>}
+                  {createToken.isPending ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" /> Generating...
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="h-3 w-3" /> Generate
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -244,7 +257,10 @@ function AdminSettingsPage() {
                     Cancel
                   </button>
                   <button
-                    onClick={() => { setConfirmGenerate(false); createToken.mutate() }}
+                    onClick={() => {
+                      setConfirmGenerate(false)
+                      createToken.mutate()
+                    }}
                     className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground"
                   >
                     <Check className="h-3 w-3" /> Confirm
@@ -257,16 +273,20 @@ function AdminSettingsPage() {
             {newToken && (
               <div className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
                 <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                <p className="flex-1 font-mono text-[11px] text-emerald-600 dark:text-emerald-400 break-all">{newToken.token}</p>
-                <button
-                  onClick={() => copyToken(newToken)}
-                  className="shrink-0 rounded-md p-1 hover:bg-muted"
-                >
-                  {copiedId === newToken.id
-                    ? <Check className="h-3.5 w-3.5 text-emerald-500" />
-                    : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+                <p className="flex-1 font-mono text-[11px] text-emerald-600 dark:text-emerald-400 break-all">
+                  {newToken.token}
+                </p>
+                <button onClick={() => copyToken(newToken)} className="shrink-0 rounded-md p-1 hover:bg-muted">
+                  {copiedId === newToken.id ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
                 </button>
-                <button onClick={() => setNewToken(null)} className="shrink-0 text-xs text-muted-foreground hover:text-foreground">
+                <button
+                  onClick={() => setNewToken(null)}
+                  className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                >
                   ×
                 </button>
               </div>
@@ -305,7 +325,11 @@ function AdminSettingsPage() {
                     <div className="min-w-0 flex-1">
                       <p className="font-mono text-[11px] text-muted-foreground truncate">{tok.token.slice(0, 20)}…</p>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                        {tok.email && <span className="truncate text-[10px] text-muted-foreground/70 max-w-[10rem]">{tok.email}</span>}
+                        {tok.email && (
+                          <span className="truncate text-[10px] text-muted-foreground/70 max-w-[10rem]">
+                            {tok.email}
+                          </span>
+                        )}
                         <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/60">
                           <Clock className="h-2.5 w-2.5 shrink-0" />
                           {new Date(tok.expiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
@@ -313,12 +337,15 @@ function AdminSettingsPage() {
                       </div>
                     </div>
 
-                    <span className={cn(
-                      'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-                      status === 'valid'   && 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-                      status === 'expired' && 'border-destructive/30 bg-destructive/10 text-destructive',
-                      status === 'used'    && 'border-border bg-muted text-muted-foreground',
-                    )}>
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                        status === 'valid' &&
+                          'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                        status === 'expired' && 'border-destructive/30 bg-destructive/10 text-destructive',
+                        status === 'used' && 'border-border bg-muted text-muted-foreground',
+                      )}
+                    >
                       {status === 'valid' ? 'Active' : status === 'expired' ? 'Expired' : 'Used'}
                     </span>
 
@@ -329,15 +356,20 @@ function AdminSettingsPage() {
                         className="rounded-md p-1.5 hover:bg-muted disabled:pointer-events-none"
                         title="Copy"
                       >
-                        {copiedId === tok.id
-                          ? <Check className="h-3.5 w-3.5 text-emerald-500" />
-                          : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+                        {copiedId === tok.id ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
                       </button>
 
                       {confirmDeleteId === tok.id ? (
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => { deleteToken.mutate(tok.id); setConfirmDeleteId(null) }}
+                            onClick={() => {
+                              deleteToken.mutate(tok.id)
+                              setConfirmDeleteId(null)
+                            }}
                             disabled={deleteToken.isPending}
                             className="rounded-md bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground"
                           >

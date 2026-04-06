@@ -10,7 +10,11 @@
     "build": "vite build",
     "build:embed": "node scripts/embed.mjs",
     "preview": "vite preview",
-    "check": "tsc --noEmit",
+    "check": "biome check . && tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --fix .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
@@ -56,6 +60,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.10",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/devtools-vite": "latest",
     "@testing-library/dom": "^10.4.1",

@@ -11,16 +11,16 @@
  *  5. Write the captured HTML as server/frontend/index.html
  */
 
-import { spawnSync, spawn } from 'child_process'
-import { cpSync, mkdirSync, rmSync, writeFileSync, existsSync } from 'fs'
-import { resolve, dirname } from 'path'
+import { spawn, spawnSync } from 'child_process'
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
-const __dir     = dirname(fileURLToPath(import.meta.url))
-const webDir    = resolve(__dir, '..')
+const __dir = dirname(fileURLToPath(import.meta.url))
+const webDir = resolve(__dir, '..')
 const clientDir = resolve(webDir, 'dist/client')
 const targetDir = resolve(webDir, '../../server/frontend')
-const PORT      = 4173
+const PORT = 4173
 
 // ── 1. Build ─────────────────────────────────────────────────────────────────
 console.log('▶ Building React app…')
@@ -62,7 +62,9 @@ async function waitAndFetch(url, timeoutMs) {
     try {
       const res = await fetch(url)
       if (res.status < 500) return res.text()
-    } catch { /* not ready yet */ }
+    } catch {
+      /* not ready yet */
+    }
     await new Promise((r) => setTimeout(r, 250))
   }
   throw new Error(`Timed out waiting for SSR server at ${url}`)

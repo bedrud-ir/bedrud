@@ -1,10 +1,10 @@
-import React, { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { cn } from '@/lib/utils'
-import { useUserStore } from '#/lib/user.store'
+import { AlertCircle, Check, Loader2, Shield } from 'lucide-react'
+import React, { useState } from 'react'
 import { api } from '#/lib/api'
-import { Loader2, Check, Shield, AlertCircle } from 'lucide-react'
+import { useUserStore } from '#/lib/user.store'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/dashboard/settings/')({
   component: ProfilePage,
@@ -12,15 +12,19 @@ export const Route = createFileRoute('/dashboard/settings/')({
 
 function Alert({ type, message }: { type: 'success' | 'error'; message: string }) {
   return (
-    <div className={cn(
-      'flex items-center gap-2 rounded-md border px-3 py-2 text-xs',
-      type === 'success'
-        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-        : 'border-destructive/30 bg-destructive/10 text-destructive',
-    )}>
-      {type === 'success'
-        ? <Check className="h-3.5 w-3.5 shrink-0" />
-        : <AlertCircle className="h-3.5 w-3.5 shrink-0" />}
+    <div
+      className={cn(
+        'flex items-center gap-2 rounded-md border px-3 py-2 text-xs',
+        type === 'success'
+          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+          : 'border-destructive/30 bg-destructive/10 text-destructive',
+      )}
+    >
+      {type === 'success' ? (
+        <Check className="h-3.5 w-3.5 shrink-0" />
+      ) : (
+        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+      )}
       {message}
     </div>
   )
@@ -36,23 +40,37 @@ function ProfilePage() {
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     const trimmed = name.trim()
-    if (trimmed.length < 2) { setStatus({ type: 'error', message: 'Name must be at least 2 characters' }); return }
-    setIsLoading(true); setStatus(null)
+    if (trimmed.length < 2) {
+      setStatus({ type: 'error', message: 'Name must be at least 2 characters' })
+      return
+    }
+    setIsLoading(true)
+    setStatus(null)
     try {
       const updated = await api.put<{
-        id: string; name: string; email: string; provider: string
-        accesses: string[] | null; avatarUrl?: string
+        id: string
+        name: string
+        email: string
+        provider: string
+        accesses: string[] | null
+        avatarUrl?: string
       }>('/api/auth/me', { name: trimmed })
-      if (user) setUser({ ...user, name: updated.name, isAdmin: updated.accesses?.includes('superadmin') ?? user.isAdmin })
+      if (user)
+        setUser({ ...user, name: updated.name, isAdmin: updated.accesses?.includes('superadmin') ?? user.isAdmin })
       setStatus({ type: 'success', message: 'Name updated.' })
     } catch (err) {
       setStatus({ type: 'error', message: err instanceof Error ? err.message : 'Failed to update name' })
-    } finally { setIsLoading(false) }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const rows = [
     { label: 'Account ID', value: user?.id ?? '—', mono: true },
-    { label: 'Sign-in method', value: user?.provider ? user.provider.charAt(0).toUpperCase() + user.provider.slice(1) : '—' },
+    {
+      label: 'Sign-in method',
+      value: user?.provider ? user.provider.charAt(0).toUpperCase() + user.provider.slice(1) : '—',
+    },
     { label: 'Role', value: user?.isAdmin ? 'Superadmin' : 'User' },
   ]
 
@@ -66,11 +84,16 @@ function ProfilePage() {
         </div>
         <form onSubmit={handleSubmit} className="space-y-3 p-5">
           <div className="space-y-1.5">
-            <label htmlFor="settings-name" className="text-xs font-medium text-muted-foreground">Display name</label>
+            <label htmlFor="settings-name" className="text-xs font-medium text-muted-foreground">
+              Display name
+            </label>
             <Input
               id="settings-name"
               value={name}
-              onChange={(e) => { setName(e.target.value); setStatus(null) }}
+              onChange={(e) => {
+                setName(e.target.value)
+                setStatus(null)
+              }}
               placeholder="Your name"
               className="h-9 text-sm"
             />

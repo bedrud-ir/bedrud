@@ -1,22 +1,22 @@
-import { useState } from 'react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
 import {
+  AlertCircle,
+  Check,
   Globe,
+  Loader2,
   Lock,
   MessageSquare,
   Mic,
-  ShieldCheck,
-  Users,
-  Video,
-  Loader2,
-  AlertCircle,
-  UserCheck,
-  Check,
   Minus,
   Plus,
+  ShieldCheck,
+  UserCheck,
+  Users,
+  Video,
 } from 'lucide-react'
+import { useState } from 'react'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { getErrorMessage } from '@/lib/errors'
+import { cn } from '@/lib/utils'
 
 interface RoomSettings {
   allowChat: boolean
@@ -38,7 +38,10 @@ interface Props {
   room: Room
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (roomId: string, data: { isPublic: boolean; maxParticipants: number; settings: RoomSettings }) => Promise<void>
+  onSave: (
+    roomId: string,
+    data: { isPublic: boolean; maxParticipants: number; settings: RoomSettings },
+  ) => Promise<void>
 }
 
 const FEATURES = [
@@ -91,9 +94,7 @@ export function RoomSettingsDialog({ room, open, onOpenChange, onSave }: Props) 
           {/* Room name as header */}
           <div className="px-5 pt-5 pb-4">
             <p className="font-mono text-lg font-semibold tracking-tight">{room.name}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground/50">
-              Room settings
-            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground/50">Room settings</p>
           </div>
 
           {/* Visibility + Capacity — single row */}
@@ -104,9 +105,7 @@ export function RoomSettingsDialog({ room, open, onOpenChange, onSave }: Props) 
                 onClick={() => setIsPublic(false)}
                 className={cn(
                   'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-                  !isPublic
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground',
+                  !isPublic ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 <Lock className="h-3 w-3" />
@@ -117,9 +116,7 @@ export function RoomSettingsDialog({ room, open, onOpenChange, onSave }: Props) 
                 onClick={() => setIsPublic(true)}
                 className={cn(
                   'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-                  isPublic
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground',
+                  isPublic ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 <Globe className="h-3 w-3" />
@@ -186,9 +183,13 @@ export function RoomSettingsDialog({ room, open, onOpenChange, onSave }: Props) 
               className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {isLoading ? (
-                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving...</>
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving...
+                </>
               ) : (
-                <>Save changes <Check className="h-3.5 w-3.5" /></>
+                <>
+                  Save changes <Check className="h-3.5 w-3.5" />
+                </>
               )}
             </button>
           </div>

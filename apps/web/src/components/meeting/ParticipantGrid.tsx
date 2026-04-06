@@ -28,12 +28,18 @@ export function ParticipantGrid({ pinnedIdentities, onTogglePin }: ParticipantGr
   if (participants.length === 0) {
     return (
       <div style={gridArea} className="flex flex-col items-center justify-center gap-5">
-        <div style={{
-          width: 80, height: 80, borderRadius: '50%',
-          background: 'rgba(99,102,241,0.1)',
-          border: '1px solid rgba(99,102,241,0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+        <div
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            background: 'rgba(99,102,241,0.1)',
+            border: '1px solid rgba(99,102,241,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           <Video size={32} style={{ color: 'rgba(99,102,241,0.55)' }} />
         </div>
         <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>Waiting for others to join…</p>

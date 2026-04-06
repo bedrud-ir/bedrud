@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
 import { Radio } from 'lucide-react'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAuthStore } from '#/lib/auth.store'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export const Route = createFileRoute('/auth')({
   beforeLoad: () => {
@@ -62,15 +62,24 @@ function AuthLayout() {
         {/* Aurora blobs */}
         <div
           className="pointer-events-none absolute -left-20 -top-20 h-80 w-80 rounded-full blur-3xl"
-          style={{ background: 'radial-gradient(circle, #6366f130, transparent 70%)', animation: 'blob 9s ease-in-out infinite' }}
+          style={{
+            background: 'radial-gradient(circle, #6366f130, transparent 70%)',
+            animation: 'blob 9s ease-in-out infinite',
+          }}
         />
         <div
           className="pointer-events-none absolute -bottom-16 -right-16 h-72 w-72 rounded-full blur-3xl"
-          style={{ background: 'radial-gradient(circle, #8b5cf625, transparent 70%)', animation: 'blob 12s ease-in-out 3s infinite' }}
+          style={{
+            background: 'radial-gradient(circle, #8b5cf625, transparent 70%)',
+            animation: 'blob 12s ease-in-out 3s infinite',
+          }}
         />
         <div
           className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-48 rounded-full blur-2xl"
-          style={{ background: 'radial-gradient(circle, #06b6d415, transparent 70%)', animation: 'blob 15s ease-in-out 6s infinite' }}
+          style={{
+            background: 'radial-gradient(circle, #06b6d415, transparent 70%)',
+            animation: 'blob 15s ease-in-out 6s infinite',
+          }}
         />
 
         {/* Logo */}
@@ -92,7 +101,8 @@ function AuthLayout() {
           <Waveform />
           <div className="space-y-4">
             <p className="text-2xl font-bold leading-snug text-white">
-              Voice-first meetings,<br />
+              Voice-first meetings,
+              <br />
               <span
                 className="bg-clip-text text-transparent"
                 style={{ backgroundImage: 'linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #22d3ee 100%)' }}
@@ -101,8 +111,7 @@ function AuthLayout() {
               </span>
             </p>
             <p className="text-sm leading-relaxed text-white/40">
-              Instant rooms. No installs. Just open a room and
-              start talking — with anyone, anywhere.
+              Instant rooms. No installs. Just open a room and start talking — with anyone, anywhere.
             </p>
           </div>
 
@@ -121,9 +130,7 @@ function AuthLayout() {
         </div>
 
         {/* Bottom */}
-        <p className="relative text-xs text-white/20">
-          © {new Date().getFullYear()} Bedrud
-        </p>
+        <p className="relative text-xs text-white/20">© {new Date().getFullYear()} Bedrud</p>
       </div>
 
       {/* ── Right form panel ───────────────────────────────────────────── */}

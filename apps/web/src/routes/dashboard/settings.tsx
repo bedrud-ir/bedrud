@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router'
+import { Lock, Mic, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { User, Lock, Mic } from 'lucide-react'
 
 export const Route = createFileRoute('/dashboard/settings')({
   component: SettingsLayout,
@@ -34,9 +34,7 @@ function SettingsLayout() {
               to={to}
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                active
-                  ? 'bg-background text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground',
+                active ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />

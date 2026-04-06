@@ -25,12 +25,7 @@ function parseErrorPayload(payload: string): string | null {
 }
 
 export function getErrorMessage(error: unknown, fallback: string): string {
-  const raw =
-    error instanceof Error
-      ? error.message
-      : typeof error === 'string'
-        ? error
-        : ''
+  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
 
   const normalized = raw.replace(/^\d{3}:\s*/s, '').trim()
 

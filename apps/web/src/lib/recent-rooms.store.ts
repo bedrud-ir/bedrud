@@ -21,13 +21,9 @@ export const useRecentRoomsStore = create<RecentRoomsState>()(
       rooms: [],
       add: (name) =>
         set((s) => ({
-          rooms: [
-            { name, joinedAt: Date.now() },
-            ...s.rooms.filter((r) => r.name !== name),
-          ].slice(0, MAX_RECENT),
+          rooms: [{ name, joinedAt: Date.now() }, ...s.rooms.filter((r) => r.name !== name)].slice(0, MAX_RECENT),
         })),
-      remove: (name) =>
-        set((s) => ({ rooms: s.rooms.filter((r) => r.name !== name) })),
+      remove: (name) => set((s) => ({ rooms: s.rooms.filter((r) => r.name !== name) })),
       clear: () => set({ rooms: [] }),
     }),
     { name: 'bedrud-recent-rooms' },

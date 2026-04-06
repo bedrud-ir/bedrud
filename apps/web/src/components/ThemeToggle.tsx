@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { resolveTheme, useThemeStore } from '#/lib/theme.store'
 import { Button } from '@/components/ui/button'
-import { useThemeStore, resolveTheme } from '#/lib/theme.store'
 
 export function ThemeToggle() {
   const { theme, setTheme } = useThemeStore()
@@ -22,10 +22,7 @@ export function ThemeToggle() {
       return
     }
 
-    const endRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y),
-    )
+    const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
 
     const transition = document.startViewTransition(() => {
       // Toggle the class synchronously so startViewTransition
@@ -37,10 +34,7 @@ export function ThemeToggle() {
     transition.ready.then(() => {
       document.documentElement.animate(
         {
-          clipPath: [
-            `circle(0px at ${x}px ${y}px)`,
-            `circle(${endRadius}px at ${x}px ${y}px)`,
-          ],
+          clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`],
         },
         {
           duration: 400,

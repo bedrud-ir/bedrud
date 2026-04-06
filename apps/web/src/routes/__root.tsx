@@ -1,12 +1,12 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router'
 import { useEffect } from 'react'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore – CSS-only package, no TS declarations needed
+// @ts-expect-error – CSS-only package, no TS declarations needed
 import '@livekit/components-styles/components'
 
+import { applyTheme, useThemeStore } from '#/lib/theme.store'
 import appCss from '../styles.css?url'
-import { useThemeStore, applyTheme } from '#/lib/theme.store'
 
 // Inline script that runs before first paint to avoid theme flash.
 // Reads the persisted Zustand value from localStorage directly.
@@ -63,9 +63,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="font-sans antialiased">
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
         <Scripts />
       </body>
     </html>

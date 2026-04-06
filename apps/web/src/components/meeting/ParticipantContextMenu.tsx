@@ -1,11 +1,23 @@
-import { type ComponentType, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ConnectionQuality, Track, type Participant } from 'livekit-client'
 import type { LocalAudioTrack, RemoteAudioTrack } from 'livekit-client'
+import { ConnectionQuality, type Participant, Track } from 'livekit-client'
 import {
-  MicOff, EarOff, ShieldCheck, ShieldOff,
-  UserX, Ban, MoreVertical, Volume2, VolumeX,
-  Activity, Loader2,
+  Activity,
+  Ban,
+  EarOff,
+  Loader2,
+  MicOff,
+  MoreVertical,
+  ShieldCheck,
+  ShieldOff,
+  UserX,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
+import { type ComponentType, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { api } from '#/lib/api'
+import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
+import { selectIsMuted, selectVolume, useParticipantOverridesStore } from '#/lib/participant-overrides.store'
+import { useMeetingContext } from '@/components/meeting/MeetingContext'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -22,14 +34,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useMeetingContext } from '@/components/meeting/MeetingContext'
-import {
-  useParticipantOverridesStore,
-  selectIsMuted,
-  selectVolume,
-} from '#/lib/participant-overrides.store'
-import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
-import { api } from '#/lib/api'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -39,15 +43,19 @@ interface ParticipantMeta {
 }
 
 function parseMeta(raw: string | undefined): ParticipantMeta {
-  try { return JSON.parse(raw ?? '{}') } catch { return {} }
+  try {
+    return JSON.parse(raw ?? '{}')
+  } catch {
+    return {}
+  }
 }
 
 interface StatsData {
   quality: 'excellent' | 'good' | 'poor' | 'unknown'
-  codec?: string       // e.g. "OPUS"
-  ping?: number        // ms (RTT from WebRTC candidate-pair stats)
-  bandwidth?: number   // kbps (available incoming/outgoing bitrate)
-  ip?: string          // admin-only, from backend
+  codec?: string // e.g. "OPUS"
+  ping?: number // ms (RTT from WebRTC candidate-pair stats)
+  bandwidth?: number // kbps (available incoming/outgoing bitrate)
+  ip?: string // admin-only, from backend
 }
 
 const QUAL_COLOR: Record<StatsData['quality'], string> = {
@@ -98,7 +106,9 @@ async function collectWebRTCStats(participant: Participant): Promise<Partial<Sta
     } else {
       report = await (audioPub.track as RemoteAudioTrack).receiver?.getStats()
     }
-  } catch { return {} }
+  } catch {
+    return {}
+  }
 
   if (!report) return {}
 
@@ -127,13 +137,7 @@ async function collectWebRTCStats(participant: Participant): Promise<Partial<Sta
 
 // ─── Shared menu content ──────────────────────────────────────────────────────
 
-export function ParticipantMenuContent({
-  participant,
-  Item,
-  Separator,
-  Label,
-  onClose,
-}: ParticipantMenuContentProps) {
+export function ParticipantMenuContent({ participant, Item, Separator, Label, onClose }: ParticipantMenuContentProps) {
   const { roomId, adminId, isAdmin, isModerator, isCreator } = useMeetingContext()
   const identity = participant.identity
   const isSelf = participant.isLocal
@@ -197,9 +201,11 @@ export function ParticipantMenuContent({
           try {
             const data = await api.get<{ ip?: string }>(`/api/room/${roomId}/participant/${identity}/info`)
             if (!cancelled && data?.ip) {
-              setStats((prev) => prev ? { ...prev, ip: data.ip } : null)
+              setStats((prev) => (prev ? { ...prev, ip: data.ip } : null))
             }
-          } catch { /* not critical */ }
+          } catch {
+            /* not critical */
+          }
         }
 
         await new Promise<void>((r) => setTimeout(r, 1500))
@@ -207,12 +213,14 @@ export function ParticipantMenuContent({
     }
 
     poll()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [statsOpen, quality, participant, isAdmin, isCreator, isSelf, roomId, identity])
 
   // Keep quality up-to-date even without stats open
   useEffect(() => {
-    if (statsOpen) setStats((prev) => prev ? { ...prev, quality } : null)
+    if (statsOpen) setStats((prev) => (prev ? { ...prev, quality } : null))
   }, [quality, statsOpen])
 
   async function act(key: string, path: string) {
@@ -229,7 +237,10 @@ export function ParticipantMenuContent({
 
   const handleToggleStats = useCallback(() => {
     setStatsOpen((o) => {
-      if (!o) { setStats(null); ipFetchedRef.current = false }
+      if (!o) {
+        setStats(null)
+        ipFetchedRef.current = false
+      }
       return !o
     })
   }, [])
@@ -249,10 +260,11 @@ export function ParticipantMenuContent({
               onClick={() => act('demote', `/api/room/${roomId}/demote/${identity}`)}
               style={ITEM_STYLE}
             >
-              {loading === 'demote'
-                ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8, flexShrink: 0 }} />
-                : <ShieldOff size={13} style={{ marginRight: 8, flexShrink: 0 }} />
-              }
+              {loading === 'demote' ? (
+                <Loader2 size={13} className="animate-spin" style={{ marginRight: 8, flexShrink: 0 }} />
+              ) : (
+                <ShieldOff size={13} style={{ marginRight: 8, flexShrink: 0 }} />
+              )}
               Demote from Moderator
             </Item>
           ) : (
@@ -261,10 +273,11 @@ export function ParticipantMenuContent({
               onClick={() => act('promote', `/api/room/${roomId}/promote/${identity}`)}
               style={ITEM_STYLE}
             >
-              {loading === 'promote'
-                ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8, flexShrink: 0 }} />
-                : <ShieldCheck size={13} style={{ marginRight: 8, flexShrink: 0 }} />
-              }
+              {loading === 'promote' ? (
+                <Loader2 size={13} className="animate-spin" style={{ marginRight: 8, flexShrink: 0 }} />
+              ) : (
+                <ShieldCheck size={13} style={{ marginRight: 8, flexShrink: 0 }} />
+              )}
               Promote to Moderator
             </Item>
           )}
@@ -280,10 +293,11 @@ export function ParticipantMenuContent({
             onClick={() => act('kick', `/api/room/${roomId}/kick/${identity}`)}
             style={{ color: '#f87171', fontSize: 13 }}
           >
-            {loading === 'kick'
-              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8, flexShrink: 0 }} />
-              : <UserX size={13} style={{ marginRight: 8, flexShrink: 0 }} />
-            }
+            {loading === 'kick' ? (
+              <Loader2 size={13} className="animate-spin" style={{ marginRight: 8, flexShrink: 0 }} />
+            ) : (
+              <UserX size={13} style={{ marginRight: 8, flexShrink: 0 }} />
+            )}
             Kick
           </Item>
           <Item
@@ -291,10 +305,11 @@ export function ParticipantMenuContent({
             onClick={() => act('ban', `/api/room/${roomId}/ban/${identity}`)}
             style={{ color: '#f87171', fontSize: 13 }}
           >
-            {loading === 'ban'
-              ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8, flexShrink: 0 }} />
-              : <Ban size={13} style={{ marginRight: 8, flexShrink: 0 }} />
-            }
+            {loading === 'ban' ? (
+              <Loader2 size={13} className="animate-spin" style={{ marginRight: 8, flexShrink: 0 }} />
+            ) : (
+              <Ban size={13} style={{ marginRight: 8, flexShrink: 0 }} />
+            )}
             Ban
           </Item>
           <Separator style={SEP_STYLE} />
@@ -308,10 +323,11 @@ export function ParticipantMenuContent({
 
           {/* 3 — Client-side mute (like Discord) */}
           <Item onClick={() => toggleMute(identity)} style={ITEM_STYLE}>
-            {isMuted
-              ? <VolumeX size={13} style={{ marginRight: 8, flexShrink: 0 }} />
-              : <Volume2 size={13} style={{ marginRight: 8, flexShrink: 0 }} />
-            }
+            {isMuted ? (
+              <VolumeX size={13} style={{ marginRight: 8, flexShrink: 0 }} />
+            ) : (
+              <Volume2 size={13} style={{ marginRight: 8, flexShrink: 0 }} />
+            )}
             {isMuted ? 'Unmute (local)' : 'Mute (local)'}
           </Item>
 
@@ -330,7 +346,15 @@ export function ParticipantMenuContent({
               onChange={(e) => setVolume(identity, Number(e.target.value) / 100)}
               style={{ flex: 1, accentColor: '#6366f1', height: 3, cursor: 'pointer' }}
             />
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', minWidth: 32, textAlign: 'right', fontFamily: 'monospace' }}>
+            <span
+              style={{
+                fontSize: 10,
+                color: 'rgba(255,255,255,0.4)',
+                minWidth: 32,
+                textAlign: 'right',
+                fontFamily: 'monospace',
+              }}
+            >
               {Math.round(volume * 100)}%
             </span>
           </div>
@@ -343,10 +367,11 @@ export function ParticipantMenuContent({
                 onClick={() => act('srvmute', `/api/room/${roomId}/mute/${identity}`)}
                 style={ITEM_STYLE}
               >
-                {loading === 'srvmute'
-                  ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
-                  : <MicOff size={13} style={{ marginRight: 8 }} />
-                }
+                {loading === 'srvmute' ? (
+                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
+                ) : (
+                  <MicOff size={13} style={{ marginRight: 8 }} />
+                )}
                 Server Mute
               </Item>
               <Item
@@ -354,10 +379,11 @@ export function ParticipantMenuContent({
                 onClick={() => act('deafen', `/api/room/${roomId}/deafen/${identity}`)}
                 style={ITEM_STYLE}
               >
-                {loading === 'deafen'
-                  ? <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
-                  : <EarOff size={13} style={{ marginRight: 8 }} />
-                }
+                {loading === 'deafen' ? (
+                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 8 }} />
+                ) : (
+                  <EarOff size={13} style={{ marginRight: 8 }} />
+                )}
                 Deafen
               </Item>
             </>
@@ -374,16 +400,29 @@ export function ParticipantMenuContent({
             role="menuitem"
             tabIndex={0}
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); handleToggleStats() }}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggleStats() }}
-            style={{
-              display: 'flex', alignItems: 'center',
-              padding: '6px 8px', borderRadius: 4,
-              cursor: 'pointer', userSelect: 'none',
-              color: 'rgba(255,255,255,0.6)', fontSize: 13,
+            onClick={(e) => {
+              e.stopPropagation()
+              handleToggleStats()
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') handleToggleStats()
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '6px 8px',
+              borderRadius: 4,
+              cursor: 'pointer',
+              userSelect: 'none',
+              color: 'rgba(255,255,255,0.6)',
+              fontSize: 13,
+            }}
+            onMouseEnter={(e) => {
+              ;(e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)'
+            }}
+            onMouseLeave={(e) => {
+              ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
+            }}
           >
             <Activity size={13} style={{ marginRight: 8, flexShrink: 0 }} />
             {statsOpen ? 'Hide Stats' : 'Connection Stats'}
@@ -399,7 +438,9 @@ export function ParticipantMenuContent({
                 borderRadius: 7,
                 background: 'rgba(255,255,255,0.04)',
                 border: '1px solid rgba(255,255,255,0.08)',
-                display: 'flex', flexDirection: 'column', gap: 5,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 5,
               }}
             >
               {statsLoading && !stats ? (
@@ -426,7 +467,12 @@ export function ParticipantMenuContent({
 
                   {stats?.ping != null && (
                     <StatRow label="Ping">
-                      <span style={{ color: stats.ping < 80 ? '#34d399' : stats.ping < 200 ? '#fbbf24' : '#f87171', fontFamily: 'monospace' }}>
+                      <span
+                        style={{
+                          color: stats.ping < 80 ? '#34d399' : stats.ping < 200 ? '#fbbf24' : '#f87171',
+                          fontFamily: 'monospace',
+                        }}
+                      >
                         {stats.ping} ms
                       </span>
                     </StatRow>
@@ -440,9 +486,7 @@ export function ParticipantMenuContent({
 
                   {(isAdmin || isCreator) && !isSelf && stats?.ip && (
                     <StatRow label="IP">
-                      <span style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.75)' }}>
-                        {stats.ip}
-                      </span>
+                      <span style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.75)' }}>{stats.ip}</span>
                     </StatRow>
                   )}
 
@@ -507,7 +551,9 @@ export function ParticipantContextMenu({ participant, isPinned, onTogglePin, chi
           )}
           Separator={({ className, style }) => <ContextMenuSeparator className={className} style={style} />}
           Label={({ className, style, children: c }) => (
-            <ContextMenuLabel className={className} style={style}>{c}</ContextMenuLabel>
+            <ContextMenuLabel className={className} style={style}>
+              {c}
+            </ContextMenuLabel>
           )}
         />
       </ContextMenuContent>
@@ -533,10 +579,16 @@ export function ParticipantMenuButton({ participant, isPinned, onTogglePin }: Bu
           aria-label="Participant options"
           onClick={(e) => e.stopPropagation()}
           style={{
-            width: 24, height: 24, borderRadius: 6,
-            background: 'transparent', border: 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'rgba(255,255,255,0.5)',
+            cursor: 'pointer',
           }}
         >
           <MoreVertical size={12} />
@@ -558,8 +610,10 @@ export function ParticipantMenuButton({ participant, isPinned, onTogglePin }: Bu
             <DropdownMenuLabel
               className={className}
               style={{
-                fontSize: 10, fontWeight: 600,
-                letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase' as const,
                 color: 'rgba(255,255,255,0.3)',
                 padding: '4px 8px 2px',
                 ...style,
@@ -573,4 +627,3 @@ export function ParticipantMenuButton({ participant, isPinned, onTogglePin }: Bu
     </DropdownMenu>
   )
 }
-

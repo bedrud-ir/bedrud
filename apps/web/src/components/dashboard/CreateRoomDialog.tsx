@@ -1,22 +1,22 @@
-import { useState } from 'react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
 import {
+  AlertCircle,
+  ArrowRight,
   Globe,
+  Loader2,
   Lock,
   MessageSquare,
   Mic,
-  ShieldCheck,
-  Users,
-  Video,
-  Loader2,
-  AlertCircle,
-  UserCheck,
-  ArrowRight,
   Minus,
   Plus,
+  ShieldCheck,
+  UserCheck,
+  Users,
+  Video,
 } from 'lucide-react'
+import { useState } from 'react'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { getErrorMessage } from '@/lib/errors'
+import { cn } from '@/lib/utils'
 
 interface RoomSettings {
   allowChat: boolean
@@ -117,9 +117,7 @@ export function CreateRoomDialog({ open, onOpenChange, onCreate }: Props) {
               autoFocus
               className="w-full bg-transparent font-mono text-lg font-semibold tracking-tight outline-none placeholder:text-muted-foreground/30"
             />
-            <p className="mt-1 text-[11px] text-muted-foreground/50">
-              Leave blank to auto-generate
-            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground/50">Leave blank to auto-generate</p>
           </div>
 
           {/* Visibility + Capacity — single row */}
@@ -130,9 +128,7 @@ export function CreateRoomDialog({ open, onOpenChange, onCreate }: Props) {
                 onClick={() => setIsPublic(false)}
                 className={cn(
                   'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-                  !isPublic
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground',
+                  !isPublic ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 <Lock className="h-3 w-3" />
@@ -143,9 +139,7 @@ export function CreateRoomDialog({ open, onOpenChange, onCreate }: Props) {
                 onClick={() => setIsPublic(true)}
                 className={cn(
                   'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-                  isPublic
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground',
+                  isPublic ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 <Globe className="h-3 w-3" />
@@ -212,9 +206,13 @@ export function CreateRoomDialog({ open, onOpenChange, onCreate }: Props) {
               className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {isLoading ? (
-                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating...</>
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating...
+                </>
               ) : (
-                <>Create & join <ArrowRight className="h-3.5 w-3.5" /></>
+                <>
+                  Create & join <ArrowRight className="h-3.5 w-3.5" />
+                </>
               )}
             </button>
           </div>

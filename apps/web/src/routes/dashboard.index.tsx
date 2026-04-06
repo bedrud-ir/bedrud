@@ -1,6 +1,5 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
   AlertCircle,
   ArrowRight,
@@ -15,13 +14,14 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useState } from 'react'
+import { api } from '#/lib/api'
+import { type RecentRoom, useRecentRoomsStore } from '#/lib/recent-rooms.store'
+import { useUserStore } from '#/lib/user.store'
 import { CreateRoomDialog } from '@/components/dashboard/CreateRoomDialog'
 import { RoomSettingsDialog } from '@/components/dashboard/RoomSettingsDialog'
 import { getErrorMessage } from '@/lib/errors'
-import { useUserStore } from '#/lib/user.store'
-import { useRecentRoomsStore, type RecentRoom } from '#/lib/recent-rooms.store'
-import { api } from '#/lib/api'
+import { cn } from '@/lib/utils'
 
 interface Room {
   id: string
@@ -56,13 +56,7 @@ function timeAgo(ts: number): string {
 
 // ── Quick Join Bar ───────────────────────────────────────────────────────────
 
-function QuickJoinBar({
-  onJoin,
-  onCreate,
-}: {
-  onJoin: (name: string) => void
-  onCreate: () => void
-}) {
+function QuickJoinBar({ onJoin, onCreate }: { onJoin: (name: string) => void; onCreate: () => void }) {
   const [value, setValue] = useState('')
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -161,16 +155,10 @@ function RoomRow({
       {/* Status dot + name */}
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <span
-          className={cn(
-            'h-2 w-2 shrink-0 rounded-full',
-            room.isActive ? 'bg-emerald-500' : 'bg-muted-foreground/20',
-          )}
+          className={cn('h-2 w-2 shrink-0 rounded-full', room.isActive ? 'bg-emerald-500' : 'bg-muted-foreground/20')}
           title={room.isActive ? 'Live' : 'Inactive'}
         />
-        <button
-          onClick={onJoin}
-          className="min-w-0 truncate font-mono text-sm font-medium hover:underline"
-        >
+        <button onClick={onJoin} className="min-w-0 truncate font-mono text-sm font-medium hover:underline">
           {room.name}
         </button>
       </div>
@@ -239,15 +227,7 @@ function RoomRow({
 
 // ── Recent Room Row ──────────────────────────────────────────────────────────
 
-function RecentRoomRow({
-  recent,
-  onJoin,
-  onRemove,
-}: {
-  recent: RecentRoom
-  onJoin: () => void
-  onRemove: () => void
-}) {
+function RecentRoomRow({ recent, onJoin, onRemove }: { recent: RecentRoom; onJoin: () => void; onRemove: () => void }) {
   return (
     <div className="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-accent/50">
       <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
@@ -359,9 +339,7 @@ function DashboardPage() {
       return a.name.localeCompare(b.name)
     })
 
-  const filteredRecent = recentRooms.filter(
-    (r) => !normalizedQuery || r.name.toLowerCase().includes(normalizedQuery),
-  )
+  const filteredRecent = recentRooms.filter((r) => !normalizedQuery || r.name.toLowerCase().includes(normalizedQuery))
 
   const firstName = user?.name?.split(' ')[0]
 
@@ -369,12 +347,8 @@ function DashboardPage() {
     <div className="mx-auto max-w-3xl space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">
-          {firstName ? `${firstName}'s rooms` : 'Rooms'}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Create, join, or manage your meeting rooms.
-        </p>
+        <h1 className="text-lg font-semibold tracking-tight">{firstName ? `${firstName}'s rooms` : 'Rooms'}</h1>
+        <p className="text-sm text-muted-foreground">Create, join, or manage your meeting rooms.</p>
       </div>
 
       {/* Quick Join + New Room */}
@@ -395,9 +369,7 @@ function DashboardPage() {
             onClick={() => setTab('rooms')}
             className={cn(
               'rounded-md px-3 py-1 text-sm font-medium transition-colors',
-              tab === 'rooms'
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground',
+              tab === 'rooms' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground',
             )}
           >
             My Rooms
@@ -407,9 +379,7 @@ function DashboardPage() {
             onClick={() => setTab('recent')}
             className={cn(
               'rounded-md px-3 py-1 text-sm font-medium transition-colors',
-              tab === 'recent'
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground',
+              tab === 'recent' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground',
             )}
           >
             Recent
@@ -432,80 +402,67 @@ function DashboardPage() {
 
       {/* Content */}
       <div className="rounded-xl border bg-card/50">
-        {tab === 'rooms' && (
-          <>
-            {isLoading ? (
-              <div className="p-2">
-                <SkeletonRows />
-              </div>
-            ) : filtered.length > 0 ? (
-              <div className="divide-y divide-border/50 p-1">
-                {filtered.map((room) => (
-                  <RoomRow
-                    key={room.id}
-                    room={room}
-                    onJoin={() => handleJoin(room.name)}
-                    onDelete={() => handleDelete(room.id)}
-                    onSettings={() => setSettingsRoom(room)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="px-4 py-12 text-center">
-                {(rooms?.length ?? 0) > 0 ? (
-                  <>
-                    <p className="text-sm font-medium">No rooms match "{query}"</p>
-                    <button
-                      onClick={() => setQuery('')}
-                      className="mt-2 text-sm text-primary hover:underline"
-                    >
-                      Clear filter
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm font-medium">No rooms yet</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Create your first room to get started.
-                    </p>
-                    <button
-                      onClick={() => setCreateOpen(true)}
-                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      New room
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </>
-        )}
+        {tab === 'rooms' &&
+          (isLoading ? (
+            <div className="p-2">
+              <SkeletonRows />
+            </div>
+          ) : filtered.length > 0 ? (
+            <div className="divide-y divide-border/50 p-1">
+              {filtered.map((room) => (
+                <RoomRow
+                  key={room.id}
+                  room={room}
+                  onJoin={() => handleJoin(room.name)}
+                  onDelete={() => handleDelete(room.id)}
+                  onSettings={() => setSettingsRoom(room)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 py-12 text-center">
+              {(rooms?.length ?? 0) > 0 ? (
+                <>
+                  <p className="text-sm font-medium">No rooms match "{query}"</p>
+                  <button onClick={() => setQuery('')} className="mt-2 text-sm text-primary hover:underline">
+                    Clear filter
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium">No rooms yet</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Create your first room to get started.</p>
+                  <button
+                    onClick={() => setCreateOpen(true)}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    New room
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
 
-        {tab === 'recent' && (
-          <>
-            {filteredRecent.length > 0 ? (
-              <div className="divide-y divide-border/50 p-1">
-                {filteredRecent.map((recent) => (
-                  <RecentRoomRow
-                    key={recent.name}
-                    recent={recent}
-                    onJoin={() => handleJoin(recent.name)}
-                    onRemove={() => removeRecent(recent.name)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="px-4 py-12 text-center">
-                <Clock className="mx-auto h-5 w-5 text-muted-foreground/30" />
-                <p className="mt-2 text-sm font-medium">No recent rooms</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Rooms you join will appear here for quick access.
-                </p>
-              </div>
-            )}
-          </>
-        )}
+        {tab === 'recent' &&
+          (filteredRecent.length > 0 ? (
+            <div className="divide-y divide-border/50 p-1">
+              {filteredRecent.map((recent) => (
+                <RecentRoomRow
+                  key={recent.name}
+                  recent={recent}
+                  onJoin={() => handleJoin(recent.name)}
+                  onRemove={() => removeRecent(recent.name)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 py-12 text-center">
+              <Clock className="mx-auto h-5 w-5 text-muted-foreground/30" />
+              <p className="mt-2 text-sm font-medium">No recent rooms</p>
+              <p className="mt-1 text-xs text-muted-foreground">Rooms you join will appear here for quick access.</p>
+            </div>
+          ))}
       </div>
 
       <CreateRoomDialog open={createOpen} onOpenChange={setCreateOpen} onCreate={handleCreate} />

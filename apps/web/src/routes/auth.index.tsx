@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
 import { ArrowRight, Loader2, UserRound } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useState } from 'react'
+import { api } from '#/lib/api'
 import { useAuthStore } from '#/lib/auth.store'
 import { useUserStore } from '#/lib/user.store'
-import { api } from '#/lib/api'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 export const Route = createFileRoute('/auth/')({ component: GuestPage })
 
@@ -25,13 +25,24 @@ function GuestPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = name.trim()
-    if (trimmed.length < 2) { setError('Name must be at least 2 characters'); return }
+    if (trimmed.length < 2) {
+      setError('Name must be at least 2 characters')
+      return
+    }
     setError('')
     setIsLoading(true)
     try {
       const res = await api.post<AuthResponse>('/api/auth/guest-login', { name: trimmed })
       setTokens(res.tokens)
-      setUser({ id: res.user.id, email: res.user.email, name: res.user.name, provider: res.user.provider, isAdmin: false, accesses: res.user.accesses ?? [], avatarUrl: res.user.avatarUrl })
+      setUser({
+        id: res.user.id,
+        email: res.user.email,
+        name: res.user.name,
+        provider: res.user.provider,
+        isAdmin: false,
+        accesses: res.user.accesses ?? [],
+        avatarUrl: res.user.avatarUrl,
+      })
       navigate({ to: '/dashboard' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -48,9 +59,7 @@ function GuestPage() {
           <UserRound className="h-5 w-5" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight">Join as guest</h1>
-        <p className="text-sm text-muted-foreground">
-          No account needed — just pick a name and you're in.
-        </p>
+        <p className="text-sm text-muted-foreground">No account needed — just pick a name and you're in.</p>
       </div>
 
       {/* Form */}
@@ -63,7 +72,10 @@ function GuestPage() {
             id="guest-name"
             placeholder="What should we call you?"
             value={name}
-            onChange={(e) => { setName(e.target.value); setError('') }}
+            onChange={(e) => {
+              setName(e.target.value)
+              setError('')
+            }}
             autoFocus
             autoComplete="nickname"
           />
@@ -71,9 +83,16 @@ function GuestPage() {
         </div>
 
         <Button type="submit" className="w-full gap-2" disabled={isLoading}>
-          {isLoading
-            ? <><Loader2 className="h-4 w-4 animate-spin" /> Joining…</>
-            : <> Continue as guest <ArrowRight className="h-4 w-4" /></>}
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Joining…
+            </>
+          ) : (
+            <>
+              {' '}
+              Continue as guest <ArrowRight className="h-4 w-4" />
+            </>
+          )}
         </Button>
       </form>
 
@@ -83,9 +102,7 @@ function GuestPage() {
           <div className="w-full border-t" />
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-background px-3 text-xs text-muted-foreground">
-            have an account?
-          </span>
+          <span className="bg-background px-3 text-xs text-muted-foreground">have an account?</span>
         </div>
       </div>
 

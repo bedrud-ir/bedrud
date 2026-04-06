@@ -26,7 +26,7 @@ export function useLongPress(callback: (e: React.PointerEvent) => void, ms = 500
         timerRef.current = null
       }, ms)
     },
-    [callback, ms]
+    [callback, ms],
   )
 
   const onPointerMove = useCallback(
@@ -37,7 +37,7 @@ export function useLongPress(callback: (e: React.PointerEvent) => void, ms = 500
       // Cancel if the pointer has drifted more than 10px — user is scrolling, not pressing
       if (Math.sqrt(dx * dx + dy * dy) > 10) cancel()
     },
-    [cancel]
+    [cancel],
   )
 
   return {

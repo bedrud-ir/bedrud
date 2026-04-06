@@ -12,13 +12,7 @@ function getCtx(): AudioContext {
   return ctx
 }
 
-function tone(
-  freq: number,
-  duration: number,
-  type: OscillatorType = 'sine',
-  gain = 0.12,
-  rampDown = 0.06,
-) {
+function tone(freq: number, duration: number, type: OscillatorType = 'sine', gain = 0.12, rampDown = 0.06) {
   const ac = getCtx()
   const osc = ac.createOscillator()
   const vol = ac.createGain()

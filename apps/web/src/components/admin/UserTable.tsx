@@ -1,14 +1,7 @@
-import { Switch } from '@/components/ui/switch'
-import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface User {
   id: string
@@ -30,7 +23,9 @@ export function UserTable({ users, isLoading, onToggleStatus }: Props) {
   if (isLoading) {
     return (
       <div className="space-y-2">
-        {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12 w-full rounded-md" />)}
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-12 w-full rounded-md" />
+        ))}
       </div>
     )
   }
@@ -61,7 +56,9 @@ export function UserTable({ users, isLoading, onToggleStatus }: Props) {
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{user.email}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-xs capitalize">{user.provider}</Badge>
+                  <Badge variant="outline" className="text-xs capitalize">
+                    {user.provider}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   {user.accesses?.includes('superadmin') ? (

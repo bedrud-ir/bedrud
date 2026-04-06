@@ -125,7 +125,8 @@
 /* ── Meeting Room ───────────────────────────────────────────────────────── */
 
 @keyframes meet-speaker-glow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow:
       0 0 0 2px hsl(var(--primary) / 0.8),
       0 0 20px hsl(var(--primary) / 0.2);
@@ -143,13 +144,22 @@
 }
 
 @keyframes meet-speak-bar {
-  0%, 100% { transform: scaleY(0.25); }
-  50%       { transform: scaleY(1); }
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
 }
 
 @keyframes meet-panel-in {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 .meet-panel {
@@ -157,8 +167,14 @@
 }
 
 @keyframes meet-tile-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .meet-tile {
@@ -168,8 +184,15 @@
 }
 
 @keyframes meet-ptt-pulse {
-  0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
-  50%       { opacity: 0.85; transform: translateX(-50%) scale(1.02); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translateX(-50%) scale(1.02);
+  }
 }
 
 .meet-ptt {
@@ -177,7 +200,9 @@
 }
 
 @keyframes meet-connecting-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .meet-connecting {
@@ -189,8 +214,14 @@
 }
 
 @keyframes chat-toast-in {
-  from { opacity: 0; transform: translateX(20px) scale(0.97); }
-  to   { opacity: 1; transform: translateX(0)    scale(1); }
+  from {
+    opacity: 0;
+    transform: translateX(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
 }
 
 .chat-toast {

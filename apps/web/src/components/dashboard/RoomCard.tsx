@@ -1,4 +1,18 @@
-import { Copy, Check, Users, Lock, Globe, MessageSquare, Mic, Video, ArrowRight, ShieldCheck, Trash2, Settings2, UserCheck } from 'lucide-react'
+import {
+  ArrowRight,
+  Check,
+  Copy,
+  Globe,
+  Lock,
+  MessageSquare,
+  Mic,
+  Settings2,
+  ShieldCheck,
+  Trash2,
+  UserCheck,
+  Users,
+  Video,
+} from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -104,15 +118,17 @@ export function RoomCard({ room, onJoin, onDelete, onSettings }: Props) {
       <div className="mt-4 rounded-2xl border bg-background/70 p-3">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Enabled</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          {capabilities.length > 0 ? capabilities.map(({ icon: Icon, label }) => (
-            <span
-              key={label}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground"
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </span>
-          )) : (
+          {capabilities.length > 0 ? (
+            capabilities.map(({ icon: Icon, label }) => (
+              <span
+                key={label}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground"
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </span>
+            ))
+          ) : (
             <span className="text-xs text-muted-foreground">No participant features enabled.</span>
           )}
         </div>

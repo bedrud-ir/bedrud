@@ -1,24 +1,31 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, useRef, useEffect } from 'react'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import {
-  ArrowLeft, Activity, Globe, Lock, Users, Mic, MicOff,
-  UserX, RefreshCw, Video, Volume2, Monitor,
+  Activity,
+  ArrowLeft,
+  Globe,
+  Lock,
+  Mic,
+  MicOff,
+  Monitor,
+  RefreshCw,
+  Users,
+  UserX,
+  Video,
+  Volume2,
 } from 'lucide-react'
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend,
-} from 'recharts'
+import { useEffect, useRef, useState } from 'react'
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from '#/lib/api'
 
 export const Route = createFileRoute('/dashboard/admin/rooms_/$roomId')({ component: RoomDetailPage })
 
 interface Track {
   sid: string
-  type: string        // AUDIO | VIDEO
-  source: string      // MICROPHONE | CAMERA | SCREEN_SHARE | …
+  type: string // AUDIO | VIDEO
+  source: string // MICROPHONE | CAMERA | SCREEN_SHARE | …
   muted: boolean
-  bitrate: number     // target bitrate from highest quality layer (bps)
+  bitrate: number // target bitrate from highest quality layer (bps)
 }
 
 interface LiveParticipant {
@@ -26,7 +33,7 @@ interface LiveParticipant {
   identity: string
   name: string
   state: string
-  joinedAt: number    // unix seconds
+  joinedAt: number // unix seconds
   isPublisher: boolean
   tracks: Track[]
 }
@@ -89,7 +96,8 @@ function RoomDetailPage() {
 
   const { data, isLoading, dataUpdatedAt } = useQuery({
     queryKey: ['admin', 'room', roomId, 'participants'],
-    queryFn: () => api.get<{ participants: LiveParticipant[]; room: RoomInfo }>(`/api/admin/rooms/${roomId}/participants`),
+    queryFn: () =>
+      api.get<{ participants: LiveParticipant[]; room: RoomInfo }>(`/api/admin/rooms/${roomId}/participants`),
     refetchInterval: 3_000,
   })
 
@@ -112,7 +120,7 @@ function RoomDetailPage() {
 
     historyRef.current = [...historyRef.current, point].slice(-MAX_HISTORY)
     setBitrateHistory([...historyRef.current])
-  }, [dataUpdatedAt]) // fires only when the query returns new data
+  }, [data]) // fires only when the query returns new data
 
   const kick = useMutation({
     mutationFn: (identity: string) => api.post(`/api/admin/rooms/${roomId}/participants/${identity}/kick`, {}),
@@ -129,10 +137,14 @@ function RoomDetailPage() {
 
   const participants = data?.participants ?? []
   const room = data?.room
-  const totalBitrate = participants.reduce((sum, p) =>
-    sum + p.tracks.reduce((ts, t) => ts + (t.muted ? 0 : t.bitrate), 0), 0)
-  const isAudioOnly = participants.length > 0 && totalBitrate === 0 &&
-    participants.some(p => p.tracks.some(t => !t.muted && t.type === 'AUDIO'))
+  const totalBitrate = participants.reduce(
+    (sum, p) => sum + p.tracks.reduce((ts, t) => ts + (t.muted ? 0 : t.bitrate), 0),
+    0,
+  )
+  const isAudioOnly =
+    participants.length > 0 &&
+    totalBitrate === 0 &&
+    participants.some((p) => p.tracks.some((t) => !t.muted && t.type === 'AUDIO'))
 
   // Stable colors for per-participant lines
   const LINE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#06b6d4', '#ec4899', '#f97316', '#a855f7', '#84cc16']
@@ -152,9 +164,7 @@ function RoomDetailPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight font-mono truncate">
-            {room?.name ?? roomId}
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight font-mono truncate">{room?.name ?? roomId}</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Room detail · auto-refreshes every 10 s
             {dataUpdatedAt ? ` · last updated ${new Date(dataUpdatedAt).toLocaleTimeString()}` : ''}
@@ -174,9 +184,24 @@ function RoomDetailPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: 'Participants', value: participants.length, icon: Users, color: '#6366f1' },
-            { label: 'Publishers', value: participants.filter(p => p.isPublisher).length, icon: Activity, color: '#10b981' },
-            { label: 'Total bitrate', value: isAudioOnly ? 'Audio' : formatBitrate(totalBitrate), icon: Activity, color: '#f59e0b' },
-            { label: 'Visibility', value: room.isPublic ? 'Public' : 'Private', icon: room.isPublic ? Globe : Lock, color: room.isPublic ? '#06b6d4' : '#8b5cf6' },
+            {
+              label: 'Publishers',
+              value: participants.filter((p) => p.isPublisher).length,
+              icon: Activity,
+              color: '#10b981',
+            },
+            {
+              label: 'Total bitrate',
+              value: isAudioOnly ? 'Audio' : formatBitrate(totalBitrate),
+              icon: Activity,
+              color: '#f59e0b',
+            },
+            {
+              label: 'Visibility',
+              value: room.isPublic ? 'Public' : 'Private',
+              icon: room.isPublic ? Globe : Lock,
+              color: room.isPublic ? '#06b6d4' : '#8b5cf6',
+            },
           ].map(({ label, value, icon: Icon, color }) => (
             <div
               key={label}
@@ -185,7 +210,9 @@ function RoomDetailPage() {
             >
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-xl font-bold tracking-tight" style={{ color }}>{value}</p>
+                  <p className="text-xl font-bold tracking-tight" style={{ color }}>
+                    {value}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
                 </div>
                 <Icon className="h-5 w-5 shrink-0" style={{ color }} />
@@ -203,9 +230,7 @@ function RoomDetailPage() {
         >
           <p className="text-sm font-semibold">Live bitrate</p>
           <span className="text-xs text-muted-foreground">
-            {bitrateHistory.length > 0
-              ? `${bitrateHistory.length} samples · refreshes every 3 s`
-              : 'waiting for data…'}
+            {bitrateHistory.length > 0 ? `${bitrateHistory.length} samples · refreshes every 3 s` : 'waiting for data…'}
           </span>
         </div>
         <div className="p-5">
@@ -252,7 +277,7 @@ function RoomDetailPage() {
                   name="total"
                 />
                 {/* Per-participant lines */}
-                {identitiesRef.current.map(identity => (
+                {identitiesRef.current.map((identity) => (
                   <Line
                     key={identity}
                     type="monotone"
@@ -266,7 +291,7 @@ function RoomDetailPage() {
                 {identitiesRef.current.length > 1 && (
                   <Legend
                     wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
-                    formatter={(value) => value === 'total' ? 'Total' : value}
+                    formatter={(value) => (value === 'total' ? 'Total' : value)}
                   />
                 )}
               </LineChart>
@@ -306,11 +331,14 @@ function RoomDetailPage() {
         ) : (
           <div className="divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
             {participants.map((p) => {
-              const audioTracks = p.tracks.filter(t => t.type === 'AUDIO')
-              const videoTracks = p.tracks.filter(t => t.type === 'VIDEO')
+              const audioTracks = p.tracks.filter((t) => t.type === 'AUDIO')
+              const videoTracks = p.tracks.filter((t) => t.type === 'VIDEO')
               const totalKbps = Math.round(p.tracks.reduce((s, t) => s + (!t.muted ? t.bitrate : 0), 0) / 1000)
               return (
-                <div key={p.sid} className="flex flex-wrap items-center gap-3 px-4 py-3 sm:flex-nowrap sm:gap-4 sm:px-5 sm:py-4 hover:bg-muted/20 transition-colors">
+                <div
+                  key={p.sid}
+                  className="flex flex-wrap items-center gap-3 px-4 py-3 sm:flex-nowrap sm:gap-4 sm:px-5 sm:py-4 hover:bg-muted/20 transition-colors"
+                >
                   {/* Avatar */}
                   <div
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
@@ -324,22 +352,31 @@ function RoomDetailPage() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium truncate">{p.name || p.identity}</p>
                       {p.isPublisher && (
-                        <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: '#10b98115', color: '#10b981' }}>
+                        <span
+                          className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                          style={{ background: '#10b98115', color: '#10b981' }}
+                        >
                           publishing
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground font-mono truncate">{p.identity}</p>
                     <div className="mt-1.5 flex flex-wrap gap-1">
-                      {audioTracks.map(t => <TrackBadge key={t.sid} track={t} />)}
-                      {videoTracks.map(t => <TrackBadge key={t.sid} track={t} />)}
+                      {audioTracks.map((t) => (
+                        <TrackBadge key={t.sid} track={t} />
+                      ))}
+                      {videoTracks.map((t) => (
+                        <TrackBadge key={t.sid} track={t} />
+                      ))}
                       {p.tracks.length === 0 && <span className="text-[11px] text-muted-foreground">no tracks</span>}
                     </div>
                   </div>
 
                   {/* Bitrate + join time */}
                   <div className="text-right shrink-0 space-y-0.5">
-                    <p className="text-xs font-mono" style={{ color: '#f59e0b' }}>{totalKbps > 0 ? `${totalKbps} kbps` : '—'}</p>
+                    <p className="text-xs font-mono" style={{ color: '#f59e0b' }}>
+                      {totalKbps > 0 ? `${totalKbps} kbps` : '—'}
+                    </p>
                     <p className="text-[10px] text-muted-foreground">
                       joined {new Date(p.joinedAt * 1000).toLocaleTimeString()}
                     </p>
@@ -350,11 +387,11 @@ function RoomDetailPage() {
                     {/* Mute */}
                     <button
                       onClick={() => mute.mutate(p.identity)}
-                      disabled={mute.isPending || audioTracks.every(t => t.muted)}
+                      disabled={mute.isPending || audioTracks.every((t) => t.muted)}
                       className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-amber-500/10 hover:text-amber-500 disabled:opacity-30 disabled:cursor-not-allowed"
                       title="Mute audio"
                     >
-                      {audioTracks.every(t => t.muted) ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                      {audioTracks.every((t) => t.muted) ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </button>
 
                     {/* Kick */}
@@ -398,7 +435,10 @@ function RoomDetailPage() {
           <div className="border-b px-5 py-3" style={{ background: 'linear-gradient(135deg, #06b6d408, #8b5cf608)' }}>
             <p className="text-sm font-semibold">Room configuration</p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div
+            className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-y"
+            style={{ borderColor: 'hsl(var(--border))' }}
+          >
             {[
               { label: 'Chat', enabled: room.settings.allowChat },
               { label: 'Video', enabled: room.settings.allowVideo },
@@ -406,10 +446,7 @@ function RoomDetailPage() {
               { label: 'E2EE', enabled: room.settings.e2ee },
             ].map(({ label, enabled }) => (
               <div key={label} className="flex flex-col items-center gap-1 py-4">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: enabled ? '#10b981' : '#ef4444' }}
-                />
+                <span className="h-2 w-2 rounded-full" style={{ background: enabled ? '#10b981' : '#ef4444' }} />
                 <p className="text-xs font-medium">{label}</p>
                 <p className="text-[10px] text-muted-foreground">{enabled ? 'allowed' : 'disabled'}</p>
               </div>
@@ -419,7 +456,9 @@ function RoomDetailPage() {
       )}
 
       <p className="text-center text-xs text-muted-foreground">
-        <Link to="/dashboard/admin/rooms" className="hover:text-foreground underline-offset-4 hover:underline">← Back to all rooms</Link>
+        <Link to="/dashboard/admin/rooms" className="hover:text-foreground underline-offset-4 hover:underline">
+          ← Back to all rooms
+        </Link>
       </p>
     </div>
   )

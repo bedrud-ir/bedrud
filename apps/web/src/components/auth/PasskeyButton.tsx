@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import { Fingerprint } from 'lucide-react'
+import { useState } from 'react'
+import { api } from '#/lib/api'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { api } from '#/lib/api'
 
 function base64ToBuffer(base64: string): ArrayBuffer {
   const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'))
@@ -39,18 +39,20 @@ export function PasskeyButton({ onSuccess }: Props) {
     setError(null)
     try {
       const opts = await api.post<PublicKeyCredentialRequestOptionsJSON>('/api/auth/passkey/login/begin')
-      const cred = await navigator.credentials.get({
+      const cred = (await navigator.credentials.get({
         publicKey: {
           challenge: base64ToBuffer(opts.challenge as unknown as string),
           timeout: (opts as unknown as { timeout?: number }).timeout,
           rpId: (opts as unknown as { rpId?: string }).rpId,
           userVerification: (opts as unknown as { userVerification?: UserVerificationRequirement }).userVerification,
-          allowCredentials: (opts.allowCredentials as unknown as Array<{ id: string; type: 'public-key' }>)?.map((c) => ({
-            id: base64ToBuffer(c.id),
-            type: c.type,
-          })),
+          allowCredentials: (opts.allowCredentials as unknown as Array<{ id: string; type: 'public-key' }>)?.map(
+            (c) => ({
+              id: base64ToBuffer(c.id),
+              type: c.type,
+            }),
+          ),
         },
-      }) as PublicKeyCredential
+      })) as PublicKeyCredential
 
       const assertion = cred.response as AuthenticatorAssertionResponse
       const res = await api.post<AuthResponse>('/api/auth/passkey/login/finish', {
@@ -71,7 +73,10 @@ export function PasskeyButton({ onSuccess }: Props) {
     setIsLoading(true)
     setError(null)
     try {
-      const opts = await api.post<PublicKeyCredentialCreationOptionsJSON>('/api/auth/passkey/signup/begin', { name, email })
+      const opts = await api.post<PublicKeyCredentialCreationOptionsJSON>('/api/auth/passkey/signup/begin', {
+        name,
+        email,
+      })
       const optsRaw = opts as unknown as {
         rp: PublicKeyCredentialRpEntity
         user: { id: string; name: string; displayName: string }
@@ -81,7 +86,7 @@ export function PasskeyButton({ onSuccess }: Props) {
         attestation?: AttestationConveyancePreference
         authenticatorSelection?: AuthenticatorSelectionCriteria
       }
-      const cred = await navigator.credentials.create({
+      const cred = (await navigator.credentials.create({
         publicKey: {
           rp: optsRaw.rp,
           user: { id: base64ToBuffer(optsRaw.user.id), name: optsRaw.user.name, displayName: optsRaw.user.displayName },
@@ -91,7 +96,7 @@ export function PasskeyButton({ onSuccess }: Props) {
           attestation: optsRaw.attestation,
           authenticatorSelection: optsRaw.authenticatorSelection,
         },
-      }) as PublicKeyCredential
+      })) as PublicKeyCredential
 
       const att = cred.response as AuthenticatorAttestationResponse
       const res = await api.post<AuthResponse>('/api/auth/passkey/signup/finish', {
@@ -116,15 +121,15 @@ export function PasskeyButton({ onSuccess }: Props) {
         <CardDescription>Sign in or sign up using a biometric authenticator</CardDescription>
       </CardHeader>
       <CardContent>
-        {error && (
-          <div className="mb-4 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive">{error}</div>}
         <Tabs defaultValue="login">
           <TabsList className="w-full">
-            <TabsTrigger value="login" className="flex-1">Login</TabsTrigger>
-            <TabsTrigger value="signup" className="flex-1">Sign up</TabsTrigger>
+            <TabsTrigger value="login" className="flex-1">
+              Login
+            </TabsTrigger>
+            <TabsTrigger value="signup" className="flex-1">
+              Sign up
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="login" className="pt-4">
             <Button onClick={handleLogin} className="w-full" disabled={isLoading}>

@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useChat, useRoomContext } from '@livekit/components-react'
 import { RoomEvent } from 'livekit-client'
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useUserStore } from '#/lib/user.store'
 
 export interface SystemMessage {
@@ -79,9 +79,12 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
         const raw = JSON.parse(new TextDecoder().decode(payload))
         if (
           raw.type === 'system' &&
-          typeof raw.event === 'string' && KNOWN_SYSTEM_EVENTS.has(raw.event) &&
-          typeof raw.actor === 'string' && raw.actor.length > 0 &&
-          typeof raw.target === 'string' && raw.target.length > 0
+          typeof raw.event === 'string' &&
+          KNOWN_SYSTEM_EVENTS.has(raw.event) &&
+          typeof raw.actor === 'string' &&
+          raw.actor.length > 0 &&
+          typeof raw.target === 'string' &&
+          raw.target.length > 0
         ) {
           const msg = { ...(raw as SystemMessage), ts: Date.now() }
           setSystemMessages((prev) => [...prev, msg])
@@ -96,8 +99,10 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
       }
     }
     room.on(RoomEvent.DataReceived, handler)
-    return () => { room.off(RoomEvent.DataReceived, handler) }
-  }, [room])
+    return () => {
+      room.off(RoomEvent.DataReceived, handler)
+    }
+  }, [room, currentUserId])
 
   // Increment unread counter only for messages that arrive after the last markRead()
   useEffect(() => {
@@ -130,33 +135,54 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
 
     // Broadcast deafened state to all participants via metadata
     let meta: Record<string, unknown> = {}
-    try { meta = JSON.parse(lp.metadata ?? '{}') } catch { /* ignore */ }
+    try {
+      meta = JSON.parse(lp.metadata ?? '{}')
+    } catch {
+      /* ignore */
+    }
     lp.setMetadata(JSON.stringify({ ...meta, deafened: newDeafened }))
     setIsSelfDeafened(newDeafened)
   }, [room, isSelfDeafened])
 
-  const value = useMemo<MeetingContextValue>(() => ({
-    roomId,
-    roomName,
-    adminId,
-    currentUserId,
-    // Use LiveKit local participant identity as the source of truth — it's set
-    // directly from the JWT claims.UserID and avoids any user-store format mismatch.
-    isCreator: !!adminId && (
-      currentUserId === adminId || room.localParticipant.identity === adminId
-    ),
-    isAdmin: accesses.includes('admin') || accesses.includes('superadmin'),
-    isModerator: accesses.includes('moderator'),
-    isServerDeafened,
-    isSelfDeafened,
-    toggleSelfDeafen,
-    chatMessages,
-    systemMessages,
-    send,
-    isSending,
-    unreadCount,
-    markRead,
-  }), [roomId, roomName, adminId, currentUserId, accesses, isServerDeafened, isSelfDeafened, toggleSelfDeafen, chatMessages, systemMessages, send, isSending, unreadCount, markRead])
+  const value = useMemo<MeetingContextValue>(
+    () => ({
+      roomId,
+      roomName,
+      adminId,
+      currentUserId,
+      // Use LiveKit local participant identity as the source of truth — it's set
+      // directly from the JWT claims.UserID and avoids any user-store format mismatch.
+      isCreator: !!adminId && (currentUserId === adminId || room.localParticipant.identity === adminId),
+      isAdmin: accesses.includes('admin') || accesses.includes('superadmin'),
+      isModerator: accesses.includes('moderator'),
+      isServerDeafened,
+      isSelfDeafened,
+      toggleSelfDeafen,
+      chatMessages,
+      systemMessages,
+      send,
+      isSending,
+      unreadCount,
+      markRead,
+    }),
+    [
+      roomId,
+      roomName,
+      adminId,
+      currentUserId,
+      accesses,
+      isServerDeafened,
+      isSelfDeafened,
+      toggleSelfDeafen,
+      chatMessages,
+      systemMessages,
+      send,
+      isSending,
+      unreadCount,
+      markRead,
+      room.localParticipant.identity,
+    ],
+  )
 
   return <MeetingContext.Provider value={value}>{children}</MeetingContext.Provider>
 }

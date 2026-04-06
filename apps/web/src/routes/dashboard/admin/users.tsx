@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { ChevronDown, ChevronUp, Search, Shield, ShieldOff, UserCheck, UserX } from 'lucide-react'
 import { useState } from 'react'
-import { Search, Shield, UserCheck, UserX, ChevronDown, ChevronUp, ShieldOff } from 'lucide-react'
 import { api } from '#/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -37,9 +37,15 @@ function StatusToggle({ user, onToggle, isPending }: { user: AdminUser; onToggle
           : 'border-destructive/30 bg-destructive/10 text-destructive',
       )}
     >
-      {user.isActive
-        ? <><UserCheck className="h-3 w-3" /> Active</>
-        : <><UserX className="h-3 w-3" /> Banned</>}
+      {user.isActive ? (
+        <>
+          <UserCheck className="h-3 w-3" /> Active
+        </>
+      ) : (
+        <>
+          <UserX className="h-3 w-3" /> Banned
+        </>
+      )}
     </button>
   )
 }
@@ -71,7 +77,10 @@ function AdminUsersPage() {
 
   function toggleSort(field: SortField) {
     if (sortField === field) setSortAsc((v) => !v)
-    else { setSortField(field); setSortAsc(true) }
+    else {
+      setSortField(field)
+      setSortAsc(true)
+    }
   }
 
   const users = (data?.users ?? [])
@@ -124,12 +133,18 @@ function AdminUsersPage() {
               <button className="text-left hover:text-foreground transition-colors" onClick={() => toggleSort('email')}>
                 Email <SortIcon field="email" />
               </button>
-              <button className="hidden sm:block text-left hover:text-foreground transition-colors" onClick={() => toggleSort('provider')}>
+              <button
+                className="hidden sm:block text-left hover:text-foreground transition-colors"
+                onClick={() => toggleSort('provider')}
+              >
                 Provider <SortIcon field="provider" />
               </button>
               <span>Status</span>
               <span>Role</span>
-              <button className="hidden sm:block text-left hover:text-foreground transition-colors" onClick={() => toggleSort('createdAt')}>
+              <button
+                className="hidden sm:block text-left hover:text-foreground transition-colors"
+                onClick={() => toggleSort('createdAt')}
+              >
                 Joined <SortIcon field="createdAt" />
               </button>
             </div>
@@ -148,53 +163,61 @@ function AdminUsersPage() {
                 ))
               ) : users.length === 0 ? (
                 <p className="px-4 py-8 text-center text-xs text-muted-foreground">No users found</p>
-              ) : users.map((user) => {
-                const isSuperadmin = user.accesses?.includes('superadmin')
-                return (
-                  <div
-                    key={user.id}
-                    className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="min-w-0">
-                      <Link
-                        to="/dashboard/admin/users/$userId"
-                        params={{ userId: user.id }}
-                        className="truncate text-xs font-medium hover:text-primary transition-colors"
-                      >
-                        {user.name}
-                      </Link>
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-                    <div className="hidden sm:block">
-                      <ProviderBadge provider={user.provider} />
-                    </div>
-                    <StatusToggle
-                      user={user}
-                      isPending={toggleStatus.isPending}
-                      onToggle={() => toggleStatus.mutate({ id: user.id, active: !user.isActive })}
-                    />
-                    <button
-                      onClick={() => toggleAdmin.mutate({
-                        id: user.id,
-                        accesses: isSuperadmin ? ['user'] : ['superadmin', 'user'],
-                      })}
-                      disabled={toggleAdmin.isPending}
-                      title={isSuperadmin ? 'Remove admin' : 'Make admin'}
-                      className={cn(
-                        'flex items-center justify-center h-6 w-6 rounded-md border transition-opacity hover:opacity-80 disabled:opacity-50',
-                        isSuperadmin
-                          ? 'border-primary/30 bg-primary/10 text-primary'
-                          : 'border-border bg-muted text-muted-foreground',
-                      )}
+              ) : (
+                users.map((user) => {
+                  const isSuperadmin = user.accesses?.includes('superadmin')
+                  return (
+                    <div
+                      key={user.id}
+                      className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
                     >
-                      {isSuperadmin ? <Shield className="h-3 w-3" /> : <ShieldOff className="h-3 w-3" />}
-                    </button>
-                    <p className="hidden sm:block text-[11px] text-muted-foreground whitespace-nowrap">
-                      {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  </div>
-                )
-              })}
+                      <div className="min-w-0">
+                        <Link
+                          to="/dashboard/admin/users/$userId"
+                          params={{ userId: user.id }}
+                          className="truncate text-xs font-medium hover:text-primary transition-colors"
+                        >
+                          {user.name}
+                        </Link>
+                      </div>
+                      <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                      <div className="hidden sm:block">
+                        <ProviderBadge provider={user.provider} />
+                      </div>
+                      <StatusToggle
+                        user={user}
+                        isPending={toggleStatus.isPending}
+                        onToggle={() => toggleStatus.mutate({ id: user.id, active: !user.isActive })}
+                      />
+                      <button
+                        onClick={() =>
+                          toggleAdmin.mutate({
+                            id: user.id,
+                            accesses: isSuperadmin ? ['user'] : ['superadmin', 'user'],
+                          })
+                        }
+                        disabled={toggleAdmin.isPending}
+                        title={isSuperadmin ? 'Remove admin' : 'Make admin'}
+                        className={cn(
+                          'flex items-center justify-center h-6 w-6 rounded-md border transition-opacity hover:opacity-80 disabled:opacity-50',
+                          isSuperadmin
+                            ? 'border-primary/30 bg-primary/10 text-primary'
+                            : 'border-border bg-muted text-muted-foreground',
+                        )}
+                      >
+                        {isSuperadmin ? <Shield className="h-3 w-3" /> : <ShieldOff className="h-3 w-3" />}
+                      </button>
+                      <p className="hidden sm:block text-[11px] text-muted-foreground whitespace-nowrap">
+                        {new Date(user.createdAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                  )
+                })
+              )}
             </div>
           </div>
         </div>

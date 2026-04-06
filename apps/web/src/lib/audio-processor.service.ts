@@ -1,7 +1,7 @@
-import type { LocalAudioTrack } from 'livekit-client'
 import { isKrispNoiseFilterSupported, KrispNoiseFilter } from '@livekit/krisp-noise-filter'
-import { RNNoiseProcessor } from '#/lib/rnnoise-processor'
+import type { LocalAudioTrack } from 'livekit-client'
 import type { NoiseSuppressionMode } from '#/lib/audio-preferences.store'
+import { RNNoiseProcessor } from '#/lib/rnnoise-processor'
 
 /**
  * Manages the lifecycle of a LiveKit audio processor (Krisp or RNNoise).
@@ -15,7 +15,7 @@ export class AudioProcessorService {
 
   /** Attach to a track and apply the given mode. Called on room connect. */
   async attach(track: LocalAudioTrack, mode: NoiseSuppressionMode): Promise<void> {
-    this.track       = track
+    this.track = track
     this.currentMode = 'none'
     await this.switchMode(mode)
   }
@@ -50,14 +50,16 @@ export class AudioProcessorService {
     const mediaTrack = this.track.mediaStreamTrack
     if (mediaTrack) {
       const browserActive = mode === 'browser'
-      mediaTrack.applyConstraints({
-        noiseSuppression: browserActive,
-        echoCancellation: browserActive,
-        autoGainControl:  browserActive,
-      }).catch((err) => {
-        // Non-fatal: some browsers ignore applyConstraints after track creation
-        console.warn('[AudioProcessorService] applyConstraints failed:', err)
-      })
+      mediaTrack
+        .applyConstraints({
+          noiseSuppression: browserActive,
+          echoCancellation: browserActive,
+          autoGainControl: browserActive,
+        })
+        .catch((err) => {
+          // Non-fatal: some browsers ignore applyConstraints after track creation
+          console.warn('[AudioProcessorService] applyConstraints failed:', err)
+        })
     }
 
     if (mode === 'rnnoise') {
@@ -77,7 +79,7 @@ export class AudioProcessorService {
         console.warn('[AudioProcessorService] detach stopProcessor failed:', err)
       }
     }
-    this.track       = null
+    this.track = null
     this.currentMode = 'none'
   }
 

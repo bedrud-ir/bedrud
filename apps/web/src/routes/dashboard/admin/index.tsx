@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Users, Video, Activity, Globe, Lock, Shield, UserCheck, UserX, Radio } from 'lucide-react'
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { createFileRoute } from '@tanstack/react-router'
+import { Activity, Globe, Lock, Radio, Shield, UserCheck, Users, UserX, Video } from 'lucide-react'
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { api } from '#/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -146,7 +146,12 @@ function AdminOverview() {
                   <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+              />
               <Tooltip
                 contentStyle={{
                   background: 'hsl(var(--card))',
@@ -180,20 +185,24 @@ function AdminOverview() {
           <div className="divide-y">
             {recentUsers.length === 0 ? (
               <p className="px-4 py-6 text-xs text-muted-foreground text-center">No users yet</p>
-            ) : recentUsers.map((u) => (
-              <div key={u.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium">{u.name}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">{u.email}</p>
+            ) : (
+              recentUsers.map((u) => (
+                <div key={u.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">{u.name}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{u.email}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <ProviderBadge provider={u.provider} />
+                    {u.isActive ? (
+                      <UserCheck className="h-3.5 w-3.5 text-emerald-500" />
+                    ) : (
+                      <UserX className="h-3.5 w-3.5 text-destructive" />
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <ProviderBadge provider={u.provider} />
-                  {u.isActive
-                    ? <UserCheck className="h-3.5 w-3.5 text-emerald-500" />
-                    : <UserX className="h-3.5 w-3.5 text-destructive" />}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -205,9 +214,30 @@ function AdminOverview() {
           </div>
           <div className="p-4 space-y-3">
             {[
-              { label: 'Live rooms', value: activeRooms, total: rooms.length, icon: Activity, color: 'text-emerald-500', bar: 'bg-emerald-500' },
-              { label: 'Public rooms', value: publicRooms, total: rooms.length, icon: Globe, color: 'text-sky-500', bar: 'bg-sky-500' },
-              { label: 'Private rooms', value: rooms.length - publicRooms, total: rooms.length, icon: Lock, color: 'text-violet-500', bar: 'bg-violet-500' },
+              {
+                label: 'Live rooms',
+                value: activeRooms,
+                total: rooms.length,
+                icon: Activity,
+                color: 'text-emerald-500',
+                bar: 'bg-emerald-500',
+              },
+              {
+                label: 'Public rooms',
+                value: publicRooms,
+                total: rooms.length,
+                icon: Globe,
+                color: 'text-sky-500',
+                bar: 'bg-sky-500',
+              },
+              {
+                label: 'Private rooms',
+                value: rooms.length - publicRooms,
+                total: rooms.length,
+                icon: Lock,
+                color: 'text-violet-500',
+                bar: 'bg-violet-500',
+              },
             ].map(({ label, value, total, icon: Icon, color, bar }) => (
               <div key={label} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
@@ -215,7 +245,9 @@ function AdminOverview() {
                     <Icon className="h-3.5 w-3.5" />
                     <span className="font-medium">{label}</span>
                   </div>
-                  <span className="text-muted-foreground">{value} / {total}</span>
+                  <span className="text-muted-foreground">
+                    {value} / {total}
+                  </span>
                 </div>
                 <div className="h-1 rounded-full overflow-hidden bg-muted">
                   <div

@@ -30,8 +30,7 @@ export const useParticipantOverridesStore = create<ParticipantOverridesState>((s
 // Selector factories — use these in components so they re-render on changes:
 // const isMuted = useParticipantOverridesStore(selectIsMuted(identity))
 // const volume = useParticipantOverridesStore(selectVolume(identity))
-export const selectIsMuted = (identity: string) => (s: ParticipantOverridesState) =>
-  s.muted.has(identity)
+export const selectIsMuted = (identity: string) => (s: ParticipantOverridesState) => s.muted.has(identity)
 
 export const selectVolume = (identity: string) => (s: ParticipantOverridesState) => {
   if (s.muted.has(identity)) return 0

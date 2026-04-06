@@ -1,22 +1,29 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react'
 import { ConnectionState, RoomEvent } from 'livekit-client'
 import {
-  Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, VolumeX,
-  Check, MonitorUp, MonitorOff, ChevronDown, Settings,
-  MoreVertical, Link2, Maximize, Keyboard,
+  Check,
+  ChevronDown,
+  Keyboard,
+  Link2,
+  Maximize,
+  Mic,
+  MicOff,
+  MonitorOff,
+  MonitorUp,
+  MoreVertical,
+  PhoneOff,
+  Settings,
+  Video,
+  VideoOff,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
-import { DeviceSelector } from '@/components/meeting/DeviceSelector'
-import { useAudioPreferencesStore, type NoiseSuppressionMode } from '#/lib/audio-preferences.store'
-import { useAuthStore } from '#/lib/auth.store'
-import { useMeetingContext } from '@/components/meeting/MeetingContext'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { type NoiseSuppressionMode, useAudioPreferencesStore } from '#/lib/audio-preferences.store'
 import { AudioProcessorService } from '#/lib/audio-processor.service'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { useAuthStore } from '#/lib/auth.store'
+import { DeviceSelector } from '@/components/meeting/DeviceSelector'
+import { useMeetingContext } from '@/components/meeting/MeetingContext'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Props {
   onLeave: () => void
@@ -47,28 +55,31 @@ function useIsMobile(breakpoint = 640) {
 /* ── Shared styles ─────────────────────────────────────────────────────────── */
 
 const iconBtn = (active = false, danger = false, size = 44): React.CSSProperties => ({
-  width: size, height: size, borderRadius: size > 40 ? 12 : 10,
-  border: 'none', cursor: 'pointer',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  background: danger
-    ? 'rgba(239,68,68,0.18)'
-    : active
-      ? 'rgba(99,102,241,0.25)'
-      : 'rgba(255,255,255,0.07)',
+  width: size,
+  height: size,
+  borderRadius: size > 40 ? 12 : 10,
+  border: 'none',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: danger ? 'rgba(239,68,68,0.18)' : active ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.07)',
   color: danger ? '#f87171' : active ? '#a5b4fc' : 'rgba(255,255,255,0.75)',
   transition: 'background 0.15s, color 0.15s',
   flexShrink: 0,
 })
 
 const divider: React.CSSProperties = {
-  width: 1, height: 28,
+  width: 1,
+  height: 28,
   background: 'rgba(255,255,255,0.08)',
   margin: '0 4px',
   flexShrink: 0,
 }
 
 const darkMenuStyle: React.CSSProperties = {
-  minWidth: 240, maxWidth: 'calc(100vw - 24px)',
+  minWidth: 240,
+  maxWidth: 'calc(100vw - 24px)',
   background: 'rgba(15,15,28,0.98)',
   border: '1px solid rgba(255,255,255,0.08)',
   borderRadius: 12,
@@ -76,23 +87,27 @@ const darkMenuStyle: React.CSSProperties = {
 }
 
 const menuLabelStyle: React.CSSProperties = {
-  color: 'rgba(255,255,255,0.3)', fontSize: 10,
-  textTransform: 'uppercase', letterSpacing: '0.08em',
+  color: 'rgba(255,255,255,0.3)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
   padding: '6px 8px 2px',
 }
 
 const menuItemStyle: React.CSSProperties = {
-  borderRadius: 6, gap: 8, fontSize: 12,
+  borderRadius: 6,
+  gap: 8,
+  fontSize: 12,
   color: 'rgba(255,255,255,0.75)',
 }
 
 const menuSepStyle: React.CSSProperties = { background: 'rgba(255,255,255,0.06)' }
 
 const NOISE_MODES: { value: NoiseSuppressionMode; label: string }[] = [
-  { value: 'none',    label: 'Off' },
+  { value: 'none', label: 'Off' },
   { value: 'browser', label: 'Browser' },
   { value: 'rnnoise', label: 'RNNoise' },
-  { value: 'krisp',   label: 'Krisp AI' },
+  { value: 'krisp', label: 'Krisp AI' },
 ]
 
 const STORAGE_KEYS: Record<string, string> = {
@@ -102,15 +117,27 @@ const STORAGE_KEYS: Record<string, string> = {
 
 /* ── Tooltip-wrapped control button ────────────────────────────────────────── */
 
-function CtrlBtn({ tip, style, onClick, children }: {
-  tip: string; style: React.CSSProperties; onClick?: () => void; children: React.ReactNode
+function CtrlBtn({
+  tip,
+  style,
+  onClick,
+  children,
+}: {
+  tip: string
+  style: React.CSSProperties
+  onClick?: () => void
+  children: React.ReactNode
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button onClick={onClick} style={style} aria-label={tip}>{children}</button>
+        <button onClick={onClick} style={style} aria-label={tip}>
+          {children}
+        </button>
       </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={8}>{tip}</TooltipContent>
+      <TooltipContent side="top" sideOffset={8}>
+        {tip}
+      </TooltipContent>
     </Tooltip>
   )
 }
@@ -127,7 +154,9 @@ function useDeviceList(kind: 'audioinput' | 'audiooutput') {
       try {
         const all = await navigator.mediaDevices.enumerateDevices()
         setDevices(all.filter((d) => d.kind === kind))
-      } catch { /* permissions not yet granted */ }
+      } catch {
+        /* permissions not yet granted */
+      }
     }
     refresh()
     navigator.mediaDevices.addEventListener('devicechange', refresh)
@@ -142,16 +171,23 @@ function useDeviceList(kind: 'audioinput' | 'audiooutput') {
       room.switchActiveDevice(kind, saved).catch(() => {})
       return
     }
-    const handler = () => { room.switchActiveDevice(kind, saved!).catch(() => {}) }
+    const handler = () => {
+      room.switchActiveDevice(kind, saved!).catch(() => {})
+    }
     room.once(RoomEvent.Connected, handler)
-    return () => { room.off(RoomEvent.Connected, handler) }
+    return () => {
+      room.off(RoomEvent.Connected, handler)
+    }
   }, [room, kind])
 
-  const select = useCallback(async (deviceId: string) => {
-    await room.switchActiveDevice(kind, deviceId).catch(() => {})
-    setActiveId(deviceId)
-    localStorage.setItem(STORAGE_KEYS[kind], deviceId)
-  }, [room, kind])
+  const select = useCallback(
+    async (deviceId: string) => {
+      await room.switchActiveDevice(kind, deviceId).catch(() => {})
+      setActiveId(deviceId)
+      localStorage.setItem(STORAGE_KEYS[kind], deviceId)
+    },
+    [room, kind],
+  )
 
   return { devices, activeId, select }
 }
@@ -167,18 +203,20 @@ export function ControlsBar({ onLeave }: Props) {
   const camEnabled = localParticipant?.isCameraEnabled ?? false
   const isScreenShareEnabled = localParticipant?.isScreenShareEnabled ?? false
 
-  const tokens   = useAuthStore((s) => s.tokens)
+  const tokens = useAuthStore((s) => s.tokens)
   const canShare = Boolean(tokens) && Boolean(navigator.mediaDevices?.getDisplayMedia)
   const shareTip = !tokens
     ? 'Sign in to share screen'
     : !navigator.mediaDevices?.getDisplayMedia
       ? 'Screen sharing not supported'
-      : isScreenShareEnabled ? 'Stop sharing' : 'Share screen'
+      : isScreenShareEnabled
+        ? 'Stop sharing'
+        : 'Share screen'
 
   const noiseMode = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
-  const setMode   = useAudioPreferencesStore((s) => s.setMode)
+  const setMode = useAudioPreferencesStore((s) => s.setMode)
 
-  const mics     = useDeviceList('audioinput')
+  const mics = useDeviceList('audioinput')
   const speakers = useDeviceList('audiooutput')
 
   // Responsive sizes
@@ -187,7 +225,7 @@ export function ControlsBar({ onLeave }: Props) {
   const iconSizeSm = isMobile ? 15 : 17
 
   // ── Push-to-talk ──
-  const pttActiveRef  = useRef(false)
+  const pttActiveRef = useRef(false)
   const pttInitMicRef = useRef(false)
   const [pttInitMic, setPttInitMic] = useState(false)
   const [pttVisible, setPttVisible] = useState(false)
@@ -198,7 +236,7 @@ export function ControlsBar({ onLeave }: Props) {
       const tgt = e.target as HTMLElement
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tgt.tagName) || tgt.isContentEditable) return
       if (!localParticipant || isSelfDeafened) return
-      pttActiveRef.current  = true
+      pttActiveRef.current = true
       pttInitMicRef.current = localParticipant.isMicrophoneEnabled
       setPttInitMic(localParticipant.isMicrophoneEnabled)
       localParticipant.setMicrophoneEnabled(!pttInitMicRef.current)
@@ -226,35 +264,51 @@ export function ControlsBar({ onLeave }: Props) {
     <TooltipProvider delayDuration={300}>
       {/* Push-to-talk badge */}
       {pttVisible && (
-        <div style={{
-          position: 'fixed', bottom: 80, left: '50%', zIndex: 50,
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: 'rgba(99,102,241,0.9)',
-          border: '1px solid rgba(165,180,252,0.4)',
-          borderRadius: 24, padding: '7px 16px',
-          color: 'white', fontSize: 12, fontWeight: 600,
-          boxShadow: '0 4px 24px rgba(99,102,241,0.5)',
-        }}>
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 80,
+            left: '50%',
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'rgba(99,102,241,0.9)',
+            border: '1px solid rgba(165,180,252,0.4)',
+            borderRadius: 24,
+            padding: '7px 16px',
+            color: 'white',
+            fontSize: 12,
+            fontWeight: 600,
+            boxShadow: '0 4px 24px rgba(99,102,241,0.5)',
+          }}
+        >
           <Mic size={13} />
           {pttInitMic ? 'Push-to-Mute active' : 'Push-to-Talk active'}
         </div>
       )}
 
       {/* Floating controls pill */}
-      <div style={{
-        position: 'absolute',
-        bottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom, 0px))' : 20,
-        left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', alignItems: 'center', gap: isMobile ? 2 : 3,
-        background: 'rgba(12,12,22,0.88)',
-        backdropFilter: 'blur(24px)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: isMobile ? 16 : 18,
-        padding: isMobile ? '6px 8px' : '8px 10px',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset',
-        zIndex: 30, whiteSpace: 'nowrap',
-        maxWidth: 'calc(100vw - 16px)',
-      }}>
+      <div
+        style={{
+          position: 'absolute',
+          bottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom, 0px))' : 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: isMobile ? 2 : 3,
+          background: 'rgba(12,12,22,0.88)',
+          backdropFilter: 'blur(24px)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: isMobile ? 16 : 18,
+          padding: isMobile ? '6px 8px' : '8px 10px',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset',
+          zIndex: 30,
+          whiteSpace: 'nowrap',
+          maxWidth: 'calc(100vw - 16px)',
+        }}
+      >
         {/* ── Left: Video + Screen Share ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <CtrlBtn
@@ -269,7 +323,11 @@ export function ControlsBar({ onLeave }: Props) {
 
         <CtrlBtn
           tip={shareTip}
-          style={{ ...iconBtn(false, isScreenShareEnabled, btnSize), opacity: canShare ? 1 : 0.4, cursor: canShare ? 'pointer' : 'not-allowed' }}
+          style={{
+            ...iconBtn(false, isScreenShareEnabled, btnSize),
+            opacity: canShare ? 1 : 0.4,
+            cursor: canShare ? 'pointer' : 'not-allowed',
+          }}
           onClick={canShare ? () => localParticipant?.setScreenShareEnabled(!isScreenShareEnabled) : undefined}
         >
           {isScreenShareEnabled ? <MonitorOff size={iconSizeSm} /> : <MonitorUp size={iconSizeSm} />}
@@ -283,13 +341,20 @@ export function ControlsBar({ onLeave }: Props) {
             <button
               onClick={onLeave}
               style={{
-                height: btnSize, borderRadius: isMobile ? 10 : 12,
-                border: 'none', cursor: 'pointer',
+                height: btnSize,
+                borderRadius: isMobile ? 10 : 12,
+                border: 'none',
+                cursor: 'pointer',
                 padding: isMobile ? '0 12px' : '0 18px',
-                marginLeft: isMobile ? 2 : 2, marginRight: isMobile ? 2 : 2,
-                display: 'flex', alignItems: 'center', gap: 8,
+                marginLeft: isMobile ? 2 : 2,
+                marginRight: isMobile ? 2 : 2,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
                 background: 'rgba(239,68,68,0.82)',
-                color: 'white', fontSize: 13, fontWeight: 600,
+                color: 'white',
+                fontSize: 13,
+                fontWeight: 600,
                 boxShadow: '0 2px 12px rgba(239,68,68,0.35)',
                 transition: 'background 0.15s, box-shadow 0.15s',
                 flexShrink: 0,
@@ -300,7 +365,9 @@ export function ControlsBar({ onLeave }: Props) {
               {!isMobile && 'Leave'}
             </button>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>Leave meeting</TooltipContent>
+          <TooltipContent side="top" sideOffset={8}>
+            Leave meeting
+          </TooltipContent>
         </Tooltip>
 
         {!isMobile && <div style={divider} />}
@@ -311,7 +378,10 @@ export function ControlsBar({ onLeave }: Props) {
             tip={isSelfDeafened ? 'Undeafen & Unmute' : micEnabled ? 'Mute (Space)' : 'Unmute (Space)'}
             style={iconBtn(false, !micEnabled || isSelfDeafened, btnSize)}
             onClick={() => {
-              if (isSelfDeafened) { toggleSelfDeafen(); return }
+              if (isSelfDeafened) {
+                toggleSelfDeafen()
+                return
+              }
               localParticipant?.setMicrophoneEnabled(!micEnabled)
             }}
           >
@@ -331,11 +401,18 @@ export function ControlsBar({ onLeave }: Props) {
             <DropdownMenuTrigger asChild>
               <button
                 style={{
-                  width: isMobile ? 20 : 24, height: btnSize, borderRadius: 8,
-                  background: 'transparent', border: 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'rgba(255,255,255,0.35)', cursor: 'pointer',
-                  transition: 'color 0.15s', flexShrink: 0,
+                  width: isMobile ? 20 : 24,
+                  height: btnSize,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'rgba(255,255,255,0.35)',
+                  cursor: 'pointer',
+                  transition: 'color 0.15s',
+                  flexShrink: 0,
                 }}
                 aria-label="Audio settings"
               >
@@ -348,12 +425,11 @@ export function ControlsBar({ onLeave }: Props) {
                 <>
                   <DropdownMenuLabel style={menuLabelStyle}>Microphone</DropdownMenuLabel>
                   {mics.devices.map((d, i) => (
-                    <DropdownMenuItem
-                      key={d.deviceId}
-                      onClick={() => mics.select(d.deviceId)}
-                      style={menuItemStyle}
-                    >
-                      <Check size={12} style={{ opacity: mics.activeId === d.deviceId ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }} />
+                    <DropdownMenuItem key={d.deviceId} onClick={() => mics.select(d.deviceId)} style={menuItemStyle}>
+                      <Check
+                        size={12}
+                        style={{ opacity: mics.activeId === d.deviceId ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }}
+                      />
                       <span className="truncate">{d.label || `Microphone ${i + 1}`}</span>
                     </DropdownMenuItem>
                   ))}
@@ -371,7 +447,10 @@ export function ControlsBar({ onLeave }: Props) {
                       onClick={() => speakers.select(d.deviceId)}
                       style={menuItemStyle}
                     >
-                      <Check size={12} style={{ opacity: speakers.activeId === d.deviceId ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }} />
+                      <Check
+                        size={12}
+                        style={{ opacity: speakers.activeId === d.deviceId ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }}
+                      />
                       <span className="truncate">{d.label || `Speaker ${i + 1}`}</span>
                     </DropdownMenuItem>
                   ))}
@@ -390,10 +469,21 @@ export function ControlsBar({ onLeave }: Props) {
                     onSelect={() => setMode(value)}
                     style={{ ...menuItemStyle, cursor: disabled ? 'not-allowed' : 'pointer' }}
                   >
-                    <Check size={12} style={{ opacity: noiseMode === value ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }} />
+                    <Check
+                      size={12}
+                      style={{ opacity: noiseMode === value ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }}
+                    />
                     <span style={{ flex: 1 }}>{label}</span>
                     {disabled && (
-                      <span style={{ fontSize: 9, color: '#f87171', background: 'rgba(239,68,68,0.15)', borderRadius: 3, padding: '1px 4px' }}>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          color: '#f87171',
+                          background: 'rgba(239,68,68,0.15)',
+                          borderRadius: 3,
+                          padding: '1px 4px',
+                        }}
+                      >
                         N/A
                       </span>
                     )}
@@ -436,10 +526,11 @@ export function ControlsBar({ onLeave }: Props) {
               }}
               style={menuItemStyle}
             >
-              {linkCopied
-                ? <Check size={13} style={{ flexShrink: 0, color: '#34d399' }} />
-                : <Link2 size={13} style={{ flexShrink: 0 }} />
-              }
+              {linkCopied ? (
+                <Check size={13} style={{ flexShrink: 0, color: '#34d399' }} />
+              ) : (
+                <Link2 size={13} style={{ flexShrink: 0 }} />
+              )}
               {linkCopied ? 'Copied!' : 'Copy room link'}
             </DropdownMenuItem>
 

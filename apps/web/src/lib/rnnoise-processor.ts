@@ -1,8 +1,8 @@
-import type { AudioProcessorOptions, TrackProcessor } from 'livekit-client'
-import { Track } from 'livekit-client'
 // Import the sync WASM module as raw text so we can embed it in an AudioWorklet blob.
 // The sync version has the WASM binary inlined as base64 — no external file needed.
 import rnnoiseSync from '@jitsi/rnnoise-wasm/dist/rnnoise-sync?raw'
+import type { AudioProcessorOptions, TrackProcessor } from 'livekit-client'
+import { Track } from 'livekit-client'
 
 const WORKLET_NAME = 'rnnoise-worklet-processor'
 const FRAME_SIZE = 480
@@ -107,8 +107,8 @@ let workletUrl: string | null = null
 function getWorkletUrl(): string {
   if (!workletUrl) {
     const script = buildWorkletScript(rnnoiseSync as string)
-    const blob   = new Blob([script], { type: 'application/javascript' })
-    workletUrl   = URL.createObjectURL(blob)
+    const blob = new Blob([script], { type: 'application/javascript' })
+    workletUrl = URL.createObjectURL(blob)
   }
   return workletUrl
 }
@@ -118,7 +118,7 @@ export class RNNoiseProcessor implements TrackProcessor<Track.Kind.Audio, AudioP
 
   processedTrack?: MediaStreamTrack
 
-  private source?:      MediaStreamAudioSourceNode
+  private source?: MediaStreamAudioSourceNode
   private workletNode?: AudioWorkletNode
   private destination?: MediaStreamAudioDestinationNode
   private audioContext?: AudioContext
@@ -128,7 +128,7 @@ export class RNNoiseProcessor implements TrackProcessor<Track.Kind.Audio, AudioP
     await this.audioContext.audioWorklet.addModule(getWorkletUrl())
 
     const stream = new MediaStream([opts.track])
-    this.source      = this.audioContext.createMediaStreamSource(stream)
+    this.source = this.audioContext.createMediaStreamSource(stream)
     this.workletNode = new AudioWorkletNode(this.audioContext, WORKLET_NAME)
     this.destination = this.audioContext.createMediaStreamDestination()
 
@@ -149,9 +149,9 @@ export class RNNoiseProcessor implements TrackProcessor<Track.Kind.Audio, AudioP
     this.destination?.disconnect()
     this.processedTrack?.stop()
     this.processedTrack = undefined
-    this.workletNode    = undefined
-    this.source         = undefined
-    this.destination    = undefined
+    this.workletNode = undefined
+    this.source = undefined
+    this.destination = undefined
     // audioContext is owned by LiveKit — do not close it here
   }
 }

@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react'
 import { RoomEvent } from 'livekit-client'
+import { useEffect, useRef } from 'react'
+import { playChat, playJoin, playLeave, playMutedBeep } from '#/lib/meeting-sounds'
 import { useMeetingContext } from './MeetingContext'
-import { playJoin, playLeave, playChat, playMutedBeep } from '#/lib/meeting-sounds'
 
 /**
  * Invisible component that plays notification sounds for meeting events:
@@ -29,8 +29,12 @@ export function MeetingSoundEffects() {
   }, [])
 
   useEffect(() => {
-    const onConnect = () => { if (mountedRef.current) playJoin() }
-    const onDisconnect = () => { if (mountedRef.current) playLeave() }
+    const onConnect = () => {
+      if (mountedRef.current) playJoin()
+    }
+    const onDisconnect = () => {
+      if (mountedRef.current) playLeave()
+    }
 
     room.on(RoomEvent.ParticipantConnected, onConnect)
     room.on(RoomEvent.ParticipantDisconnected, onDisconnect)
@@ -66,8 +70,8 @@ export function MeetingSoundEffects() {
 
 // ── Hook: monitor mic input while muted ────────────────────────
 
-const SPEECH_THRESHOLD = 0.035  // RMS amplitude — tuned to ignore background noise
-const DEBOUNCE_MS = 3000        // Don't spam beeps — wait at least 3s between alerts
+const SPEECH_THRESHOLD = 0.035 // RMS amplitude — tuned to ignore background noise
+const DEBOUNCE_MS = 3000 // Don't spam beeps — wait at least 3s between alerts
 
 function useMutedMicMonitor() {
   const { isSelfDeafened } = useMeetingContext()
@@ -93,7 +97,10 @@ function useMutedMicMonitor() {
       } catch {
         return // no mic permission — nothing we can do
       }
-      if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return }
+      if (cancelled) {
+        stream.getTracks().forEach((t) => t.stop())
+        return
+      }
 
       ac = new AudioContext()
       const source = ac.createMediaStreamSource(stream)
