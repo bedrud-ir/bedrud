@@ -259,6 +259,30 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Export Docker images for offline use
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          for arch in amd64 arm64; do
+            docker buildx build \
+              --platform "linux/${arch}" \
+              --build-arg "TARGETARCH=${arch}" \
+              --tag "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}" \
+              --output "type=docker,dest=bedrud-docker-linux-${arch}.tar" \
+              --file docker-ctx/Dockerfile \
+              docker-ctx
+            gzip "bedrud-docker-linux-${arch}.tar"
+          done
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: docker-linux-amd64
+          path: bedrud-docker-linux-amd64.tar.gz
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: docker-linux-arm64
+          path: bedrud-docker-linux-arm64.tar.gz
+
   # ── Android APK ──────────────────────────────────────────────
   android:
     name: Android APK
@@ -755,7 +779,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
-          pattern: "{server-*,android-debug-*,android-release-*,ios-*,bedrud-desktop-*}"
+          pattern: "{server-*,android-debug-*,android-release-*,ios-*,bedrud-desktop-*,docker-*}"
 
       - name: Collect release assets
         run: |
@@ -796,6 +820,9 @@ jobs:
 
           # Desktop: AppImages, portables, installers, debs, RPMs, DMGs
           find artifacts/bedrud-desktop-* -type f -exec cp {} release-assets/ \;
+
+          # Docker images for offline/air-gapped use
+          find artifacts/docker-* -name "*.tar.gz" -exec cp {} release-assets/ \; 2>/dev/null || true
 
           ls -la release-assets/
 
@@ -908,6 +935,11 @@ jobs:
 
           <b>🐳 Docker</b>
           <code>docker pull ghcr.io/${REPO}:${TAG}</code>
+
+          <b>🐳 Docker (offline / air-gapped)</b>
+          • <a href="${BASE}/bedrud-docker-linux-amd64.tar.gz">x86_64 image</a>
+          • <a href="${BASE}/bedrud-docker-linux-arm64.tar.gz">ARM64 image</a>
+          <code>docker load &lt; bedrud-docker-linux-amd64.tar.gz</code>
           EOF
           )
 
