@@ -11,9 +11,11 @@ export component SettingsScreen inherits Rectangle {
     in-out property <string> selected-speaker: "";
     in-out property <int> theme-index: 2;        // 0=Light 1=Dark 2=System
     in-out property <int> noise-suppression-index: 0; // 0=None 1=RNNoise 2=Krisp
+    in-out property <bool> echo-cancellation: true;
 
     callback back-clicked;
     callback save-clicked;
+    callback settings-changed;  // fired on any change for live apply
 
     VerticalLayout {
         // Toolbar
@@ -69,19 +71,75 @@ export component SettingsScreen inherits Rectangle {
                 spacing: theme.space-sm;
                 Text { text: "Audio Devices"; font-size: theme.font-lg; font-weight: 600; color: theme.text-primary; }
                 Text { text: "Microphone"; color: theme.text-secondary; font-size: theme.font-sm; }
-                ComboBox { width: 300px; model: mic-devices; current-value <=> selected-mic; }
+                ComboBox {
+                    width: 300px;
+                    model: mic-devices;
+                    current-value <=> selected-mic;
+                    selected(val) => { settings-changed(); }
+                }
                 Text { text: "Speaker"; color: theme.text-secondary; font-size: theme.font-sm; }
-                ComboBox { width: 300px; model: speaker-devices; current-value <=> selected-speaker; }
+                ComboBox {
+                    width: 300px;
+                    model: speaker-devices;
+                    current-value <=> selected-speaker;
+                    selected(val) => { settings-changed(); }
+                }
             }
 
-            // Noise suppression section
+            // Audio processing section
             VerticalLayout {
                 spacing: theme.space-sm;
-                Text { text: "Noise Suppression"; font-size: theme.font-lg; font-weight: 600; color: theme.text-primary; }
+                Text { text: "Audio Processing"; font-size: theme.font-lg; font-weight: 600; color: theme.text-primary; }
+
+                Text { text: "Noise Suppression"; color: theme.text-secondary; font-size: theme.font-sm; }
                 ComboBox {
                     width: 200px;
                     model: ["None", "RNNoise (WASM)", "Krisp"];
                     current-index <=> noise-suppression-index;
+                    selected(val) => { settings-changed(); }
+                }
+
+                // Echo cancellation — shown for all noise suppression types
+                HorizontalLayout {
+                    spacing: theme.space-sm;
+                    alignment: start;
+                    height: 32px;
+
+                    Rectangle {
+                        width: 40px;
+                        height: 22px;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 11px;
+                        background: echo-cancellation ? theme.accent : theme.bg-hover;
+                        border-width: 1px;
+                        border-color: echo-cancellation ? theme.accent : theme.border;
+                        animate background { duration: 150ms; }
+
+                        // Knob
+                        Rectangle {
+                            width: 18px;
+                            height: 18px;
+                            y: 2px;
+                            x: echo-cancellation ? 20px : 2px;
+                            border-radius: 9px;
+                            background: #ffffff;
+                            animate x { duration: 150ms; }
+                        }
+
+                        TouchArea {
+                            clicked => {
+                                echo-cancellation = !echo-cancellation;
+                                settings-changed();
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "Echo Cancellation";
+                        color: theme.text-primary;
+                        font-size: theme.font-base;
+                        vertical-alignment: center;
+                    }
                 }
             }
 

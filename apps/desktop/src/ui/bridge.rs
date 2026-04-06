@@ -7,10 +7,13 @@ use crate::AppWindow;
 use crate::NavScreen;
 use crate::RoomData;
 use crate::ChatMessage;
+use crate::InstanceData;
 use crate::api::{auth, rooms};
 use crate::api::client::ApiClient;
 use crate::auth::session::SessionStore;
 use crate::store::instance::InstanceManager;
+use crate::store::settings::{Settings, NoiseSuppression};
+use crate::livekit::devices;
 
 pub struct AppContext {
     pub rt: Arc<Runtime>,
@@ -30,6 +33,7 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
         let rt = ctx.rt.clone();
         let ww = w.clone();
         window.on_login(move |email, password| {
+            log::info!("[bridge] login attempt for {}", email);
             let api = api.clone();
             let session = session.clone();
             let ww = ww.clone();
@@ -41,6 +45,7 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
                         w.set_login_loading(false);
                         match result {
                             Ok(resp) => {
+                                log::info!("[bridge] login success: {}", resp.user.name);
                                 api.set_token(Some(resp.tokens.access_token.clone()));
                                 let _ = session.save_access_token(&resp.tokens.access_token);
                                 if let Some(rt_tok) = resp.tokens.refresh_token.as_deref() {
@@ -53,6 +58,7 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
                                 w.invoke_load_rooms();
                             }
                             Err(e) => {
+                                log::error!("[bridge] login failed: {}", e);
                                 w.set_login_error(e.to_string().into());
                             }
                         }
@@ -97,7 +103,132 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
     {
         let ww = w.clone();
         window.on_navigate_to(move |screen| {
+            log::info!("[bridge] navigate to {:?}", screen);
             if let Some(w) = ww.upgrade() { w.set_current_screen(screen); }
+        });
+    }
+
+    // load_instances
+    {
+        let ww = w.clone();
+        let instances = ctx.instances.clone();
+        window.on_load_instances(move || {
+            log::info!("[bridge] loading instance list");
+            let mgr = instances.lock().unwrap();
+            let active_id = mgr.active().map(|a| a.id.clone());
+            let list: Vec<InstanceData> = mgr.instances().iter().map(|i| InstanceData {
+                id: i.id.clone().into(),
+                label: i.label.clone().into(),
+                base_url: i.base_url.clone().into(),
+                is_active: Some(&i.id) == active_id.as_ref(),
+            }).collect();
+            drop(mgr);
+            if let Some(w) = ww.upgrade() {
+                w.set_instance_list(std::rc::Rc::new(slint::VecModel::from(list)).into());
+            }
+        });
+    }
+
+    // switch_instance
+    {
+        let ww = w.clone();
+        let instances = ctx.instances.clone();
+        let rt = ctx.rt.clone();
+        window.on_switch_instance(move |id| {
+            log::info!("[bridge] switching to instance {}", id);
+            let mut mgr = instances.lock().unwrap();
+            if let Err(e) = mgr.set_active(&id) {
+                log::error!("[bridge] switch-instance failed: {}", e);
+                drop(mgr);
+                return;
+            }
+            let inst = mgr.active().unwrap();
+            let base_url = inst.base_url.clone();
+            let instance_id = inst.id.clone();
+            drop(mgr);
+
+            let api = ApiClient::new(&base_url);
+            let session = SessionStore::new(&instance_id);
+
+            if let Some(w) = ww.upgrade() {
+                w.set_instance_url(base_url.into());
+
+                let new_ctx = Arc::new(AppContext {
+                    rt: rt.clone(),
+                    api: api.clone(),
+                    session: session.clone(),
+                    instances: instances.clone(),
+                });
+                wire(&w, new_ctx);
+
+                // Try auto-login on the switched instance
+                if let Some(token) = session.load_access_token() {
+                    log::info!("[bridge] switched instance has saved token, auto-login");
+                    api.set_token(Some(token));
+                    let api2 = api.clone();
+                    let session2 = session.clone();
+                    let ww2 = w.as_weak();
+                    rt.spawn(async move {
+                        match auth::me(&api2).await {
+                            Ok(user) => {
+                                log::info!("[bridge] auto-login success: {}", user.name);
+                                slint::invoke_from_event_loop(move || {
+                                    if let Some(w) = ww2.upgrade() {
+                                        let is_admin = user.is_admin();
+                                        w.set_user_name(user.name.into());
+                                        w.set_is_admin(is_admin);
+                                        w.set_current_screen(NavScreen::Dashboard);
+                                        w.invoke_load_rooms();
+                                    }
+                                }).ok();
+                            }
+                            Err(e) => {
+                                log::warn!("[bridge] auto-login failed: {}", e);
+                                let _ = session2.clear();
+                                slint::invoke_from_event_loop(move || {
+                                    if let Some(w) = ww2.upgrade() {
+                                        w.set_current_screen(NavScreen::Login);
+                                    }
+                                }).ok();
+                            }
+                        }
+                    });
+                } else {
+                    w.set_current_screen(NavScreen::Login);
+                }
+            }
+        });
+    }
+
+    // delete_instance
+    {
+        let ww = w.clone();
+        let instances = ctx.instances.clone();
+        window.on_delete_instance(move |id| {
+            log::info!("[bridge] deleting instance {}", id);
+            let mut mgr = instances.lock().unwrap();
+            if let Err(e) = mgr.remove(&id) {
+                log::error!("[bridge] delete-instance failed: {}", e);
+                drop(mgr);
+                return;
+            }
+            // Refresh the list
+            let active_id = mgr.active().map(|a| a.id.clone());
+            let list: Vec<InstanceData> = mgr.instances().iter().map(|i| InstanceData {
+                id: i.id.clone().into(),
+                label: i.label.clone().into(),
+                base_url: i.base_url.clone().into(),
+                is_active: Some(&i.id) == active_id.as_ref(),
+            }).collect();
+            let has_instances = !list.is_empty();
+            drop(mgr);
+
+            if let Some(w) = ww.upgrade() {
+                w.set_instance_list(std::rc::Rc::new(slint::VecModel::from(list)).into());
+                if !has_instances {
+                    w.set_current_screen(NavScreen::AddInstance);
+                }
+            }
         });
     }
 
@@ -178,12 +309,92 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
         });
     }
 
-    // save_settings (navigate back to dashboard)
+    // Populate audio device lists and load saved settings into UI
+    {
+        let input_devs = devices::list_input_devices();
+        let output_devs = devices::list_output_devices();
+        let settings = Settings::load();
+
+        let mic_names: Vec<slint::SharedString> = input_devs.iter().map(|d| d.name.clone().into()).collect();
+        let speaker_names: Vec<slint::SharedString> = output_devs.iter().map(|d| d.name.clone().into()).collect();
+
+        window.set_mic_devices(std::rc::Rc::new(slint::VecModel::from(mic_names)).into());
+        window.set_speaker_devices(std::rc::Rc::new(slint::VecModel::from(speaker_names)).into());
+
+        // Restore saved device selections (fall back to default device)
+        if let Some(ref saved_mic) = settings.default_mic_device {
+            if input_devs.iter().any(|d| &d.name == saved_mic) {
+                window.set_selected_mic(saved_mic.clone().into());
+            }
+        }
+        if window.get_selected_mic().is_empty() {
+            if let Some(def) = input_devs.iter().find(|d| d.is_default) {
+                window.set_selected_mic(def.name.clone().into());
+            }
+        }
+
+        if let Some(ref saved_spk) = settings.default_speaker_device {
+            if output_devs.iter().any(|d| &d.name == saved_spk) {
+                window.set_selected_speaker(saved_spk.clone().into());
+            }
+        }
+        if window.get_selected_speaker().is_empty() {
+            if let Some(def) = output_devs.iter().find(|d| d.is_default) {
+                window.set_selected_speaker(def.name.clone().into());
+            }
+        }
+
+        // Restore noise suppression & echo cancellation
+        let ns_idx = match settings.noise_suppression {
+            NoiseSuppression::None => 0,
+            NoiseSuppression::RNNoise => 1,
+            NoiseSuppression::Krisp => 2,
+        };
+        window.set_noise_suppression_index(ns_idx);
+        window.set_echo_cancellation(settings.echo_cancellation);
+
+        log::info!(
+            "[bridge] audio settings loaded: mic={:?} spk={:?} ns={} ec={}",
+            window.get_selected_mic().to_string(),
+            window.get_selected_speaker().to_string(),
+            ns_idx,
+            settings.echo_cancellation,
+        );
+    }
+
+    // save_settings — persist to disk and navigate back
     {
         let ww = w.clone();
         window.on_save_settings(move || {
             if let Some(w) = ww.upgrade() {
+                let settings = read_settings_from_ui(&w);
+                if let Err(e) = settings.save() {
+                    log::error!("[bridge] failed to save settings: {}", e);
+                } else {
+                    log::info!("[bridge] settings saved");
+                }
                 w.set_current_screen(NavScreen::Dashboard);
+            }
+        });
+    }
+
+    // settings_changed — live-apply audio settings during active call
+    {
+        let ww = w.clone();
+        window.on_settings_changed(move || {
+            if let Some(w) = ww.upgrade() {
+                let mic = w.get_selected_mic().to_string();
+                let spk = w.get_selected_speaker().to_string();
+                let ns = w.get_noise_suppression_index();
+                let ec = w.get_echo_cancellation();
+                log::info!(
+                    "[bridge] settings changed (live): mic={:?} spk={:?} ns={} ec={}",
+                    mic, spk, ns, ec,
+                );
+                // TODO: apply to active LiveKit room when integrated:
+                // - switch mic/speaker device
+                // - toggle echo cancellation
+                // - switch noise suppression processor
             }
         });
     }
@@ -335,5 +546,25 @@ pub fn wire(window: &AppWindow, ctx: Arc<AppContext>) {
                 w.set_chat_messages(std::rc::Rc::new(slint::VecModel::from(messages)).into());
             }
         });
+    }
+}
+
+/// Read current audio settings from the Slint UI into a Settings struct.
+fn read_settings_from_ui(w: &AppWindow) -> Settings {
+    let mic = w.get_selected_mic().to_string();
+    let spk = w.get_selected_speaker().to_string();
+    let ns = match w.get_noise_suppression_index() {
+        1 => NoiseSuppression::RNNoise,
+        2 => NoiseSuppression::Krisp,
+        _ => NoiseSuppression::None,
+    };
+
+    Settings {
+        theme: crate::store::settings::Theme::default(), // theme handled separately
+        default_mic_device: if mic.is_empty() { None } else { Some(mic) },
+        default_cam_device: None,
+        default_speaker_device: if spk.is_empty() { None } else { Some(spk) },
+        noise_suppression: ns,
+        echo_cancellation: w.get_echo_cancellation(),
     }
 }

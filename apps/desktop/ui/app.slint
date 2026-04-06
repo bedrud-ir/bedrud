@@ -1,4 +1,6 @@
 import { theme } from "theme.slint";
+import { Button, ButtonVariant } from "components/button.slint";
+import { Input } from "components/input.slint";
 import { LoginScreen } from "auth/login.slint";
 import { RegisterScreen } from "auth/register.slint";
 import { RoomData } from "dashboard/room_card.slint";
@@ -10,7 +12,14 @@ import { AdminUserRow } from "admin/user_table.slint";
 import { AdminScreen } from "admin/admin.slint";
 import { SettingsScreen } from "settings.slint";
 
-export enum NavScreen { AddInstance, Login, Register, Dashboard, Meeting, Admin, Settings }
+export enum NavScreen { AddInstance, Login, Register, Dashboard, Meeting, Admin, Settings, Instances }
+
+export struct InstanceData {
+    id: string,
+    label: string,
+    base-url: string,
+    is-active: bool,
+}
 
 export component AppWindow inherits Window {
     title: "Bedrud";
@@ -52,8 +61,22 @@ export component AppWindow inherits Window {
     in property <[string]> speaker-devices: [];
     in-out property <string> selected-mic: "";
     in-out property <string> selected-speaker: "";
+    in-out property <int> noise-suppression-index: 0;
+    in-out property <bool> echo-cancellation: true;
+
+    // Add-instance form state
+    in-out property <string> add-instance-label;
+    in-out property <string> add-instance-url;
+    in property <string> add-instance-error;
+
+    // Instance list
+    in property <[InstanceData]> instance-list: [];
 
     // Callbacks (wired from bridge.rs)
+    callback add-instance(string, string);
+    callback switch-instance(string);
+    callback delete-instance(string);
+    callback load-instances;
     callback login(string, string);
     callback passkey-login;
     callback guest-login(string);
@@ -69,6 +92,7 @@ export component AppWindow inherits Window {
     callback load-rooms;
     callback navigate-to(NavScreen);
     callback save-settings;
+    callback settings-changed;
 
     if current-screen == NavScreen.Login: LoginScreen {
         width: parent.width; height: parent.height;
@@ -99,6 +123,7 @@ export component AppWindow inherits Window {
         settings-clicked => { navigate-to(NavScreen.Settings); }
         admin-clicked => { navigate-to(NavScreen.Admin); }
         logout-clicked => { logout(); }
+        instance-switch-clicked => { load-instances(); navigate-to(NavScreen.Instances); }
     }
 
     if current-screen == NavScreen.Meeting: MeetingScreen {
@@ -124,25 +149,243 @@ export component AppWindow inherits Window {
         back-clicked => { navigate-to(NavScreen.Dashboard); }
     }
 
+    if current-screen == NavScreen.Instances: Rectangle {
+        width: parent.width; height: parent.height;
+        background: theme.bg-primary;
+
+        VerticalLayout {
+            // Toolbar
+            Rectangle {
+                height: 56px;
+                background: theme.bg-secondary;
+                border-width: 1px;
+                border-color: theme.border;
+
+                HorizontalLayout {
+                    padding-left: theme.space-md;
+                    padding-right: theme.space-md;
+                    spacing: theme.space-sm;
+
+                    Button {
+                        text: "← Back";
+                        variant: ButtonVariant.secondary;
+                        height: 32px;
+                        clicked => { navigate-to(NavScreen.Dashboard); }
+                    }
+
+                    Text {
+                        text: "Instances";
+                        font-size: theme.font-lg;
+                        font-weight: 700;
+                        color: theme.text-primary;
+                        vertical-alignment: center;
+                        horizontal-stretch: 1;
+                    }
+
+                    Button {
+                        text: "+ Add";
+                        height: 32px;
+                        clicked => { navigate-to(NavScreen.AddInstance); }
+                    }
+                }
+            }
+
+            // Instance list
+            VerticalLayout {
+                vertical-stretch: 1;
+                padding: theme.space-lg;
+                spacing: theme.space-sm;
+
+                if instance-list.length == 0: Text {
+                    text: "No instances configured.";
+                    color: theme.text-muted;
+                    horizontal-alignment: center;
+                }
+
+                for inst in instance-list: Rectangle {
+                    height: 64px;
+                    background: inst.is-active ? theme.bg-hover : theme.bg-card;
+                    border-radius: theme.radius-md;
+                    border-width: 1px;
+                    border-color: inst.is-active ? theme.accent : theme.border;
+
+                    HorizontalLayout {
+                        padding-left: theme.space-md;
+                        padding-right: theme.space-md;
+                        spacing: theme.space-md;
+
+                        // Active indicator
+                        Rectangle {
+                            width: 8px;
+                            height: 8px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 4px;
+                            background: inst.is-active ? theme.success : theme.text-muted;
+                        }
+
+                        // Info
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            alignment: center;
+                            spacing: 2px;
+
+                            Text {
+                                text: inst.label;
+                                color: theme.text-primary;
+                                font-size: theme.font-base;
+                                font-weight: 500;
+                            }
+                            Text {
+                                text: inst.base-url;
+                                color: theme.text-secondary;
+                                font-size: theme.font-sm;
+                            }
+                        }
+
+                        // Actions
+                        if !inst.is-active: Button {
+                            text: "Switch";
+                            variant: ButtonVariant.secondary;
+                            height: 32px;
+                            clicked => { switch-instance(inst.id); }
+                        }
+                        if !inst.is-active: Button {
+                            text: "Remove";
+                            variant: ButtonVariant.destructive;
+                            height: 32px;
+                            clicked => { delete-instance(inst.id); }
+                        }
+                        if inst.is-active: Text {
+                            text: "Active";
+                            color: theme.success;
+                            font-size: theme.font-sm;
+                            font-weight: 500;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    // Click to switch
+                    TouchArea {
+                        clicked => {
+                            if !inst.is-active { switch-instance(inst.id); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if current-screen == NavScreen.Settings: SettingsScreen {
         width: parent.width; height: parent.height;
         mic-devices: mic-devices;
         speaker-devices: speaker-devices;
         selected-mic <=> selected-mic;
         selected-speaker <=> selected-speaker;
+        noise-suppression-index <=> noise-suppression-index;
+        echo-cancellation <=> echo-cancellation;
         back-clicked => { navigate-to(NavScreen.Dashboard); }
         save-clicked => { save-settings(); }
+        settings-changed => { settings-changed(); }
     }
 
     if current-screen == NavScreen.AddInstance: Rectangle {
         width: parent.width; height: parent.height;
         background: theme.bg-primary;
-        Text {
-            text: "Add an instance to get started";
-            color: theme.text-muted;
-            font-size: theme.font-lg;
-            horizontal-alignment: center;
-            vertical-alignment: center;
+
+        // Card
+        Rectangle {
+            width: 440px;
+            height: card-layout.preferred-height + 80px;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            background: theme.bg-secondary;
+            border-radius: theme.radius-lg;
+            border-width: 1px;
+            border-color: theme.border;
+
+            card-layout := VerticalLayout {
+                alignment: center;
+                spacing: theme.space-md;
+                padding-left: theme.space-xl;
+                padding-right: theme.space-xl;
+                padding-top: 40px;
+                padding-bottom: 40px;
+
+                // Icon circle
+                Rectangle {
+                    height: 56px;
+                    width: 56px;
+                    x: (parent.width - self.width - theme.space-xl * 2) / 2;
+                    background: theme.accent;
+                    border-radius: 28px;
+
+                    Text {
+                        text: "B";
+                        font-size: theme.font-xl;
+                        font-weight: 700;
+                        color: #ffffff;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                // Title
+                Text {
+                    text: "Bedrud";
+                    font-size: theme.font-2xl;
+                    font-weight: 700;
+                    color: theme.text-primary;
+                    horizontal-alignment: center;
+                }
+
+                // Subtitle
+                Text {
+                    text: "Connect to your server";
+                    font-size: theme.font-base;
+                    color: theme.text-secondary;
+                    horizontal-alignment: center;
+                }
+
+                // Spacer
+                Rectangle { height: theme.space-sm; }
+
+                // Error
+                if add-instance-error != "": Rectangle {
+                    background: #3f0000;
+                    border-radius: theme.radius-md;
+                    border-width: 1px;
+                    border-color: theme.destructive;
+                    height: 40px;
+                    Text {
+                        text: add-instance-error;
+                        color: theme.destructive;
+                        font-size: theme.font-sm;
+                        wrap: word-wrap;
+                        x: theme.space-sm;
+                        y: theme.space-sm;
+                    }
+                }
+
+                Input {
+                    label: "Server URL";
+                    placeholder: "https://bedrud.example.com";
+                    value <=> add-instance-url;
+                }
+
+                Input {
+                    label: "Label (optional)";
+                    placeholder: "My Server";
+                    value <=> add-instance-label;
+                }
+
+                // Spacer
+                Rectangle { height: theme.space-xs; }
+
+                Button {
+                    text: "Connect";
+                    clicked => { add-instance(add-instance-label, add-instance-url); }
+                }
+            }
         }
     }
 }

@@ -15,6 +15,8 @@ impl ApiClient {
         Self {
             inner: Client::builder()
                 .user_agent("bedrud-desktop/0.1")
+                .connect_timeout(std::time::Duration::from_secs(10))
+                .timeout(std::time::Duration::from_secs(30))
                 .build()
                 .expect("HTTP client init failed"),
             base_url: Arc::new(RwLock::new(base_url.into())),
@@ -41,6 +43,9 @@ impl ApiClient {
         body: Option<serde_json::Value>,
     ) -> Result<T> {
         let url = format!("{}/api{}", self.base_url.read().unwrap(), path);
+        let method_str = method.to_string();
+        log::info!("[api] {} {}", method_str, url);
+
         let mut req = self.inner.request(method, &url)
             .header("Content-Type", "application/json");
 
@@ -51,10 +56,18 @@ impl ApiClient {
             req = req.json(&body);
         }
 
-        let resp = req.send().await?;
+        let resp = match req.send().await {
+            Ok(r) => r,
+            Err(e) => {
+                log::error!("[api] {} {} failed: {}", method_str, url, e);
+                return Err(e.into());
+            }
+        };
         let status = resp.status();
+        log::info!("[api] {} {} -> {}", method_str, url, status);
         if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
+            log::error!("[api] {} {} error body: {}", method_str, url, text);
             return Err(anyhow!("{}: {}", status, text));
         }
         Ok(resp.json::<T>().await?)

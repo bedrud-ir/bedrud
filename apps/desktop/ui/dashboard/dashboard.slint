@@ -45,6 +45,12 @@ export component DashboardScreen inherits Rectangle {
                 }
 
                 Button {
+                    text: "Instances";
+                    variant: ButtonVariant.secondary;
+                    height: 32px;
+                    clicked => { instance-switch-clicked(); }
+                }
+                Button {
                     text: "⚙ Settings";
                     variant: ButtonVariant.secondary;
                     height: 32px;

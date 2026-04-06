@@ -18,13 +18,30 @@ pub enum NoiseSuppression {
     Krisp,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub theme: Theme,
     pub default_mic_device: Option<String>,
     pub default_cam_device: Option<String>,
     pub default_speaker_device: Option<String>,
     pub noise_suppression: NoiseSuppression,
+    #[serde(default = "default_true")]
+    pub echo_cancellation: bool,
+}
+
+fn default_true() -> bool { true }
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            theme: Theme::default(),
+            default_mic_device: None,
+            default_cam_device: None,
+            default_speaker_device: None,
+            noise_suppression: NoiseSuppression::default(),
+            echo_cancellation: true,
+        }
+    }
 }
 
 impl Settings {
@@ -67,5 +84,6 @@ mod tests {
         assert!(s.default_mic_device.is_none());
         assert!(matches!(s.theme, Theme::System));
         assert!(matches!(s.noise_suppression, NoiseSuppression::None));
+        assert!(s.echo_cancellation);
     }
 }
