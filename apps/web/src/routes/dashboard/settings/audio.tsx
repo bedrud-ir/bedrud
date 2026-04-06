@@ -49,7 +49,7 @@ function VolumeMeter({ volume }: { volume: number }) {
 
 /* ── Mic Test Hook ────────────────────────────────────────────────────────── */
 
-function useMicTest(mode: NoiseSuppressionMode, inputGain: number, noiseGate: number) {
+function useMicTest(mode: NoiseSuppressionMode, echoCancellation: boolean, inputGain: number, noiseGate: number) {
   const [testing, setTesting] = useState(false)
   const [volume, setVolume] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -100,7 +100,7 @@ function useMicTest(mode: NoiseSuppressionMode, inputGain: number, noiseGate: nu
         audio: {
           deviceId: deviceId ? { exact: deviceId } : undefined,
           noiseSuppression: withSuppression,
-          echoCancellation: withSuppression,
+          echoCancellation,
           autoGainControl: withSuppression,
         },
       })
@@ -184,7 +184,7 @@ function AudioPage() {
   const merge = useAudioPreferencesStore((s) => s.merge)
 
   const krispSupported = AudioProcessorService.isKrispSupported()
-  const mic = useMicTest(mode, inputGain, noiseGate)
+  const mic = useMicTest(mode, echoCancellation, inputGain, noiseGate)
 
   // ── Remote sync ──
   const { data: remotePrefs } = useQuery({
@@ -257,19 +257,19 @@ function AudioPage() {
           })}
         </div>
 
-        {/* WebRTC sub-options appear inline when browser mode is active */}
-        {mode === 'browser' && (
-          <div className="flex items-center gap-4 border-l pl-4">
-            <label className="flex items-center gap-2 text-xs">
-              <Switch className="scale-75" checked={echoCancellation} onCheckedChange={setEchoCancellation} />
-              <span className="text-muted-foreground">Echo</span>
-            </label>
+        {/* Echo cancellation works independently of noise mode */}
+        <div className="flex items-center gap-4 border-l pl-4">
+          <label className="flex items-center gap-2 text-xs">
+            <Switch className="scale-75" checked={echoCancellation} onCheckedChange={setEchoCancellation} />
+            <span className="text-muted-foreground">Echo</span>
+          </label>
+          {mode === 'browser' && (
             <label className="flex items-center gap-2 text-xs">
               <Switch className="scale-75" checked={autoGainControl} onCheckedChange={setAutoGainControl} />
               <span className="text-muted-foreground">AGC</span>
             </label>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* ── Row 2: Device + Test button ── */}

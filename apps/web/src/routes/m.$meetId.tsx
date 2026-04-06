@@ -76,12 +76,13 @@ function MeetingPage() {
   const autoGainControl = useAudioPreferencesStore((s) => s.autoGainControl)
   const mergeAudioPrefs = useAudioPreferencesStore((s) => s.merge)
 
-  // When using a LiveKit audio processor (rnnoise/krisp), disable browser-level
-  // noise processing to avoid double-processing artifacts.
+  // Echo cancellation is always honoured from user preferences.
+  // Noise suppression is only enabled for browser mode to avoid double-processing
+  // with LiveKit audio processors (RNNoise/Krisp).
   const audioConstraints: AudioCaptureOptions | boolean =
     noiseMode === 'browser'
       ? { noiseSuppression: true, echoCancellation, autoGainControl }
-      : { noiseSuppression: false, echoCancellation: false, autoGainControl: false }
+      : { noiseSuppression: false, echoCancellation, autoGainControl: false }
 
   // One-shot preferences sync from backend. useRef guard ensures this runs exactly
   // once even if joinData is replaced (e.g. reconnect), so a mid-session local
@@ -382,6 +383,7 @@ function MeetingPage() {
       {/* LiveKitRoom renders as display:contents — this div is the actual viewport container */}
       <div className="fixed inset-0 overflow-hidden" style={{ background: '#07070f' }}>
         <MeetingProvider roomId={id} roomName={roomName} adminId={adminId ?? ''}>
+          <BeforeUnloadLock />
           <KickDetector onKicked={() => setWasKicked(true)} />
           <AskActionBanner />
           <AudioProcessorManager />
@@ -894,6 +896,22 @@ function AskActionBanner() {
       </button>
     </div>
   )
+}
+
+// ── Beforeunload lock (prevents accidental tab close while in call) ──
+function BeforeUnloadLock() {
+  const state = useConnectionState()
+
+  useEffect(() => {
+    if (state !== ConnectionState.Connected) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [state])
+
+  return null
 }
 
 // ── Kick detector ─────────────────────────────────────────────

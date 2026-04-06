@@ -17,6 +17,8 @@ export function AudioProcessorManager() {
   const { localParticipant } = useLocalParticipant()
   const connectionState = useConnectionState()
   const mode = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
+  const echoCancellation = useAudioPreferencesStore((s) => s.echoCancellation)
+  const autoGainControl = useAudioPreferencesStore((s) => s.autoGainControl)
 
   // Attach on connect
   useEffect(() => {
@@ -31,11 +33,17 @@ export function AudioProcessorManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionState, localParticipant, mode])
 
-  // Switch processor when mode changes mid-meeting
+  // Switch processor when mode changes mid-meeting, passing current EC/AGC prefs
   useEffect(() => {
     if (connectionState !== ConnectionState.Connected) return
-    audioProcessorService.switchMode(mode)
-  }, [mode, connectionState])
+    audioProcessorService.switchMode(mode, { echoCancellation, autoGainControl })
+  }, [mode, connectionState, echoCancellation, autoGainControl])
+
+  // Apply echo cancellation changes live (without re-triggering full mode switch)
+  useEffect(() => {
+    if (connectionState !== ConnectionState.Connected) return
+    audioProcessorService.setEchoCancellation(echoCancellation)
+  }, [echoCancellation, connectionState])
 
   // Cleanup on unmount
   useEffect(

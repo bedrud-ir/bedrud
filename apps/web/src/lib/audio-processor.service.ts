@@ -24,17 +24,19 @@ export class AudioProcessorService {
    * Switch to a new noise suppression mode.
    * Tears down any existing processor first to avoid double-processing.
    *
-   * Also calls applyConstraints() on the underlying MediaStreamTrack so that
-   * browser-level noise processing is disabled when a LiveKit processor is
-   * active. The LiveKit `audio` prop on <LiveKitRoom> only applies constraints
-   * at connection time — it does not retroactively re-negotiate a live track.
+   * Echo cancellation is applied independently of noise suppression mode —
+   * it's a WebRTC feature that works alongside LiveKit audio processors.
    */
-  async switchMode(mode: NoiseSuppressionMode): Promise<void> {
+  async switchMode(
+    mode: NoiseSuppressionMode,
+    opts?: { echoCancellation?: boolean; autoGainControl?: boolean },
+  ): Promise<void> {
     if (!this.track) return
-    if (mode === this.currentMode) return
 
-    // Remove existing processor
-    if (this.currentMode !== 'none' && this.currentMode !== 'browser') {
+    const modeChanged = mode !== this.currentMode
+
+    // Remove existing processor when switching away from a LiveKit processor
+    if (modeChanged && this.currentMode !== 'none' && this.currentMode !== 'browser') {
       try {
         await this.track.stopProcessor()
       } catch (err) {
@@ -44,30 +46,44 @@ export class AudioProcessorService {
 
     this.currentMode = mode
 
-    // Apply WebRTC-level constraints to match the new mode.
-    // When a LiveKit processor handles noise suppression, we disable browser
-    // processing to prevent double-processing artifacts.
+    // Apply WebRTC-level constraints.
+    // Noise suppression is only enabled for browser mode (to avoid double-processing
+    // with LiveKit processors), but echo cancellation and AGC are independent —
+    // they should honour the user's preference regardless of noise mode.
     const mediaTrack = this.track.mediaStreamTrack
     if (mediaTrack) {
-      const browserActive = mode === 'browser'
+      const browserNS = mode === 'browser'
       mediaTrack
         .applyConstraints({
-          noiseSuppression: browserActive,
-          echoCancellation: browserActive,
-          autoGainControl: browserActive,
+          noiseSuppression: browserNS,
+          echoCancellation: opts?.echoCancellation ?? true,
+          autoGainControl: opts?.autoGainControl ?? mode === 'browser',
         })
         .catch((err) => {
-          // Non-fatal: some browsers ignore applyConstraints after track creation
           console.warn('[AudioProcessorService] applyConstraints failed:', err)
         })
     }
 
-    if (mode === 'rnnoise') {
-      await this.track.setProcessor(new RNNoiseProcessor())
-    } else if (mode === 'krisp') {
-      await this.track.setProcessor(KrispNoiseFilter())
+    if (modeChanged) {
+      if (mode === 'rnnoise') {
+        await this.track.setProcessor(new RNNoiseProcessor())
+      } else if (mode === 'krisp') {
+        await this.track.setProcessor(KrispNoiseFilter())
+      }
     }
-    // 'none' and 'browser': WebRTC constraints handle it; no LiveKit processor needed
+  }
+
+  /**
+   * Update echo cancellation on the live track without changing the noise mode.
+   */
+  async setEchoCancellation(enabled: boolean): Promise<void> {
+    if (!this.track) return
+    const mediaTrack = this.track.mediaStreamTrack
+    if (mediaTrack) {
+      mediaTrack.applyConstraints({ echoCancellation: enabled }).catch((err) => {
+        console.warn('[AudioProcessorService] setEchoCancellation failed:', err)
+      })
+    }
   }
 
   /** Detach from the track. Called on room disconnect / unmount. */
