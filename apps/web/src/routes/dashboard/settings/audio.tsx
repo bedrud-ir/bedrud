@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Brain, Check, Globe, Loader2, Mic, MicOff, Shield, Zap } from 'lucide-react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '#/lib/api'
 import { type NoiseSuppressionMode, useAudioPreferencesStore } from '#/lib/audio-preferences.store'
 import { AudioProcessorService } from '#/lib/audio-processor.service'
@@ -69,18 +69,18 @@ function useMicTest(mode: NoiseSuppressionMode, echoCancellation: boolean, input
     if (gainNodeRef.current) gainNodeRef.current.gain.value = inputGain / 100
   }, [inputGain])
 
-  const enumerateDevices = async () => {
+  const enumerateDevices = useCallback(async () => {
     const all = await navigator.mediaDevices.enumerateDevices()
     const inputs = all.filter((d) => d.kind === 'audioinput')
     setDevices(inputs)
     if (inputs.length > 0) setDeviceId((prev) => prev || inputs[0].deviceId)
-  }
+  }, [])
 
   useEffect(() => {
     enumerateDevices().catch(() => {})
-  }, [enumerateDevices]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enumerateDevices])
 
-  const stop = () => {
+  const stop = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
     streamRef.current?.getTracks().forEach((t) => t.stop())
     ctxRef.current?.close().catch(() => {})
@@ -90,7 +90,7 @@ function useMicTest(mode: NoiseSuppressionMode, echoCancellation: boolean, input
     gateNodeRef.current = null
     setVolume(0)
     setTesting(false)
-  }
+  }, [])
 
   const start = async () => {
     setError(null)
@@ -163,7 +163,7 @@ function useMicTest(mode: NoiseSuppressionMode, echoCancellation: boolean, input
       stop()
     },
     [stop],
-  ) // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   return { testing, volume, error, devices, deviceId, setDeviceId, start, stop }
 }
