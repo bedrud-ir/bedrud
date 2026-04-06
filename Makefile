@@ -8,7 +8,7 @@ help:
 	@echo "  init                 Install all dependencies (web + server + air)"
 	@echo "  dev                  Run livekit + server + web concurrently"
 	@echo "  dev-web              Run frontend dev server (proxies /api → :8090)"
-	@echo "  dev-server           Run backend server"
+	@echo "  dev-server           Run backend server + LiveKit"
 	@echo "  dev-server-hot       Run backend with Air (hot reload on file changes)"
 	@echo "  dev-api              Run backend only, no LiveKit (fast API iteration)"
 	@echo "  dev-livekit          Run local LiveKit server"
@@ -113,9 +113,13 @@ dev:
 dev-web:
 	cd apps/web && bun run dev
 
-# Run backend server
+# Run backend server + LiveKit
 dev-server:
-	cd server && go run ./cmd/server/main.go
+	@trap 'kill 0' INT TERM; \
+	$(MAKE) dev-livekit & \
+	sleep 1; \
+	cd server && go run ./cmd/server/main.go; \
+	wait
 
 # Run backend with Air hot reload (auto-restarts on .go file changes)
 dev-server-hot:

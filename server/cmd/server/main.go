@@ -238,8 +238,15 @@ func main() {
 	api.Post("/auth/refresh", authHandler.RefreshToken)
 	api.Post("/auth/logout", middleware.Protected(), authHandler.Logout)
 	api.Get("/auth/me", middleware.Protected(), authHandler.GetMe)
+	api.Put("/auth/me", middleware.Protected(), authHandler.UpdateProfile)
+	api.Put("/auth/password", middleware.Protected(), authHandler.ChangePassword)
 	api.Get("/auth/:provider/login", handlers.BeginAuthHandler)
 	api.Get("/auth/:provider/callback", handlers.CallbackHandler)
+
+	prefsRepo := repository.NewUserPreferencesRepository(database.GetDB())
+	preferencesHandler := handlers.NewPreferencesHandler(prefsRepo)
+	api.Get("/auth/preferences", middleware.Protected(), preferencesHandler.GetPreferences)
+	api.Put("/auth/preferences", middleware.Protected(), preferencesHandler.UpdatePreferences)
 
 	// Passkey routes
 	api.Post("/auth/passkey/register/begin", middleware.Protected(), authHandler.PasskeyRegisterBegin)
@@ -259,10 +266,21 @@ func main() {
 	api.Get("/room/list", middleware.Protected(), roomHandler.ListRooms)
 	api.Post("/room/:roomId/kick/:identity", middleware.Protected(), roomHandler.KickParticipant)
 	api.Post("/room/:roomId/mute/:identity", middleware.Protected(), roomHandler.MuteParticipant)
+	api.Post("/room/:roomId/ban/:identity", middleware.Protected(), roomHandler.BanParticipant)
 	api.Post("/room/:roomId/video/:identity/off", middleware.Protected(), roomHandler.DisableParticipantVideo)
+	api.Post("/room/:roomId/promote/:identity", middleware.Protected(), roomHandler.PromoteParticipant)
+	api.Post("/room/:roomId/demote/:identity", middleware.Protected(), roomHandler.DemoteParticipant)
+	api.Post("/room/:roomId/chat/:identity/block", middleware.Protected(), roomHandler.BlockChat)
+	api.Post("/room/:roomId/deafen/:identity", middleware.Protected(), roomHandler.DeafenParticipant)
+	api.Post("/room/:roomId/undeafen/:identity", middleware.Protected(), roomHandler.UndeafenParticipant)
+	api.Post("/room/:roomId/ask/:identity/:action", middleware.Protected(), roomHandler.AskParticipantAction)
+	api.Post("/room/:roomId/spotlight/:identity", middleware.Protected(), roomHandler.SpotlightParticipant)
+	api.Post("/room/:roomId/screenshare/:identity/stop", middleware.Protected(), roomHandler.StopScreenShare)
+	api.Get("/room/:roomId/participant/:identity/info", middleware.Protected(), roomHandler.GetParticipantInfo)
 	api.Post("/room/:roomId/stage/:identity/bring", middleware.Protected(), roomHandler.BringToStage)
 	api.Post("/room/:roomId/stage/:identity/remove", middleware.Protected(), roomHandler.RemoveFromStage)
 	api.Put("/room/:roomId/settings", middleware.Protected(), roomHandler.UpdateSettings)
+	api.Delete("/room/:roomId", middleware.Protected(), roomHandler.DeleteRoom)
 
 	// Initialize handlers
 	usersHandler := handlers.NewUsersHandler(userRepo, roomRepo)
