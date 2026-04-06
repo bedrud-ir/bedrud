@@ -91,7 +91,7 @@ function GuestPage() {
 
       {/* Auth links */}
       <div className="grid grid-cols-2 gap-3">
-        <Link to="/auth/login">
+        <Link to="/auth/login" search={{ redirect: undefined }}>
           <Button variant="outline" className="w-full">
             Sign in
           </Button>
