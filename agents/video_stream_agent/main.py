@@ -140,16 +140,22 @@ async def main():
             y_size = WIDTH * HEIGHT
             uv_size = (WIDTH // 2) * (HEIGHT // 2)
             frame_size = y_size + 2 * uv_size
-            
+            frame_interval = 1 / FPS
+
             try:
+                next_frame_time = asyncio.get_event_loop().time()
                 while True:
                     data = await proc_v.stdout.readexactly(frame_size)
                     if not data:
                         break
-                    
+
                     frame = rtc.VideoFrame(WIDTH, HEIGHT, rtc.VideoBufferType.I420, data)
                     video_source.capture_frame(frame)
-                    await asyncio.sleep(0)
+
+                    next_frame_time += frame_interval
+                    delay = next_frame_time - asyncio.get_event_loop().time()
+                    if delay > 0:
+                        await asyncio.sleep(delay)
             except Exception as e:
                 print(f"[*] Video stream loop ended: {e}")
             finally:
