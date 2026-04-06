@@ -149,11 +149,20 @@ function useDeviceList(kind: 'audioinput' | 'audiooutput') {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [activeId, setActiveId] = useState(() => localStorage.getItem(STORAGE_KEYS[kind]) ?? '')
 
+  // Sync activeId from the room's actual active device
+  const syncActiveFromRoom = useCallback(() => {
+    const actual = room.getActiveDevice(kind)
+    if (actual) setActiveId(actual)
+  }, [room, kind])
+
   useEffect(() => {
     const refresh = async () => {
       try {
         const all = await navigator.mediaDevices.enumerateDevices()
-        setDevices(all.filter((d) => d.kind === kind))
+        const filtered = all.filter((d) => d.kind === kind)
+        setDevices(filtered)
+        // After device list refreshes, verify our activeId still exists
+        syncActiveFromRoom()
       } catch {
         /* permissions not yet granted */
       }
@@ -161,24 +170,41 @@ function useDeviceList(kind: 'audioinput' | 'audiooutput') {
     refresh()
     navigator.mediaDevices.addEventListener('devicechange', refresh)
     return () => navigator.mediaDevices.removeEventListener('devicechange', refresh)
-  }, [kind])
+  }, [kind, syncActiveFromRoom])
 
-  // Restore saved device on room connect
+  // Restore saved device on room connect, then sync actual active device
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEYS[kind])
-    if (!saved) return
+
+    const applyDevice = async () => {
+      if (saved) {
+        await room.switchActiveDevice(kind, saved).catch(() => {})
+      }
+      // Always sync to what the room is actually using (handles fallback)
+      syncActiveFromRoom()
+    }
+
     if (room.state === ConnectionState.Connected) {
-      room.switchActiveDevice(kind, saved).catch(() => {})
+      applyDevice()
       return
     }
     const handler = () => {
-      room.switchActiveDevice(kind, saved!).catch(() => {})
+      applyDevice()
     }
     room.once(RoomEvent.Connected, handler)
     return () => {
       room.off(RoomEvent.Connected, handler)
     }
-  }, [room, kind])
+  }, [room, kind, syncActiveFromRoom])
+
+  // Listen for device changes from the room (e.g. system default change)
+  useEffect(() => {
+    const handler = () => syncActiveFromRoom()
+    room.on(RoomEvent.ActiveDeviceChanged, handler)
+    return () => {
+      room.off(RoomEvent.ActiveDeviceChanged, handler)
+    }
+  }, [room, syncActiveFromRoom])
 
   const select = useCallback(
     async (deviceId: string) => {

@@ -1,7 +1,7 @@
 import { useRoomContext } from '@livekit/components-react'
 import { ConnectionState, RoomEvent } from 'livekit-client'
 import { Check, ChevronDown } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
@@ -20,14 +20,20 @@ export function DeviceSelector({ kind }: DeviceSelectorProps) {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [activeId, setActiveId] = useState<string>(() => localStorage.getItem(STORAGE_KEYS[kind]) ?? '')
 
-  async function refreshDevices() {
+  const syncActiveFromRoom = useCallback(() => {
+    const actual = room.getActiveDevice(kind)
+    if (actual) setActiveId(actual)
+  }, [room, kind])
+
+  const refreshDevices = useCallback(async () => {
     try {
       const all = await navigator.mediaDevices.enumerateDevices()
       setDevices(all.filter((d) => d.kind === kind))
+      syncActiveFromRoom()
     } catch {
       // permissions not yet granted
     }
-  }
+  }, [kind, syncActiveFromRoom])
 
   useEffect(() => {
     refreshDevices()
@@ -35,24 +41,39 @@ export function DeviceSelector({ kind }: DeviceSelectorProps) {
     return () => navigator.mediaDevices.removeEventListener('devicechange', refreshDevices)
   }, [refreshDevices])
 
-  // Restore saved device — wait until the room is connected to avoid silent failures
+  // Restore saved device — wait until the room is connected, then sync actual active
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEYS[kind])
-    if (!saved) return
+
+    async function applyDevice() {
+      if (saved) {
+        await room.switchActiveDevice(kind, saved).catch(() => {})
+      }
+      syncActiveFromRoom()
+    }
 
     if (room.state === ConnectionState.Connected) {
-      room.switchActiveDevice(kind, saved).catch(() => {})
+      applyDevice()
       return
     }
 
     function onConnected() {
-      room.switchActiveDevice(kind, saved!).catch(() => {})
+      applyDevice()
     }
     room.once(RoomEvent.Connected, onConnected)
     return () => {
       room.off(RoomEvent.Connected, onConnected)
     }
-  }, [room, kind])
+  }, [room, kind, syncActiveFromRoom])
+
+  // Sync when room reports a device change (e.g. system default changed)
+  useEffect(() => {
+    const handler = () => syncActiveFromRoom()
+    room.on(RoomEvent.ActiveDeviceChanged, handler)
+    return () => {
+      room.off(RoomEvent.ActiveDeviceChanged, handler)
+    }
+  }, [room, syncActiveFromRoom])
 
   async function handleSelect(deviceId: string) {
     await room.switchActiveDevice(kind, deviceId).catch(() => {})
