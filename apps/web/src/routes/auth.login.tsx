@@ -8,7 +8,14 @@ import { useAuthStore } from '#/lib/auth.store'
 import { useUserStore } from '#/lib/user.store'
 import { api } from '#/lib/api'
 
-export const Route = createFileRoute('/auth/login')({ component: LoginPage })
+export const Route = createFileRoute('/auth/login')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: typeof search.redirect === 'string' && search.redirect.startsWith('/')
+      ? search.redirect
+      : undefined,
+  }),
+  component: LoginPage,
+})
 
 interface AuthResponse {
   user: { id: string; email: string; name: string; provider: string; accesses: string[] | null; avatarUrl?: string }
@@ -28,6 +35,7 @@ function bufferToBase64(buffer: ArrayBuffer): string {
 
 function LoginPage() {
   const navigate = useNavigate()
+  const { redirect } = Route.useSearch()
   const setTokens = useAuthStore((s) => s.setTokens)
   const setUser = useUserStore((s) => s.setUser)
 
@@ -40,7 +48,7 @@ function LoginPage() {
   function handleSuccess(res: AuthResponse) {
     setTokens(res.tokens)
     setUser({ id: res.user.id, email: res.user.email, name: res.user.name, provider: res.user.provider, isAdmin: res.user.accesses?.includes('superadmin') ?? false, accesses: res.user.accesses ?? [], avatarUrl: res.user.avatarUrl })
-    navigate({ to: '/dashboard' })
+    navigate({ to: redirect ?? '/dashboard' })
   }
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {

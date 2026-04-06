@@ -49,12 +49,24 @@ function MeetingPage() {
   const navigate = useNavigate()
   const tokens = useAuthStore((s) => s.tokens)
 
+  // Defer auth-state decisions to client-side to avoid SSR flash.
+  // On the server localStorage is unavailable, so tokens is always null — initializing
+  // guestName from tokens directly would cause the guest dialog to flash during SSR
+  // hydration. Instead we start in a "not yet mounted" state and resolve in an effect.
+  const [mounted, setMounted] = useState(false)
   const [joinData, setJoinData] = useState<JoinResponse | null>(null)
   const [joinError, setJoinError] = useState<string | null>(null)
-  // null = waiting to decide, '' = showing dialog, string = confirmed guest name
-  const [guestName, setGuestName] = useState<string | null>(tokens ? '' : null)
+  // null = waiting to decide, '' = authenticated (skip dialog), string = confirmed guest name
+  const [guestName, setGuestName] = useState<string | null>(null)
   const [guestInput, setGuestInput] = useState('')
   const [wasKicked, setWasKicked] = useState(false)
+
+  // Set initial guestName only after mount (client-side), where tokens are available.
+  useEffect(() => {
+    setGuestName(tokens ? '' : null)
+    setMounted(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Audio preferences — derive MediaTrackConstraints from stored settings
   const noiseMode          = useAudioPreferencesStore((s) => s.noiseSuppressionMode)
@@ -102,6 +114,25 @@ function MeetingPage() {
         .catch((err: Error) => setJoinError(err.message))
     }
   }, [meetId, tokens, guestName, joinData])
+
+  // Still on server or waiting for client mount — show neutral spinner to avoid SSR flash
+  if (!mounted) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0,
+        background: '#07070f',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 14,
+      }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: '50%',
+          border: '2px solid rgba(99,102,241,0.3)',
+          borderTopColor: '#6366f1',
+          animation: 'meet-connecting-spin 0.9s linear infinite',
+        }} />
+      </div>
+    )
+  }
 
   // Show guest name dialog for unauthenticated users
   if (!tokens && guestName === null) {
@@ -155,7 +186,7 @@ function MeetingPage() {
               Join
             </button>
             <button
-              onClick={() => navigate({ to: '/auth' })}
+              onClick={() => navigate({ to: '/auth/login', search: { redirect: `/m/${meetId}` } })}
               style={{
                 padding: '10px 14px', borderRadius: 9,
                 border: '1px solid rgba(255,255,255,0.1)',

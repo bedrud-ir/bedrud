@@ -36,7 +36,7 @@ function saveTokens(tokens: AuthTokens, remember: boolean) {
 export const useAuthStore = create<AuthStore>()((set, get) => ({
   tokens: loadTokens(),
 
-  setTokens: (tokens, remember = false) => {
+  setTokens: (tokens, remember = true) => {
     set({ tokens })
     saveTokens(tokens, remember)
   },
