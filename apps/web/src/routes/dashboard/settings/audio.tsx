@@ -23,6 +23,14 @@ const MODES: { value: NoiseSuppressionMode; label: string; icon: React.ElementTy
 
 const SEGMENTS = 32
 
+const BEEP_INTERVALS: { value: number; label: string }[] = [
+  { value: 3000, label: '3s' },
+  { value: 10000, label: '10s' },
+  { value: 30000, label: '30s' },
+  { value: 60000, label: '1 min' },
+  { value: 120000, label: '2 min' },
+]
+
 /* ── Volume Meter ─────────────────────────────────────────────────────────── */
 
 function VolumeMeter({ volume }: { volume: number }) {
@@ -176,11 +184,15 @@ function AudioPage() {
   const autoGainControl = useAudioPreferencesStore((s) => s.autoGainControl)
   const inputGain = useAudioPreferencesStore((s) => s.inputGain)
   const noiseGate = useAudioPreferencesStore((s) => s.noiseGate)
+  const mutedBeepEnabled = useAudioPreferencesStore((s) => s.mutedBeepEnabled)
+  const mutedBeepInterval = useAudioPreferencesStore((s) => s.mutedBeepInterval)
   const setMode = useAudioPreferencesStore((s) => s.setMode)
   const setEchoCancellation = useAudioPreferencesStore((s) => s.setEchoCancellation)
   const setAutoGainControl = useAudioPreferencesStore((s) => s.setAutoGainControl)
   const setInputGain = useAudioPreferencesStore((s) => s.setInputGain)
   const setNoiseGate = useAudioPreferencesStore((s) => s.setNoiseGate)
+  const setMutedBeepEnabled = useAudioPreferencesStore((s) => s.setMutedBeepEnabled)
+  const setMutedBeepInterval = useAudioPreferencesStore((s) => s.setMutedBeepInterval)
   const merge = useAudioPreferencesStore((s) => s.merge)
 
   const krispSupported = AudioProcessorService.isKrispSupported()
@@ -211,11 +223,19 @@ function AudioPage() {
 
   useEffect(() => {
     const prefs = {
-      audio: { noiseSuppressionMode: mode, echoCancellation, autoGainControl, inputGain, noiseGate },
+      audio: {
+        noiseSuppressionMode: mode,
+        echoCancellation,
+        autoGainControl,
+        inputGain,
+        noiseGate,
+        mutedBeepEnabled,
+        mutedBeepInterval,
+      },
     }
     const timer = setTimeout(() => mutateRef.current(JSON.stringify(prefs)), 1000)
     return () => clearTimeout(timer)
-  }, [mode, echoCancellation, autoGainControl, inputGain, noiseGate])
+  }, [mode, echoCancellation, autoGainControl, inputGain, noiseGate, mutedBeepEnabled, mutedBeepInterval])
 
   const syncStatus = syncMutation.isPending
     ? 'saving'
@@ -359,6 +379,33 @@ function AudioPage() {
           />
           <p className="text-[11px] text-muted-foreground/50">0% = disabled</p>
         </div>
+      </div>
+
+      {/* ── Row 5: Muted-mic beep alert ── */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t px-5 py-3">
+        <label className="flex items-center gap-2 text-xs">
+          <Switch className="scale-75" checked={mutedBeepEnabled} onCheckedChange={setMutedBeepEnabled} />
+          <span className="font-medium">Muted mic alert</span>
+        </label>
+        <span className="text-xs text-muted-foreground">beep when talking while muted</span>
+        {mutedBeepEnabled && (
+          <div className="flex items-center gap-1 border-l pl-4">
+            {BEEP_INTERVALS.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setMutedBeepInterval(value)}
+                className={cn(
+                  'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                  mutedBeepInterval === value
+                    ? 'border-primary/30 bg-primary/10 text-primary'
+                    : 'border-transparent bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Footer: sync status + note ── */}

@@ -1,6 +1,7 @@
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react'
 import { RoomEvent } from 'livekit-client'
 import { useEffect, useRef } from 'react'
+import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
 import { playChat, playJoin, playLeave, playMutedBeep } from '#/lib/meeting-sounds'
 import { useMeetingContext } from './MeetingContext'
 
@@ -71,7 +72,6 @@ export function MeetingSoundEffects() {
 // ── Hook: monitor mic input while muted ────────────────────────
 
 const SPEECH_THRESHOLD = 0.035 // RMS amplitude — tuned to ignore background noise
-const DEBOUNCE_MS = 3000 // Don't spam beeps — wait at least 3s between alerts
 
 function useMutedMicMonitor() {
   const { isSelfDeafened } = useMeetingContext()
@@ -79,6 +79,17 @@ function useMutedMicMonitor() {
   // room.localParticipant.isMicrophoneEnabled is a plain property that does NOT
   // trigger React re-renders, which caused the monitor to stay active after unmuting.
   const { isMicrophoneEnabled } = useLocalParticipant()
+  const mutedBeepEnabled = useAudioPreferencesStore((s) => s.mutedBeepEnabled)
+  const mutedBeepInterval = useAudioPreferencesStore((s) => s.mutedBeepInterval)
+  // Use refs so the tick loop always reads the latest values without restarting
+  const beepEnabledRef = useRef(mutedBeepEnabled)
+  const beepIntervalRef = useRef(mutedBeepInterval)
+  useEffect(() => {
+    beepEnabledRef.current = mutedBeepEnabled
+  }, [mutedBeepEnabled])
+  useEffect(() => {
+    beepIntervalRef.current = mutedBeepInterval
+  }, [mutedBeepInterval])
 
   useEffect(() => {
     // Only monitor when mic is disabled and user is NOT deafened
@@ -116,7 +127,7 @@ function useMutedMicMonitor() {
         for (let i = 0; i < data.length; i++) sum += data[i] * data[i]
         const rms = Math.sqrt(sum / data.length)
 
-        if (rms > SPEECH_THRESHOLD && Date.now() - lastBeepAt > DEBOUNCE_MS) {
+        if (beepEnabledRef.current && rms > SPEECH_THRESHOLD && Date.now() - lastBeepAt > beepIntervalRef.current) {
           lastBeepAt = Date.now()
           playMutedBeep()
         }
