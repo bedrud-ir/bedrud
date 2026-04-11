@@ -32,6 +32,67 @@ func NewAuthHandler(authService *auth.AuthService, cfg *config.Config, settingsR
 	}
 }
 
+// setAuthCookies writes access and refresh tokens as HTTP-only cookies so the
+// browser sends them on every subsequent request without JS involvement.
+func setAuthCookies(c *fiber.Ctx, cfg *config.Config, accessToken, refreshToken string) {
+	secure := cfg.Server.EnableTLS || cfg.Server.BehindProxy
+	domain := cfg.Server.Domain
+	sameSite := "Lax"
+	if secure {
+		sameSite = "None" // Required for cross-site requests over HTTPS
+	}
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    accessToken,
+		MaxAge:   cfg.Auth.TokenDuration * 3600,
+		HTTPOnly: true,
+		Secure:   secure,
+		SameSite: sameSite,
+		Domain:   domain,
+		Path:     "/",
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		MaxAge:   7 * 24 * 3600, // 7 days, matches GenerateTokenPair
+		HTTPOnly: true,
+		Secure:   secure,
+		SameSite: sameSite,
+		Domain:   domain,
+		Path:     "/",
+	})
+}
+
+// clearAuthCookies removes both auth cookies (used on logout).
+func clearAuthCookies(c *fiber.Ctx, cfg *config.Config) {
+	secure := cfg.Server.EnableTLS || cfg.Server.BehindProxy
+	domain := cfg.Server.Domain
+	sameSite := "Lax"
+	if secure {
+		sameSite = "None"
+	}
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		MaxAge:   -1,
+		HTTPOnly: true,
+		Secure:   secure,
+		SameSite: sameSite,
+		Domain:   domain,
+		Path:     "/",
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		MaxAge:   -1,
+		HTTPOnly: true,
+		Secure:   secure,
+		SameSite: sameSite,
+		Domain:   domain,
+		Path:     "/",
+	})
+}
+
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var input struct {
 		Email       string `json:"email"`
@@ -109,6 +170,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		}
 	}
 
+	setAuthCookies(c, h.config, accessToken, refreshToken)
 	return c.JSON(auth.LoginResponse{
 		User: user,
 		Token: auth.TokenPair{
@@ -144,6 +206,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
+	setAuthCookies(c, h.config, loginResponse.Token.AccessToken, loginResponse.Token.RefreshToken)
 	return c.JSON(loginResponse)
 }
 
@@ -171,6 +234,7 @@ func (h *AuthHandler) GuestLogin(c *fiber.Ctx) error {
 		})
 	}
 
+	setAuthCookies(c, h.config, loginResponse.Token.AccessToken, loginResponse.Token.RefreshToken)
 	return c.JSON(loginResponse)
 }
 
@@ -192,9 +256,16 @@ type RefreshRequest struct {
 // @Router /auth/refresh [post]
 func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	var input RefreshRequest
-	if err := c.BodyParser(&input); err != nil {
+	c.BodyParser(&input) //nolint:errcheck — fallback to cookie below
+
+	// Fallback to HTTP-only cookie when body is empty (e.g. cookie-only clients)
+	if input.RefreshToken == "" {
+		input.RefreshToken = c.Cookies("refresh_token")
+	}
+
+	if input.RefreshToken == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid input - expected JSON with refresh_token field",
+			"error": "No refresh token provided",
 		})
 	}
 
@@ -211,7 +282,7 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		claims.UserID,
 		claims.Email,
 		claims.Name,
-		claims.Accesses, // Add accesses from claims
+		claims.Accesses,
 		h.config,
 	)
 	if err != nil {
@@ -227,6 +298,7 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		})
 	}
 
+	setAuthCookies(c, h.config, accessToken, refreshToken)
 	return c.JSON(fiber.Map{
 		"access_token":  accessToken,
 		"refresh_token": refreshToken,
@@ -298,14 +370,19 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 	// Get user from context (set by auth middleware)
 	claims := c.Locals("user").(*auth.Claims)
 
-	// Block refresh token
-	err := h.authService.BlockRefreshToken(claims.UserID, input.RefreshToken)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to logout",
-		})
+	// Fallback to cookie when body omits the token
+	if input.RefreshToken == "" {
+		input.RefreshToken = c.Cookies("refresh_token")
 	}
 
+	// Block refresh token (best-effort; clear cookies regardless)
+	if input.RefreshToken != "" {
+		if err := h.authService.BlockRefreshToken(claims.UserID, input.RefreshToken); err != nil {
+			log.Error().Err(err).Msg("Failed to block refresh token on logout")
+		}
+	}
+
+	clearAuthCookies(c, h.config)
 	return c.JSON(fiber.Map{
 		"message": "Successfully logged out",
 	})
@@ -502,6 +579,7 @@ func (h *AuthHandler) PasskeyLoginFinish(c *fiber.Ctx) error {
 	delete(sess.Values, "passkey_challenge")
 	h.saveSession(c, sess, req)
 
+	setAuthCookies(c, h.config, loginResponse.Token.AccessToken, loginResponse.Token.RefreshToken)
 	return c.JSON(loginResponse)
 }
 
@@ -636,5 +714,6 @@ func (h *AuthHandler) PasskeySignupFinish(c *fiber.Ctx) error {
 	delete(sess.Values, "signup_invite_token")
 	h.saveSession(c, sess, req)
 
+	setAuthCookies(c, h.config, loginResponse.Token.AccessToken, loginResponse.Token.RefreshToken)
 	return c.JSON(loginResponse)
 }

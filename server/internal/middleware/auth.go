@@ -12,17 +12,26 @@ import (
 // Protected middleware
 func Protected() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		authHeader := c.Get("Authorization")
-		if authHeader == "" {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Missing authorization header",
-			})
+		token := ""
+
+		// Prefer Authorization header
+		if authHeader := c.Get("Authorization"); authHeader != "" {
+			if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+				token = authHeader[7:]
+			} else {
+				token = authHeader
+			}
 		}
 
-		// Handle both cases: with and without "Bearer " prefix
-		token := authHeader
-		if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
-			token = authHeader[7:] // Remove "Bearer " prefix
+		// Fallback to HTTP-only cookie
+		if token == "" {
+			token = c.Cookies("access_token")
+		}
+
+		if token == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Missing authorization",
+			})
 		}
 
 		claims, err := auth.ValidateToken(token, config.Get())

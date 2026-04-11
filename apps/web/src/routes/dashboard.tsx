@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from '@tanstack/react-router'
 import { LayoutDashboard, LogOut, Menu, Radio, Settings, Shield, Users, Video } from 'lucide-react'
 import { useState } from 'react'
@@ -23,6 +22,23 @@ export const Route = createFileRoute('/dashboard')({
     if (typeof window === 'undefined') return
     if (!useAuthStore.getState().tokens) throw redirect({ to: '/auth' })
   },
+  // Loader runs before the component renders, eliminating the empty-profile flash.
+  // staleTime: Infinity means TanStack Router won't refetch on every sub-route navigation.
+  loader: async () => {
+    // Skip fetch if user is already in memory (e.g. soft navigation back to /dashboard)
+    if (useUserStore.getState().user) return
+    const u = await api.get<User & { accesses?: string[] }>('/api/auth/me')
+    useUserStore.getState().setUser({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      provider: u.provider,
+      isAdmin: u.accesses?.includes('superadmin') ?? false,
+      accesses: u.accesses ?? [],
+      avatarUrl: u.avatarUrl,
+    })
+  },
+  staleTime: Infinity,
   component: DashboardLayout,
 })
 
@@ -250,25 +266,6 @@ function DashboardLayout() {
   const user = useUserStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.clear)
   const clearUser = useUserStore((s) => s.clear)
-  const setUser = useUserStore((s) => s.setUser)
-
-  useQuery({
-    queryKey: ['me'],
-    queryFn: async () => {
-      const u = await api.get<User & { accesses?: string[] }>('/api/auth/me')
-      setUser({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        provider: u.provider,
-        isAdmin: u.accesses?.includes('superadmin') ?? false,
-        accesses: u.accesses ?? [],
-        avatarUrl: u.avatarUrl,
-      })
-      return u
-    },
-    enabled: !user,
-  })
 
   async function handleLogout() {
     try {

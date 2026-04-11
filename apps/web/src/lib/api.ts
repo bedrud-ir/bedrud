@@ -7,7 +7,39 @@ const BASE_URL = (import.meta.env['VITE_API_URL'] as string | undefined) ?? ''
 
 type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+// Singleton refresh promise — multiple concurrent 401s share one refresh call
+// instead of hammering the /refresh endpoint in parallel.
+let refreshPromise: Promise<string | null> | null = null
+
+async function doRefresh(): Promise<string | null> {
+  const refreshToken = useAuthStore.getState().tokens?.refreshToken
+  try {
+    const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // send the refresh_token HTTP-only cookie too
+      body: JSON.stringify({ refresh_token: refreshToken ?? '' }),
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { access_token: string; refresh_token: string }
+    useAuthStore.getState().setTokens({
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+    })
+    return data.access_token
+  } catch {
+    return null
+  }
+}
+
+function redirectToAuth() {
+  useAuthStore.getState().clear()
+  if (typeof window !== 'undefined') {
+    window.location.replace('/auth')
+  }
+}
+
+async function request<T>(path: string, options: RequestOptions = {}, isRetry = false): Promise<T> {
   const tokens = useAuthStore.getState().tokens
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -21,8 +53,31 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers,
+    credentials: 'include', // always send HTTP-only cookies
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   })
+
+  // On 401, try to silently refresh once, then retry the original request.
+  // Skip the interceptor on the refresh endpoint itself to avoid infinite loops,
+  // and skip on retries (already refreshed once).
+  if (res.status === 401 && !isRetry && path !== '/api/auth/refresh') {
+    if (!refreshPromise) {
+      refreshPromise = doRefresh().finally(() => {
+        refreshPromise = null
+      })
+    }
+
+    const newToken = await refreshPromise
+
+    if (!newToken) {
+      // Refresh failed — session is truly expired
+      redirectToAuth()
+      throw new Error('Session expired')
+    }
+
+    // Retry with the new access token
+    return request<T>(path, options, true)
+  }
 
   if (!res.ok) {
     const text = await res.text()
