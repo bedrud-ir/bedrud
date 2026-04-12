@@ -5,6 +5,7 @@ import (
 	"bedrud/internal/auth"
 	"bedrud/internal/models"
 	"bedrud/internal/repository"
+	"bedrud/internal/storage"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -42,15 +43,17 @@ type RoomHandler struct {
 	apiKey      string
 	apiSecret   string
 	client      livekit.RoomService
+	uploadStore storage.ChatUploadStore
+	uploadMax   int64
 }
 
-func NewRoomHandler(cfg config.LiveKitConfig, roomRepo *repository.RoomRepository) *RoomHandler {
-	apiHost := cfg.InternalHost
+func NewRoomHandler(lkCfg config.LiveKitConfig, chatCfg config.ChatConfig, roomRepo *repository.RoomRepository) *RoomHandler {
+	apiHost := lkCfg.InternalHost
 	if apiHost == "" {
-		apiHost = cfg.Host
+		apiHost = lkCfg.Host
 	}
 	httpClient := http.DefaultClient
-	if cfg.SkipTLSVerify && strings.HasPrefix(apiHost, "https") {
+	if lkCfg.SkipTLSVerify && strings.HasPrefix(apiHost, "https") {
 		httpClient = &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -58,12 +61,20 @@ func NewRoomHandler(cfg config.LiveKitConfig, roomRepo *repository.RoomRepositor
 		}
 	}
 	client := livekit.NewRoomServiceProtobufClient(apiHost, httpClient)
+
+	uploadMax := chatCfg.Uploads.MaxBytes
+	if uploadMax == 0 {
+		uploadMax = 10 * 1024 * 1024 // 10 MB default
+	}
+
 	return &RoomHandler{
 		roomRepo:    roomRepo,
-		livekitHost: cfg.Host,
-		apiKey:      cfg.APIKey,
-		apiSecret:   cfg.APISecret,
+		livekitHost: lkCfg.Host,
+		apiKey:      lkCfg.APIKey,
+		apiSecret:   lkCfg.APISecret,
 		client:      client,
+		uploadStore: storage.NewChatUploadStore(chatCfg.Uploads),
+		uploadMax:   uploadMax,
 	}
 }
 
@@ -906,6 +917,46 @@ func (h *RoomHandler) AdminGetRoomParticipants(c *fiber.Ctx) error {
 		})
 	}
 	return c.JSON(fiber.Map{"participants": participants, "room": room})
+}
+
+// UploadChatImage accepts a multipart image upload for in-room chat.
+// Any authenticated participant may upload. The server selects the storage backend
+// based on config (disk / inline base64 / s3) and returns the attachment metadata.
+func (h *RoomHandler) UploadChatImage(c *fiber.Ctx) error {
+	roomID := c.Params("roomId")
+	// Verify the room exists.
+	room, err := h.roomRepo.GetRoom(roomID)
+	if err != nil || room == nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Missing file field"})
+	}
+	if file.Size > h.uploadMax {
+		return c.Status(413).JSON(fiber.Map{"error": "File too large"})
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to read upload"})
+	}
+	defer f.Close()
+
+	// Read into memory (limited to uploadMax, already checked above).
+	data := make([]byte, file.Size)
+	if _, err := f.Read(data); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to read upload"})
+	}
+
+	attachment, err := h.uploadStore.Store(data)
+	if err != nil {
+		log.Warn().Err(err).Str("roomId", roomID).Msg("Chat image upload failed")
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(attachment)
 }
 
 // AdminKickParticipant removes any participant from a room (no creator check).

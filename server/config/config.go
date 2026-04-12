@@ -16,6 +16,7 @@ type Config struct {
 	Auth     AuthConfig     `yaml:"auth"`
 	Logger   LoggerConfig   `yaml:"logger"`
 	Cors     CorsConfig     `yaml:"cors"`
+	Chat     ChatConfig     `yaml:"chat"`
 }
 
 type ServerConfig struct {
@@ -91,6 +92,38 @@ type CorsConfig struct {
 	AllowCredentials bool   `yaml:"allowCredentials"`
 	ExposeHeaders    string `yaml:"exposeHeaders"`
 	MaxAge           int    `yaml:"maxAge"`
+}
+
+// ChatConfig holds settings for in-room chat, including image upload storage.
+type ChatConfig struct {
+	Uploads ChatUploadConfig `yaml:"uploads"`
+}
+
+// ChatUploadConfig controls where and how chat image uploads are stored.
+// Backend choices: "disk" (default) stores files under DiskDir;
+// "s3" uploads to an S3-compatible bucket (requires S3 fields);
+// "inline" always returns base64 data URLs regardless of InlineMaxBytes.
+type ChatUploadConfig struct {
+	// Backend is "disk" (default), "s3", or "inline".
+	Backend string `yaml:"backend"`
+	// MaxBytes is the hard upload size limit (default 10 MB).
+	MaxBytes int64 `yaml:"maxBytes"`
+	// InlineMaxBytes: images smaller than this are returned as data: URIs instead
+	// of stored on disk / S3. Set to 0 to disable inline encoding. Default 512000 (500 KB).
+	InlineMaxBytes int64 `yaml:"inlineMaxBytes"`
+	// DiskDir is the directory for disk-backend uploads. Default: ./data/uploads/chat
+	DiskDir string `yaml:"diskDir"`
+	// S3 holds connection info for the S3-compatible storage backend.
+	S3 ChatUploadS3Config `yaml:"s3"`
+}
+
+type ChatUploadS3Config struct {
+	Endpoint      string `yaml:"endpoint"`
+	Bucket        string `yaml:"bucket"`
+	Region        string `yaml:"region"`
+	AccessKey     string `yaml:"accessKey"`
+	SecretKey     string `yaml:"secretKey"`
+	PublicBaseURL string `yaml:"publicBaseUrl"`
 }
 
 var (

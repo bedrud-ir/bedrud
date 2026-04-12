@@ -1,10 +1,9 @@
-import { useLocalParticipant } from '@livekit/components-react'
-import { MessageSquare, Send, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { ArrowDown, Image, MessageSquare, Send, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Components } from 'react-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { useMeetingContext } from '@/components/meeting/MeetingContext'
+import { type ChatAttachment, useMeetingContext } from '@/components/meeting/MeetingContext'
 
 interface Props {
   onClose: () => void
@@ -100,37 +99,145 @@ const panel: React.CSSProperties = {
 }
 
 export function ChatPanel({ onClose }: Props) {
-  const { chatMessages, systemMessages, send, isSending, markRead } = useMeetingContext()
-  const { localParticipant } = useLocalParticipant()
+  const { roomId, chatMessages, systemMessages, sendChat, markRead } = useMeetingContext()
   const [draft, setDraft] = useState('')
   const [sendError, setSendError] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const autoFollowRef = useRef(true)
+  const [showScrollBtn, setShowScrollBtn] = useState(false)
+  // unread messages that arrived while user scrolled up
+  const [scrollUnread, setScrollUnread] = useState(0)
+  const prevMsgCountRef = useRef(0)
 
   // Mark all messages as read when the panel opens + focus input
   useEffect(() => {
     markRead()
-    // Small delay so the panel animation doesn't fight the focus
     const t = setTimeout(() => inputRef.current?.focus(), 80)
     return () => clearTimeout(t)
   }, [markRead])
 
+  // Track scroll position to decide whether auto-follow is active
+  const handleScroll = useCallback(() => {
+    const el = messagesRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    autoFollowRef.current = atBottom
+    setShowScrollBtn(!atBottom)
+    if (atBottom) setScrollUnread(0)
+  }, [])
+
+  // Auto-follow: scroll to bottom when new messages arrive (if following)
+  const totalMessages = chatMessages.length + systemMessages.length
   useEffect(() => {
+    const newCount = chatMessages.length + systemMessages.length
+    const delta = newCount - prevMsgCountRef.current
+    if (delta <= 0) return
+    prevMsgCountRef.current = newCount
+
+    if (autoFollowRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      setScrollUnread((n) => n + delta)
+    }
+  }, [totalMessages]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const scrollToBottom = useCallback(() => {
+    autoFollowRef.current = true
+    setShowScrollBtn(false)
+    setScrollUnread(0)
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
   async function handleSend(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     const text = draft.trim()
-    if (!text || isSending) return
+    if (!text && !uploading) return
     setSendError(null)
-    try {
-      await send(text)
-      setDraft('')
-    } catch (err) {
-      setSendError(err instanceof Error ? err.message : 'Failed to send message')
-    }
+    sendChat(text)
+    setDraft('')
+    // Sending snaps to bottom
+    autoFollowRef.current = true
+    setShowScrollBtn(false)
+    setScrollUnread(0)
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 30)
   }
+
+  // Upload an image file and send it as an attachment
+  const uploadAndSend = useCallback(
+    async (file: File) => {
+      setUploadError(null)
+      setUploading(true)
+
+      try {
+        const form = new FormData()
+        form.append('file', file)
+        const res = await fetch(`/api/room/${roomId}/chat/upload`, {
+          method: 'POST',
+          body: form,
+          // JWT cookie is sent automatically (cookie-based auth from recent auth commit)
+          credentials: 'include',
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error((body as { error?: string }).error ?? `Upload failed (${res.status})`)
+        }
+        const attachment = (await res.json()) as ChatAttachment
+        sendChat(draft.trim(), [attachment])
+        setDraft('')
+        autoFollowRef.current = true
+        setShowScrollBtn(false)
+        setScrollUnread(0)
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 30)
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : 'Upload failed')
+      } finally {
+        setUploading(false)
+      }
+    },
+    [roomId, draft, sendChat],
+  )
+
+  // Paste handler: intercept images pasted into the input
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLInputElement>) => {
+      const items = Array.from(e.clipboardData.items)
+      const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'))
+      if (!imageItem) return
+      e.preventDefault()
+      const file = imageItem.getAsFile()
+      if (file) uploadAndSend(file)
+    },
+    [uploadAndSend],
+  )
+
+  // Drag-and-drop onto the messages area
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      const file = Array.from(e.dataTransfer.files).find((f) => f.type.startsWith('image/'))
+      if (file) uploadAndSend(file)
+    },
+    [uploadAndSend],
+  )
+
+  // File-picker button handler
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const handlePickFile = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (file) uploadAndSend(file)
+      // Reset so the same file can be picked again
+      e.target.value = ''
+    },
+    [uploadAndSend],
+  )
 
   // Merge chat and system messages by timestamp for ordered display
   type DisplayItem =
@@ -187,7 +294,19 @@ export function ChatPanel({ onClose }: Props) {
 
       {/* Messages */}
       <div
-        style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}
+        ref={messagesRef}
+        onScroll={handleScroll}
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '12px 14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          position: 'relative',
+        }}
       >
         {items.length === 0 ? (
           <div
@@ -244,7 +363,7 @@ export function ChatPanel({ onClose }: Props) {
             }
 
             const msg = item.msg
-            const isLocal = msg.from?.identity === localParticipant?.identity
+            const isLocal = msg.isLocal
             return (
               <div
                 key={`chat-${item.idx}`}
@@ -257,13 +376,13 @@ export function ChatPanel({ onClose }: Props) {
               >
                 {!isLocal && (
                   <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, paddingLeft: 4 }}>
-                    {msg.from?.name ?? msg.from?.identity}
+                    {msg.senderName}
                   </span>
                 )}
                 <div
                   style={{
                     maxWidth: '82%',
-                    padding: '7px 12px',
+                    padding: msg.attachments.length > 0 && !msg.message ? '4px' : '7px 12px',
                     borderRadius: isLocal ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                     background: isLocal ? 'rgba(99,102,241,0.75)' : 'rgba(255,255,255,0.07)',
                     border: isLocal ? '1px solid rgba(165,180,252,0.25)' : '1px solid rgba(255,255,255,0.06)',
@@ -271,9 +390,34 @@ export function ChatPanel({ onClose }: Props) {
                     fontSize: 13,
                     lineHeight: 1.45,
                     wordBreak: 'break-word',
+                    overflow: 'hidden',
                   }}
                 >
-                  <ChatMarkdown content={msg.message} isLocal={isLocal} />
+                  {/* Image attachments */}
+                  {msg.attachments.map((att, ai) =>
+                    att.kind === 'image' ? (
+                      <a key={ai} href={att.url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={att.url}
+                          alt="shared image"
+                          loading="lazy"
+                          style={{
+                            display: 'block',
+                            maxWidth: '100%',
+                            maxHeight: 240,
+                            borderRadius: 10,
+                            objectFit: 'contain',
+                          }}
+                        />
+                      </a>
+                    ) : null,
+                  )}
+                  {/* Text content */}
+                  {msg.message && (
+                    <div style={{ padding: msg.attachments.length > 0 ? '6px 8px 2px' : '0' }}>
+                      <ChatMarkdown content={msg.message} isLocal={isLocal} />
+                    </div>
+                  )}
                 </div>
               </div>
             )
@@ -282,16 +426,102 @@ export function ChatPanel({ onClose }: Props) {
         <div ref={bottomRef} />
       </div>
 
+      {/* Scroll-to-bottom floating button */}
+      {showScrollBtn && (
+        <button
+          onClick={scrollToBottom}
+          aria-label="Scroll to latest messages"
+          style={{
+            position: 'absolute',
+            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px) + 56px)',
+            right: 14,
+            width: 34,
+            height: 34,
+            borderRadius: '50%',
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'rgba(30,30,50,0.92)',
+            color: 'rgba(165,180,252,0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            zIndex: 5,
+          }}
+        >
+          <ArrowDown size={14} />
+          {scrollUnread > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: -5,
+                right: -5,
+                background: 'rgba(99,102,241,0.9)',
+                color: 'white',
+                fontSize: 9,
+                fontWeight: 700,
+                borderRadius: '50%',
+                width: 16,
+                height: 16,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {scrollUnread > 9 ? '9+' : scrollUnread}
+            </span>
+          )}
+        </button>
+      )}
+
       {/* Input */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px' }}>
-        {sendError && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'rgba(248,113,113,0.9)' }}>{sendError}</p>}
+        {(sendError || uploadError) && (
+          <p style={{ margin: '0 0 6px', fontSize: 11, color: 'rgba(248,113,113,0.9)' }}>{sendError || uploadError}</p>
+        )}
+        {uploading && (
+          <p style={{ margin: '0 0 6px', fontSize: 11, color: 'rgba(165,180,252,0.7)' }}>Uploading image…</p>
+        )}
+        {/* Hidden file input for the image-picker button */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
         <form onSubmit={handleSend} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Attach image button */}
+          <button
+            type="button"
+            onClick={handlePickFile}
+            disabled={uploading}
+            title="Attach image"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              border: '1px solid rgba(255,255,255,0.09)',
+              background: 'rgba(255,255,255,0.04)',
+              color: uploading ? 'rgba(255,255,255,0.15)' : 'rgba(165,180,252,0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: uploading ? 'default' : 'pointer',
+              flexShrink: 0,
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            aria-label="Attach image"
+          >
+            <Image size={14} />
+          </button>
           <input
             ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Type a message…"
-            disabled={isSending}
+            onPaste={handlePaste}
+            placeholder="Type or paste an image…"
+            disabled={uploading}
             style={{
               flex: 1,
               height: 36,
@@ -306,7 +536,7 @@ export function ChatPanel({ onClose }: Props) {
           />
           <button
             type="submit"
-            disabled={!draft.trim() || isSending}
+            disabled={(!draft.trim() && !uploading) || uploading}
             style={{
               width: 36,
               height: 36,

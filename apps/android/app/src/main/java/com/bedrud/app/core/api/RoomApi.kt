@@ -1,17 +1,21 @@
 package com.bedrud.app.core.api
 
+import com.bedrud.app.models.ChatUploadResponse
 import com.bedrud.app.models.CreateRoomRequest
 import com.bedrud.app.models.JoinRoomRequest
 import com.bedrud.app.models.JoinRoomResponse
 import com.bedrud.app.models.Room
 import com.bedrud.app.models.RoomSettings
 import com.bedrud.app.models.UserRoomResponse
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 
 interface RoomApi {
@@ -71,4 +75,11 @@ interface RoomApi {
         @Path("roomId") roomId: String,
         @Path("identity") identity: String
     ): Response<Unit>
+
+    @Multipart
+    @POST("room/{roomId}/chat/upload")
+    suspend fun uploadChatImage(
+        @Path("roomId") roomId: String,
+        @Part file: MultipartBody.Part
+    ): Response<ChatUploadResponse>
 }

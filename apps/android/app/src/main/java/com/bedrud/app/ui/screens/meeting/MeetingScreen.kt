@@ -2,11 +2,13 @@ package com.bedrud.app.ui.screens.meeting
 
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +37,8 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Close
@@ -66,6 +70,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -73,6 +78,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,8 +93,10 @@ import com.bedrud.app.core.api.RoomApi
 import com.bedrud.app.core.call.CallService
 import com.bedrud.app.core.instance.InstanceManager
 import com.bedrud.app.core.pip.PipStateHolder
+import com.bedrud.app.core.livekit.ChatAttachment
 import com.bedrud.app.core.livekit.ChatMessage
 import com.bedrud.app.core.livekit.ConnectionState
+import okhttp3.MultipartBody
 import com.bedrud.app.models.JoinRoomRequest
 import com.bedrud.app.models.JoinRoomResponse
 import io.livekit.android.compose.ui.VideoTrackView
@@ -501,7 +510,14 @@ fun MeetingScreen(
                                             }
                                         }
                                     },
-                                    onClose = { showChat = false }
+                                    onClose = { showChat = false },
+                                    roomId = roomInfo?.id,
+                                    roomApi = roomApi,
+                                    onSendWithAttachment = { text, attachment ->
+                                        scope.launch {
+                                            roomManager.sendChatMessage(text, listOf(attachment))
+                                        }
+                                    },
                                 )
                             }
 
@@ -1066,14 +1082,75 @@ private fun ChatPanel(
     chatInput: String,
     onChatInputChange: (String) -> Unit,
     onSend: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    roomId: String? = null,
+    roomApi: RoomApi? = null,
+    onSendWithAttachment: ((String, com.bedrud.app.core.livekit.ChatAttachment) -> Unit)? = null,
 ) {
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
-    // Auto-scroll to bottom when new messages arrive
+    // Detect whether user has scrolled away from the bottom
+    val isAtBottom by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= messages.size - 2
+        }
+    }
+
+    // Auto-scroll to bottom only when following
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
+        if (messages.isNotEmpty() && isAtBottom) {
             listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
+    var isUploading by remember { mutableStateOf(false) }
+    var uploadError by remember { mutableStateOf<String?>(null) }
+
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri == null || roomId == null || roomApi == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            isUploading = true
+            uploadError = null
+            try {
+                val stream = context.contentResolver.openInputStream(uri)
+                    ?: throw Exception("Cannot open image")
+                val bytes = stream.readBytes()
+                stream.close()
+                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                val ext = when (mimeType) {
+                    "image/png" -> "png"
+                    "image/gif" -> "gif"
+                    "image/webp" -> "webp"
+                    else -> "jpg"
+                }
+                val requestBody = okhttp3.RequestBody.create(okhttp3.MediaType.parse(mimeType), bytes)
+                val part = MultipartBody.Part.createFormData("file", "upload.$ext", requestBody)
+                val response = roomApi.uploadChatImage(roomId, part)
+                if (response.isSuccessful) {
+                    val result = response.body()!!
+                    val attachment = com.bedrud.app.core.livekit.ChatAttachment(
+                        kind = "image",
+                        url = result.url,
+                        mime = result.mime,
+                        w = result.width,
+                        h = result.height,
+                        size = result.size,
+                    )
+                    onSendWithAttachment?.invoke(chatInput.trim(), attachment)
+                    onChatInputChange("")
+                } else {
+                    uploadError = "Upload failed (${response.code()})"
+                }
+            } catch (e: Exception) {
+                uploadError = e.message ?: "Upload failed"
+            } finally {
+                isUploading = false
+            }
         }
     }
 
@@ -1097,25 +1174,68 @@ private fun ChatPanel(
                 color = MaterialTheme.colorScheme.onSurface
             )
             IconButton(onClick = onClose) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Close Chat"
-                )
+                Icon(Icons.Default.Close, contentDescription = "Close Chat")
             }
         }
 
-        // Messages list
-        LazyColumn(
-            state = listState,
+        // Messages list + scroll-to-bottom button
+        Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(messages) { message ->
-                ChatBubble(message = message)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(messages) { message ->
+                    ChatBubble(message = message)
+                }
             }
+
+            // Scroll-to-bottom FAB when user scrolled up
+            if (!isAtBottom) {
+                SmallFloatingActionButton(
+                    onClick = {
+                        scope.launch {
+                            if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Scroll to bottom",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+        }
+
+        // Upload status
+        if (isUploading) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                Text("Uploading…", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        uploadError?.let { err ->
+            Text(
+                text = err,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+            )
         }
 
         // Input row
@@ -1125,6 +1245,24 @@ private fun ChatPanel(
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Image picker button
+            if (roomApi != null && roomId != null) {
+                IconButton(
+                    onClick = {
+                        imagePicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    enabled = !isUploading,
+                ) {
+                    Icon(
+                        Icons.Default.Image,
+                        contentDescription = "Attach image",
+                        tint = if (!isUploading) MaterialTheme.colorScheme.onSurfaceVariant
+                               else MaterialTheme.colorScheme.outline,
+                    )
+                }
+            }
             OutlinedTextField(
                 value = chatInput,
                 onValueChange = onChatInputChange,
@@ -1136,12 +1274,12 @@ private fun ChatPanel(
             Spacer(modifier = Modifier.width(4.dp))
             IconButton(
                 onClick = onSend,
-                enabled = chatInput.isNotBlank()
+                enabled = chatInput.isNotBlank() && !isUploading
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send",
-                    tint = if (chatInput.isNotBlank())
+                    tint = if (chatInput.isNotBlank() && !isUploading)
                         MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1162,21 +1300,63 @@ private fun ChatBubble(message: ChatMessage) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(2.dp))
-        Box(
-            modifier = Modifier
-                .background(
-                    if (message.isLocal) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.surfaceVariant,
-                    RoundedCornerShape(12.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+        Column(
+            horizontalAlignment = if (message.isLocal) Alignment.End else Alignment.Start
         ) {
-            Text(
-                text = message.text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (message.isLocal) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Image attachments
+            message.attachments.filter { it.kind == "image" }.forEach { att ->
+                val isDataUri = att.url.startsWith("data:")
+                if (isDataUri) {
+                    // Decode base64 data URI to bitmap in-memory
+                    val bitmap = remember(att.url) {
+                        runCatching {
+                            val b64 = att.url.substringAfter(",")
+                            val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+                            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                ?.asImageBitmap()
+                        }.getOrNull()
+                    }
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = "Shared image",
+                            modifier = Modifier
+                                .fillMaxWidth(0.8f)
+                                .clip(RoundedCornerShape(10.dp)),
+                            contentScale = ContentScale.FillWidth,
+                        )
+                    }
+                } else {
+                    AsyncImage(
+                        model = att.url,
+                        contentDescription = "Shared image",
+                        modifier = Modifier
+                            .fillMaxWidth(0.8f)
+                            .clip(RoundedCornerShape(10.dp)),
+                        contentScale = ContentScale.FillWidth,
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+            // Text content
+            if (message.text.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (message.isLocal) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = message.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (message.isLocal) MaterialTheme.colorScheme.onPrimaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

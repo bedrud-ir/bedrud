@@ -257,7 +257,7 @@ func main() {
 	api.Post("/auth/passkey/signup/finish", authHandler.PasskeySignupFinish)
 
 	// Initialize handlers
-	roomHandler := handlers.NewRoomHandler(cfg.LiveKit, roomRepo)
+	roomHandler := handlers.NewRoomHandler(cfg.LiveKit, cfg.Chat, roomRepo)
 
 	// Room routes
 	api.Post("/room/create", middleware.Protected(), roomHandler.CreateRoom)
@@ -281,6 +281,17 @@ func main() {
 	api.Post("/room/:roomId/stage/:identity/remove", middleware.Protected(), roomHandler.RemoveFromStage)
 	api.Put("/room/:roomId/settings", middleware.Protected(), roomHandler.UpdateSettings)
 	api.Delete("/room/:roomId", middleware.Protected(), roomHandler.DeleteRoom)
+	api.Post("/room/:roomId/chat/upload", middleware.Protected(), roomHandler.UploadChatImage)
+
+	// Serve disk-backed chat image uploads.
+	uploadDir := cfg.Chat.Uploads.DiskDir
+	if uploadDir == "" {
+		uploadDir = "./data/uploads/chat"
+	}
+	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
+		log.Warn().Err(err).Str("dir", uploadDir).Msg("Could not create chat upload dir")
+	}
+	app.Static("/uploads/chat", uploadDir, fiber.Static{Browse: false})
 
 	// Initialize handlers
 	usersHandler := handlers.NewUsersHandler(userRepo, roomRepo)

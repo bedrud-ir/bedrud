@@ -1,6 +1,15 @@
-import { useChat, useRoomContext } from '@livekit/components-react'
+import { useRoomContext } from '@livekit/components-react'
 import { RoomEvent } from 'livekit-client'
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useUserStore } from '#/lib/user.store'
 
 export interface SystemMessage {
@@ -11,10 +20,26 @@ export interface SystemMessage {
   ts: number
 }
 
-const KNOWN_SYSTEM_EVENTS = new Set(['kick', 'ban', 'ask_unmute', 'ask_camera', 'spotlight', 'deafen', 'undeafen'])
+export interface ChatAttachment {
+  kind: 'image'
+  url: string
+  mime: string
+  w: number
+  h: number
+  size: number
+}
 
-type ChatMessages = ReturnType<typeof useChat>['chatMessages']
-type SendFn = ReturnType<typeof useChat>['send']
+export interface ChatMessage {
+  id: string
+  timestamp: number
+  senderName: string
+  senderIdentity: string
+  message: string
+  attachments: ChatAttachment[]
+  isLocal: boolean
+}
+
+const KNOWN_SYSTEM_EVENTS = new Set(['kick', 'ban', 'ask_unmute', 'ask_camera', 'spotlight', 'deafen', 'undeafen'])
 
 interface MeetingContextValue {
   roomId: string
@@ -30,10 +55,9 @@ interface MeetingContextValue {
   isSelfDeafened: boolean
   toggleSelfDeafen: () => void
   // Chat — always live, regardless of panel visibility
-  chatMessages: ChatMessages
+  chatMessages: ChatMessage[]
   systemMessages: SystemMessage[]
-  send: SendFn
-  isSending: boolean
+  sendChat: (text: string, attachments?: ChatAttachment[]) => void
   unreadCount: number
   markRead: () => void
 }
@@ -59,8 +83,7 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
   const accesses = user?.accesses ?? []
   const room = useRoomContext()
 
-  // useChat is always mounted here — messages accumulate whether the panel is open or not
-  const { chatMessages, send, isSending } = useChat()
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [systemMessages, setSystemMessages] = useState<SystemMessage[]>([])
   const [isServerDeafened, setIsServerDeafened] = useState(false)
   const [isSelfDeafened, setIsSelfDeafened] = useState(false)
@@ -68,34 +91,55 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
   const [unreadCount, setUnreadCount] = useState(0)
 
   // Track how many messages existed at the last markRead() so we only count new arrivals
-  const chatSeenRef = useRef(chatMessages.length)
+  const chatSeenRef = useRef(0)
   const systemSeenRef = useRef(0)
 
-  // System data messages (kick/ban events) — always listening
+  // Unified data channel listener — handles both "chat" and "system" topics
   useEffect(() => {
-    const handler = (payload: Uint8Array, _participant: unknown, _kind: unknown, topic?: string) => {
-      if (topic !== 'system') return
+    const handler = (payload: Uint8Array, participant: unknown, _kind: unknown, topic?: string) => {
       try {
         const raw = JSON.parse(new TextDecoder().decode(payload))
-        if (
-          raw.type === 'system' &&
-          typeof raw.event === 'string' &&
-          KNOWN_SYSTEM_EVENTS.has(raw.event) &&
-          typeof raw.actor === 'string' &&
-          raw.actor.length > 0 &&
-          typeof raw.target === 'string' &&
-          raw.target.length > 0
-        ) {
-          const msg = { ...(raw as SystemMessage), ts: Date.now() }
-          setSystemMessages((prev) => [...prev, msg])
-          // Track server-deafen state for current user
-          if (msg.target === currentUserId) {
-            if (msg.event === 'deafen') setIsServerDeafened(true)
-            else if (msg.event === 'undeafen') setIsServerDeafened(false)
+
+        if (topic === 'system') {
+          if (
+            raw.type === 'system' &&
+            typeof raw.event === 'string' &&
+            KNOWN_SYSTEM_EVENTS.has(raw.event) &&
+            typeof raw.actor === 'string' &&
+            raw.actor.length > 0 &&
+            typeof raw.target === 'string' &&
+            raw.target.length > 0
+          ) {
+            const msg = { ...(raw as SystemMessage), ts: Date.now() }
+            setSystemMessages((prev) => [...prev, msg])
+            if (msg.target === currentUserId) {
+              if (msg.event === 'deafen') setIsServerDeafened(true)
+              else if (msg.event === 'undeafen') setIsServerDeafened(false)
+            }
           }
+          return
+        }
+
+        if (topic === 'chat' && raw.type === 'chat') {
+          // Resolve sender identity from the participant object (RemoteParticipant)
+          const p = participant as { identity?: string; name?: string } | null
+          const senderIdentity = (raw.senderIdentity as string) || p?.identity || ''
+          const senderName =
+            (raw.senderName as string) || p?.name || p?.identity || 'Unknown'
+
+          const msg: ChatMessage = {
+            id: (raw.id as string) || crypto.randomUUID(),
+            timestamp: (raw.timestamp as number) || Date.now(),
+            senderName,
+            senderIdentity,
+            message: (raw.message as string) || '',
+            attachments: Array.isArray(raw.attachments) ? (raw.attachments as ChatAttachment[]) : [],
+            isLocal: false,
+          }
+          setChatMessages((prev) => [...prev, msg])
         }
       } catch (e) {
-        console.warn('[MeetingContext] failed to parse system message:', e)
+        console.warn('[MeetingContext] failed to parse data message:', e)
       }
     }
     room.on(RoomEvent.DataReceived, handler)
@@ -116,11 +160,52 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
   }, [chatMessages.length, systemMessages.length])
 
   const markRead = useCallback(() => {
-    // Sync refs so the next delta calculation starts from the right baseline
     chatSeenRef.current = chatMessages.length
     systemSeenRef.current = systemMessages.length
     setUnreadCount(0)
   }, [chatMessages.length, systemMessages.length])
+
+  // sendChat publishes a reliable data packet on the "chat" topic.
+  // The message is also echoed locally immediately for zero-latency feedback.
+  const sendChat = useCallback(
+    (text: string, attachments?: ChatAttachment[]) => {
+      const lp = room.localParticipant
+      const id = crypto.randomUUID()
+      const timestamp = Date.now()
+      const senderName = lp.name || lp.identity || 'You'
+      const senderIdentity = lp.identity || ''
+
+      const payload = {
+        type: 'chat',
+        id,
+        timestamp,
+        senderName,
+        senderIdentity,
+        message: text,
+        attachments: attachments ?? [],
+      }
+
+      const data = new TextEncoder().encode(JSON.stringify(payload))
+      lp.publishData(data, { reliable: true, topic: 'chat' }).catch((err) => {
+        console.error('[MeetingContext] failed to publish chat message:', err)
+      })
+
+      // Local echo so the sender sees the message immediately
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id,
+          timestamp,
+          senderName,
+          senderIdentity,
+          message: text,
+          attachments: attachments ?? [],
+          isLocal: true,
+        },
+      ])
+    },
+    [room],
+  )
 
   const toggleSelfDeafen = useCallback(() => {
     const lp = room.localParticipant
@@ -150,8 +235,6 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
       roomName,
       adminId,
       currentUserId,
-      // Use LiveKit local participant identity as the source of truth — it's set
-      // directly from the JWT claims.UserID and avoids any user-store format mismatch.
       isCreator: !!adminId && (currentUserId === adminId || room.localParticipant.identity === adminId),
       isAdmin: accesses.includes('admin') || accesses.includes('superadmin'),
       isModerator: accesses.includes('moderator'),
@@ -160,8 +243,7 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
       toggleSelfDeafen,
       chatMessages,
       systemMessages,
-      send,
-      isSending,
+      sendChat,
       unreadCount,
       markRead,
     }),
@@ -176,8 +258,7 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
       toggleSelfDeafen,
       chatMessages,
       systemMessages,
-      send,
-      isSending,
+      sendChat,
       unreadCount,
       markRead,
       room.localParticipant.identity,

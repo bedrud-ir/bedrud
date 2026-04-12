@@ -157,7 +157,7 @@ func Run(configPath string) error {
 	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
 	authService := auth.NewAuthService(userRepo, passkeyRepo)
 	authHandler := handlers.NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)
-	roomHandler := handlers.NewRoomHandler(cfg.LiveKit, roomRepo)
+	roomHandler := handlers.NewRoomHandler(cfg.LiveKit, cfg.Chat, roomRepo)
 
 	api.Post("/auth/register", authHandler.Register)
 	api.Post("/auth/login", authHandler.Login)
@@ -202,6 +202,18 @@ func Run(configPath string) error {
 	api.Post("/room/:roomId/stage/:identity/remove", middleware.Protected(), roomHandler.RemoveFromStage)
 	api.Put("/room/:roomId/settings", middleware.Protected(), roomHandler.UpdateSettings)
 	api.Delete("/room/:roomId", middleware.Protected(), roomHandler.DeleteRoom)
+	api.Post("/room/:roomId/chat/upload", middleware.Protected(), roomHandler.UploadChatImage)
+
+	// Serve disk-backed chat image uploads as static files.
+	// Inline (base64) and S3-hosted images are not served from here.
+	uploadDir := cfg.Chat.Uploads.DiskDir
+	if uploadDir == "" {
+		uploadDir = "./data/uploads/chat"
+	}
+	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
+		log.Warn().Err(err).Str("dir", uploadDir).Msg("Could not create chat upload dir")
+	}
+	app.Static("/uploads/chat", uploadDir, fiber.Static{Browse: false})
 
 	// Admin routes
 	usersHandler := handlers.NewUsersHandler(userRepo, roomRepo)

@@ -27,7 +27,7 @@ func setupRoomTestApp(t *testing.T) (*fiber.App, *repository.RoomRepository, *au
 		APIKey:    "test-key",
 		APISecret: "test-secret",
 	}
-	handler := NewRoomHandler(lkCfg, roomRepo)
+	handler := NewRoomHandler(lkCfg, config.ChatConfig{}, roomRepo)
 
 	claims := &auth.Claims{
 		UserID:   "creator-user",
@@ -140,7 +140,7 @@ func TestRoomHandler_DeleteRoom_Forbidden(t *testing.T) {
 	app2 := fiber.New()
 	rr := roomRepo
 	lkCfg := config.LiveKitConfig{Host: "http://localhost:9999", APIKey: "k", APISecret: "s"}
-	h := NewRoomHandler(lkCfg, rr)
+	h := NewRoomHandler(lkCfg, config.ChatConfig{}, rr)
 	app2.Use(func(c *fiber.Ctx) error { c.Locals("user", otherClaims); return c.Next() })
 	app2.Delete("/rooms/:roomId", h.DeleteRoom)
 

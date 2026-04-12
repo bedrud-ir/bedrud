@@ -30,11 +30,21 @@ enum class ConnectionState {
     FAILED
 }
 
+data class ChatAttachment(
+    val kind: String,   // "image"
+    val url: String,
+    val mime: String,
+    val w: Int = 0,
+    val h: Int = 0,
+    val size: Int = 0,
+)
+
 data class ChatMessage(
     val senderName: String,
     val text: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val isLocal: Boolean = false
+    val isLocal: Boolean = false,
+    val attachments: List<ChatAttachment> = emptyList(),
 )
 
 class RoomManager(private val application: Application) {
@@ -178,10 +188,27 @@ class RoomManager(private val application: Application) {
                         ?: event.participant?.identity?.value
                         ?: "Unknown"
                 }
+                // Parse optional attachments (forward-compatible: old clients send none)
+                val attachments = mutableListOf<ChatAttachment>()
+                val attArray = json.optJSONArray("attachments")
+                if (attArray != null) {
+                    for (i in 0 until attArray.length()) {
+                        val att = attArray.optJSONObject(i) ?: continue
+                        attachments.add(ChatAttachment(
+                            kind = att.optString("kind", "image"),
+                            url = att.optString("url", ""),
+                            mime = att.optString("mime", ""),
+                            w = att.optInt("w", 0),
+                            h = att.optInt("h", 0),
+                            size = att.optInt("size", 0),
+                        ))
+                    }
+                }
                 val msg = ChatMessage(
                     senderName = senderName,
                     text = json.optString("message", ""),
-                    isLocal = false
+                    isLocal = false,
+                    attachments = attachments,
                 )
                 _chatMessages.value += msg
             }
@@ -259,14 +286,33 @@ class RoomManager(private val application: Application) {
         }
     }
 
-    suspend fun sendChatMessage(text: String) {
+    suspend fun sendChatMessage(text: String, attachments: List<ChatAttachment> = emptyList()) {
         val room = _room ?: return
         val localParticipant = room.localParticipant
         val name = localParticipant.name ?: localParticipant.identity?.value ?: "Unknown"
+        val identity = localParticipant.identity?.value ?: ""
+
         val json = JSONObject().apply {
             put("type", "chat")
+            put("id", java.util.UUID.randomUUID().toString())
+            put("timestamp", System.currentTimeMillis())
             put("message", text)
             put("senderName", name)
+            put("senderIdentity", identity)
+            if (attachments.isNotEmpty()) {
+                val attArray = org.json.JSONArray()
+                attachments.forEach { att ->
+                    attArray.put(JSONObject().apply {
+                        put("kind", att.kind)
+                        put("url", att.url)
+                        put("mime", att.mime)
+                        put("w", att.w)
+                        put("h", att.h)
+                        put("size", att.size)
+                    })
+                }
+                put("attachments", attArray)
+            }
         }
         try {
             localParticipant.publishData(
@@ -274,7 +320,7 @@ class RoomManager(private val application: Application) {
                 reliability = DataPublishReliability.RELIABLE,
                 topic = "chat"
             )
-            val msg = ChatMessage(senderName = name, text = text, isLocal = true)
+            val msg = ChatMessage(senderName = name, text = text, isLocal = true, attachments = attachments)
             _chatMessages.value += msg
         } catch (e: Exception) {
             Log.e(TAG, "Failed to send chat message", e)

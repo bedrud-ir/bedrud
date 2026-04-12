@@ -1,9 +1,11 @@
 import SwiftUI
 import LiveKit
+import PhotosUI
 
 struct MeetingView: View {
     let joinResponse: JoinRoomResponse
 
+    @EnvironmentObject private var instanceManager: InstanceManager
     @StateObject private var roomManager = RoomManager()
     @Environment(\.dismiss) private var dismiss
 
@@ -64,8 +66,13 @@ struct MeetingView: View {
             Text(roomManager.error ?? "Failed to connect to the meeting.")
         }
         .sheet(isPresented: $showChat) {
-            ChatSheetView(roomManager: roomManager)
-                .onAppear { lastReadChatCount = roomManager.chatMessages.count }
+            ChatSheetView(
+                roomManager: roomManager,
+                apiClient: instanceManager.apiClient,
+                authManager: instanceManager.authManager,
+                roomId: joinResponse.id
+            )
+            .onAppear { lastReadChatCount = roomManager.chatMessages.count }
         }
         .sheet(isPresented: $showParticipants) {
             participantsPanelSheet
@@ -348,8 +355,18 @@ struct ParticipantTileView: View {
 
 struct ChatSheetView: View {
     @ObservedObject var roomManager: RoomManager
+    /// Optional API client + auth manager — injected from DashboardView via EnvironmentObject.
+    /// When nil, image upload is unavailable (e.g. guest join without a full instance).
+    var apiClient: APIClient?
+    var authManager: AuthManager?
+    /// roomId is needed to hit the upload endpoint.
+    var roomId: String
+
     @State private var chatInput = ""
     @FocusState private var isInputFocused: Bool
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var isUploading = false
+    @State private var uploadErrorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -381,9 +398,38 @@ struct ChatSheetView: View {
                     }
                 }
 
+                if let errMsg = uploadErrorMessage {
+                    Text(errMsg)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 6)
+                }
+
+                if isUploading {
+                    ProgressView("Uploading image…")
+                        .font(.caption)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 6)
+                }
+
                 Divider()
 
                 HStack(spacing: 10) {
+                    // Image picker — only shown when API client is available
+                    if apiClient != nil {
+                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                            Image(systemName: "photo")
+                                .font(.title3)
+                                .foregroundStyle(isUploading ? .tertiary : .secondary)
+                        }
+                        .disabled(isUploading)
+                        .onChange(of: selectedPhoto) { _, item in
+                            guard let item else { return }
+                            Task { await uploadPhoto(item) }
+                        }
+                    }
+
                     TextField("Message...", text: $chatInput)
                         .textFieldStyle(.roundedBorder)
                         .focused($isInputFocused)
@@ -393,7 +439,7 @@ struct ChatSheetView: View {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.title2)
                     }
-                    .disabled(chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(chatInput.trimmingCharacters(in: .whitespaces).isEmpty || isUploading)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
@@ -413,6 +459,57 @@ struct ChatSheetView: View {
         guard !text.isEmpty else { return }
         chatInput = ""
         Task { await roomManager.sendChatMessage(text) }
+    }
+
+    private func uploadPhoto(_ item: PhotosPickerItem) async {
+        guard let client = apiClient, let auth = authManager else { return }
+        isUploading = true
+        uploadErrorMessage = nil
+        selectedPhoto = nil
+
+        defer { isUploading = false }
+
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let token = try? await auth.getValidAccessToken() else {
+            uploadErrorMessage = "Failed to load photo"
+            return
+        }
+
+        // Determine MIME type from the UTType
+        let mimeType = "image/jpeg"
+        let filename = "upload.jpg"
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        guard let url = URL(string: "\(client.baseURL)/room/\(roomId)/chat/upload") else {
+            uploadErrorMessage = "Invalid URL"
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = body
+
+        do {
+            let (responseData, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode < 300 else {
+                let errBody = try? JSONDecoder().decode([String: String].self, from: responseData)
+                uploadErrorMessage = errBody?["error"] ?? "Upload failed"
+                return
+            }
+            let attachment = try JSONDecoder().decode(ChatAttachment.self, from: responseData)
+            await roomManager.sendChatMessage(chatInput.trimmingCharacters(in: .whitespaces), attachments: [attachment])
+            chatInput = ""
+        } catch {
+            uploadErrorMessage = error.localizedDescription
+        }
     }
 
     // MARK: - Chat Row
@@ -441,13 +538,46 @@ struct ChatSheetView: View {
                         .padding(.top, 4)
                 }
 
-                Text(message.text)
-                    .font(.body)
-                    .foregroundStyle(message.isLocal ? .white : .primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(message.isLocal ? Color.accentColor : Color.secondarySystemBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                VStack(alignment: message.isLocal ? .trailing : .leading, spacing: 4) {
+                    // Image attachments
+                    ForEach(message.attachments.filter { $0.kind == "image" }, id: \.url) { att in
+                        let isDataURL = att.url.hasPrefix("data:")
+                        Group {
+                            if isDataURL, let imgData = dataFromDataURL(att.url), let uiImg = UIImage(data: imgData) {
+                                Image(uiImage: uiImg)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: 240, maxHeight: 200)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            } else {
+                                AsyncImage(url: URL(string: att.url)) { phase in
+                                    switch phase {
+                                    case .success(let img):
+                                        img.resizable().scaledToFit()
+                                            .frame(maxWidth: 240, maxHeight: 200)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    case .failure:
+                                        Label("Image unavailable", systemImage: "photo")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    default:
+                                        ProgressView().frame(width: 60, height: 60)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Text content
+                    if !message.text.isEmpty {
+                        Text(message.text)
+                            .font(.body)
+                            .foregroundStyle(message.isLocal ? .white : .primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(message.isLocal ? Color.accentColor : Color.secondarySystemBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                }
             }
             .frame(maxWidth: .infinity, alignment: message.isLocal ? .trailing : .leading)
         }
@@ -456,6 +586,13 @@ struct ChatSheetView: View {
     private func shouldShowTime(current: ChatMessage, previous: ChatMessage?) -> Bool {
         guard let previous else { return true }
         return current.timestamp.timeIntervalSince(previous.timestamp) > 120
+    }
+
+    /// Decode a data: URI into raw bytes.
+    private func dataFromDataURL(_ dataURL: String) -> Data? {
+        guard let commaIdx = dataURL.firstIndex(of: ",") else { return nil }
+        let base64 = String(dataURL[dataURL.index(after: commaIdx)...])
+        return Data(base64Encoded: base64)
     }
 }
 

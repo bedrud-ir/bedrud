@@ -55,11 +55,10 @@ export function MeetingSoundEffects() {
 
     // Only play sound for messages from others
     const latest = chatMessages[chatMessages.length - 1]
-    const localIdentity = room.localParticipant.identity
-    if (latest?.from?.identity !== localIdentity) {
+    if (!latest?.isLocal) {
       playChat()
     }
-  }, [chatMessages, room.localParticipant.identity])
+  }, [chatMessages])
 
   // ── Muted-mic detection ──────────────────────────────────────
   // When the user is muted, open a separate mic stream and watch for

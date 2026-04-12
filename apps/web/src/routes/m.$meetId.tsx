@@ -612,7 +612,7 @@ function ChatToastNotifier({ chatOpen }: { chatOpen: boolean }) {
 
     newMsgs.forEach((msg) => {
       const id = nextId.current++
-      const sender = msg.from?.name ?? msg.from?.identity ?? 'Someone'
+      const sender = msg.senderName || 'Someone'
       setToasts((t) => [...t.slice(-3), { id, sender, message: msg.message }])
       setTimeout(() => {
         setToasts((t) => t.filter((x) => x.id !== id))

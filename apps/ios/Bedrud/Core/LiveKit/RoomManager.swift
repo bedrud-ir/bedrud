@@ -7,6 +7,17 @@ import AVFoundation
 import CallKit
 #endif
 
+// MARK: - Chat Attachment
+
+struct ChatAttachment: Equatable, Codable {
+    let kind: String      // "image"
+    let url: String
+    let mime: String
+    let w: Int
+    let h: Int
+    let size: Int
+}
+
 // MARK: - Chat Message
 
 struct ChatMessage: Identifiable, Equatable {
@@ -15,13 +26,15 @@ struct ChatMessage: Identifiable, Equatable {
     let text: String
     let timestamp: Date
     let isLocal: Bool
+    let attachments: [ChatAttachment]
 
-    init(senderName: String, text: String, isLocal: Bool = false) {
+    init(senderName: String, text: String, isLocal: Bool = false, attachments: [ChatAttachment] = []) {
         self.id = UUID().uuidString
         self.senderName = senderName
         self.text = text
         self.timestamp = Date()
         self.isLocal = isLocal
+        self.attachments = attachments
     }
 }
 
@@ -226,25 +239,36 @@ final class RoomManager: ObservableObject {
 
     // MARK: - Chat
 
-    func sendChatMessage(_ text: String) async {
+    func sendChatMessage(_ text: String, attachments: [ChatAttachment] = []) async {
         guard let room else { return }
         let localParticipant = room.localParticipant
         let name = localParticipant.name ?? localParticipant.identity?.stringValue ?? "You"
+        let identity = localParticipant.identity?.stringValue ?? ""
 
-        let json: [String: Any] = [
+        var payload: [String: Any] = [
             "type": "chat",
+            "id": UUID().uuidString,
+            "timestamp": Int(Date().timeIntervalSince1970 * 1000),
             "message": text,
-            "senderName": name
+            "senderName": name,
+            "senderIdentity": identity,
         ]
 
+        if !attachments.isEmpty {
+            let attachmentsJSON = attachments.map { att -> [String: Any] in
+                ["kind": att.kind, "url": att.url, "mime": att.mime, "w": att.w, "h": att.h, "size": att.size]
+            }
+            payload["attachments"] = attachmentsJSON
+        }
+
         do {
-            let data = try JSONSerialization.data(withJSONObject: json)
+            let data = try JSONSerialization.data(withJSONObject: payload)
             try await localParticipant.publish(data: data, options: DataPublishOptions(topic: "chat", reliable: true))
         } catch {
             print("Failed to send chat message: \(error)")
         }
 
-        let msg = ChatMessage(senderName: name, text: text, isLocal: true)
+        let msg = ChatMessage(senderName: name, text: text, isLocal: true, attachments: attachments)
         chatMessages.append(msg)
     }
 
@@ -436,11 +460,30 @@ private final class RoomDelegateHandler: RoomDelegate, @unchecked Sendable {
     nonisolated func room(_ room: LiveKit.Room, participant: RemoteParticipant?, didReceiveData data: Data, forTopic topic: String, encryptionType: EncryptionType) {
         Task { @MainActor in
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  json["type"] as? String == "chat",
-                  let message = json["message"] as? String else { return }
+                  json["type"] as? String == "chat" else { return }
 
+            let message = json["message"] as? String ?? ""
             let senderName = json["senderName"] as? String ?? participant?.name ?? "Unknown"
-            let msg = ChatMessage(senderName: senderName, text: message, isLocal: false)
+
+            // Parse optional attachments (forward-compatible: old clients send none)
+            var attachments: [ChatAttachment] = []
+            if let rawAttachments = json["attachments"] as? [[String: Any]] {
+                for att in rawAttachments {
+                    guard let kind = att["kind"] as? String,
+                          let url = att["url"] as? String,
+                          let mime = att["mime"] as? String else { continue }
+                    attachments.append(ChatAttachment(
+                        kind: kind,
+                        url: url,
+                        mime: mime,
+                        w: att["w"] as? Int ?? 0,
+                        h: att["h"] as? Int ?? 0,
+                        size: att["size"] as? Int ?? 0
+                    ))
+                }
+            }
+
+            let msg = ChatMessage(senderName: senderName, text: message, isLocal: false, attachments: attachments)
             manager?.appendChatMessage(msg)
         }
     }

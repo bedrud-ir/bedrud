@@ -160,6 +160,16 @@ data class InviteToken(
     val used: Boolean = false
 )
 
+// --- Chat ---
+
+data class ChatUploadResponse(
+    val url: String,
+    val mime: String,
+    val size: Int,
+    @SerializedName("w") val width: Int = 0,
+    @SerializedName("h") val height: Int = 0,
+)
+
 // --- Admin list wrappers (server wraps arrays in keyed objects) ---
 
 data class UserListResponse(val users: List<AdminUser>)
