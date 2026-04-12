@@ -1,5 +1,9 @@
 .PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android dev-desktop build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim build-desktop deploy test-back push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open clean full-clean
 
+GREEN  := \033[0;32m
+RED    := \033[0;31m
+RESET  := \033[0m
+
 # Show available targets
 help:
 	@echo "Usage: make <target>"
@@ -156,18 +160,19 @@ build-back:
 build: build-front
 	find server/frontend -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
 	mkdir -p server/frontend
-	cp -r apps/web/build/* server/frontend/
-	$(MAKE) build-back
+	cp -r apps/web/dist/client/* server/frontend/
+	@$(MAKE) build-back && \
+		printf "$(GREEN)✅ Build succeeded: server/dist/bedrud$(RESET)\n" || \
+		( printf "$(RED)❌ Build failed$(RESET)\n"; exit 1 )
 
 # Build a production-ready compressed distribution
 build-dist: build
-	@echo "Building production binary (linux/amd64)..."
 	@mkdir -p dist
-	@cd server && GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../dist/bedrud ./cmd/bedrud/main.go
-	@echo "Creating compressed archive..."
-	@tar -cJf dist/bedrud_linux_amd64.tar.xz -C dist bedrud
-	@rm dist/bedrud
-	@echo "Distribution ready: dist/bedrud_linux_amd64.tar.xz"
+	@cd server && GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../dist/bedrud ./cmd/bedrud/main.go && \
+		tar -cJf ../dist/bedrud_linux_amd64.tar.xz -C ../dist bedrud && \
+		rm ../dist/bedrud && \
+		printf "$(GREEN)✅ Distribution ready: dist/bedrud_linux_amd64.tar.xz$(RESET)\n" || \
+		( printf "$(RED)❌ Distribution build failed$(RESET)\n"; exit 1 )
 
 # Build Android debug APK
 build-android-debug:
@@ -274,9 +279,10 @@ push-prod:
 local-build: build-front
 	find server/frontend -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
 	mkdir -p server/frontend
-	cp -r apps/web/build/* server/frontend/
-	cd server && go build -o dist/bedrud ./cmd/bedrud/main.go
-	@echo "\n✅ Single binary ready: server/dist/bedrud"
+	cp -r apps/web/dist/client/* server/frontend/
+	@cd server && go build -o dist/bedrud ./cmd/bedrud/main.go && \
+		printf "$(GREEN)✅ Single binary ready: server/dist/bedrud$(RESET)\n" || \
+		( printf "$(RED)❌ Local build failed$(RESET)\n"; exit 1 )
 	@echo "   Run with: CONFIG_PATH=server/config.local.yaml server/dist/bedrud run"
 
 # Build and run the single binary locally (SQLite + embedded LiveKit)
@@ -292,7 +298,7 @@ clean:
 	@echo "➜ Removing build artifacts..."
 	@rm -rf dist/
 	@rm -rf server/dist/
-	@rm -rf apps/web/build/
+	@rm -rf apps/web/dist/
 	@find server/frontend -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
 	@rm -rf apps/android/app/build/
 	@rm -rf apps/ios/build/
