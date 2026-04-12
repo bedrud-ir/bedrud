@@ -1,15 +1,6 @@
 import { useRoomContext } from '@livekit/components-react'
 import { RoomEvent } from 'livekit-client'
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useUserStore } from '#/lib/user.store'
 
 export interface SystemMessage {
@@ -124,8 +115,7 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
           // Resolve sender identity from the participant object (RemoteParticipant)
           const p = participant as { identity?: string; name?: string } | null
           const senderIdentity = (raw.senderIdentity as string) || p?.identity || ''
-          const senderName =
-            (raw.senderName as string) || p?.name || p?.identity || 'Unknown'
+          const senderName = (raw.senderName as string) || p?.name || p?.identity || 'Unknown'
 
           const msg: ChatMessage = {
             id: (raw.id as string) || crypto.randomUUID(),
