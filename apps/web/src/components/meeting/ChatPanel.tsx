@@ -399,7 +399,7 @@ export function ChatPanel({ onClose }: Props) {
                       <a key={ai} href={att.url} target="_blank" rel="noopener noreferrer">
                         <img
                           src={att.url}
-                          alt="shared image"
+                          alt="attachment"
                           loading="lazy"
                           style={{
                             display: 'block',

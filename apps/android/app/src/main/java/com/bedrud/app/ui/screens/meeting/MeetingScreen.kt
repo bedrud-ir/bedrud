@@ -96,7 +96,9 @@ import com.bedrud.app.core.pip.PipStateHolder
 import com.bedrud.app.core.livekit.ChatAttachment
 import com.bedrud.app.core.livekit.ChatMessage
 import com.bedrud.app.core.livekit.ConnectionState
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import com.bedrud.app.models.JoinRoomRequest
 import com.bedrud.app.models.JoinRoomResponse
 import io.livekit.android.compose.ui.VideoTrackView
@@ -1128,7 +1130,7 @@ private fun ChatPanel(
                     "image/webp" -> "webp"
                     else -> "jpg"
                 }
-                val requestBody = okhttp3.RequestBody.create(okhttp3.MediaType.parse(mimeType), bytes)
+                val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
                 val part = MultipartBody.Part.createFormData("file", "upload.$ext", requestBody)
                 val response = roomApi.uploadChatImage(roomId, part)
                 if (response.isSuccessful) {
