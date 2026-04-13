@@ -107,13 +107,17 @@ func main() {
 
 		if len(userCmd.Args()) == 0 {
 			fmt.Println("Usage: bedrud user <subcommand> [flags]")
-			fmt.Println("  promote --email <email>  Grant superadmin access to a user")
-			fmt.Println("  demote  --email <email>  Remove superadmin access from a user")
+			fmt.Println("  create  --email <email> --password <password> --name <name>")
+			fmt.Println("  delete  --email <email>")
+			fmt.Println("  promote --email <email>")
+			fmt.Println("  demote  --email <email>")
 			os.Exit(1)
 		}
 		sub := userCmd.Args()[0]
 		subCmd := flag.NewFlagSet(sub, flag.ExitOnError)
 		emailFlag := subCmd.String("email", "", "User email address")
+		passwordFlag := subCmd.String("password", "", "User password")
+		nameFlag := subCmd.String("name", "", "User name")
 		subCmd.Parse(userCmd.Args()[1:])
 
 		if *emailFlag == "" {
@@ -121,6 +125,20 @@ func main() {
 			os.Exit(1)
 		}
 		switch sub {
+		case "create":
+			if *passwordFlag == "" || *nameFlag == "" {
+				fmt.Fprintf(os.Stderr, "Error: --password and --name are required for create\n")
+				os.Exit(1)
+			}
+			if err := usercli.CreateUser(*configPath, *emailFlag, *passwordFlag, *nameFlag); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		case "delete":
+			if err := usercli.DeleteUser(*configPath, *emailFlag); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
 		case "promote":
 			if err := usercli.PromoteUser(*configPath, *emailFlag); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -164,6 +182,8 @@ func printUsage() {
 	fmt.Println("                   --external-livekit <url>   (fully separate LK machine)")
 	fmt.Println("  uninstall Uninstall Bedrud from the system")
 	fmt.Println("  user      Manage users")
+	fmt.Println("            create  --email <email> --password <password> --name <name>")
+	fmt.Println("            delete  --email <email>")
 	fmt.Println("            promote --email <email>  Grant superadmin access")
 	fmt.Println("            demote  --email <email>  Remove superadmin access")
 	fmt.Println("  help      Show this help message")
