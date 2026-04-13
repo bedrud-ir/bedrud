@@ -105,7 +105,7 @@ The frontend is at `apps/web/` and uses React 19 with TanStack Start.
 
 ### Adding a Page
 
-Create a new file under `src/routes/` following TanStack Router's file naming convention (e.g. `src/routes/settings.tsx`). Export a `Route` created with `createFileRoute`.
+Create a new file under `src/routes/` following [TanStack Router's file-based routing convention](https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing) (e.g. `src/routes/settings.tsx`). Export a `Route` created with `createFileRoute`.
 
 ### Adding an API Client Function
 
@@ -117,7 +117,7 @@ Create a new file under `src/routes/` following TanStack Router's file naming co
 
 ```bash
 cd apps/web
-bun run check    # runs tsc --noEmit
+bun run check    # runs Biome lint + TypeScript type check
 ```
 
 ## Android Development
@@ -234,7 +234,7 @@ Release builds are triggered by version tags (`v*`).
 ## Code Style
 
 - **Go:** Standard `gofmt` formatting
-- **TypeScript/React:** Prettier (configured in the web project)
+- **TypeScript/React:** Biome (configured in `apps/web/biome.json`)
 - **Kotlin:** Android Studio default formatting
 - **Swift:** Xcode default formatting
 

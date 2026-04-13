@@ -90,9 +90,10 @@ See the [Configuration Reference](../getting-started/configuration.md) for all o
 
 ### Create Your First Admin
 
+Register via the web UI at your server URL, then promote the user to admin:
+
 ```bash
-./bedrud-cli -create -email="admin@example.com" -password="securepassword" -name="Admin"
-./bedrud-cli -make-admin -email="admin@example.com"
+sudo ./bedrud user promote --email admin@example.com
 ```
 
 ### Check Service Status

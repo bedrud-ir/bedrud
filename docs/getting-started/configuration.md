@@ -2,6 +2,26 @@
 
 Bedrud uses YAML configuration files for both the main server and the embedded LiveKit media server.
 
+## Minimum Production Config
+
+Default config works for development. For production, change these values in `/etc/bedrud/config.yaml`:
+
+```yaml
+auth:
+  jwtSecret: "change-to-random-string-32-chars"
+  sessionSecret: "change-to-another-random-string"
+```
+
+Restart after changes:
+
+```bash
+sudo systemctl restart bedrud livekit
+```
+
+Full reference below.
+
+---
+
 ## Server Configuration
 
 **Location:** `server/config.yaml` (development) or `/etc/bedrud/config.yaml` (production)
@@ -14,60 +34,70 @@ server:
   host: "localhost"             # Bind address
 
 database:
-  path: "data.db"              # SQLite database file path
+  type: "sqlite"                # Database type: sqlite or postgres
+  path: "data.db"               # SQLite database file path
 
 logger:
-  level: "debug"               # Log level: debug, info, warn, error
+  level: "debug"                # Log level: debug, info, warn, error
+  outputPath: ""                # Log file path (empty = stdout)
 
 livekit:
-  url: "http://localhost:7880"  # LiveKit server URL
-  api_key: "devkey"             # LiveKit API key
-  api_secret: "devsecret"       # LiveKit API secret
+  host: "http://localhost:8090/livekit"  # External LiveKit URL
+  internalHost: "http://127.0.0.1:7880"  # Internal LiveKit URL
+  apiKey: "devkey"              # LiveKit API key
+  apiSecret: "devsecret"        # LiveKit API secret
 
 auth:
-  jwt_secret: "your-jwt-secret"         # Secret for signing JWT tokens
-  jwt_expiration: 24                     # Token expiration in hours
-  session_secret: "your-session-secret"  # Secret for session cookies
-  frontend_url: "http://localhost:3000"  # Frontend URL (for OAuth redirects)
+  jwtSecret: "your-jwt-secret"           # Secret for signing JWT tokens
+  tokenDuration: 24                       # Token expiration in hours
+  sessionSecret: "your-session-secret"    # Secret for session cookies
+  frontendURL: "http://localhost:8090"    # Frontend URL (for OAuth redirects)
 
   # OAuth providers (optional)
   google:
-    client_id: ""
-    client_secret: ""
+    clientId: ""
+    clientSecret: ""
   github:
-    client_id: ""
-    client_secret: ""
+    clientId: ""
+    clientSecret: ""
   twitter:
-    client_key: ""
-    client_secret: ""
+    clientKey: ""
+    clientSecret: ""
 
 cors:
-  allowed_origins:
-    - "http://localhost:3000"   # Frontend dev server
-  allow_credentials: true
+  allowedOrigins: "http://localhost:8090,http://localhost:3000"  # Comma-separated
+  allowedHeaders: "Origin, Content-Type, Accept, Authorization"
+  allowedMethods: "GET, POST, PUT, DELETE, OPTIONS"
+  allowCredentials: true
 ```
 
 ### Key Settings
 
 #### Database
 
-By default, Bedrud uses **SQLite** with a file at the configured `path`. For production with higher concurrency, switch to PostgreSQL by providing a connection string instead.
+By default, Bedrud uses **SQLite** with a file at the configured `path`. For production with higher concurrency, switch to PostgreSQL by providing a connection string instead. When using PostgreSQL, the `path` field holds a connection string, not a file path:
+
+```yaml
+database:
+  type: "postgres"
+  path: "postgres://user:password@localhost:5432/bedrud?sslmode=disable"
+```
 
 #### Authentication
 
-The `jwt_secret` is used to sign access and refresh tokens. Change this from the default in production.
+The `jwtSecret` is used to sign access and refresh tokens. Change this from the default in production.
 
 **OAuth providers** are optional. If you don't configure them, social login buttons won't appear in the UI. Each provider requires registering an OAuth app with the respective service and providing the client ID and secret.
 
 #### CORS
 
-The `allowed_origins` list must include the URL where your frontend is served. In development this is `http://localhost:3000`. In production, set it to your domain (e.g., `https://meet.example.com`).
+The `allowedOrigins` string (comma-separated) must include the URL where your frontend is served. In development, this is `http://localhost:3000`. In production, set it to your domain (e.g., `https://meet.example.com`).
 
 ---
 
 ## LiveKit Configuration
 
-**Location:** `server/livekit.yaml` (development) or `/etc/bedrud/livekit.yaml` (production)
+**Location:** `server/config/livekit.yaml` (development) or `/etc/bedrud/livekit.yaml` (production)
 
 ```yaml
 port: 7880                      # LiveKit HTTP/WebSocket port
@@ -88,10 +118,17 @@ keys:
 
 logging:
   level: info
+
+room:
+  auto_create: true              # Auto-create rooms when participants join
+  empty_timeout: 60              # Seconds before deleting empty room
+  departure_timeout: 60          # Seconds to keep room after all participants leave
+  max_participants: 20           # Max participants per room (0 = unlimited)
+  enable_remote_unmute: true     # Allow server-side unmute of participants
 ```
 
 !!! warning
-    The `keys` in `livekit.yaml` must match the `livekit.api_key` and `livekit.api_secret` in the server's `config.yaml`.
+    The `keys` in `livekit.yaml` must match the `livekit.apiKey` and `livekit.apiSecret` in the server's `config.yaml`.
 
 ### RTC Port Range
 
@@ -99,31 +136,85 @@ LiveKit uses UDP ports for media streams. The default range `50000-60000` works 
 
 ### TURN Server
 
-The embedded TURN server helps clients behind restrictive NATs connect to meetings. It's enabled by default on ports 3478 (UDP) and 5349 (TLS).
+The embedded TURN server relays media for clients behind restrictive NATs or corporate firewalls. It's enabled by default on ports 3478 (UDP) and 5349 (TLS).
+
+TURN is a last-resort relay — most clients (~80%) connect directly via UDP and never use it. When TURN activates, the server carries all relayed media bandwidth.
+
+**TLS requirement:** TURN/TLS (port 5349) needs a valid TLS certificate. For production, set `turn.tls_port: 443` and point `cert_file`/`key_file` to your certificate, or place a Layer 4 load balancer in front with `external_tls: true`.
+
+See the [TURN Server Guide](../architecture/turn-server.md) for architecture, config details, bandwidth calculations, and troubleshooting.
+
+### Room Settings
+
+The `room:` section controls meeting room behavior:
+
+- **`auto_create`** — Automatically create rooms when participants join (default: `true`)
+- **`empty_timeout`** — Seconds before deleting a room that was never joined (default: `60`)
+- **`departure_timeout`** — Seconds to keep room active after all participants leave (default: `60`)
+- **`max_participants`** — Maximum participants per room. Set to `0` for no limit (default: `20`)
+- **`enable_remote_unmute`** — Allow server-side muting/unmuting of participants (default: `true`)
+
+**Tuning for capacity:**
+- Small team meetings: `max_participants: 10-20`
+- Large webinars: `max_participants: 100` (or `0` for unlimited)
+- Resource-constrained servers: Lower `max_participants` to reduce CPU/memory usage
 
 ---
 
 ## Environment Variables
 
-Configuration values can be overridden with environment variables. The naming convention follows the YAML structure with underscores:
+Configuration values can be overridden with environment variables. The naming follows a per-section prefix convention:
 
 ```bash
 export SERVER_PORT=8090
-export DATABASE_PATH=/var/lib/bedrud/bedrud.db
-export AUTH_JWT_SECRET=production-secret
-export LIVEKIT_URL=http://localhost:7880
+export DB_PATH=/var/lib/bedrud/bedrud.db
+export JWT_SECRET=production-secret
+export LIVEKIT_HOST=http://localhost:8090/livekit
 export LIVEKIT_API_KEY=prodkey
 export LIVEKIT_API_SECRET=prodsecret
 ```
+
+### Full Environment Variable Reference
+
+| Env Var | YAML Path | Description |
+|---------|-----------|-------------|
+| `SERVER_PORT` | `server.port` | HTTP listening port |
+| `SERVER_ENABLE_TLS` | `server.enableTLS` | Enable HTTPS (`true`/`false`) |
+| `SERVER_CERT_FILE` | `server.certFile` | Path to TLS certificate |
+| `SERVER_KEY_FILE` | `server.keyFile` | Path to TLS private key |
+| `SERVER_DOMAIN` | `server.domain` | Domain name |
+| `SERVER_EMAIL` | `server.email` | Email for Let's Encrypt |
+| `SERVER_USE_ACME` | `server.useACME` | Enable automatic Let's Encrypt (`true`/`false`) |
+| `SERVER_TRUSTED_PROXIES` | `server.trustedProxies` | Comma-separated trusted proxy IPs |
+| `SERVER_PROXY_HEADER` | `server.proxyHeader` | Header to read client IP from (e.g., `X-Forwarded-For`) |
+| `DB_HOST` | `database.host` | Database host (PostgreSQL) |
+| `DB_PORT` | `database.port` | Database port |
+| `DB_USER` | `database.user` | Database user |
+| `DB_PASSWORD` | `database.password` | Database password |
+| `DB_NAME` | `database.dbname` | Database name |
+| `DB_TYPE` | `database.type` | `sqlite` or `postgres` |
+| `DB_PATH` | `database.path` | SQLite file path or PostgreSQL connection string |
+| `LIVEKIT_HOST` | `livekit.host` | External LiveKit URL |
+| `LIVEKIT_INTERNAL_HOST` | `livekit.internalHost` | Internal LiveKit URL |
+| `LIVEKIT_API_KEY` | `livekit.apiKey` | LiveKit API key |
+| `LIVEKIT_API_SECRET` | `livekit.apiSecret` | LiveKit API secret |
+| `JWT_SECRET` | `auth.jwtSecret` | Secret for signing JWT tokens |
+| `AUTH_FRONTEND_URL` | `auth.frontendURL` | Frontend URL for OAuth redirects |
+| `CORS_ALLOWED_ORIGINS` | `cors.allowedOrigins` | Comma-separated allowed origins |
+| `CORS_ALLOWED_HEADERS` | `cors.allowedHeaders` | Allowed request headers |
+| `CORS_ALLOWED_METHODS` | `cors.allowedMethods` | Allowed HTTP methods |
+| `CORS_ALLOW_CREDENTIALS` | `cors.allowCredentials` | Allow credentials (`true`/`false`) |
+| `CORS_EXPOSE_HEADERS` | `cors.exposeHeaders` | Headers exposed to the browser |
+| `CORS_MAX_AGE` | `cors.maxAge` | Preflight cache duration in seconds |
 
 ---
 
 ## Production Checklist
 
-- [ ] Change `jwt_secret` and `session_secret` to strong random values
+- [ ] Change `jwtSecret` and `sessionSecret` to strong random values
 - [ ] Set `logger.level` to `info` or `warn`
 - [ ] Configure TLS (via installer or reverse proxy)
-- [ ] Set `cors.allowed_origins` to your production domain
+- [ ] Set `cors.allowedOrigins` to your production domain
 - [ ] Configure OAuth providers if needed
 - [ ] Open LiveKit RTC port range in your firewall
 - [ ] Set up log rotation for `/var/log/bedrud/`

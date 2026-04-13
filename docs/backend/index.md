@@ -1,11 +1,9 @@
-# Backend Documentation Overview
-
-Welcome to the Bedrud backend documentation. This guide is for developers who want to understand how the Bedrud server works.
+# Backend Documentation
 
 ## Introduction
-The Bedrud backend is a high-performance, single-binary meeting platform written in **Go 1.24+**. Its unique selling point is the complete encapsulation of all dependencies—including the media server and web frontend—into a single executable.
+The Bedrud backend is a single-binary meeting platform written in **Go 1.24+**. All dependencies — media server, web frontend, TURN server — are embedded in one executable.
 
-This "Appliance Mode" architecture simplifies deployment to the extreme: you copy one binary, run one command, and you have a full WebRTC platform.
+One binary, one command, full WebRTC platform.
 
 ### Key Technologies
 - **Core Framework:** [Fiber v2](https://gofiber.io/) (Zero allocation router, Express-like API).
@@ -16,7 +14,7 @@ This "Appliance Mode" architecture simplifies deployment to the extreme: you cop
 - **Deployment:** Integrated Debian/Ubuntu auto-installer with systemd orchestration and ACME (Let's Encrypt) support.
 
 ## Why this Architecture?
-Traditional WebRTC stacks require complex orchestration of multiple services (Turn servers, Signaling servers, Web servers, DB). Bedrud reduces this complexity by:
+Traditional WebRTC stacks run multiple services (signaling, TURN, web server, DB). Bedrud packs everything into one binary by:
 
 1.  **Extracting** the media server binary at runtime.
 2.  **Proxying** media traffic through the main HTTP(S) port.
@@ -44,4 +42,6 @@ The application starts in `server/cmd/bedrud/main.go`. It has three main modes:
 - [**Authentication**](authentication.md): How do users log in?
 - [**API Handlers**](api-handlers.md): How are requests processed?
 - [**LiveKit Integration**](livekit.md): How does the video server work?
+- [**WebRTC Connectivity**](../architecture/webrtc-connectivity.md): How do clients establish media connections? (STUN/ICE/TURN/SFU)
+- [**TURN Server**](../architecture/turn-server.md): TURN relay architecture, configuration, and troubleshooting
 - [**Installation & Deployment**](deployment.md): How does the auto-installer work?

@@ -48,13 +48,28 @@ bedrud/
 
 ## Quick Start
 
-### Prerequisites
+### Production Binary (Fastest)
 
-- **Go** 1.24+
-- **Bun** (JavaScript runtime / package manager)
-- **LiveKit Server** (for local development)
+```bash
+curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+tar -xJf bedrud.tar.xz && chmod +x bedrud
+sudo ./bedrud install --tls --domain meet.example.com --email admin@example.com
+```
+
+### Docker
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
 
 ### Development
+
+Prerequisites: **Go 1.24+**, **Bun**, **LiveKit Server**.
 
 ```bash
 git clone https://github.com/bedrud-ir/bedrud.git
@@ -73,13 +88,6 @@ make build
 
 # Or build a compressed linux/amd64 tarball ready for deployment
 make build-dist
-```
-
-### Docker
-
-```bash
-docker pull ghcr.io/bedrud-ir/bedrud:latest
-docker run -p 8090:8090 -p 7880:7880 ghcr.io/bedrud-ir/bedrud:latest
 ```
 
 Or build from source:
@@ -137,43 +145,17 @@ sudo bedrud install
 
 ### Desktop Client
 
-=== "Ubuntu/Debian (apt)"
+Quick install:
 
-```bash
-# After adding the repo above:
-sudo apt install bedrud-desktop
-```
+| Platform | Command |
+|----------|---------|
+| Ubuntu/Debian | `sudo apt install bedrud-desktop` (after adding repo above) |
+| Arch Linux | `yay -S bedrud-desktop-bin` |
+| Linux (any) | Download [AppImage](https://github.com/bedrud-ir/bedrud/releases/latest) |
+| macOS | `brew tap bedrud-ir/bedrud && brew install bedrud-desktop` |
+| Windows | `winget install Bedrud.BedrudDesktop` |
 
-=== "Arch Linux (AUR)"
-
-```bash
-yay -S bedrud-desktop-bin
-```
-
-=== "AppImage (any Linux)"
-
-```bash
-wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
-chmod +x bedrud-desktop-linux-x86_64.AppImage
-./bedrud-desktop-linux-x86_64.AppImage
-```
-
-=== "macOS (unsigned)"
-
-```bash
-# Apple Silicon
-curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz | tar xz
-# Intel
-curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz | tar xz
-```
-
-The macOS builds are unsigned. If Gatekeeper blocks the app, run `xattr -d com.apple.quarantine bedrud-desktop` or allow it in **System Settings → Privacy & Security**.
-
-=== "Windows"
-
-Download the NSIS installer or portable `.zip` from the [latest release](https://github.com/bedrud-ir/bedrud/releases/latest) for x86_64 or ARM64.
-
-See the [Package Installation guide](https://bedrud-ir.github.io/bedrud/guides/packages/) for full details on all platforms.
+See the [Client Installation guide](https://bedrud-ir.github.io/bedrud/getting-started/clients/) for all platforms and methods, or the [Package Reference](https://bedrud-ir.github.io/bedrud/guides/packages/) for exhaustive details.
 
 ---
 
@@ -237,29 +219,29 @@ Available agents: `music_agent`, `radio_agent`, `video_stream_agent`.
 Full documentation: [bedrud-ir.github.io/bedrud](https://bedrud-ir.github.io/bedrud/)
 
 Key pages:
-- [Quick Start](https://bedrud-ir.github.io/bedrud/getting-started/quickstart/)
+- [Quick Start](https://bedrud-ir.github.io/bedrud/getting-started/quickstart/) — Self-host in under 5 minutes
 - [Architecture Overview](https://bedrud-ir.github.io/bedrud/architecture/overview/)
 - [Deployment Guide](https://bedrud-ir.github.io/bedrud/guides/deployment/)
 - [API Reference](https://bedrud-ir.github.io/bedrud/api/authentication/)
 
 ## Makefile Reference
 
-| Command | Description |
-|---------|-------------|
-| `make help` | Show all available targets |
-| `make init` | Install all dependencies |
-| `make dev` | Run LiveKit + server + web concurrently |
-| `make build` | Build frontend + backend (embedded single binary) |
-| `make build-dist` | Build production linux/amd64 tarball |
-| `make build-android-debug` | Build Android debug APK |
-| `make build-android` | Build Android release APK |
-| `make build-ios` | Build iOS archive |
-| `make build-ios-sim` | Build for iOS simulator |
-| `make build-desktop` | Build desktop release binary |
-| `make dev-desktop` | Run desktop app (debug) |
-| `make test-back` | Run server tests |
-| `make deploy ARGS=...` | Run deployment CLI |
-| `make clean` | Remove build artifacts |
+| Command                    | Description                                       |
+|----------------------------|---------------------------------------------------|
+| `make help`                | Show all available targets                        |
+| `make init`                | Install all dependencies                          |
+| `make dev`                 | Run LiveKit + server + web concurrently           |
+| `make build`               | Build frontend + backend (embedded single binary) |
+| `make build-dist`          | Build production linux/amd64 tarball              |
+| `make build-android-debug` | Build Android debug APK                           |
+| `make build-android`       | Build Android release APK                         |
+| `make build-ios`           | Build iOS archive                                 |
+| `make build-ios-sim`       | Build for iOS simulator                           |
+| `make build-desktop`       | Build desktop release binary                      |
+| `make dev-desktop`         | Run desktop app (debug)                           |
+| `make test-back`           | Run server tests                                  |
+| `make deploy ARGS=...`     | Run deployment CLI                                |
+| `make clean`               | Remove build artifacts                            |
 
 ## Tech Stack
 

@@ -40,6 +40,8 @@ sudo bedrud install
 
 The fastest way to deploy. Run from your local machine:
 
+**Prerequisites:** Python 3.10+, [uv](https://github.com/astral-sh/uv), and SSH access to the target server.
+
 ```bash
 cd tools/cli
 uv run python bedrud.py --auto-config \
@@ -99,52 +101,30 @@ See the [Installation Guide](../getting-started/installation.md) for all install
 
 ### 4. Create Admin User
 
+Register via web UI, then promote to admin:
+
 ```bash
-./bedrud-cli -create -email="admin@example.com" -password="securepassword" -name="Admin"
-./bedrud-cli -make-admin -email="admin@example.com"
+sudo ./bedrud user promote --email admin@example.com
 ```
 
 ---
 
 ## Docker Deployment
 
-### Build the Image
+Build and run with Docker:
 
 ```bash
 docker build -t bedrud .
+docker run -d --name bedrud -p 8090:8090 -p 7880:7880 -v bedrud-data:/var/lib/bedrud bedrud
 ```
 
-The multi-stage Dockerfile:
-
-1. **Stage 1** (Node 22 Alpine): Builds the React 19 + TanStack Start frontend with Bun
-2. **Stage 2** (Go 1.24 Alpine): Builds the Go server with embedded frontend
-3. **Stage 3** (Alpine 3.21): Minimal runtime (~8MB base)
-
-### Run
-
-```bash
-docker run -d \
-  --name bedrud \
-  -p 8090:8090 \
-  -p 7880:7880 \
-  -v bedrud-data:/var/lib/bedrud \
-  bedrud
-```
-
-### Ports
-
-| Port | Service |
-|------|---------|
-| 8090 | API + web frontend |
-| 7880 | LiveKit WebRTC |
-
-### Pre-built Image
-
-A Docker image is also published to GitHub Container Registry on every release:
+A pre-built image is also available:
 
 ```bash
 docker pull ghcr.io/bedrud-ir/bedrud:latest
 ```
+
+See the [Docker Guide](docker.md) for full details including volumes, configuration, and Docker Compose.
 
 ---
 
@@ -173,6 +153,17 @@ Internet
 │  SQLite  │  (or PostgreSQL)
 └──────────┘
 ```
+
+For WebRTC connectivity, also open these ports on the firewall:
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 3478 | UDP | TURN/UDP + STUN |
+| 5349 | TCP | TURN/TLS (or use 443) |
+| 7881 | TCP | ICE/TCP fallback |
+| 50000-60000 | UDP | RTC media streams |
+
+See [WebRTC Connectivity](../architecture/webrtc-connectivity.md) for the full connectivity stack.
 
 ### Systemd Services
 

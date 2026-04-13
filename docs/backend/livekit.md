@@ -1,32 +1,52 @@
 # LiveKit Integration (Media Layer)
 
-Bedrud uses **LiveKit** to handle the real-time video and audio communication.
+Bedrud uses **LiveKit** to handle real-time video and audio communication. LiveKit provides the SFU (Selective Forwarding Unit) media server, and Bedrud handles authentication, room management, and admin controls.
 
 ## Embedded vs. External
-Bedrud can work with LiveKit in two ways:
 
-1.  **Embedded Mode (Default):** The backend starts its own LiveKit server internally. This is great for easy setup because you don't need to install anything else.
-2.  **External Mode:** You can connect Bedrud to a separate LiveKit server (e.g., a cloud version or a cluster).
+Bedrud supports two LiveKit deployment modes:
 
-## How it Works
+1.  **Embedded Mode (Default):** The backend starts and manages a LiveKit server process internally. No additional infrastructure is required — the backend handles the LiveKit process lifecycle.
+2.  **External Mode:** Bedrud connects to a separate LiveKit server or cluster. This is useful for horizontal scaling or when using a managed LiveKit Cloud instance.
+
+### Configuring External Mode
+
+To use an external LiveKit server, set the following keys in `config.yaml`:
+
+```yaml
+livekit:
+  host: "livekit.example.com:7880"
+  api_key: "your-api-key"
+  api_secret: "your-api-secret"
+  embedded: false
+```
+
+When `embedded` is `false`, Bedrud skips starting the embedded LiveKit binary. The API key and secret must match the external server's credentials.
+
+For LiveKit cluster setup and configuration, refer to the [LiveKit documentation](https://docs.livekit.io).
+
+## How It Works
 
 ### 1. Room Creation
-When a user creates a room in Bedrud, we don't necessarily create a room in LiveKit immediately. LiveKit rooms are created "on demand" when the first person joins.
+
+When a user creates a room in Bedrud, the server does not create a LiveKit room immediately. LiveKit rooms are created on demand when the first participant joins.
 
 ### 2. Join Tokens
-When a user wants to join a meeting:
+
+When a user joins a meeting:
 
 1.  The frontend sends a request to `/api/room/join`.
 2.  The backend verifies the user has permission to join that room.
-3.  The backend uses its **API Key** and **Secret** to generate a "JWT Grant" (Join Token).
+3.  The backend uses its API Key and Secret to generate a signed JWT (Join Token).
 4.  The token contains:
 
-    - The `Room Name`.
-    - The user's `Identity` (Display Name).
-    - Permissions (e.g., Can they speak? Can they share their screen?).
-5.  The frontend receives this token and uses it to connect directly to the LiveKit media port (default `7880`).
+    - The room name.
+    - The user's identity (display name).
+    - Permissions — for example, whether the user can publish audio or share their screen.
+5.  The frontend receives this token and connects directly to the LiveKit media port (default `7880`).
 
 ### 3. Room Controls (Admin)
+
 The backend uses the LiveKit Go SDK to perform administrative actions:
 
 - **Kick:** Disconnects a participant.
@@ -35,7 +55,39 @@ The backend uses the LiveKit Go SDK to perform administrative actions:
 
 ## Network Architecture
 
-- **API Port (8090/443):** Handles regular HTTP and the signaling for starting the call.
-- **Media Port (7880/7881/7882):** Handles the actual video/audio data using WebRTC protocols.
+- **API Port (8090/443):** Handles HTTP requests and WebSocket signaling for call setup.
+- **Media Port (7880):** Handles video and audio data using WebRTC protocols. ICE/TCP fallback uses port 7881 when UDP is blocked.
+- **TURN Port (3478 UDP / 5349 TLS):** Relays media for clients behind restrictive NATs or firewalls. See [TURN Server Guide](../architecture/turn-server.md).
 
-If you are behind a firewall, you must ensure that the UDP and TCP ports for LiveKit are open.
+For firewall and port requirements, see [WebRTC Connectivity](../architecture/webrtc-connectivity.md).
+
+## Error Handling
+
+### LiveKit Unreachable
+
+If the LiveKit server is unreachable, token generation may still succeed (tokens are created locally using the API key and secret). However, the client will fail to connect to the media server. Symptoms:
+
+- Client receives a valid join token but the WebRTC connection times out.
+- LiveKit SDK emits a `Reconnecting` event or connection error.
+
+**Check:** Verify the LiveKit server is running (`systemctl status livekit`) and the host/port in `config.yaml` is correct.
+
+### Embedded LiveKit Process Crashes
+
+In embedded mode, if the LiveKit child process crashes:
+
+- The Bedrud API server continues to run (rooms can be listed, users can log in).
+- Active meetings lose media connectivity.
+- New join requests will generate tokens, but clients cannot connect.
+
+**Check:** Inspect logs at `/var/log/bedrut/bedrud.log` or run `journalctl -u livekit -f` for crash details.
+
+### Token Expiration
+
+LiveKit join tokens have a short validity window. If a client waits too long between receiving the token and connecting, the token will expire. The client must request a new token via `/api/room/join`.
+
+## See Also
+
+- [TURN Server Guide](../architecture/turn-server.md) — TURN architecture, configuration, TLS, and troubleshooting
+- [WebRTC Connectivity](../architecture/webrtc-connectivity.md) — full STUN/ICE/TURN/SFU connectivity stack
+- [Architecture Overview](../architecture/overview.md) — full system architecture

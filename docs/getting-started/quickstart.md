@@ -2,7 +2,9 @@
 
 Deploy Bedrud and join a video meeting in under 5 minutes.
 
-> **Single binary, zero internet after download.** Embedded media server, SQLite, works on isolated networks. Transfer the file, run one command, done.
+**This guide:** Download → Install → Verify → Join. For alternatives see [Installation](installation.md). For config see [Configuration](configuration.md).
+
+> **Single binary, no internet needed after download.** It includes an embedded media server and SQLite — it works on isolated networks. Transfer the file, run one command, done.
 
 ---
 
@@ -49,7 +51,7 @@ Installs binary, generates config, creates systemd services, provisions TLS, sta
 > ```bash
 > sudo ./bedrud install --tls --ip 1.2.3.4
 > ```
-> This uses a self-signed certificate. Browsers will warn but video works. For trusted certs on internal networks, see [Internal TLS](#5-internal-network--air-gapped-deployment).
+> This uses a self-signed certificate. Browsers will warn but video works. For trusted certs on internal networks, see [Internal TLS Guide](../guides/internal-tls.md).
 
 ---
 
@@ -72,8 +74,8 @@ Open `https://meet.example.com` (or `https://<your-ip>:8090`) in your browser:
 1. **Register** — create your account
 2. **Promote to admin** — back in terminal: `sudo ./bedrud user promote --email admin@example.com`
 3. **Create a room** — back in browser
-4. **Join** — grant camera/mic permissions
-5. **Video and audio streaming**
+4. **Join the room**
+5. **Share your video and audio** — grant camera/mic permissions when prompted
 
 **Native clients** for Android, Windows, macOS, and Linux: [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest). Or just share the meeting link — participants join in any browser.
 
@@ -126,77 +128,24 @@ The `install` command is Linux-only. Place binary in PATH manually:
 
 ---
 
-## 5. Internal Network / Air-Gapped Deployment
+## Internal Networks
 
-For isolated networks — no public domain, no outbound internet, restricted connectivity.
-
-Browsers require trusted HTTPS for camera/mic via WebRTC. Self-signed certs (`--tls --ip`) work but show warnings. For a clean setup, generate a private CA and distribute it to clients.
-
-### Generate Private CA and Server Certificate
-
-```bash
-openssl genrsa -out ca.key 4096
-openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
-  -subj "/CN=Bedrud Internal CA"
-
-openssl genrsa -out server.key 2048
-openssl req -new -key server.key -out server.csr \
-  -subj "/CN=<your-server-ip-or-hostname>"
-openssl x509 -req -days 365 -in server.csr \
-  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
-
-sudo ./bedrud install --tls --cert server.crt --key server.key --ip <your-ip>
-```
-
-### Add CA to Client Trust Stores
-
-Distribute `ca.crt` to all client machines:
-
-**Windows:**
-```powershell
-certmgr.msc  # Right-click ca.crt → Install Certificate → Trusted Root CAs
-```
-
-**macOS:**
-```bash
-sudo security add-trusted-cert -d -r trustRoot \
-  -k /Library/Keychains/System.keychain ca.crt
-```
-
-**Linux (Debian/Ubuntu):**
-```bash
-sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
-sudo update-ca-certificates
-```
-
-**Linux (Arch/Fedora):**
-```bash
-sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
-sudo update-ca-trust
-```
-
-Restart browsers, then open `https://<your-server-ip>`. Certificate trusted, camera/mic work without warnings.
+No public domain or outbound internet? See the [Internal TLS Guide](../guides/internal-tls.md) for private CA setup and client trust store configuration.
 
 ---
 
 ## Configuration
 
-The installer generates `/etc/bedrud/config.yaml`. Defaults work for most setups. Key values for production:
+Installer generates `/etc/bedrud/config.yaml`. Defaults work for most setups.
+Change `jwtSecret` and `sessionSecret` for production, then restart:
 
-```yaml
-# /etc/bedrud/config.yaml
-auth:
-  jwtSecret: "change-me-to-random-string"    # Change in production
-  sessionSecret: "change-me-too"              # Change in production
-
-livekit:
-  apiKey: "devkey"                            # Must match livekit.yaml
-  apiSecret: "devsecret"                      # Must match livekit.yaml
+```bash
+sudo systemctl restart bedrud livekit
 ```
 
-Restart after changes: `sudo systemctl restart bedrud livekit`
+To adjust room capacity, timeouts, or media ports, see the [LiveKit section in Configuration](configuration.md#livekit-configuration).
 
-Full reference: [Configuration](configuration.md) | [Production checklist](configuration.md)
+Full reference: [Configuration](configuration.md)
 
 ---
 
@@ -210,7 +159,7 @@ Full reference: [Configuration](configuration.md) | [Production checklist](confi
 | No video / WebRTC failed | HTTPS required for camera. Use `--tls`. Open UDP 50000–60000 on firewall |
 | LiveKit port conflicts | Use `--lk-port`, `--lk-tcp-port`, `--lk-udp-port` flags |
 | Firewall blocking media | `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
-| Self-signed cert blocks camera | Distribute private CA to clients. See [Internal TLS](#5-internal-network--air-gapped-deployment) |
+| Self-signed cert warnings | See [Internal TLS Guide](../guides/internal-tls.md) for private CA setup |
 
 ---
 
@@ -233,6 +182,7 @@ docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
 
 - [Configuration Reference](configuration.md) — ports, database, auth providers, TURN
 - [Installation Guide](installation.md) — package managers, advanced flags, all methods
+- [Internal TLS Guide](../guides/internal-tls.md) — air-gapped deployment, private CA
 - [Deployment Guide](../guides/deployment.md) — production setup, reverse proxy, scaling
 - [Architecture Overview](../architecture/overview.md) — how the pieces fit together
 - [API Docs](http://localhost:8090/api/swagger) — Swagger UI (running instance)

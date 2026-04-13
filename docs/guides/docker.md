@@ -9,7 +9,11 @@ Bedrud provides a multi-stage Dockerfile for building and running in containers.
 docker build -t bedrud .
 
 # Run
-docker run -d --name bedrud -p 8090:8090 -p 7880:7880 bedrud
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  bedrud
 ```
 
 ## Dockerfile Overview
@@ -41,6 +45,7 @@ RUN go mod download
 COPY server/ ./
 COPY --from=frontend /build/server/frontend ./frontend/
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /bedrud ./cmd/bedrud/main.go
+# CGO is required for SQLite (uses C bindings)
 ```
 
 Compiles the Go binary with the frontend embedded. CGO is enabled for SQLite support.
@@ -64,6 +69,7 @@ Minimal Alpine image with just the binary, CA certificates, and timezone data.
 |------|---------|----------|
 | 8090 | API + Web UI | HTTP |
 | 7880 | LiveKit | WebSocket + HTTP |
+| 50000-60000 | RTC media | UDP |
 
 For LiveKit media streams, you may also need to expose the RTC UDP port range (default: 50000-60000).
 
@@ -101,7 +107,7 @@ docker run -d \
   --name bedrud \
   -p 8090:8090 \
   -p 7880:7880 \
-  -e AUTH_JWT_SECRET=my-production-secret \
+  -e JWT_SECRET=my-production-secret \
   -e LIVEKIT_API_KEY=prodkey \
   -e LIVEKIT_API_SECRET=prodsecret \
   bedrud
@@ -132,7 +138,7 @@ services:
       - bedrud-data:/var/lib/bedrud
       - ./config.yaml:/etc/bedrud/config.yaml
     environment:
-      - AUTH_JWT_SECRET=change-me
+      - JWT_SECRET=change-me
     restart: unless-stopped
 
 volumes:

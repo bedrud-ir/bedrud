@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Bedrud is a monorepo containing a Go server, three client applications, Python bot agents, and shared packages. This page describes how the pieces fit together.
+Bedrud is a monorepo containing a Go server, three client applications, Python bot agents, and shared packages. This page describes how the components relate to each other.
 
 ## High-Level Diagram
 
@@ -50,13 +50,13 @@ The Go backend is the core of Bedrud. It handles:
 - **LiveKit integration** — generates tokens and manages rooms via the LiveKit Protocol SDK
 - **Embedded LiveKit server** — the media server binary runs as a child process
 
-The server uses the **Fiber** web framework (Express-like) and **GORM** as the ORM layer. It supports SQLite for development and PostgreSQL for production.
+The server uses the **Fiber** web framework (similar to Express.js in Node.js) and **GORM** as the ORM layer. It supports SQLite for development and PostgreSQL for production.
 
 See [Server Architecture](server.md) for details.
 
 ### Web Frontend (`apps/web/`)
 
-A **React** application built with TanStack Start, TailwindCSS v4, and shadcn/ui. In production, it is SSR pre-rendered and the client assets are embedded into the Go binary.
+A **React** application built with TanStack Start, TailwindCSS v4, and shadcn/ui. In production, it is pre-rendered on the server and the client assets are embedded into the Go binary.
 
 Key capabilities:
 
@@ -146,47 +146,92 @@ Supported auth methods:
 
 ## Meeting Connection Flow
 
-```
-Client                    Server                    LiveKit
-  │                         │                          │
-  ├─POST /api/room/join────►│                          │
-  │                         ├──generate LiveKit token──►│
-  │                         │◄─────────────────────────┤
-  │◄──LiveKit token─────────┤                          │
-  │                         │                          │
-  ├─WebSocket connect───────────────────────────────────►│
-  │  (with LiveKit token)   │                          │
-  │◄──────────────────audio/video tracks───────────────┤
+```mermaid
+%%{init: {'themeVariables': {
+  'primaryColor': '#4F46E1',
+  'primaryTextColor': '#FFFFFF',
+  'primaryBorderColor': '#3B37B3',
+  'lineColor': '#6B7280',
+  'secondaryColor': '#F3F4F6',
+  'tertiaryColor': '#E5E7EB',
+  'background': '#FFFFFF',
+  'mainBkg': '#EEF2FF',
+  'nodeBorder': '#3B37B3'
+}}}%%
+sequenceDiagram
+    participant C as Client
+    participant S as Bedrud Server
+    participant LK as LiveKit SFU
+
+    C->>S: POST /api/room/join
+    S->>S: Validate permissions
+    S->>C: LiveKit JWT token
+    C->>LK: WebSocket connect (with token)
+    LK->>C: SDP offer + join response
+
+    Note over C,LK: ICE connectivity check
+    C->>LK: Host + STUN + TURN candidates
+
+    alt Direct path (UDP)
+        C-->>LK: Media via UDP 50000-60000
+    else TURN relay
+        C-->>LK: Media via TURN relay
+    end
+
+    Note over C,LK: Audio/video tracks flow through SFU
 ```
 
 1. The client requests to join a room via the REST API
 2. The server validates permissions and generates a signed LiveKit token
 3. The client connects directly to LiveKit via WebSocket using the token
-4. Audio/video tracks flow peer-to-peer through LiveKit's SFU
+4. ICE gathers candidates (host, STUN, TURN) and selects the best path
+5. Audio/video tracks flow through LiveKit's SFU
+
+See [WebRTC Connectivity](webrtc-connectivity.md) for the full connectivity stack.
 
 ## Data Model
 
-```
-┌──────────┐       ┌──────────────┐       ┌──────────────┐
-│   User   │       │     Room     │       │   Passkey    │
-├──────────┤       ├──────────────┤       ├──────────────┤
-│ ID       │◄──┐   │ ID           │       │ ID           │
-│ Email    │   ├───│ AdminID      │       │ UserID ──────┤──►User
-│ Name     │   │   │ Name         │       │ CredentialID │
-│ Password │   │   │ IsPublic     │       │ PublicKey    │
-│ Avatar   │   │   │ ChatEnabled  │       │ Counter      │
-│ Provider │   │   │ VideoEnabled │       └──────────────┘
-│ Role     │   │   │ Participants │
-└──────────┘   │   └──────────────┘
-               │
-               │   ┌──────────────┐
-               └───│ RefreshToken │
-                   ├──────────────┤
-                   │ Token        │
-                   │ UserID       │
-                   │ ExpiresAt    │
-                   └──────────────┘
-```
+### User
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | uint | Primary key |
+| Email | string | Unique email address |
+| Name | string | Display name |
+| Password | string | Hashed password (empty for OAuth/guest) |
+| Avatar | string | Avatar URL |
+| Provider | string | Auth provider (`local`, `google`, `github`, `twitter`, `guest`) |
+| Role | string | `user` or `admin` |
+
+### Room
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | uint | Primary key |
+| AdminID | uint | Foreign key → User.ID (room creator) |
+| Name | string | Room name / URL slug |
+| IsPublic | bool | Whether guests can join without invite |
+| ChatEnabled | bool | Whether in-room chat is active |
+| VideoEnabled | bool | Whether video is allowed |
+| Participants | []User | Users currently in the room |
+
+### Passkey
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | uint | Primary key |
+| UserID | uint | Foreign key → User.ID |
+| CredentialID | []byte | WebAuthn credential ID |
+| PublicKey | []byte | WebAuthn public key |
+| Counter | uint32 | WebAuthn sign count |
+
+### RefreshToken
+
+| Field | Type | Description |
+|-------|------|-------------|
+| Token | string | The refresh token string |
+| UserID | uint | Foreign key → User.ID |
+| ExpiresAt | time | Token expiration timestamp |
 
 ## Deployment Architecture
 
@@ -200,3 +245,24 @@ In production, Bedrud runs as two systemd services:
 Both are managed by a single binary. Traefik or another reverse proxy handles TLS termination and routes traffic.
 
 See [Deployment Guide](../guides/deployment.md) for setup instructions.
+
+## Key Terms
+
+These terms appear throughout the architecture documentation:
+
+| Term | Full Name | Meaning |
+|------|-----------|---------|
+| **SFU** | Selective Forwarding Unit | A media server that receives streams from each participant and forwards them to others. Clients connect to the server, not to each other. |
+| **SDP** | Session Description Protocol | The format used to describe WebRTC connection parameters (codecs, resolutions, media types). |
+| **ICE** | Interactive Connectivity Establishment | A framework that gathers all possible network paths between client and server, then selects the best one. |
+| **STUN** | Session Traversal Utilities for NAT | A lightweight protocol that helps a client discover its public IP address. Works for most connections. |
+| **TURN** | Traversal Using Relays around NAT | A protocol that relays all media through the server when a direct connection is not possible. Last resort, highest bandwidth cost. |
+| **NAT** | Network Address Translation | A router feature that maps private internal addresses to a public address. Can block direct WebRTC connections depending on type. |
+| **srflx** | Server Reflexive | A type of ICE candidate representing the client's public IP, discovered via STUN. |
+| **WebRTC** | Web Real-Time Communication | The browser and mobile API standard for real-time audio, video, and data transfer. |
+
+## See Also
+
+- [WebRTC Connectivity](webrtc-connectivity.md) — full STUN/ICE/TURN/SFU connectivity stack
+- [TURN Server Guide](turn-server.md) — TURN relay architecture and configuration
+- [LiveKit Integration](../backend/livekit.md) — how Bedrud embeds LiveKit
