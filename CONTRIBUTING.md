@@ -2,7 +2,7 @@
 
 Contributions to Bedrud are welcome. This guide covers the process for submitting changes.
 
-> **Note:** The canonical contributing guide is at the repository root: [CONTRIBUTING.md](/CONTRIBUTING.md). This page is archived for reference only.
+For documentation-specific contributions, see [docs/contributing.md](docs/contributing.md).
 
 ## Getting Started
 
@@ -15,9 +15,9 @@ Contributions to Bedrud are welcome. This guide covers the process for submittin
 ## Prerequisites
 
 - Go 1.22+
-- Bun (for web frontend)
+- Bun 1.0+ (for web frontend)
 - Rust (for desktop app)
-- Make
+- GNU Make
 - Git
 
 ## Development Setup
@@ -30,7 +30,7 @@ make init
 make dev
 ```
 
-See the [Development Workflow](guides/development.md) for detailed setup instructions.
+See the [Development Workflow](docs/guides/development.md) for detailed setup instructions.
 
 ## Project Structure
 
@@ -67,12 +67,24 @@ See the [Development Workflow](guides/development.md) for detailed setup instruc
 
 Every PR runs these checks automatically:
 
-| Check   | What it validates            |
-|---------|------------------------------|
-| Server  | `go vet`, build, tests       |
-| Web     | TypeScript type check, build |
-| Android | Lint, unit tests             |
-| iOS     | Build, test (simulator)      |
+| Check   | What it validates                    |
+|---------|--------------------------------------|
+| Server  | `go vet`, build, tests               |
+| Web     | TypeScript type check, build (Biome) |
+| Android | Lint, unit tests                     |
+| iOS     | Build, test (simulator)              |
+
+### Before Submitting
+
+Run checks locally to catch issues before CI:
+
+```bash
+# Server
+cd server && go vet ./... && go build ./... && go test -v -count=1 ./...
+
+# Web
+cd apps/web && bun run check && bun run build
+```
 
 ## Reporting Issues
 
@@ -95,10 +107,14 @@ mkdocs serve
 
 Then open `http://localhost:8000` in your browser.
 
-### Structure
+## Related Documentation
 
-Documentation pages are organized by topic. The navigation is defined in `mkdocs.yml` at the project root.
+- [Development Workflow](docs/guides/development.md) — Detailed dev setup
+- [Architecture Overview](docs/architecture/overview.md) — How the pieces fit together
+- [Configuration](docs/getting-started/configuration.md) — Server and LiveKit settings
+- [API Reference](docs/api/authentication.md) — REST API endpoints
+- [Makefile Guide](docs/guides/makefile.md) — All build and dev commands
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [Apache License 2.0](https://github.com/bedrud-ir/bedrud/blob/main/LICENSE).
+By contributing, you agree that your contributions will be licensed under the [Apache License 2.0](LICENSE).
