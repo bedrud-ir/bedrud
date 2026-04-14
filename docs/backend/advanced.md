@@ -1,6 +1,6 @@
 # Advanced Backend Architecture
 
-This document covers the "under the hood" technical decisions that make Bedrud's high-performance, single-binary architecture possible.
+This document covers the internal technical decisions behind Bedrud's single-binary architecture.
 
 ## 1. The Fiber-to-Standard Bridge
 Bedrud uses **Fiber** for its speed, but some dependencies like **Goth** (OAuth) and **LiveKit SDK** (Twirp) expect standard Go `http.ResponseWriter` and `http.Request`.
@@ -17,7 +17,7 @@ type responseWriter struct {
 ```
 This struct implements the `http.ResponseWriter` interface. When a standard library function (like Goth) calls `Header().Add()`, the adapter stores it in a local `headers` map. When `WriteHeader()` is called, it manually copies all headers back into the **Fiber Context**.
 
-### Why this is important:
+### Purpose
 It allows Bedrud to remain extremely fast (using Fiber) while maintaining full compatibility with the vast ecosystem of standard Go web libraries.
 
 ## 2. LiveKit Reverse Proxying
@@ -56,7 +56,7 @@ To run backend tests:
 go test ./internal/...
 ```
 
-## 5. Security: Token Rotation & Rotation
+## 5. Security: Token Rotation & Revocation
 Unlike simple JWT implementations, Bedrud rotates **both** tokens on every refresh.
 
 - **Refresh Token Reuse Detection:** Once a refresh token is used to get a new pair, it is blocked.

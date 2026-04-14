@@ -86,7 +86,7 @@ In embedded mode, if the LiveKit child process crashes:
 
 LiveKit join tokens have a short validity window. If a client waits too long between receiving the token and connecting, the token will expire. The client must request a new token via `/api/room/join`.
 
-## See Also
+## See also
 
 - [TURN Server Guide](../architecture/turn-server.md) — TURN architecture, configuration, TLS, and troubleshooting
 - [WebRTC Connectivity](../architecture/webrtc-connectivity.md) — full STUN/ICE/TURN/SFU connectivity stack

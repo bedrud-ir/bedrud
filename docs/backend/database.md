@@ -1,6 +1,6 @@
 # Database and Models
 
-Bedrud uses **GORM** as its ORM (Object-Relational Mapper). This makes it easy to switch between different database types.
+Bedrud uses **GORM** as its ORM, supporting both SQLite and PostgreSQL.
 
 ## Supported Databases
 - **SQLite:** Used by default for easy development and small installations. The database is stored in a file (usually `bedrud.db`).
@@ -34,13 +34,13 @@ Standard SQL databases handle arrays differently (PostgreSQL has native arrays, 
 
 ### Foreign Key Management
 
-While GORM's `AutoMigrate` is powerful, it sometimes struggles with complex composite primary keys (like those used in `room_participants`). 
+GORM's `AutoMigrate` does not handle composite primary keys (e.g., `room_participants`). 
 
 In `internal/database/migrations.go`, Bedrud manually executes `ALTER TABLE` statements to ensure foreign key constraints (like `ON DELETE CASCADE`) are correctly applied in production (PostgreSQL).
 
 ## Repository Pattern
 
-We use the **Repository Pattern** to interact with the database. This means handlers do not call GORM directly. Instead, they use a repository.
+The backend uses the **Repository Pattern** for database access. Handlers do not call GORM directly — they use a repository.
 
 Example:
 ```go
@@ -57,4 +57,4 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 
 ## Automatic Migrations
 
-When the server starts, it automatically runs "AutoMigrate". This creates or updates database tables based on the Go structures in `internal/models`. You don't need to manually write `CREATE TABLE` statements for simple changes.
+When the server starts, it automatically runs "AutoMigrate". This creates or updates database tables based on the Go structures in `internal/models`. No manual `CREATE TABLE` statements are required for simple schema changes.

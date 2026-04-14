@@ -1,6 +1,6 @@
 # API Handlers and Routing
 
-Bedrud uses the **Fiber** web framework. Fiber is fast and has a simple API that looks like Express.js.
+Bedrud uses the **Fiber** web framework (Express-like API for Go).
 
 ## Routing Logic
 
@@ -16,7 +16,7 @@ The routes are defined in `internal/server/server.go`. We group routes to apply 
 ## Specialized Handler Logic
 
 ### Room Management (`internal/handlers/room.go`)
-The `RoomHandler` provides a bridge between Bedrud's metadata and LiveKit's media engine.
+The `RoomHandler` translates between Bedrud's room metadata and LiveKit's media engine.
 
 #### 1. Room Creation
 When a room is created via `POST /api/room/create`:
@@ -86,6 +86,6 @@ func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
 
 ## Static Files (Frontend)
 
-One of Bedrud's best features is that the frontend is **embedded** in the backend binary. Fiber serves the React files from the `frontend/` directory using `filesystem.New`.
+The web frontend is **embedded** in the Go binary at build time. Fiber serves the React files from the `frontend/` directory using `filesystem.New`.
 
-Any route that doesn't start with `/api` is redirected to the React app's `index.html`. This allows for client-side routing without 404s on page refresh.
+Any route that doesn't start with `/api` is redirected to the React app's `index.html`. This enables client-side routing without 404s on page refresh.

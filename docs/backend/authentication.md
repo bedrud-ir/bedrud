@@ -1,9 +1,9 @@
 # Authentication Flow
 
-Bedrud provides several ways for users to identify themselves.
+Bedrud supports multiple authentication methods.
 
 ## JWT (JSON Web Tokens)
-We use JWT for session management. When a user logs in, the server gives them two tokens:
+Bedrud uses JWT for session management. On login, the server returns two tokens:
 
 1.  **Access Token:** Short-lived (e.g., 1 hour). Used to access protected API endpoints.
 2.  **Refresh Token:** Long-lived (e.g., 30 days). Used to get a new Access Token without logging in again.
@@ -44,7 +44,7 @@ The tokens carry metadata that allows the backend and frontend to make quick dec
 
 ### 1. Local Email & Password
 
-- Passwords are never stored as plain text. We hash them using **bcrypt**.
+- Passwords are hashed using **bcrypt** — never stored as plain text.
 - When you register, a new User record is created in the database.
 
 ### 2. Social Login (OAuth2)
@@ -57,7 +57,7 @@ Bedrud uses the `Goth` library to support:
 You can enable these by filling in the `auth:` section in your `config.yaml` with your Client ID and API Secret.
 
 ### 3. Passkeys (WebAuthn/FIDO2)
-Bedrud provides a modern, passwordless experience using the FIDO2 standard.
+Bedrud supports passwordless authentication via the FIDO2 standard (WebAuthn).
 
 - **Registration Ceremony:**
   1.  **Begin:** The server generates a cryptographically secure **Challenge** and stores it in the user's session.
@@ -83,4 +83,4 @@ Each user has a list of "accesses" (roles).
 - `guest`: Temporary user. Can join rooms.
 - `superadmin`: Can manage all users and rooms through the `/admin` dashboard.
 
-We use the `middleware.RequireAccess("superadmin")` to protect admin routes.
+The `middleware.RequireAccess("superadmin")` guard protects admin routes.

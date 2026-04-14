@@ -1,10 +1,10 @@
 # Backend Code Structure
 
-Bedrud uses a clean and organized folder structure. Here is a map of the `server/` directory to help you find your way.
+Map of the `server/` directory and its contents.
 
 ## Project Roadmap & Tree
 
-Bedrud is structured as a mono-repo. The `server/` directory is the heart of the "Appliance", while `apps/` contains the various client-side implementations.
+The `server/` directory contains the Go backend and embedded LiveKit media server. The `apps/` directory contains the client applications.
 
 ```text
 bedrud/
@@ -36,14 +36,13 @@ bedrud/
 - **`livekit.yaml`**: Default configuration for the embedded LiveKit server.
 
 ### `/internal`
-This is where the core logic lives.
 
 - **`/auth`**: contains logic for JWT generation, OAuth providers, and Passkey (WebAuthn) registration/login.
 - **`/database`**: manages the connection to SQLite or PostgreSQL and runs migrations.
 - **`/handlers`**: Fiber HTTP handlers. This is where you find the logic for each API endpoint (e.g., `auth_handler.go`, `room_handler.go`).
 - **`/models`**: GORM database models. These files define the tables in your database.
-- **`/repository`**: The "Data Access Layer". Instead of writing DB queries in handlers, we put them here to keep the code clean.
-- **`/livekit`**: Integration with the LiveKit Go SDK. It manages room creation and generates "Join Tokens" for participants.
+- **`/repository`**: The "Data Access Layer". Handlers call repositories instead of writing DB queries directly, keeping handler logic clean.
+- **`/livekit`**: Integration with the LiveKit Go SDK. Manages room creation and generates "Join Tokens" for participants.
 - **`/middleware`**: Custom Fiber middleware for authentication checks, logging, and CORS.
 - **`/server`**: The glue code that brings everything together. It initializes the database, repositories, and starts the Fiber server.
 - **`/install`**: Logic for the `bedrud install` command which automates systemd and TLS setup on Linux.
@@ -65,7 +64,7 @@ This is where the core logic lives.
 Bedrud uses the `//go:embed` directive to bundle files into the compiled binary.
 
 - **Frontend:** The React `dist/client/` folder (plus a pre-rendered `index.html`) is embedded in `server/ui.go`. Static files are served directly from memory using Fiber's `filesystem` middleware.
-- **LiveKit Server:** Since LiveKit is a complex Go application itself, we embed the pre-compiled `livekit-server` executable in `internal/livekit/bin/`. At runtime, Bedrud extracts this binary to `/tmp/bedrud-livekit-server` and launches it as a background process (`internal/livekit/server.go`).
+- **LiveKit Server:** The pre-compiled `livekit-server` executable is embedded in `internal/livekit/bin/`. At runtime, Bedrud extracts it to `/tmp/bedrud-livekit-server` and launches it as a background process (`internal/livekit/server.go`).
 
 ### 2. LiveKit Reverse Proxy
 
@@ -101,10 +100,10 @@ While Bedrud uses a `config.yaml` file, almost every setting can be overridden u
 
 ## Coding Standards and Patterns
 
-To keep the backend maintainable, we follow these patterns:
+The backend follows these patterns:
 
 ### 1. Repository Pattern
-Handlers should not talk to the database directly. Use a Repository. This makes the code easier to test and allows us to change database logic without touching the API handlers.
+Handlers should not talk to the database directly. Use a Repository. This makes the code easier to test and allows database logic changes without touching the API handlers.
 
 ### 2. Standardized Error Handling
 API handlers should return clear error messages.
@@ -113,7 +112,7 @@ API handlers should return clear error messages.
 - Use `c.Status(fiber.StatusInternalServerError).JSON(...)` for database or server errors.
 
 ### 3. Structured Logging
-We use **Zerolog** for logging.
+The backend uses **Zerolog** for logging.
 - `log.Info()`: For important events (e.g., server started).
 - `log.Error()`: For failures.
 - `log.Debug()`: For detailed development information.

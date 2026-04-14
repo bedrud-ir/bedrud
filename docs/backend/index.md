@@ -3,8 +3,6 @@
 ## Introduction
 The Bedrud backend is a single-binary meeting platform written in **Go 1.24+**. All dependencies — media server, web frontend, TURN server — are embedded in one executable.
 
-One binary, one command, full WebRTC platform.
-
 ### Key Technologies
 - **Core Framework:** [Fiber v2](https://gofiber.io/) (Zero allocation router, Express-like API).
 - **Database Layer:** [GORM](https://gorm.io/) with support for **SQLite** (standard) and **PostgreSQL** (production).
@@ -14,7 +12,7 @@ One binary, one command, full WebRTC platform.
 - **Deployment:** Integrated Debian/Ubuntu auto-installer with systemd orchestration and ACME (Let's Encrypt) support.
 
 ## Why this Architecture?
-Traditional WebRTC stacks run multiple services (signaling, TURN, web server, DB). Bedrud packs everything into one binary by:
+WebRTC platforms typically run separate services for signaling, TURN, web serving, and database management. Bedrud consolidates these into one binary by:
 
 1.  **Extracting** the media server binary at runtime.
 2.  **Proxying** media traffic through the main HTTP(S) port.

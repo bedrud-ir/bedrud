@@ -1,13 +1,13 @@
 # Internal Installer and Deployment
 
-One of the most powerful features of Bedrud is the built-in installer. It allows you to transform a fresh Linux server into a fully functional meeting platform with one command.
+The built-in installer configures a fresh Linux server for production use with a single command.
 
 ## The `install` Command
 
 When you run `bedrud install`, the following steps happen:
 
 1.  **Environment Check:** The installer verifies that you are running on **Linux** (Debian/Ubuntu are preferred).
-2.  **Configuration:** It asks you for your IP address, domain name, and email for Let's Encrypt certificates.
+2.  **Configuration:** Prompts for IP address, domain name, and email (for Let's Encrypt certificates).
 3.  **File System Setup:**
     - Creates `/etc/bedrud/` for configuration files.
     - Creates `/var/lib/bedrud/` for the database and certificates.
@@ -46,3 +46,10 @@ If you need to remove Bedrud, you can run:
 sudo bedrud uninstall
 ```
 This stops the services, deletes the systemd files, and removes the configuration and data folders.
+
+---
+
+## See also
+
+- [Deployment Guide](../guides/deployment.md) — full production deployment instructions
+- [Appliance Mode](../guides/appliance.md) — single-binary setup reference
