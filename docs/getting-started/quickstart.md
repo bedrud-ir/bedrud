@@ -67,15 +67,26 @@ Expect: `200`
 
 ---
 
-## 4. Join a Meeting
+## 4. Register & Create Admin
 
 Open `https://meet.example.com` (or `https://<your-ip>:8090`) in your browser:
 
 1. **Register** — create your account
-2. **Promote to admin** — back in terminal: `sudo ./bedrud user promote --email admin@example.com`
-3. **Create a room** — back in browser
-4. **Join the room**
-5. **Share your video and audio** — grant camera/mic permissions when prompted
+2. **Promote to admin** — back in terminal:
+   ```bash
+   sudo ./bedrud user promote --email admin@example.com
+   ```
+   Or create a new admin user directly:
+   ```bash
+   sudo ./bedrud user create --email admin@example.com --password secret --name "Admin"
+   sudo ./bedrud user promote --email admin@example.com
+   ```
+3. Log in (or refresh) — **Admin** section appears in sidebar (Overview, Users, Rooms, Settings). Success: you're admin.
+4. **Create a room** → **Join** → **Share video/audio** — grant camera/mic permissions when prompted
+
+> **Admin dashboard** — After promoting, log in to access the admin panel at `/dashboard/admin`. Manage users, rooms, system settings, and invite tokens.
+
+> **CLI reference** — Full user management: `bedrud user promote`, `demote`, `create`, `delete`.
 
 **Native clients** for Android, Windows, macOS, and Linux: [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest). Or share the meeting link — participants join in any browser.
 
@@ -121,9 +132,9 @@ sudo ./bedrud install --ip 127.0.0.1
 
 The `install` command is Linux-only. Place binary in PATH manually:
 
-| OS | How |
-|----|-----|
-| macOS | `sudo cp bedrud /usr/local/bin/` |
+| OS      | How                                       |
+|---------|-------------------------------------------|
+| macOS   | `sudo cp bedrud /usr/local/bin/`          |
 | Windows | Move `bedrud.exe` to a folder in `%PATH%` |
 
 ---
