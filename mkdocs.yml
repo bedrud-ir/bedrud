@@ -58,6 +58,7 @@ nav:
       - Quick Start: getting-started/quickstart.md
       - Installation: getting-started/installation.md
       - Configuration: getting-started/configuration.md
+      - CLI Reference: getting-started/cli-reference.md
   - Architecture:
       - Overview: architecture/overview.md
       - Server (Go): architecture/server.md

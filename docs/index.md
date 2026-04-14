@@ -19,6 +19,7 @@ A single `bedrud` binary contains:
 - **[Server Installation](getting-started/installation.md)** — Deploy the server to production with TLS and systemd
 - **[Client Installation](getting-started/clients.md)** — Install desktop and mobile apps for joining meetings
 - **[Configuration](getting-started/configuration.md)** — Server, LiveKit, auth, and network settings
+- **[CLI Reference](getting-started/cli-reference.md)** — Complete `bedrud` command-line interface documentation
 
 ### Architecture
 - **[Architecture Overview](architecture/overview.md)** — Understand how the server, clients, and media layer fit together
