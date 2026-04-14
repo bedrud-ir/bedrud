@@ -14,12 +14,42 @@ A single `bedrud` binary contains:
 
 ## Quick Links
 
+### Getting Started
 - **[Quick Start](getting-started/quickstart.md)** — Self-host Bedrud in under 5 minutes
 - **[Server Installation](getting-started/installation.md)** — Deploy the server to production with TLS and systemd
 - **[Client Installation](getting-started/clients.md)** — Install desktop and mobile apps for joining meetings
 - **[Configuration](getting-started/configuration.md)** — Server, LiveKit, auth, and network settings
+
+### Architecture
 - **[Architecture Overview](architecture/overview.md)** — Understand how the server, clients, and media layer fit together
-- **[API Reference](api/authentication.md)** — REST API endpoints for authentication, rooms, and administration
+- **[Server Architecture](architecture/server.md)** — Go backend structure, middleware, and routing
+- **[Web Frontend](architecture/web.md)** — React 19, TanStack Start, TailwindCSS v4
+- **[Android App](architecture/android.md)** — Jetpack Compose, Koin, LiveKit SDK
+- **[iOS App](architecture/ios.md)** — SwiftUI, KeychainAccess, LiveKit SDK
+- **[Desktop App](architecture/desktop.md)** — Rust + Slint desktop application
+- **[Bot Agents](architecture/agents.md)** — Python agents for music, radio, video streaming
+- **[WebRTC Connectivity](architecture/webrtc-connectivity.md)** — ICE, STUN, TURN, SFU fundamentals
+- **[TURN Server](architecture/turn-server.md)** — NAT traversal configuration and deployment
+
+### Backend Internals
+- **[Backend Docs](backend/index.md)** — Go server architecture, structure, authentication, LiveKit integration
+
+### API Reference
+- **[Authentication API](api/authentication.md)** — Login, register, OAuth, and token refresh
+- **[Rooms API](api/rooms.md)** — Room creation, joining, and admin controls
+- **[Admin API](api/admin.md)** — User management endpoints
+- **[Passkeys API](api/passkeys.md)** — FIDO2/WebAuthn endpoints
+
+### Guides
+- **[Development Workflow](guides/development.md)** — Prerequisites, dev setup, adding features
+- **[Deployment Guide](guides/deployment.md)** — Production deployment options and architecture
+- **[Docker Guide](guides/docker.md)** — Containerized deployment with Docker and Compose
+- **[Internal TLS](guides/internal-tls.md)** — Private CA and certificate setup for internal networks
+- **[Makefile Reference](guides/makefile.md)** — Build, dev, and deployment commands
+- **[Package Installation](guides/packages.md)** — Install via apt, AUR, DNF, Homebrew, WinGet, Chocolatey
+- **[Appliance Mode](guides/appliance.md)** — Standalone server installation and configuration
+
+### Contributing
 - **[Contributing](contributing.md)** — How to contribute to the project
 
 ## Platform Support
