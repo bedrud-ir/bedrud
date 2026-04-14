@@ -1,13 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import {
-  groupMessages,
-  avatarColor,
-  avatarInitials,
-  relativeTime,
-  absoluteTime,
-  AVATAR_COLORS,
-} from './chatGrouping'
-import type { ChatMessage, SystemMessage } from '#/components/meeting/MeetingContext'
+import { describe, expect, it } from 'vitest'
+import type { ChatMessage, SystemMessage } from '../MeetingContext'
+import { AVATAR_COLORS, absoluteTime, avatarColor, avatarInitials, groupMessages, relativeTime } from './chatGrouping'
 
 function makeMsg(overrides: Partial<ChatMessage> & { timestamp: number }): ChatMessage {
   return {

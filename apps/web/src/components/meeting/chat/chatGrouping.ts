@@ -1,4 +1,4 @@
-import type { ChatMessage, SystemMessage } from '#/components/meeting/MeetingContext'
+import type { ChatMessage, SystemMessage } from '../MeetingContext'
 
 // ─── Display item types ───────────────────────────────────────────────────────
 
@@ -27,10 +27,10 @@ export type DisplayItem = ClusterGroup | DateSeparatorItem | SystemItem
 const CLUSTER_GAP_MS = 5 * 60_000
 
 export const AVATAR_COLORS = [
-  'rgba(99,102,241,0.85)',  // indigo
+  'rgba(99,102,241,0.85)', // indigo
   'rgba(139,92,246,0.85)', // violet
   'rgba(20,184,166,0.85)', // teal
-  'rgba(244,63,94,0.85)',  // rose
+  'rgba(244,63,94,0.85)', // rose
   'rgba(245,158,11,0.85)', // amber
   'rgba(14,165,233,0.85)', // sky
   'rgba(16,185,129,0.85)', // emerald
@@ -40,11 +40,7 @@ export const AVATAR_COLORS = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
 
 function formatDateLabel(ts: number): string {
@@ -85,13 +81,8 @@ export function absoluteTime(ts: number): string {
 
 // ─── Core grouping function ───────────────────────────────────────────────────
 
-export function groupMessages(
-  chatMessages: ChatMessage[],
-  systemMessages: SystemMessage[],
-): DisplayItem[] {
-  type RawItem =
-    | { ts: number; kind: 'chat'; msg: ChatMessage }
-    | { ts: number; kind: 'system'; msg: SystemMessage }
+export function groupMessages(chatMessages: ChatMessage[], systemMessages: SystemMessage[]): DisplayItem[] {
+  type RawItem = { ts: number; kind: 'chat'; msg: ChatMessage } | { ts: number; kind: 'system'; msg: SystemMessage }
 
   const raw: RawItem[] = [
     ...chatMessages.map((m) => ({ ts: m.timestamp, kind: 'chat' as const, msg: m })),
