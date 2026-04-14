@@ -79,57 +79,41 @@ Open `http://localhost:8090`, create an account, and start a meeting.
 
 ### Web UI
 
-> *Screenshots coming soon.*
-
-<!-- TODO: Add screenshots when available
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/web-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/web-light.png">
-  <img alt="Bedrud Web Interface" src="docs/images/web-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/web-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/web-light.svg">
+  <img alt="Bedrud Web Interface" src="docs/images/web-light.svg">
 </picture>
--->
 
 *Web meeting room with video grid, chat sidebar, and controls.*
 
 ### Desktop App (Windows / Linux / macOS)
 
-> *Screenshots coming soon.*
-
-<!-- TODO: Add screenshots when available
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/desktop-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/desktop-light.png">
-  <img alt="Bedrud Desktop App" src="docs/images/desktop-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/desktop-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/desktop-light.svg">
+  <img alt="Bedrud Desktop App" src="docs/images/desktop-light.svg">
 </picture>
--->
 
 *Native desktop client with picture-in-picture and system integration.*
 
 ### Android
 
-> *Screenshots coming soon.*
-
-<!-- TODO: Add screenshots when available
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/android-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/android-light.png">
-  <img alt="Bedrud Android App" src="docs/images/android-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/android-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/android-light.svg">
+  <img alt="Bedrud Android App" src="docs/images/android-light.svg">
 </picture>
--->
 
 *Android meeting view with material design and gesture controls.*
 
 ### iOS
 
-> *Screenshots coming soon.*
-
-<!-- TODO: Add screenshots when available
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/ios-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/ios-light.png">
-  <img alt="Bedrud iOS App" src="docs/images/ios-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/ios-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/ios-light.svg">
+  <img alt="Bedrud iOS App" src="docs/images/ios-light.svg">
 </picture>
--->
 
 *iOS meeting interface with SwiftUI and native iOS integration.*
 
