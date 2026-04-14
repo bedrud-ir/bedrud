@@ -106,14 +106,14 @@ PUT /api/admin/users/:id/status
 
 ### Creating an Admin
 
-Admin users are created via the CLI tool:
+Admin users are created via the CLI:
 
 ```bash
 # Create a user
-./bedrud-cli -create -email="admin@example.com" -password="securepassword" -name="Admin"
+bedrud user create --email "admin@example.com" --password "securepassword" --name "Admin"
 
 # Promote to admin
-./bedrud-cli -make-admin -email="admin@example.com"
+bedrud user promote --email "admin@example.com"
 ```
 
 There is no API endpoint to promote users — this is intentional for security.
@@ -134,3 +134,10 @@ There is no API endpoint to promote users — this is intentional for security.
 | 403 | Not a Super Admin |
 | 404 | User not found |
 | 500 | Internal server error |
+
+---
+
+## See also
+
+- [API Handlers and Routing](../backend/api-handlers.md) — how admin routes are implemented
+- [Rooms API](rooms.md) — room management endpoints

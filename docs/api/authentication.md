@@ -258,3 +258,10 @@ All auth endpoints return errors in this format:
 | 401 | Invalid credentials or expired token |
 | 409 | Email already registered |
 | 500 | Internal server error |
+
+---
+
+## See also
+
+- [Authentication Flow](../backend/authentication.md) — how JWT, OAuth, and passkeys work internally
+- [Passkeys API](passkeys.md) — FIDO2/WebAuthn endpoint reference

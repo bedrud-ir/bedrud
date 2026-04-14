@@ -184,3 +184,10 @@ POST /api/auth/passkey/login/finish
 4. Log out
 5. Click "Sign in with Passkey" on the login page
 6. Complete the biometric prompt to authenticate
+
+---
+
+## See also
+
+- [Authentication Flow](../backend/authentication.md) — passkey registration/login ceremonies explained
+- [Authentication API](authentication.md) — all auth endpoints

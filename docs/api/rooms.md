@@ -285,3 +285,10 @@ All errors follow a consistent format:
 | 404 | Room not found |
 | 409 | Conflict (duplicate resource) |
 | 500 | Internal server error |
+
+---
+
+## See also
+
+- [Architecture Overview](../architecture/overview.md) — data model and meeting connection flow
+- [API Handlers](../backend/api-handlers.md) — how room endpoints are implemented
