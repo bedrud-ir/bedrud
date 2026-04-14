@@ -1,6 +1,14 @@
 # Bedrud Documentation
 
-Bedrud is a **self-hosted video meeting platform** packaged as a single binary. Web UI, REST API, WebRTC media server — run it on your own server with no per-user fees or usage limits.
+Bedrud is a **self-hosted video meeting platform** packaged as a single binary — you run it on infrastructure you control, so no third-party servers process your meetings.
+
+## Why Bedrud
+
+- **Privacy** — All audio, video, and data stays on your servers. No third-party ever sees your meetings.
+- **No vendor lock-in** — Standard protocols (WebRTC, REST). Export your data anytime.
+- **No per-seat pricing** — Unlimited users and rooms with no recurring license fees.
+- **Single binary** — No containers, no orchestration, no 12-step deploy. One file, one command.
+- **Built-in everything** — API, web UI, media server, database, TLS, and systemd install included.
 
 ## What's in the Binary
 
