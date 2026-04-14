@@ -119,14 +119,9 @@ export function ChatMessageList({ chatMessages, systemMessages, onScrollUnreadCh
           items.map((item, i) => {
             if (item.kind === 'date-separator') {
               return (
-                <div
-                  key={`sep-${i}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}
-                >
+                <div key={`sep-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
                   <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', fontWeight: 500 }}>
-                    {item.label}
-                  </span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', fontWeight: 500 }}>{item.label}</span>
                   <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
                 </div>
               )
@@ -135,10 +130,7 @@ export function ChatMessageList({ chatMessages, systemMessages, onScrollUnreadCh
             if (item.kind === 'system') {
               const label = item.msg.event === 'kick' ? 'was kicked by' : 'was banned by'
               return (
-                <div
-                  key={`sys-${i}`}
-                  style={{ display: 'flex', justifyContent: 'center', padding: '2px 0' }}
-                >
+                <div key={`sys-${i}`} style={{ display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
                   <span
                     style={{
                       fontSize: 11,
@@ -162,11 +154,7 @@ export function ChatMessageList({ chatMessages, systemMessages, onScrollUnreadCh
         <div ref={bottomRef} />
       </div>
 
-      <ChatScrollManager
-        show={showScrollBtn}
-        unreadCount={scrollUnread}
-        onScrollToBottom={scrollToBottom}
-      />
+      <ChatScrollManager show={showScrollBtn} unreadCount={scrollUnread} onScrollToBottom={scrollToBottom} />
     </div>
   )
 }

@@ -2,8 +2,8 @@ import { Image, Maximize2, Minimize2, Send } from 'lucide-react'
 import {
   type ChangeEvent,
   type ClipboardEvent,
-  type KeyboardEvent,
   forwardRef,
+  type KeyboardEvent,
   useCallback,
   useImperativeHandle,
   useRef,
@@ -26,10 +26,7 @@ export interface ChatInputHandle {
   focus: () => void
 }
 
-export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
-  { onSend, onUpload, disabled },
-  ref,
-) {
+export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ onSend, onUpload, disabled }, ref) {
   const [draft, setDraft] = useState('')
   const [expanded, setExpanded] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -113,22 +110,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
 
   return (
     <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px' }}>
-      {error && (
-        <p style={{ margin: '0 0 6px', fontSize: 11, color: 'rgba(248,113,113,0.9)' }}>{error}</p>
-      )}
-      {uploading && (
-        <p style={{ margin: '0 0 6px', fontSize: 11, color: 'rgba(165,180,252,0.7)' }}>
-          Uploading image…
-        </p>
-      )}
+      {error && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'rgba(248,113,113,0.9)' }}>{error}</p>}
+      {uploading && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'rgba(165,180,252,0.7)' }}>Uploading image…</p>}
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        style={{ display: 'none' }}
-        onChange={handleFileChange}
-      />
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
         {/* Attach image */}
@@ -144,8 +129,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
             flexShrink: 0,
             border: '1px solid rgba(255,255,255,0.09)',
             background: 'rgba(255,255,255,0.04)',
-            color:
-              uploading || disabled ? 'rgba(255,255,255,0.15)' : 'rgba(165,180,252,0.7)',
+            color: uploading || disabled ? 'rgba(255,255,255,0.15)' : 'rgba(165,180,252,0.7)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

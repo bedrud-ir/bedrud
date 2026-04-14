@@ -10,9 +10,7 @@ import type { ChatMessage } from '../MeetingContext'
  *   - initialMessages: messages loaded on mount (stable reference)
  *   - persist: call with the latest messages array after any change
  */
-export function useChatPersistence(
-  roomId: string,
-): [ChatMessage[], (msgs: ChatMessage[]) => void] {
+export function useChatPersistence(roomId: string): [ChatMessage[], (msgs: ChatMessage[]) => void] {
   const key = `chat:${roomId}`
 
   const initialMessages = useMemo<ChatMessage[]>(() => {

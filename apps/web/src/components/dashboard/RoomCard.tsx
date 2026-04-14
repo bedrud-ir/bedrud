@@ -89,6 +89,7 @@ export function RoomCard({ room, onJoin, onDelete, onSettings }: Props) {
         </div>
 
         <button
+          type="button"
           onClick={copyLink}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background transition-colors hover:bg-accent"
           aria-label="Copy link"
@@ -136,6 +137,7 @@ export function RoomCard({ room, onJoin, onDelete, onSettings }: Props) {
 
       <div className="mt-4 flex items-center gap-2">
         <button
+          type="button"
           onClick={onJoin}
           className={cn(
             'flex h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium transition-opacity hover:opacity-90',
@@ -150,6 +152,7 @@ export function RoomCard({ room, onJoin, onDelete, onSettings }: Props) {
 
         {onSettings && (
           <button
+            type="button"
             onClick={onSettings}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background transition-colors hover:bg-accent"
             aria-label="Room settings"
@@ -161,6 +164,7 @@ export function RoomCard({ room, onJoin, onDelete, onSettings }: Props) {
 
         {onDelete && !confirmDelete && (
           <button
+            type="button"
             onClick={() => setConfirmDelete(true)}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/10 transition-colors hover:bg-destructive/15"
             aria-label="Delete room"
@@ -179,12 +183,14 @@ export function RoomCard({ room, onJoin, onDelete, onSettings }: Props) {
           </div>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setConfirmDelete(false)}
               className="rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={() => {
                 onDelete()
                 setConfirmDelete(false)
