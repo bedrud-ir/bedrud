@@ -1,7 +1,5 @@
-import { isKrispNoiseFilterSupported, KrispNoiseFilter } from '@livekit/krisp-noise-filter'
 import type { LocalAudioTrack } from 'livekit-client'
 import type { NoiseSuppressionMode } from '#/lib/audio-preferences.store'
-import { RNNoiseProcessor } from '#/lib/rnnoise-processor'
 
 /**
  * Manages the lifecycle of a LiveKit audio processor (Krisp or RNNoise).
@@ -66,8 +64,12 @@ export class AudioProcessorService {
 
     if (modeChanged) {
       if (mode === 'rnnoise') {
+        // Dynamic import: keeps the ~8 MB rnnoise WASM out of the initial bundle.
+        const { RNNoiseProcessor } = await import('#/lib/rnnoise-processor')
         await this.track.setProcessor(new RNNoiseProcessor())
       } else if (mode === 'krisp') {
+        // Dynamic import: krisp SDK is only fetched when user activates krisp mode.
+        const { KrispNoiseFilter } = await import('@livekit/krisp-noise-filter')
         await this.track.setProcessor(KrispNoiseFilter())
       }
     }
@@ -99,8 +101,16 @@ export class AudioProcessorService {
     this.currentMode = 'none'
   }
 
+  /**
+   * Lightweight browser-capability check for Krisp support.
+   * Avoids importing the full krisp SDK at startup — Krisp requires a
+   * Chromium-based browser with AudioWorklet in a secure context.
+   */
   static isKrispSupported(): boolean {
-    return isKrispNoiseFilterSupported()
+    if (typeof window === 'undefined') return false
+    const isFirefox = navigator.userAgent.toLowerCase().includes('firefox')
+    const hasAudioWorklet = typeof AudioWorklet !== 'undefined'
+    return !isFirefox && hasAudioWorklet && window.isSecureContext
   }
 }
 

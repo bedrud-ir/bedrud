@@ -1,3 +1,4 @@
+import '@livekit/components-styles/components'
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -10,20 +11,18 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { AudioCaptureOptions } from 'livekit-client'
 import { ConnectionState, DisconnectReason, RoomEvent, Track } from 'livekit-client'
 import { LogOut, MessageSquare, Mic, PhoneOff, Radio, Users, Video, Wifi, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
 import { useAuthStore } from '#/lib/auth.store'
 import { useRecentRoomsStore } from '#/lib/recent-rooms.store'
 import { usePinnedParticipants } from '#/lib/usePinnedParticipants'
 import { AudioProcessorManager } from '@/components/meeting/AudioProcessorManager'
-import { ChatPanel } from '@/components/meeting/ChatPanel'
 import { ControlsBar } from '@/components/meeting/ControlsBar'
 import { FocusLayout } from '@/components/meeting/FocusLayout'
 import { MeetingProvider, useMeetingContext } from '@/components/meeting/MeetingContext'
 import { MeetingSoundEffects } from '@/components/meeting/MeetingSoundEffects'
 import { ParticipantGrid } from '@/components/meeting/ParticipantGrid'
-import { ParticipantsList } from '@/components/meeting/ParticipantsList'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -33,6 +32,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+
+// Lazy-loaded panels: only fetched when the user opens them.
+// ChatPanel pulls in react-markdown + remark-gfm; deferring it keeps those
+// heavy markdown dependencies out of the initial meeting bundle.
+const ChatPanel = lazy(() => import('@/components/meeting/ChatPanel').then((m) => ({ default: m.ChatPanel })))
+const ParticipantsList = lazy(() =>
+  import('@/components/meeting/ParticipantsList').then((m) => ({ default: m.ParticipantsList })),
+)
 
 interface JoinResponse {
   id: string
@@ -489,8 +496,16 @@ function MeetingPanels({ navigate }: { navigate: () => void }) {
       {/* Top-right: Chat button */}
       <ChatToggle isOpen={chatOpen} onToggle={toggleChat} />
 
-      {participantsOpen && !chatOpen && <ParticipantsList onClose={() => setParticipantsOpen(false)} />}
-      {chatOpen && <ChatPanel onClose={() => setChatOpen(false)} />}
+      {participantsOpen && !chatOpen && (
+        <Suspense fallback={null}>
+          <ParticipantsList onClose={() => setParticipantsOpen(false)} />
+        </Suspense>
+      )}
+      {chatOpen && (
+        <Suspense fallback={null}>
+          <ChatPanel onClose={() => setChatOpen(false)} />
+        </Suspense>
+      )}
       <ChatToastNotifier chatOpen={chatOpen} />
       <MeetingControls onNavigate={navigate} />
     </>

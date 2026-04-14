@@ -1,10 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router'
 import { useEffect } from 'react'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error – CSS-only package, no TS declarations needed
-import '@livekit/components-styles/components'
-
 import { applyTheme, useThemeStore } from '#/lib/theme.store'
 import appCss from '../styles.css?url'
 

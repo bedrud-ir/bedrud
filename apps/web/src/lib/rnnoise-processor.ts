@@ -1,6 +1,5 @@
-// Import the sync WASM module as raw text so we can embed it in an AudioWorklet blob.
-// The sync version has the WASM binary inlined as base64 — no external file needed.
-import rnnoiseSync from '@jitsi/rnnoise-wasm/dist/rnnoise-sync?raw'
+// The rnnoise WASM module is loaded lazily (dynamic import) so it is code-split
+// into its own chunk and only fetched when the user activates rnnoise mode.
 import type { AudioProcessorOptions, TrackProcessor } from 'livekit-client'
 import { Track } from 'livekit-client'
 
@@ -104,9 +103,12 @@ registerProcessor('${WORKLET_NAME}', RNNoiseWorkletProcessor);
 
 let workletUrl: string | null = null
 
-function getWorkletUrl(): string {
+async function getWorkletUrl(): Promise<string> {
   if (!workletUrl) {
-    const script = buildWorkletScript(rnnoiseSync as string)
+    // Dynamic import keeps the ~8 MB rnnoise WASM out of the initial bundle.
+    // It is fetched only when the user first activates rnnoise noise suppression.
+    const { default: rnnoiseCode } = await import('@jitsi/rnnoise-wasm/dist/rnnoise-sync?raw')
+    const script = buildWorkletScript(rnnoiseCode as string)
     const blob = new Blob([script], { type: 'application/javascript' })
     workletUrl = URL.createObjectURL(blob)
   }
@@ -125,7 +127,7 @@ export class RNNoiseProcessor implements TrackProcessor<Track.Kind.Audio, AudioP
 
   async init(opts: AudioProcessorOptions): Promise<void> {
     this.audioContext = opts.audioContext
-    await this.audioContext.audioWorklet.addModule(getWorkletUrl())
+    await this.audioContext.audioWorklet.addModule(await getWorkletUrl())
 
     const stream = new MediaStream([opts.track])
     this.source = this.audioContext.createMediaStreamSource(stream)
