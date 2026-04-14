@@ -1,4 +1,4 @@
-import type { Components } from 'react-markdown'
+import { type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { ClusterGroup } from './chatGrouping'
@@ -27,8 +27,12 @@ function ChatMarkdown({ content, isLocal }: { content: string; isLocal: boolean 
   const linkColor = isLocal ? 'rgba(255,255,255,0.9)' : 'rgba(165,180,252,0.9)'
   const codeBg = isLocal ? 'rgba(0,0,0,0.25)' : 'rgba(99,102,241,0.15)'
 
-  const components: Components = {
-    a: ({ href, children }) => (
+  type C = { children?: ReactNode }
+  type CA = { href?: string; children?: ReactNode }
+  type CC = { children?: ReactNode; className?: string }
+
+  const components = {
+    a: ({ href, children }: CA) => (
       <a
         href={href}
         target="_blank"
@@ -38,8 +42,8 @@ function ChatMarkdown({ content, isLocal }: { content: string; isLocal: boolean 
         {children}
       </a>
     ),
-    p: ({ children }) => <p style={{ margin: 0, lineHeight: 1.45 }}>{children}</p>,
-    code: ({ children, className }) => {
+    p: ({ children }: C) => <p style={{ margin: 0, lineHeight: 1.45 }}>{children}</p>,
+    code: ({ children, className }: CC) => {
       const isBlock = Boolean(className)
       return isBlock ? (
         <pre
@@ -55,17 +59,15 @@ function ChatMarkdown({ content, isLocal }: { content: string; isLocal: boolean 
           <code>{children}</code>
         </pre>
       ) : (
-        <code style={{ background: codeBg, borderRadius: 4, padding: '1px 5px', fontSize: 12 }}>
-          {children}
-        </code>
+        <code style={{ background: codeBg, borderRadius: 4, padding: '1px 5px', fontSize: 12 }}>{children}</code>
       )
     },
-    ul: ({ children }) => <ul style={{ margin: '2px 0', paddingLeft: 18 }}>{children}</ul>,
-    ol: ({ children }) => <ol style={{ margin: '2px 0', paddingLeft: 18 }}>{children}</ol>,
-    li: ({ children }) => <li style={{ lineHeight: 1.45 }}>{children}</li>,
-    strong: ({ children }) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
-    em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
-    blockquote: ({ children }) => (
+    ul: ({ children }: C) => <ul style={{ margin: '2px 0', paddingLeft: 18 }}>{children}</ul>,
+    ol: ({ children }: C) => <ol style={{ margin: '2px 0', paddingLeft: 18 }}>{children}</ol>,
+    li: ({ children }: C) => <li style={{ lineHeight: 1.45 }}>{children}</li>,
+    strong: ({ children }: C) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
+    em: ({ children }: C) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
+    blockquote: ({ children }: C) => (
       <blockquote
         style={{
           margin: '4px 0',
@@ -77,9 +79,9 @@ function ChatMarkdown({ content, isLocal }: { content: string; isLocal: boolean 
         {children}
       </blockquote>
     ),
-    h1: ({ children }) => <strong style={{ fontSize: 15 }}>{children}</strong>,
-    h2: ({ children }) => <strong style={{ fontSize: 14 }}>{children}</strong>,
-    h3: ({ children }) => <strong style={{ fontSize: 13 }}>{children}</strong>,
+    h1: ({ children }: C) => <strong style={{ fontSize: 15 }}>{children}</strong>,
+    h2: ({ children }: C) => <strong style={{ fontSize: 14 }}>{children}</strong>,
+    h3: ({ children }: C) => <strong style={{ fontSize: 13 }}>{children}</strong>,
   }
 
   return (
@@ -109,11 +111,7 @@ export function ChatMessageCluster({ cluster }: Props) {
       }}
     >
       {/* Sender name (remote only) */}
-      {!isLocal && (
-        <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, paddingLeft: 36 }}>
-          {sender}
-        </span>
-      )}
+      {!isLocal && <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, paddingLeft: 36 }}>{sender}</span>}
 
       {messages.map((msg, idx) => {
         const pos = bubblePosition(idx, total)
@@ -162,9 +160,7 @@ export function ChatMessageCluster({ cluster }: Props) {
                 padding: hasAttachments && !msg.message ? '4px' : '7px 12px',
                 borderRadius: bubbleRadius(isLocal, pos),
                 background: isLocal ? 'rgba(99,102,241,0.75)' : 'rgba(255,255,255,0.07)',
-                border: isLocal
-                  ? '1px solid rgba(165,180,252,0.25)'
-                  : '1px solid rgba(255,255,255,0.06)',
+                border: isLocal ? '1px solid rgba(165,180,252,0.25)' : '1px solid rgba(255,255,255,0.06)',
                 color: isLocal ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.75)',
                 fontSize: 13,
                 lineHeight: 1.45,
