@@ -1,6 +1,7 @@
 import { useRoomContext } from '@livekit/components-react'
 import { RoomEvent } from 'livekit-client'
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useChatPersistence } from '#/components/meeting/chat/useChatPersistence'
 import { useUserStore } from '#/lib/user.store'
 
 export interface SystemMessage {
@@ -74,7 +75,11 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
   const accesses = user?.accesses ?? []
   const room = useRoomContext()
 
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [initialMessages, persistMessages] = useChatPersistence(roomId)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(initialMessages)
+  useEffect(() => {
+    persistMessages(chatMessages)
+  }, [chatMessages, persistMessages])
   const [systemMessages, setSystemMessages] = useState<SystemMessage[]>([])
   const [isServerDeafened, setIsServerDeafened] = useState(false)
   const [isSelfDeafened, setIsSelfDeafened] = useState(false)
