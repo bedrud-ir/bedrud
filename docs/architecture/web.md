@@ -1,6 +1,6 @@
 # Web Frontend
 
-The Bedrud web frontend is a React application built with TanStack Start, TailwindCSS v4, and shadcn/ui. In production, it uses server-side rendering to pre-render an HTML shell that is then embedded in the Go server binary alongside the static client assets.
+The Bedrud web frontend is a React application built with TanStack Start, TailwindCSS v4, and shadcn/ui. In production, server-side rendering pre-renders an HTML shell. The Go binary embeds this shell alongside the static client assets.
 
 ## Technology Stack
 
@@ -143,3 +143,9 @@ This runs `scripts/embed.mjs` which:
 ```bash
 bun run check    # Runs tsc --noEmit
 ```
+
+---
+
+## See also
+
+- [Web Design System](../../apps/web/AGENTS.md) — UI component patterns, color tokens, and styling rules

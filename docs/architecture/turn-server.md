@@ -407,7 +407,7 @@ Success output shows allocated relay addresses.
 
 ---
 
-## Related
+## See also
 
 - [WebRTC Connectivity](webrtc-connectivity.md) — full STUN/ICE/TURN/SFU connectivity stack
 - [LiveKit Integration](../backend/livekit.md) — how Bedrud embeds LiveKit

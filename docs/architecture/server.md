@@ -134,6 +134,14 @@ GORM auto-migrates the schema on startup based on the model structs. The models 
 ## Background Jobs
 
 The `gocron` scheduler runs periodic tasks such as:
-
 - Cleaning up expired refresh tokens
 - Removing stale room participants
+
+---
+
+## See also
+
+- [Backend Code Structure](../backend/structure.md) — directory map and coding standards
+- [API Handlers](../backend/api-handlers.md) — routing and request lifecycle
+- [Database and Models](../backend/database.md) — GORM models and repository pattern
+- [Authentication Flow](../backend/authentication.md) — JWT, OAuth, and passkey internals

@@ -269,7 +269,7 @@ For deep TURN troubleshooting, see the [TURN Server Guide](turn-server.md).
 
 ---
 
-## Related
+## See also
 
 - [TURN Server Guide](turn-server.md) — TURN architecture, configuration, TLS, debugging
 - [LiveKit Integration](../backend/livekit.md) — how Bedrud embeds LiveKit

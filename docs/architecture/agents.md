@@ -60,6 +60,8 @@ python agent.py "https://meet.example.com/m/room-name"
 2. Converts to PCM frames
 3. Publishes audio frames to LiveKit as a microphone track
 
+> See [Music Agent README](../../agents/music_agent/README.md) for setup and usage instructions.
+
 ---
 
 ## Radio Agent
@@ -89,6 +91,8 @@ python agent.py "https://meet.example.com/m/room-name"
 2. Pipes the stream through FFmpeg to decode to raw PCM
 3. Publishes PCM audio frames to LiveKit
 
+> See [Radio Agent README](../../agents/radio_agent/README.md) for setup and usage instructions.
+
 ---
 
 ## Video Stream Agent
@@ -115,10 +119,12 @@ python agent.py "https://meet.example.com/m/room-name"
 ### How It Works
 
 1. Runs two FFmpeg processes in parallel:
-   - **Video:** Decodes to YUV420p raw frames (1280x720 @ 30fps)
-   - **Audio:** Decodes to PCM samples
+    - **Video:** Decodes to YUV420p raw frames (1280x720 @ 30fps)
+    - **Audio:** Decodes to PCM samples
 2. Publishes video as a screen share track
 3. Publishes audio as a microphone track
+
+> See [Video Stream Agent README](../../agents/video_stream_agent/README.md) for setup and usage instructions.
 
 ### Video Specifications
 
@@ -166,3 +172,11 @@ while has_data:
     frame = get_next_frame()
     await source.capture_frame(frame)
 ```
+
+---
+
+## See also
+
+- [Music Agent README](../../agents/music_agent/README.md) — setup and usage
+- [Radio Agent README](../../agents/radio_agent/README.md) — setup and usage
+- [Video Stream Agent README](../../agents/video_stream_agent/README.md) — setup and usage
