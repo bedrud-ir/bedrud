@@ -1,6 +1,6 @@
 # Client Installation
 
-You don't need to install anything to join a meeting. Just open the meeting link in your browser. For a native app experience, install the client for your platform below.
+Open the meeting link in a browser to join — no installation required. For a native app experience, install the client for your platform below.
 
 ---
 

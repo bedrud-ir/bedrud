@@ -64,6 +64,6 @@ Restart browsers, then open `https://YOUR_SERVER_IP` (replace with the server's 
 
 ---
 
-See also:
+## See also
 - [Installation Guide](../getting-started/installation.md) — install methods
 - [Configuration Reference](../getting-started/configuration.md) — full config options

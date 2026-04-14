@@ -99,6 +99,8 @@ cd server
 swag init -g cmd/server/main.go
 ```
 
+> See [Server Architecture](../architecture/server.md) for the full directory layout and layered design.
+
 ## Web Frontend Development
 
 The frontend is at `apps/web/` and uses React 19 with TanStack Start.
@@ -120,6 +122,8 @@ cd apps/web
 bun run check    # runs Biome lint + TypeScript type check
 ```
 
+> See [Web Frontend Architecture](../architecture/web.md) for the complete frontend structure and patterns.
+
 ## Android Development
 
 ```bash
@@ -140,6 +144,8 @@ make build-android-debug    # Debug APK
 make build-android          # Release APK (needs keystore)
 make release-android        # Build + install on device
 ```
+
+> See [Android App Architecture](../architecture/android.md) for detailed mobile app architecture.
 
 ## iOS Development
 
@@ -170,6 +176,8 @@ make build-ios          # Release archive
 make build-ios-sim      # Simulator build
 make export-ios         # Export IPA
 ```
+
+> See [iOS App Architecture](../architecture/ios.md) for detailed mobile app architecture.
 
 ## Desktop Development
 
@@ -204,6 +212,8 @@ make build-desktop           # optimised binary for the current platform
 - All UI is defined in `.slint` files under `apps/desktop/ui/`; compiled to Rust at build time by `build.rs`
 - `apps/desktop/src/ui/bridge.rs` is the only place where Slint callbacks are wired to Rust logic — keep business logic out of the `.slint` files
 - Use `Weak<AppWindow>` when spawning background tasks that need to update the UI
+
+> See [Desktop App Architecture](../architecture/desktop.md) for detailed desktop app architecture.
 
 ## Bot Agent Development
 
@@ -266,3 +276,10 @@ Release builds are triggered by version tags (`v*`).
     ```bash
     make build-ios-sim   # Builds and runs tests
     ```
+
+---
+
+## See also
+
+- [Makefile Reference](makefile.md) — all build and dev commands
+- [Architecture Overview](../architecture/overview.md) — how components fit together

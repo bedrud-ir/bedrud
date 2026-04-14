@@ -144,3 +144,10 @@ services:
 volumes:
   bedrud-data:
 ```
+
+---
+
+## See also
+
+- [Configuration Reference](../getting-started/configuration.md) — full config options and environment variables
+- [Deployment Guide](deployment.md) — production deployment with Docker

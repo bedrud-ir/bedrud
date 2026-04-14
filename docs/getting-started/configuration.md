@@ -2,6 +2,8 @@
 
 Bedrud uses YAML configuration files for both the main server and the embedded LiveKit media server.
 
+**See also:** [Quick Start](quickstart.md) | [Installation](installation.md) | [Deployment Guide](../guides/deployment.md) | [Docker Guide](../guides/docker.md)
+
 ## Minimum Production Config
 
 Default config works for development. For production, change these values in `/etc/bedrud/config.yaml`:
@@ -134,6 +136,8 @@ room:
 
 LiveKit uses UDP ports for media streams. The default range `50000-60000` works for most setups. If running behind a firewall, ensure these ports are open.
 
+See [WebRTC Connectivity](../architecture/webrtc-connectivity.md) for architecture and troubleshooting.
+
 ### TURN Server
 
 The embedded TURN server relays media for clients behind restrictive NATs or corporate firewalls. It's enabled by default on ports 3478 (UDP) and 5349 (TLS).
@@ -164,6 +168,8 @@ The `room:` section controls meeting room behavior:
 ## Environment Variables
 
 Configuration values can be overridden with environment variables. The naming follows a per-section prefix convention:
+
+For Docker deployments, see the [Docker Guide](../guides/docker.md).
 
 ```bash
 export SERVER_PORT=8090
@@ -218,3 +224,5 @@ export LIVEKIT_API_SECRET=prodsecret
 - [ ] Configure OAuth providers if needed
 - [ ] Open LiveKit RTC port range in your firewall
 - [ ] Set up log rotation for `/var/log/bedrud/`
+
+For complete production setup, see the [Deployment Guide](../guides/deployment.md).

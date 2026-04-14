@@ -77,7 +77,7 @@ Open `https://meet.example.com` (or `https://<your-ip>:8090`) in your browser:
 4. **Join the room**
 5. **Share your video and audio** — grant camera/mic permissions when prompted
 
-**Native clients** for Android, Windows, macOS, and Linux: [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest). Or just share the meeting link — participants join in any browser.
+**Native clients** for Android, Windows, macOS, and Linux: [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest). Or share the meeting link — participants join in any browser.
 
 ---
 
