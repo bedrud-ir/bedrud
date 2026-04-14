@@ -142,7 +142,7 @@ bedrud uninstall
 
 **Implementation:** `server/internal/install/debian.go`
 
-**Related docs:** [Installation Guide - Uninstalling](installation.md#uninstalling)
+**Related docs:** [Installation Guide - Uninstalling](installation.md#uninstallation)
 
 ---
 

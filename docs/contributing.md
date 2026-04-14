@@ -2,7 +2,7 @@
 
 Contributions to Bedrud are welcome. This guide covers the process for submitting changes.
 
-> **Note:** The canonical contributing guide is at the repository root: [CONTRIBUTING.md](/CONTRIBUTING.md). This page is archived for reference only.
+> **Note:** The canonical contributing guide is at the repository root: [CONTRIBUTING.md](https://github.com/bedrud-ir/bedrud/blob/main/CONTRIBUTING.md). This page is archived for reference only.
 
 ## Getting Started
 

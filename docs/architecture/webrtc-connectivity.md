@@ -9,17 +9,7 @@ How clients establish real-time media connections in Bedrud. Covers the full con
 WebRTC requires a series of steps before audio and video flow between client and server. Bedrud uses LiveKit's SFU (Selective Forwarding Unit) architecture — clients connect to the server, not to each other. **This means only the client-to-server network path matters**, not the connection between individual participants.
 
 ```mermaid
-%%{init: {'themeVariables': {
-  'primaryColor': '#4F46E1',
-  'primaryTextColor': '#FFFFFF',
-  'primaryBorderColor': '#3B37B3',
-  'lineColor': '#6B7280',
-  'secondaryColor': '#F3F4F6',
-  'tertiaryColor': '#E5E7EB',
-  'background': '#FFFFFF',
-  'mainBkg': '#EEF2FF',
-  'nodeBorder': '#3B37B3'
-}}}%%
+%%{init: {'theme': 'forest'}}%%
 sequenceDiagram
     participant C as Client
     participant S as Bedrud Server
@@ -58,17 +48,7 @@ sequenceDiagram
 Five layers work together to establish the media path:
 
 ```mermaid
-%%{init: {'themeVariables': {
-  'primaryColor': '#4F46E1',
-  'primaryTextColor': '#FFFFFF',
-  'primaryBorderColor': '#3B37B3',
-  'lineColor': '#6B7280',
-  'secondaryColor': '#F3F4F6',
-  'tertiaryColor': '#E5E7EB',
-  'background': '#FFFFFF',
-  'mainBkg': '#EEF2FF',
-  'nodeBorder': '#3B37B3'
-}}}%%
+%%{init: {'theme': 'forest'}}%%
 flowchart TB
     subgraph Layers["Connectivity Stack"]
         direction TB
@@ -84,13 +64,6 @@ flowchart TB
     ICE --> TURN
     STUN --> SFU
     TURN --> SFU
-
-    style SIG fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style ICE fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style STUN fill:#F3F4F6,stroke:#6B7280,color:#1F2937
-    style TURN fill:#F59E0B,stroke:#D97706,color:#1F2937
-    style SFU fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style Layers fill:#FFFFFF,stroke:#E5E7EB
 ```
 
 ### Layer Details
@@ -110,17 +83,7 @@ flowchart TB
 ## ICE Candidate Gathering
 
 ```mermaid
-%%{init: {'themeVariables': {
-  'primaryColor': '#4F46E1',
-  'primaryTextColor': '#FFFFFF',
-  'primaryBorderColor': '#3B37B3',
-  'lineColor': '#6B7280',
-  'secondaryColor': '#F3F4F6',
-  'tertiaryColor': '#E5E7EB',
-  'background': '#FFFFFF',
-  'mainBkg': '#EEF2FF',
-  'nodeBorder': '#3B37B3'
-}}}%%
+%%{init: {'theme': 'forest'}}%%
 flowchart TD
     START[Start ICE Gathering] --> HOST
     HOST["Host candidates<br/>Local interface IPs<br/>e.g. 192.168.1.5:50001"] --> SRFLX
@@ -132,16 +95,6 @@ flowchart TD
     TEST -->|"srflx works"| CONNECTED2[Connected via STUN<br/>direct P2P]
     TEST -->|"Only relay works"| CONNECTED3[Connected via TURN relay]
     TEST -->|"None work"| FAIL[Connection failed]
-
-    style HOST fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    style SRFLX fill:#F59E0B,stroke:#D97706,color:#1F2937
-    style TURN_C fill:#DC2626,stroke:#B91C1C,color:#FFFFFF
-    style CONNECTED fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style CONNECTED2 fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style CONNECTED3 fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style FAIL fill:#DC2626,stroke:#B91C1C,color:#FFFFFF
-    style START fill:#F3F4F6,stroke:#6B7280
-    style TEST fill:#FEF3C7,stroke:#D97706,color:#92400E
 ```
 
 ICE gathers three candidate types simultaneously:
@@ -161,17 +114,7 @@ ICE tests all candidates and selects the highest-priority pair that succeeds. If
 Different NAT types affect whether direct connectivity works:
 
 ```mermaid
-%%{init: {'themeVariables': {
-  'primaryColor': '#4F46E1',
-  'primaryTextColor': '#FFFFFF',
-  'primaryBorderColor': '#3B37B3',
-  'lineColor': '#6B7280',
-  'secondaryColor': '#F3F4F6',
-  'tertiaryColor': '#E5E7EB',
-  'background': '#FFFFFF',
-  'mainBkg': '#EEF2FF',
-  'nodeBorder': '#3B37B3'
-}}}%%
+%%{init: {'theme': 'forest'}}%%
 flowchart LR
     subgraph NAT1["Client A NAT"]
         direction TB
@@ -196,16 +139,7 @@ flowchart LR
     S -.->|"TURN required"| PR2
     PR -.->|"TURN required"| S2
 
-    style F fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    style R fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    style PR fill:#F59E0B,stroke:#D97706,color:#1F2937
-    style S fill:#DC2626,stroke:#B91C1C,color:#FFFFFF
-    style F2 fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    style R2 fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    style PR2 fill:#F59E0B,stroke:#D97706,color:#1F2937
-    style S2 fill:#DC2626,stroke:#B91C1C,color:#FFFFFF
-    style NAT1 fill:#F3F4F6,stroke:#6B7280
-    style NAT2 fill:#F3F4F6,stroke:#6B7280
+
 ```
 
 | NAT Type | Description | Direct P2P | Needs TURN |

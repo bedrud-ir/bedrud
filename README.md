@@ -327,6 +327,7 @@ For more, see [WebRTC Connectivity](https://bedrud-ir.github.io/bedrud/architect
 ## Architecture
 
 ```mermaid
+%%{init: {'theme': 'forest'}}%%
 graph TB
     subgraph Clients
         WEB["Web Browser<br/>(React + TanStack Start)"]

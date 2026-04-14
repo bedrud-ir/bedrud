@@ -22,7 +22,7 @@ The project uses **XCodeGen** for project generation from `project.yml`:
 
 ## Directory Structure
 
-```
+```text
 apps/ios/Bedrud/
 ├── BedrudApp.swift                # App entry point
 ├── Core/
@@ -66,7 +66,7 @@ apps/ios/Bedrud/
 
 The iOS app mirrors the Android architecture for multi-instance support.
 
-```
+```text
 ┌──────────────────────────┐
 │     InstanceManager      │  (ObservableObject)
 │                          │
@@ -98,7 +98,7 @@ struct DashboardView: View {
 
 ### Navigation Flow
 
-```
+```text
 No instances ──► AddInstanceView
 Has instances, not logged in ──► LoginView
 Has instances, logged in ──► DashboardView

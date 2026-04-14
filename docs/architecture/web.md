@@ -148,4 +148,4 @@ bun run check    # Runs tsc --noEmit
 
 ## See also
 
-- [Web Design System](../../apps/web/AGENTS.md) — UI component patterns, color tokens, and styling rules
+- [Web Design System](https://github.com/bedrud-ir/bedrud/tree/main/apps/web/AGENTS.md) — UI component patterns, color tokens, and styling rules

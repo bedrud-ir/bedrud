@@ -27,17 +27,7 @@ LiveKit includes an embedded TURN server. No external infrastructure needed.
 ### Relay Architecture
 
 ```mermaid
-%%{init: {'themeVariables': {
-  'primaryColor': '#4F46E1',
-  'primaryTextColor': '#FFFFFF',
-  'primaryBorderColor': '#3B37B3',
-  'lineColor': '#6B7280',
-  'secondaryColor': '#F3F4F6',
-  'tertiaryColor': '#E5E7EB',
-  'background': '#FFFFFF',
-  'mainBkg': '#EEF2FF',
-  'nodeBorder': '#3B37B3'
-}}}%%
+%%{init: {'theme': 'forest'}}%%
 flowchart LR
     subgraph Client["Client"]
         A[WebRTC Peer]
@@ -59,14 +49,6 @@ flowchart LR
     N -->|"No"| TURN
     TURN -->|"relayed media"| SFU
     A -.->|"discover public IP"| STUN
-
-    style Client fill:#F3F4F6,stroke:#6B7280,color:#1F2937
-    style NAT fill:#FEF3C7,stroke:#D97706,color:#92400E
-    style Server fill:#EEF2FF,stroke:#4F46E1,color:#1E1B4B
-    style STUN fill:#F3F4F6,stroke:#6B7280
-    style TURN fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style SFU fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style N fill:#FEF3C7,stroke:#D97706,color:#92400E
 ```
 
 ### Connection Priority
@@ -74,17 +56,7 @@ flowchart LR
 LiveKit tries connection types in order. Each fallback adds latency and server cost:
 
 ```mermaid
-%%{init: {'themeVariables': {
-  'primaryColor': '#4F46E1',
-  'primaryTextColor': '#FFFFFF',
-  'primaryBorderColor': '#3B37B3',
-  'lineColor': '#6B7280',
-  'secondaryColor': '#F3F4F6',
-  'tertiaryColor': '#E5E7EB',
-  'background': '#FFFFFF',
-  'mainBkg': '#EEF2FF',
-  'nodeBorder': '#3B37B3'
-}}}%%
+%%{init: {'theme': 'forest'}}%%
 flowchart TD
     A[ICE over UDP<br/>port 50000-60000] -->|"~80% succeed"| S[Connected]
     A -->|"fail"| B[TURN over UDP<br/>port 3478]
@@ -94,13 +66,6 @@ flowchart TD
     C -->|"TCP blocked"| D[TURN over TLS<br/>port 5349 / 443]
     D -->|"succeed"| S
     D -->|"fail"| E[Connection failed]
-
-    style A fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    style S fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style E fill:#DC2626,stroke:#B91C1C,color:#FFFFFF
-    style B fill:#F59E0B,stroke:#D97706,color:#1F2937
-    style C fill:#F59E0B,stroke:#D97706,color:#1F2937
-    style D fill:#F59E0B,stroke:#D97706,color:#1F2937
 ```
 
 | Priority | Type | Port | Typical scenario |
@@ -203,17 +168,7 @@ The TURN domain and server domain are the same. Port 443 handles both HTTPS API 
 ### Dedicated TURN Domain (With Load Balancer)
 
 ```mermaid
-%%{init: {'themeVariables': {
-  'primaryColor': '#4F46E1',
-  'primaryTextColor': '#FFFFFF',
-  'primaryBorderColor': '#3B37B3',
-  'lineColor': '#6B7280',
-  'secondaryColor': '#F3F4F6',
-  'tertiaryColor': '#E5E7EB',
-  'background': '#FFFFFF',
-  'mainBkg': '#EEF2FF',
-  'nodeBorder': '#3B37B3'
-}}}%%
+%%{init: {'theme': 'forest'}}%%
 flowchart LR
     C[Client] --> LB[Layer 4<br/>Load Balancer]
     LB -->|"HTTPS :443"| API[Bedrud API<br/>:8090]
@@ -221,12 +176,6 @@ flowchart LR
     LB -->|"TURN/TLS :5349"| LK2[LiveKit Node 2<br/>:7880]
 
     C -.->|"TURN/UDP :3478"| LK1
-
-    style C fill:#F3F4F6,stroke:#6B7280
-    style LB fill:#F59E0B,stroke:#D97706,color:#1F2937
-    style API fill:#EEF2FF,stroke:#4F46E1,color:#1E1B4B
-    style LK1 fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style LK2 fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
 ```
 
 ```yaml
@@ -244,17 +193,7 @@ The load balancer terminates TLS. `external_tls: true` tells LiveKit to expect a
 ## Port & Firewall Reference
 
 ```mermaid
-%%{init: {'themeVariables': {
-  'primaryColor': '#4F46E1',
-  'primaryTextColor': '#FFFFFF',
-  'primaryBorderColor': '#3B37B3',
-  'lineColor': '#6B7280',
-  'secondaryColor': '#F3F4F6',
-  'tertiaryColor': '#E5E7EB',
-  'background': '#FFFFFF',
-  'mainBkg': '#EEF2FF',
-  'nodeBorder': '#3B37B3'
-}}}%%
+%%{init: {'theme': 'forest'}}%%
 flowchart TB
     subgraph Internet["Internet"]
         C[Client]
@@ -279,15 +218,6 @@ flowchart TB
     C --> P7881 --> LK
     C --> P5349 --> LK
     C --> PRANGE --> LK
-
-    style Internet fill:#F3F4F6,stroke:#6B7280
-    style FW fill:#FEF3C7,stroke:#D97706,color:#92400E
-    style Bedrud fill:#EEF2FF,stroke:#4F46E1,color:#1E1B4B
-    style P443 fill:#F3F4F6,stroke:#6B7280
-    style P3478 fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style P7881 fill:#F3F4F6,stroke:#6B7280
-    style P5349 fill:#4F46E1,stroke:#3B37B3,color:#FFFFFF
-    style PRANGE fill:#16A34A,stroke:#15803D,color:#FFFFFF
 ```
 
 | Port | Protocol | Service | Required | Notes |

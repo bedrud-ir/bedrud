@@ -147,17 +147,7 @@ Supported auth methods:
 ## Meeting Connection Flow
 
 ```mermaid
-%%{init: {'themeVariables': {
-  'primaryColor': '#4F46E1',
-  'primaryTextColor': '#FFFFFF',
-  'primaryBorderColor': '#3B37B3',
-  'lineColor': '#6B7280',
-  'secondaryColor': '#F3F4F6',
-  'tertiaryColor': '#E5E7EB',
-  'background': '#FFFFFF',
-  'mainBkg': '#EEF2FF',
-  'nodeBorder': '#3B37B3'
-}}}%%
+%%{init: {'theme': 'forest'}}%%
 sequenceDiagram
     participant C as Client
     participant S as Bedrud Server

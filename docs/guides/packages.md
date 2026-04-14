@@ -50,7 +50,7 @@ sudo bedrud install
 
 ---
 
-### DNF / RPM Repository (Fedora / RHEL / openSUSE)
+### DNF / RPM Repository (Fedora / RHEL / openSUSE) { #dnf--rpm-repository-fedora--rhel--opensuse }
 
 **1. Add the repository:**
 
