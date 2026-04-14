@@ -38,9 +38,15 @@ theme:
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
-      anchor_linenums: true
+      use_pygments: true
+      line_spans: __span
+      auto_title: true
   - pymdownx.inlinehilite
   - pymdownx.tabbed:
       alternate_style: true
@@ -57,12 +63,15 @@ nav:
   - Getting Started:
       - Quick Start: getting-started/quickstart.md
       - Installation: getting-started/installation.md
+      - Client Apps: getting-started/clients.md
       - Configuration: getting-started/configuration.md
       - CLI Reference: getting-started/cli-reference.md
   - Architecture:
       - Overview: architecture/overview.md
       - Server (Go): architecture/server.md
       - Web Frontend: architecture/web.md
+      - WebRTC Connectivity: architecture/webrtc-connectivity.md
+      - TURN Server: architecture/turn-server.md
       - Android App: architecture/android.md
       - iOS App: architecture/ios.md
       - Desktop App: architecture/desktop.md
@@ -71,6 +80,7 @@ nav:
       - Development Workflow: guides/development.md
       - Makefile Reference: guides/makefile.md
       - Deployment: guides/deployment.md
+      - Internal TLS: guides/internal-tls.md
       - Appliance Mode: guides/appliance.md
       - Docker: guides/docker.md
       - Package Installation: guides/packages.md
