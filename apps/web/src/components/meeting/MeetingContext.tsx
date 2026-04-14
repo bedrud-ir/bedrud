@@ -1,8 +1,8 @@
 import { useRoomContext } from '@livekit/components-react'
 import { RoomEvent } from 'livekit-client'
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { useChatPersistence } from '#/components/meeting/chat/useChatPersistence'
 import { useUserStore } from '#/lib/user.store'
+import { useChatPersistence } from './chat/useChatPersistence'
 
 export interface SystemMessage {
   type: 'system'
