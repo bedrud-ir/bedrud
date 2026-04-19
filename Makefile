@@ -60,9 +60,7 @@ help:
 	@echo "  clean                Remove build artifacts and binaries"
 	@echo "  full-clean           Remove artifacts + installed dependencies (node_modules, gradle cache)"
 	@echo ""
-	@echo "Documentation:"
-	@echo "  doc                  Build MkDocs documentation"
-	@echo "  doc-serve            Serve MkDocs documentation locally"
+
 
 # Initialize all dependencies
 init:
@@ -225,13 +223,6 @@ build-ios-sim:
 		-scheme Bedrud \
 		-configuration Debug \
 		-destination "platform=iOS Simulator,name=iPhone 17 Pro"
-
-# Documentation:
-doc:
-	cd tools/cli && uv run python bedrud.py doc build
-
-doc-serve:
-	cd tools/cli && uv run python bedrud.py doc serve
 
 # Deploy using CLI tool
 deploy:
