@@ -11,11 +11,22 @@
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/bedrud-ir/bedrud/pkgs/container/bedrud)
 [![Project Status](https://img.shields.io/badge/status-active--development-success)](https://github.com/bedrud-ir/bedrud/commits/main)
 
-[![Android](https://img.shields.io/badge/Android-API%2028+-3DDC84?logo=android&logoColor=white)](https://bedrud-ir.github.io/bedrud/guides/packages/#android)
-[![iOS](https://img.shields.io/badge/iOS-18.0+-000000?logo=apple&logoColor=white)](https://bedrud-ir.github.io/bedrud/guides/packages/#ios)
-[![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)](https://bedrud-ir.github.io/bedrud/guides/packages/#windows)
-[![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?logo=linux&logoColor=black)](https://bedrud-ir.github.io/bedrud/guides/packages/#linux)
-[![macOS](https://img.shields.io/badge/macOS-x86__64%2Farm64-000000?logo=apple&logoColor=white)](https://bedrud-ir.github.io/bedrud/guides/packages/#macos)
+[![Android](https://img.shields.io/badge/Android-API%2028+-3DDC84?logo=android&logoColor=white)](https://bedrud.org/en/docs/guides/packages/#android)
+[![iOS](https://img.shields.io/badge/iOS-18.0+-000000?logo=apple&logoColor=white)](https://bedrud.org/en/docs/guides/packages/#ios)
+[![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)](https://bedrud.org/en/docs/guides/packages/#windows)
+[![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?logo=linux&logoColor=black)](https://bedrud.org/en/docs/guides/packages/#linux)
+[![macOS](https://img.shields.io/badge/macOS-x86__64%2Farm64-000000?logo=apple&logoColor=white)](https://bedrud.org/en/docs/guides/packages/#macos)
+
+[![EN](https://img.shields.io/badge/docs-EN-blue)](https://bedrud.org/en/docs/)
+[![DE](https://img.shields.io/badge/docs-DE-blue)](https://bedrud.org/de/docs/)
+[![FR](https://img.shields.io/badge/docs-FR-blue)](https://bedrud.org/fr/docs/)
+[![ES](https://img.shields.io/badge/docs-ES-blue)](https://bedrud.org/es/docs/)
+[![ZH](https://img.shields.io/badge/docs-ZH-blue)](https://bedrud.org/zh/docs/)
+[![JA](https://img.shields.io/badge/docs-JA-blue)](https://bedrud.org/ja/docs/)
+[![TR](https://img.shields.io/badge/docs-TR-blue)](https://bedrud.org/tr/docs/)
+[![FA](https://img.shields.io/badge/docs-FA-blue)](https://bedrud.org/fa/docs/)
+[![AR](https://img.shields.io/badge/docs-AR-blue)](https://bedrud.org/ar/docs/)
+[![RU](https://img.shields.io/badge/docs-RU-blue)](https://bedrud.org/ru/docs/)
 
 ---
 
@@ -262,7 +273,7 @@ Download the NSIS installer or portable `.zip` from the [latest release](https:/
 
 </details>
 
-See the [Package Installation guide](https://bedrud-ir.github.io/bedrud/guides/packages/) for full details on all platforms.
+See the [Package Installation guide](https://bedrud.org/en/docs/guides/packages/) for full details on all platforms.
 
 ---
 
@@ -281,7 +292,7 @@ auth:
   sessionSecret: "change-to-another-random-string"
 ```
 
-See the [Configuration guide](https://bedrud-ir.github.io/bedrud/getting-started/configuration/) for the full reference, LiveKit settings, environment variables, and production checklist.
+See the [Configuration guide](https://bedrud.org/en/docs/getting-started/configuration/) for the full reference, LiveKit settings, environment variables, and production checklist.
 
 ---
 
@@ -291,7 +302,7 @@ See the [Configuration guide](https://bedrud-ir.github.io/bedrud/getting-started
 - **TLS is required** — use `bedrud install` (Let's Encrypt), a reverse proxy, or set `server.enableTLS: true`
 - **Firewall** — open only the ports listed above; restrict LiveKit UDP range to your needs
 
-See the [Production Checklist](https://bedrud-ir.github.io/bedrud/getting-started/configuration/#production-checklist) for a complete list.
+See the [Production Checklist](https://bedrud.org/en/docs/getting-started/configuration/#production-checklist) for a complete list.
 
 ---
 
@@ -301,10 +312,10 @@ See the [Production Checklist](https://bedrud-ir.github.io/bedrud/getting-starte
 |-------|-------|-----|
 | No video/audio | UDP ports blocked | Open port range 50000–60000 (or your configured `rtc.port_range_start`–`port_range_end`) |
 | Media works on LAN only | Missing external IP | Set `rtc.use_external_ip: true` and configure your public IP in LiveKit config |
-| TURN not connecting | TLS certificate missing | TURN/TLS (port 5349) needs a valid certificate. See [TURN Server Guide](https://bedrud-ir.github.io/bedrud/architecture/turn-server/) |
+| TURN not connecting | TLS certificate missing | TURN/TLS (port 5349) needs a valid certificate. See [TURN Server Guide](https://bedrud.org/en/docs/architecture/turn-server/) |
 | CORS errors in browser | Mismatched origins | Set `cors.allowedOrigins` to your frontend URL |
 
-For more, see [WebRTC Connectivity](https://bedrud-ir.github.io/bedrud/architecture/webrtc-connectivity/) and [TURN Server](https://bedrud-ir.github.io/bedrud/architecture/turn-server/).
+For more, see [WebRTC Connectivity](https://bedrud.org/en/docs/architecture/webrtc-connectivity/) and [TURN Server](https://bedrud.org/en/docs/architecture/turn-server/).
 
 ---
 
@@ -361,22 +372,22 @@ bedrud/
 ├── packages/        Shared TypeScript types (@bedrud/api-types)
 ├── tools/cli/       Deployment CLI (pyinfra, Click)
 ├── Cargo.toml       Rust workspace root
-└── docs/            Project documentation (MkDocs)
+└── docs/images/       Platform screenshots (SVG)
 ```
 
-See the [Architecture Overview](https://bedrud-ir.github.io/bedrud/architecture/overview/) for detailed documentation.
+See the [Architecture Overview](https://bedrud.org/en/docs/architecture/overview/) for detailed documentation.
 
 ---
 
 ## Documentation
 
-Full documentation: [bedrud-ir.github.io/bedrud](https://bedrud-ir.github.io/bedrud/)
+Full documentation: [bedrud.org/en/docs](https://bedrud.org/en/docs/)
 
 Key pages:
-- [Quick Start](https://bedrud-ir.github.io/bedrud/getting-started/quickstart/)
-- [Architecture Overview](https://bedrud-ir.github.io/bedrud/architecture/overview/)
-- [Deployment Guide](https://bedrud-ir.github.io/bedrud/guides/deployment/)
-- [API Reference](https://bedrud-ir.github.io/bedrud/api/authentication/)
+- [Quick Start](https://bedrud.org/en/docs/getting-started/quickstart/)
+- [Architecture Overview](https://bedrud.org/en/docs/architecture/overview/)
+- [Deployment Guide](https://bedrud.org/en/docs/guides/deployment/)
+- [API Reference](https://bedrud.org/en/docs/api/authentication/)
 
 ---
 
@@ -404,7 +415,7 @@ The web frontend runs at `http://localhost:3000` and the API at `http://localhos
 > [!NOTE]
 > API docs available at `http://localhost:8090/api/swagger` (Swagger UI) or `http://localhost:8090/api/scalar` (Scalar UI) when the server is running.
 
-> For detailed platform-specific development setup, see the [Development Workflow](https://bedrud-ir.github.io/bedrud/guides/development/) guide.
+> For detailed platform-specific development setup, see the [Development Workflow](https://bedrud.org/en/docs/guides/development/) guide.
 
 ### Production Build
 
@@ -420,12 +431,12 @@ make build-dist    # Build compressed linux/amd64 tarball (release artifact)
 | Client | Platform | Stack | Download |
 |--------|----------|-------|----------|
 | Web | Browser | React 19, TanStack Start | N/A (runs on server) |
-| Android | API 28+ | Kotlin, Jetpack Compose, LiveKit SDK | [APK / Play Store](https://bedrud-ir.github.io/bedrud/guides/packages/#android) |
-| iOS | 18.0+ | Swift, SwiftUI, LiveKit SDK | [IPA / App Store](https://bedrud-ir.github.io/bedrud/guides/packages/#ios) |
-| Desktop | Windows / Linux / macOS | Rust, Slint, LiveKit SDK | [Installers](https://bedrud-ir.github.io/bedrud/guides/packages/#desktop) |
+| Android | API 28+ | Kotlin, Jetpack Compose, LiveKit SDK | [APK / Play Store](https://bedrud.org/en/docs/guides/packages/#android) |
+| iOS | 18.0+ | Swift, SwiftUI, LiveKit SDK | [IPA / App Store](https://bedrud.org/en/docs/guides/packages/#ios) |
+| Desktop | Windows / Linux / macOS | Rust, Slint, LiveKit SDK | [Installers](https://bedrud.org/en/docs/guides/packages/#desktop) |
 
 > [!NOTE]
-> Building client apps from source? See [Development Setup](#development-setup) and [docs/contributing.md](docs/contributing.md) for platform-specific commands.
+> Building client apps from source? See [Development Setup](#development-setup) and [Contributing Guide](https://bedrud.org/en/docs/contributing/) for platform-specific commands.
 
 ---
 
@@ -491,7 +502,7 @@ Go + Fiber backend · React 19 frontend · LiveKit WebRTC SFU · Android / iOS /
 | `make deploy ARGS=...` | Run deployment CLI |
 | `make clean` | Remove build artifacts |
 
-For the full target list, see the [Makefile Reference](docs/guides/makefile.md) or run `make help`.
+For the full target list, see the [Makefile Reference](https://bedrud.org/en/docs/guides/makefile/) or run `make help`.
 
 </details>
 
@@ -522,7 +533,7 @@ See [GitHub Issues](https://github.com/bedrud-ir/bedrud/issues) and [Discussions
 
 - **Bug Reports & Feature Requests:** [GitHub Issues](https://github.com/bedrud-ir/bedrud/issues)
 - **Architecture Discussions & Questions:** [GitHub Discussions](https://github.com/bedrud-ir/bedrud/discussions)
-- **Documentation:** [bedrud-ir.github.io/bedrud](https://bedrud-ir.github.io/bedrud/)
+- **Documentation:** [bedrud.org/en/docs](https://bedrud.org/en/docs/)
 
 > [!NOTE]
 > Before reporting issues, please check existing issues and documentation to avoid duplicates.
@@ -533,7 +544,7 @@ See [GitHub Issues](https://github.com/bedrud-ir/bedrud/issues) and [Discussions
 
 Contributions are welcome! Please open an issue first for significant changes.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and the online [Contributing Guide](https://bedrud-ir.github.io/bedrud/contributing/) for:
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the online [Contributing Guide](https://bedrud.org/en/docs/contributing/) for:
 - Development setup instructions
 - Code style conventions
 - Pull request process
