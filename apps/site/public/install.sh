@@ -7,7 +7,6 @@ REPO="${BEDRUD_REPO:-bedrud-ir/bedrud}"
 INSTALL_DIR="${BEDRUD_INSTALL:-$HOME/bin}"
 VERSION="latest"
 SKIP_SHELL=false
-DEBUG_BUILD=false
 
 # ── Colors (tty only) ───────────────────────────────────────────
 if [[ -t 1 ]]; then
@@ -39,13 +38,7 @@ esac
 
 # ── Dependency checks ───────────────────────────────────────────
 command -v curl >/dev/null 2>&1 || error "curl is required (https://curl.se)"
-
-HAS_UNZIP=false
-HAS_TAR=false
-command -v unzip >/dev/null 2>&1 && HAS_UNZIP=true
-command -v tar >/dev/null 2>&1 && HAS_TAR=true
-
-[[ "$HAS_UNZIP" == true || "$HAS_TAR" == true ]] || error "unzip or tar is required"
+command -v tar >/dev/null 2>&1 || error "tar is required"
 
 # ── Arg parse ───────────────────────────────────────────────────
 usage() {
@@ -58,7 +51,6 @@ Options:
   --install-dir <dir>   Install directory (default: ~/bin)
   --version <ver>       Install specific version (default: latest)
   --skip-shell          Skip shell RC / PATH modification
-  --debug               Install debug/profile build
   -h, --help            Show this help
 
 Environment:
@@ -80,7 +72,6 @@ while [[ $# -gt 0 ]]; do
     --install-dir) INSTALL_DIR="$2"; shift 2 ;;
     --version)     VERSION="$2"; shift 2 ;;
     --skip-shell)  SKIP_SHELL=true; shift ;;
-    --debug)       DEBUG_BUILD=true; shift ;;
     -h|--help)     usage ;;
     *) error "Unknown argument: $1. Run with --help for usage." ;;
   esac
@@ -98,51 +89,22 @@ case "$OS" in
 esac
 
 case "$ARCH" in
-  x86_64|amd64)         arch="x64" ;;
-  aarch64|arm64)        arch="aarch64" ;;
+  x86_64|amd64)         arch="amd64" ;;
+  aarch64|arm64)        arch="arm64" ;;
   armv7l|armv7)         arch="armv7" ;;
   *) error "Unsupported architecture: $ARCH" ;;
 esac
 
-TARGET="${os}-${arch}"
+TARGET="${os}_${arch}"
 
 # ── Edge cases ──────────────────────────────────────────────────
 
-# Alpine → musl
-if [[ "$os" == "linux" ]] && [[ -f /etc/alpine-release ]]; then
-  TARGET="${TARGET}-musl"
-fi
-
 # Rosetta 2 → use native ARM
-if [[ "$os" == "darwin" ]] && [[ "$arch" == "x64" ]]; then
+if [[ "$os" == "darwin" ]] && [[ "$arch" == "amd64" ]]; then
   if sysctl -n sysctl.proc_translated 2>/dev/null | grep -q "1"; then
-    TARGET="darwin-aarch64"
+    TARGET="darwin_arm64"
     info "Rosetta 2 detected — using native ARM binary"
   fi
-fi
-
-# AVX2 baseline (Linux x64 only)
-if [[ "$os" == "linux" ]] && [[ "$arch" == "x64" ]]; then
-  if grep -q avx2 /proc/cpuinfo 2>/dev/null; then
-    : # AVX2 supported, standard build
-  else
-    TARGET="${TARGET}-baseline"
-    info "No AVX2 — using baseline build"
-  fi
-fi
-
-# AVX2 baseline (macOS x64, non-Rosetta)
-if [[ "$os" == "darwin" ]] && [[ "$arch" == "x64" ]]; then
-  if ! sysctl -a 2>/dev/null | grep -q "machdep.cpu.features.*AVX2"; then
-    TARGET="${TARGET}-baseline"
-    info "No AVX2 — using baseline build"
-  fi
-fi
-
-# Debug/profile build
-if [[ "$DEBUG_BUILD" == true ]]; then
-  TARGET="${TARGET}-profile"
-  info "Debug/profile build requested"
 fi
 
 # ── Construct download URL ──────────────────────────────────────
@@ -162,52 +124,14 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 # ── Download ────────────────────────────────────────────────────
 mkdir -p "$INSTALL_DIR"
 
-download_and_extract() {
-  local url="$1"
-  local ext="$2"
+ARCHIVE="${TMP_DIR}/bedrud.tar.xz"
 
-  local archive="${TMP_DIR}/bedrud.${ext}"
-
-  info "Downloading bedrud (${ext})..."
-  curl --fail --location --progress-bar --output "$archive" "$url" \
-    || return 1
-
-  case "$ext" in
-    zip)
-      if [[ "$HAS_UNZIP" != true ]]; then
-        warn "unzip not available, trying tar.xz instead"
-        return 1
-      fi
-      unzip -oq -d "$TMP_DIR/extracted" "$archive"
-      ;;
-    tar.xz)
-      tar -xf "$archive" -C "$TMP_DIR/extracted"
-      ;;
-  esac
-
-  return 0
-}
+info "Downloading bedrud..."
+curl --fail --location --progress-bar --output "$ARCHIVE" "${RELEASE_URL}/bedrud_${TARGET}.tar.xz" \
+  || error "Failed to download bedrud for ${TARGET}. Check https://github.com/${REPO}/releases for available builds."
 
 mkdir -p "$TMP_DIR/extracted"
-
-DOWNLOADED=false
-
-# Try zip first, fallback to tar.xz
-if [[ "$HAS_UNZIP" == true ]]; then
-  if download_and_extract "${RELEASE_URL}/bedrud_${TARGET}.zip" "zip"; then
-    DOWNLOADED=true
-  fi
-fi
-
-if [[ "$DOWNLOADED" != true ]] && [[ "$HAS_TAR" == true ]]; then
-  if download_and_extract "${RELEASE_URL}/bedrud_${TARGET}.tar.xz" "tar.xz"; then
-    DOWNLOADED=true
-  fi
-fi
-
-if [[ "$DOWNLOADED" != true ]]; then
-  error "Failed to download bedrud for ${TARGET}. Check https://github.com/${REPO}/releases for available builds."
-fi
+tar -xf "$ARCHIVE" -C "$TMP_DIR/extracted"
 
 # ── Find and install binary ─────────────────────────────────────
 BINARY_PATH="$(find "$TMP_DIR/extracted" -type f -name "$BINARY_NAME" -o -name "${BINARY_NAME}.*" 2>/dev/null | head -1)"

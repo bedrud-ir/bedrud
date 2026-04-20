@@ -6,7 +6,6 @@ param(
     [string]$InstallDir = "$env:USERPROFILE\bin",
     [string]$Version = "latest",
     [switch]$SkipPath = $false,
-    [switch]$DebugBuild = $false,
     [switch]$Help = $false
 )
 
@@ -27,7 +26,6 @@ Parameters:
   -InstallDir <path>   Install directory (default: ~\bin)
   -Version <ver>       Install specific version (default: latest)
   -SkipPath            Skip adding to PATH
-  -DebugBuild          Install debug/profile build
   -Help                Show this help
 
 Environment:
@@ -39,13 +37,13 @@ Environment:
 
 # ── Platform detection ──────────────────────────────────────────
 $Os = "windows"
-$Arch = "x64"
+$Arch = "amd64"
 
 $ProcArch = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
 if ($ProcArch -eq [System.Runtime.InteropServices.Architecture]::Arm64) {
-    $Arch = "aarch64"
+    $Arch = "arm64"
 } elseif ($ProcArch -eq [System.Runtime.InteropServices.Architecture]::X64) {
-    $Arch = "x64"
+    $Arch = "amd64"
 } elseif ($ProcArch -eq [System.Runtime.InteropServices.Architecture]::X86) {
     $Arch = "x86"
 } else {
@@ -53,13 +51,9 @@ if ($ProcArch -eq [System.Runtime.InteropServices.Architecture]::Arm64) {
     exit 1
 }
 
-$Target = "${Os}-${Arch}"
+$Target = "${Os}_${Arch}"
 
-# ── Debug/profile ───────────────────────────────────────────────
-if ($DebugBuild) {
-    $Target = "${Target}-profile"
-    Write-Host "Debug/profile build requested" -ForegroundColor Yellow
-}
+Write-Host "Target: $Target" -ForegroundColor Green
 
 # ── Construct download URL ──────────────────────────────────────
 $Github = "https://github.com"
@@ -68,8 +62,6 @@ if ($Version -eq "latest") {
 } else {
     $ReleaseUrl = "${Github}/${Repo}/releases/download/${Version}"
 }
-
-Write-Host "Target: $Target" -ForegroundColor Green
 
 # ── Download ────────────────────────────────────────────────────
 $InstallDirFull = [System.IO.Path]::GetFullPath($InstallDir)
@@ -84,41 +76,21 @@ try {
 
     Write-Host "Downloading bedrud..." -ForegroundColor Green
 
-    try {
-        Invoke-WebRequest -Uri $ZipUrl -OutFile $ZipPath -UseBasicParsing
-    } catch {
-        # Fallback: try without .zip (raw binary name pattern)
-        $ExeUrl = "${ReleaseUrl}/bedrud_${Target}.exe"
-        $ExePath = Join-Path $TempDir $BinaryName
-        try {
-            Invoke-WebRequest -Uri $ExeUrl -OutFile $ExePath -UseBasicParsing
-            Copy-Item -Path $ExePath -Destination (Join-Path $InstallDirFull $BinaryName) -Force
-            Write-Host "Installed bedrud to $InstallDirFull\$BinaryName" -ForegroundColor Green
-            $Installed = $true
-        } catch {
-            Write-Host "Failed to download bedrud for $Target" -ForegroundColor Red
-            Write-Host "Check https://github.com/$Repo/releases for available builds" -ForegroundColor Red
-            exit 1
-        }
+    Invoke-WebRequest -Uri $ZipUrl -OutFile $ZipPath -UseBasicParsing
+
+    Expand-Archive -Path $ZipPath -DestinationPath "$TempDir\extracted" -Force
+
+    $Found = Get-ChildItem -Path "$TempDir\extracted" -Recurse -Filter "*.exe" |
+        Where-Object { $_.Name -like "bedrud*" } |
+        Select-Object -First 1
+
+    if (-not $Found) {
+        Write-Host "Could not find bedrud binary in archive" -ForegroundColor Red
+        exit 1
     }
 
-    if (-not (Test-Path variable:Installed)) {
-        # Extract zip
-        Expand-Archive -Path $ZipPath -DestinationPath "$TempDir\extracted" -Force
-
-        # Find binary
-        $Found = Get-ChildItem -Path "$TempDir\extracted" -Recurse -Filter "*.exe" |
-            Where-Object { $_.Name -like "bedrud*" } |
-            Select-Object -First 1
-
-        if (-not $Found) {
-            Write-Host "Could not find bedrud binary in archive" -ForegroundColor Red
-            exit 1
-        }
-
-        Copy-Item -Path $Found.FullName -Destination (Join-Path $InstallDirFull $BinaryName) -Force
-        Write-Host "Installed bedrud to $InstallDirFull\$BinaryName" -ForegroundColor Green
-    }
+    Copy-Item -Path $Found.FullName -Destination (Join-Path $InstallDirFull $BinaryName) -Force
+    Write-Host "Installed bedrud to $InstallDirFull\$BinaryName" -ForegroundColor Green
 
     # ── Verify ──────────────────────────────────────────────────
     $BedrudExe = Join-Path $InstallDirFull $BinaryName
