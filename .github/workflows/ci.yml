@@ -236,7 +236,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+          cache: true
       - run: bun install --frozen-lockfile
       - run: bun run check
-      - run: bun run typecheck
+      - run: bun run typecheck:astro
       - run: bun run build
