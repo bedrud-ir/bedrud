@@ -21,7 +21,7 @@ export function InstallSection({ lang }: { lang: Locale }) {
         ta.style.opacity = "0";
         document.body.appendChild(ta);
         ta.select();
-        // @ts-ignore deprecated but needed fallback
+        // @ts-expect-error deprecated but needed fallback
         document.execCommand("copy");
         document.body.removeChild(ta);
       }
