@@ -12,7 +12,7 @@ order: 2
 
 ## چه کاری انجام می‌دهد
 
-۱. سیستم‌عامل، معماری پردازنده و گونه‌های پلتفرم (Alpine، Rosetta 2، AVX2) را تشخیص می‌دهد
+۱. سیستم‌عامل، معماری پردازنده و گونه‌های پلتفرم (Rosetta 2) را تشخیص می‌دهد
 ۲. باینری صحیح را از [انتشارات GitHub](https://github.com/bedrud-ir/bedrud/releases) دانلود می‌کند
 ۳. در `~/bin` نصب می‌کند (قابل تنظیم از طریق `--install-dir`)
 ۴. دایرکتوری نصب را از طریق تنظیمات shell به `PATH` اضافه می‌کند
@@ -25,7 +25,7 @@ order: 2
 
 | پلتفرم | وابستگی‌ها |
 |----------|-------------|
-| macOS / Linux | `curl` + حداقل یکی از `unzip` یا `tar` |
+| macOS / Linux | `curl` + `tar` |
 | Windows | PowerShell 5.1+ (در Windows 10/11 از پیش نصب شده است) |
 
 ---
@@ -74,7 +74,6 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 | `--install-dir <dir>` | `~/bin` | محل قرارگیری باینری |
 | `--version <ver>` | `latest` | ثابت نگه داشتن در یک نسخه (مثلاً `v1.2.0`) |
 | `--skip-shell` | خاموش | تغییر فایل‌های RC shell یا PATH انجام نشود |
-| `--debug` | خاموش | نصب build debug/profile (نمادها، profiling) |
 | `-h`, `--help` | — | نمایش نحوه استفاده و خروج |
 
 **مثال‌ها:**
@@ -111,7 +110,6 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `-InstallDir <path>` | `$HOME\bin` | محل قرارگیری `bedrud.exe` |
 | `-Version <ver>` | `latest` | نصب یک نسخه انتشار خاص |
 | `-SkipPath` | `$false` | اضافه نکردن دایرکتوری نصب به PATH کاربر |
-| `-DebugBuild` | `$false` | نصب build debug/profile |
 
 ---
 
@@ -138,16 +136,13 @@ irm https://get.bedrud.org/install.ps1 | iex
 
 | هدف | سیستم‌عامل | معماری | یادداشت |
 |--------|-----|-------------|-------|
-| `darwin-x64` | macOS | Intel (x86_64) | استاندارد |
-| `darwin-aarch64` | macOS | Apple Silicon (M1/M2/M3/M4) | Rosetta 2 به صورت خودکار تشخیص داده می‌شود |
-| `linux-x64` | Linux | x86_64 (glibc) | استاندارد |
-| `linux-x64-musl` | Linux | x86_64 (Alpine) | musl libc |
-| `linux-aarch64` | Linux | ARM64 (glibc) | استاندارد |
-| `linux-aarch64-musl` | Linux | ARM64 (Alpine) | musl libc |
-| `windows-x64` | Windows | x86_64 | استاندارد |
-| `windows-aarch64` | Windows | ARM64 | استاندارد |
-
-گونه‌های baseline (بدون AVX2) برای `darwin-x64`، `linux-x64`، و `linux-x64-musl` وجود دارند — به صورت خودکار در پردازنده‌های قدیمی (پیش از Intel/AMD 2013) انتخاب می‌شوند. هر هدف می‌تواند `--debug` ضمیمه شود.
+| `darwin_amd64` | macOS | Intel (x86_64) | استاندارد |
+| `darwin_arm64` | macOS | Apple Silicon (M1/M2/M3/M4) | Rosetta 2 به صورت خودکار تشخیص داده می‌شود |
+| `linux_amd64` | Linux | x86_64 | استاندارد |
+| `linux_arm64` | Linux | ARM64 | استاندارد |
+| `freebsd_amd64` | FreeBSD | x86_64 | استاندارد |
+| `windows_amd64` | Windows | x86_64 | استاندارد |
+| `windows_arm64` | Windows | ARM64 | استاندارد |
 
 <details>
 <summary>منطق تشخیص سیستم‌عامل و معماری</summary>
@@ -155,11 +150,12 @@ irm https://get.bedrud.org/install.ps1 | iex
 ```
 uname -s → "Darwin"  → darwin
            "Linux"   → linux
+           "FreeBSD" → freebsd
            "MINGW*"  → هدایت به اسکریپت PowerShell
            "MSYS*"   → هدایت به اسکریپت PowerShell
 
-uname -m → "x86_64" | "amd64"  → x64
-           "aarch64" | "arm64"  → aarch64
+uname -m → "x86_64" | "amd64"  → amd64
+           "aarch64" | "arm64"  → arm64
 ```
 
 </details>
@@ -168,46 +164,28 @@ uname -m → "x86_64" | "amd64"  → x64
 
 ## تشخیص موارد خاص
 
-### Alpine Linux (musl)
-
-**تشخیص:** `/etc/alpine-release` وجود دارد.
-**اثر:** پسوند `-musl` به هدف اضافه می‌شود. باینری Linux استاندارد در musl شکست می‌خورد.
-
 ### Rosetta 2 (macOS Intel روی Apple Silicon)
 
-**تشخیص:** `sysctl -n sysctl.proc_translated` مقدار `1` برمی‌گرداند.
-**اثر:** `darwin-x64` را به `darwin-aarch64` برای عملکرد بومی ARM تغییر می‌دهد.
-
-### Baseline AVX2 (پردازنده‌های x86_64 قدیمی)
-
-**تشخیص:** `grep avx2 /proc/cpuinfo` تطابق پیدا نمی‌کند (Linux)، یا `sysctl -a` فاقد `AVX2` است (macOS).
-**اثر:** پسوند `-baseline` اضافه می‌شود. پردازنده‌های پیش از ۲۰۱۳ بدون این `SIGILL` می‌دهند.
-
-### ترتیب اعمال گونه
-
-```
-هدف پایه → Alpine musl → Rosetta 2 (AVX2 را رد می‌کند) → Baseline AVX2 → Debug profile
-```
-
-Rosetta 2 قبل از بررسی AVX2 اجرا می‌شود. اگر تشخیص داده شود، هدف به ARM تغییر می‌کند و AVX2 هرگز بررسی نمی‌شود.
+**تشخیص:** `sysctl -n sysctl.proc_translated` مقدار `۱` برمی‌گرداند.
+**اثر:** `darwin_amd64` را به `darwin_arm64` برای عملکرد بومی ARM تغییر می‌دهد.
 
 ---
 
 ## جریان نصب
 
 ۱. **بررسی Windows** — MINGW/MSYS/CYGWIN تشخیص داده شد؟ دستور PowerShell را چاپ کنید، خارج شوید
-۲. **بررسی وابستگی** — نیاز به `curl` + (`unzip` یا `tar`)
-۳. **تجزیه آرگومان** — حداکثر ۴ پرچم
+۲. **بررسی وابستگی** — نیاز به `curl` + `tar`
+۳. **تجزیه آرگومان** — حداکثر ۳ پرچم
 ۴. **تشخیص پلتفرم** — سیستم‌عامل + معماری از طریق `uname`
-۵. **تشخیص گونه** — Alpine، Rosetta 2، AVX2، debug
-۶. **دانلود** — ابتدا `.zip` را امتحان می‌کند (اگر `unzip` موجود باشد)، سپس `.tar.xz` (اگر `tar` موجود باشد)
+۵. **تشخیص گونه** — Rosetta 2
+۶. **دانلود** — دانلود `bedrud_{TARGET}.tar.xz`
 ۷. **استخراج و نصب** — دایرکتوری موقت، استخراج، `mv → $INSTALL_DIR/bedrud`، `chmod +x`
 ۸. **تأیید** — اجرای `bedrud --version`
 ۹. **بررسی PATH** — قبلاً در PATH است؟ رد شود. `--skip-shell`؟ دستور دستی چاپ شود. در غیر این صورت → تغییر فایل RC
 ۱۰. **تکمیل‌ها** — اجرای `bedrud completions`
 ۱۱. **تمام** — چاپ موفقیت + دستورالعمل‌های بارگذاری مجدد
 
-فرمت URL دانلود: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.zip`
+فرمت URL دانلود: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
 
 ---
 
@@ -248,11 +226,11 @@ source ~/.config/fish/config.fish  # fish
 ### دانلود و انتقال
 
 ```bash
-curl -fsSL -o bedrud.zip \
-  https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux-x64.zip
-scp bedrud.zip airgapped-server:/tmp/
+curl -fsSL -o bedrud.tar.xz \
+  https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+scp bedrud.tar.xz airgapped-server:/tmp/
 # روی هدف:
-unzip -o /tmp/bedrud.zip -d /tmp/bedrud-extracted
+tar -xf /tmp/bedrud.tar.xz -C /tmp/bedrud-extracted
 mv /tmp/bedrud-extracted/bedrud ~/bin/
 chmod +x ~/bin/bedrud
 ```
@@ -308,24 +286,12 @@ echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### `unzip is required`
-
-```bash
-sudo apt install unzip      # Debian / Ubuntu
-sudo dnf install unzip      # Fedora / RHEL
-apk add unzip               # Alpine
-```
-
 ### `Failed to download bedrud`
 
 ۱. اتصال اینترنت را بررسی کنید
 ۲. تأیید کنید که هدف در [انتشارات](https://github.com/bedrud-ir/bedrud/releases) وجود دارد
 ۳. یک نسخه خاص را امتحان کنید: `--version v1.0.0`
 ۴. ممکن است پلتفرم شما باینری از پیش ساخته شده نداشته باشد
-
-### Alpine: `not found` یا `no such file`
-
-اجرای build glibc روی musl. نصب‌کننده به صورت خودکار Alpine را تشخیص می‌دهد — اگر تشخیص نداد، بررسی کنید که URL دانلود شامل `-musl` باشد.
 
 ### macOS: اجرای x64 تحت Rosetta (کند)
 
