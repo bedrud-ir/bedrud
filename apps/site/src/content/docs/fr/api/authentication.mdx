@@ -1,0 +1,271 @@
+---
+title: API d'authentification
+description: Points de terminaison et méthodes d'authentification
+order: 23
+---
+
+Tous les points de terminaison d'authentification sont sous `/api/auth/`.
+
+## Vue d'ensemble
+
+Bedrud prend en charge plusieurs méthodes d'authentification :
+
+| Méthode | Point de terminaison | Description |
+|---------|---------------------|-------------|
+| Email/Mot de passe | `POST /api/auth/login` | Connexion traditionnelle |
+| Inscription | `POST /api/auth/register` | Créer un compte |
+| Invité | `POST /api/auth/guest-login` | Accès temporaire |
+| OAuth | `GET /api/auth/:provider/login` | Connexion sociale |
+| Passkeys | `POST /api/auth/passkey/*` | FIDO2/WebAuthn |
+| Renouvellement de token | `POST /api/auth/refresh` | Renouveler le token d'accès |
+
+## Format des tokens
+
+Une authentification réussie renvoie une paire de tokens JWT :
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+- **Token d'accès** - Durée de vie courte, utilisé dans l'en-tête `Authorization`
+- **Token de rafraîchissement** - Durée de vie longue, utilisé pour obtenir de nouveaux tokens d'accès
+
+### Utiliser les tokens
+
+Incluez le token d'accès dans toutes les requêtes authentifiées :
+
+```
+Authorization: Bearer <accessToken>
+```
+
+---
+
+## Points de terminaison
+
+### S'inscrire
+
+Créer un nouveau compte utilisateur.
+
+```
+POST /api/auth/register
+```
+
+**Corps de la requête :**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "name": "John Doe"
+}
+```
+
+**Réponse (200) :**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### Se connecter
+
+S'authentifier avec email et mot de passe.
+
+```
+POST /api/auth/login
+```
+
+**Corps de la requête :**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**Réponse (200) :**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### Connexion invité
+
+Rejoindre en tant qu'invité sans créer de compte. Les invités ont des autorisations limitées.
+
+```
+POST /api/auth/guest-login
+```
+
+**Corps de la requête :**
+
+```json
+{
+  "name": "Guest User"
+}
+```
+
+**Réponse (200) :**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "name": "Guest User",
+    "role": "guest"
+  }
+}
+```
+
+---
+
+### Obtenir l'utilisateur actuel
+
+Récupérer le profil de l'utilisateur authentifié.
+
+```
+GET /api/auth/me
+```
+
+**En-têtes :** `Authorization: Bearer <accessToken>`
+
+**Réponse (200) :**
+
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "avatar": "https://...",
+  "role": "user",
+  "provider": "email"
+}
+```
+
+---
+
+### Rafraîchir le token
+
+Échanger un token de rafraîchissement contre un nouveau token d'accès.
+
+```
+POST /api/auth/refresh
+```
+
+**Corps de la requête :**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**Réponse (200) :**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ..."
+}
+```
+
+---
+
+### Se déconnecter
+
+Invalider le token de rafraîchissement actuel.
+
+```
+POST /api/auth/logout
+```
+
+**En-têtes :** `Authorization: Bearer <accessToken>`
+
+**Corps de la requête :**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**Réponse (200) :**
+
+```json
+{
+  "message": "logged out"
+}
+```
+
+---
+
+### Connexion OAuth
+
+Démarrer un flux OAuth avec un fournisseur social.
+
+```
+GET /api/auth/:provider/login
+```
+
+**Fournisseurs pris en charge :**
+
+| Fournisseur | Chemin |
+|-------------|--------|
+| Google | `/api/auth/google/login` |
+| GitHub | `/api/auth/github/login` |
+| Twitter | `/api/auth/twitter/login` |
+
+Le serveur redirige l'utilisateur vers la page d'autorisation du fournisseur. Après consentement, le fournisseur redirige vers l'URL de rappel, et le serveur renvoie les tokens JWT.
+
+---
+
+## Réponses d'erreur
+
+Tous les points de terminaison d'auth renvoient des erreurs dans ce format :
+
+```json
+{
+  "error": "invalid credentials"
+}
+```
+
+| Statut | Signification |
+|--------|--------------|
+| 400 | Mauvaise requête (champs manquants, erreur de validation) |
+| 401 | Identifiants invalides ou token expiré |
+| 409 | Email déjà enregistré |
+| 500 | Erreur interne du serveur |
+
+---
+
+## Voir aussi
+
+- [Flux d'authentification](/fr/docs/backend/authentication) - fonctionnement interne de JWT, OAuth et des passkeys
+- [API des passkeys](/fr/docs/api/passkeys) - référence des points de terminaison FIDO2/WebAuthn

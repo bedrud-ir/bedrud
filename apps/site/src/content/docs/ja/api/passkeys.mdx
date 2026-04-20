@@ -1,0 +1,197 @@
+---
+title: Passkeys API
+description: FIDO2/WebAuthn連携
+order: 26
+---
+
+FIDO2/WebAuthnパスキーエンドポイントを使用すると、生体認証またはセキュリティキーを使って登録・認証を行うことができます。
+
+## 概要
+
+パスキーフローはチャレンジ・レスポンスプロトコルを使用し、それぞれ2つのフェーズで構成されます：
+
+| フロー | フェーズ1（開始） | フェーズ2（完了） |
+|------|-----------------|-------------------|
+| 登録 | `POST /api/auth/passkey/register/begin` | `POST /api/auth/passkey/register/finish` |
+| ログイン | `POST /api/auth/passkey/login/begin` | `POST /api/auth/passkey/login/finish` |
+
+---
+
+## 登録フロー
+
+パスキーを登録するにはユーザーがログインしている必要があります（既存のアカウントにリンクされます）。
+
+### ステップ1：登録の開始
+
+```
+POST /api/auth/passkey/register/begin
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**レスポンス (200)：**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rp": {
+      "name": "Bedrud",
+      "id": "meet.example.com"
+    },
+    "user": {
+      "id": "base64url-encoded-user-id",
+      "name": "user@example.com",
+      "displayName": "John Doe"
+    },
+    "pubKeyCredParams": [
+      { "type": "public-key", "alg": -7 },
+      { "type": "public-key", "alg": -257 }
+    ],
+    "authenticatorSelection": {
+      "userVerification": "preferred"
+    }
+  }
+}
+```
+
+これをブラウザのWebAuthn APIに渡します：
+
+```javascript
+const credential = await navigator.credentials.create({
+  publicKey: response.publicKey
+});
+```
+
+### ステップ2：登録の完了
+
+```
+POST /api/auth/passkey/register/finish
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**リクエストボディ：** ブラウザからのクレデンシャルレスポンス（base64urlエンコード）：
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "attestationObject": "base64url-attestation",
+    "clientDataJSON": "base64url-client-data"
+  },
+  "type": "public-key"
+}
+```
+
+**レスポンス (200)：**
+
+```json
+{
+  "message": "passkey registered"
+}
+```
+
+---
+
+## ログインフロー
+
+### ステップ1：ログインの開始
+
+```
+POST /api/auth/passkey/login/begin
+```
+
+認証は不要です。
+
+**レスポンス (200)：**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rpId": "meet.example.com",
+    "userVerification": "preferred"
+  }
+}
+```
+
+これをブラウザのWebAuthn APIに渡します：
+
+```javascript
+const assertion = await navigator.credentials.get({
+  publicKey: response.publicKey
+});
+```
+
+### ステップ2：ログインの完了
+
+```
+POST /api/auth/passkey/login/finish
+```
+
+**リクエストボディ：** ブラウザからのアサーションレスポンス：
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "authenticatorData": "base64url-auth-data",
+    "clientDataJSON": "base64url-client-data",
+    "signature": "base64url-signature"
+  },
+  "type": "public-key"
+}
+```
+
+**レスポンス (200)：**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
+```
+
+---
+
+## セキュリティ
+
+| 対策 | 説明 |
+|---------|-------------|
+| チャレンジ/レスポンス | サーバー生成のランダムチャレンジをセッションに保存 |
+| オリジン検証 | 厳格なオリジンとRelying Party IDの検証 |
+| カウンター検証 | クローンされたオーセンティケーターからの保護 |
+| セキュアな転送 | HTTPS用に設計され、URLセーフなbase64エンコードを使用 |
+
+## 実装の詳細
+
+- **バックエンド：** `go-passkeys/go-passkeys` を使用したpure GoでのWebAuthn検証
+- **セッションストレージ：** チャレンジはGorillaセッションに保存（`gothic.Store`経由）
+- **データベース：** パスキークレデンシャルは `Passkey` モデルに保存（クレデンシャルID、公開鍵、カウンター）
+- **フロントエンド（Web）：** `navigator.credentials` APIと `src/lib/auth.ts` のbase64urlヘルパー
+- **Android：** ネイティブパスキーサポート用のCredentials API
+- **iOS：** パスキーサポート用のASAuthorizationController
+
+## テスト方法
+
+1. 既存のアカウントでログインします
+2. パスキー登録ボタンをクリックします（ヘッダー/ダッシュボードの指紋アイコン）
+3. 生体認証プロンプトを完了します
+4. ログアウトします
+5. ログインページで「Passkeyでサインイン」をクリックします
+6. 生体認証プロンプトを完了して認証します
+
+---
+
+## 関連ドキュメント
+
+- [認証フロー](/ja/docs/backend/authentication) - パスキーの登録/ログインセレモニーの解説
+- [認証API](/ja/docs/api/authentication) - すべての認証エンドポイント

@@ -1,0 +1,343 @@
+---
+title: CLI Installer
+description: One-command install for Bedrud on all platforms
+order: 2
+---
+
+One-command install for all platforms. No `sudo` — installs under your home directory.
+
+For server setup after installing, see [Quick Start](/en/docs/getting-started/quickstart). For package managers, Docker, and other methods, see [Server Installation](/en/docs/getting-started/installation).
+
+---
+
+## What It Does
+
+1. Detects OS, CPU architecture, and platform variants (Alpine, Rosetta 2, AVX2)
+2. Downloads the correct binary from [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases)
+3. Installs to `~/bin` (customizable via `--install-dir`)
+4. Adds install directory to `PATH` via shell config
+5. Runs `bedrud completions` for shell tab-completion
+6. Prints next steps
+
+---
+
+## Requirements
+
+| Platform | Dependencies |
+|----------|-------------|
+| macOS / Linux | `curl` + at least one of `unzip` or `tar` |
+| Windows | PowerShell 5.1+ (ships with Windows 10/11) |
+
+---
+
+## Quick Install
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="bash">macOS / Linux</TabsTrigger>
+    <TabsTrigger value="powershell">Windows</TabsTrigger>
+  </TabsList>
+  <TabsContent value="bash">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    Reload shell, then verify:
+
+    ```bash
+    source ~/.bashrc  # or ~/.zshrc
+    bedrud --version
+    ```
+  </TabsContent>
+  <TabsContent value="powershell">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    bedrud --version
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## Flags & Options
+
+### Bash Installer
+
+```
+Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--install-dir <dir>` | `~/bin` | Where to place the binary |
+| `--version <ver>` | `latest` | Pin to a release (e.g. `v1.2.0`) |
+| `--skip-shell` | off | Don't modify shell RC files or PATH |
+| `--debug` | off | Install debug/profile build (symbols, profiling) |
+| `-h`, `--help` | — | Print usage and exit |
+
+**Examples:**
+
+```bash
+# Default
+curl -fsSL https://get.bedrud.org | bash
+
+# Pin version
+curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# System-wide install
+curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+
+# CI / automation — skip shell config
+curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+```
+
+### PowerShell Installer
+
+```
+Usage: irm https://get.bedrud.org/install.ps1 | iex
+```
+
+To pass parameters, save to file first:
+
+```powershell
+irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+.\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `-InstallDir <path>` | `$HOME\bin` | Where to place `bedrud.exe` |
+| `-Version <ver>` | `latest` | Install a specific release version |
+| `-SkipPath` | `$false` | Don't add install dir to user PATH |
+| `-DebugBuild` | `$false` | Install debug/profile build |
+
+---
+
+## Environment Variables
+
+| Variable | Default | Platforms | Description |
+|----------|---------|-----------|-------------|
+| `BEDRUD_INSTALL` | `~/bin` | Bash only | Override install directory (same as `--install-dir`) |
+| `BEDRUD_REPO` | `bedrud-ir/bedrud` | Both | Override GitHub repo (for forks or mirrors) |
+
+```bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+```
+
+```powershell
+$env:BEDRUD_REPO = "myorg/bedrud-fork"
+irm https://get.bedrud.org/install.ps1 | iex
+```
+
+---
+
+## Platform Support
+
+| Target | OS | Architecture | Notes |
+|--------|-----|-------------|-------|
+| `darwin-x64` | macOS | Intel (x86_64) | Standard |
+| `darwin-aarch64` | macOS | Apple Silicon (M1/M2/M3/M4) | Rosetta 2 auto-detected |
+| `linux-x64` | Linux | x86_64 (glibc) | Standard |
+| `linux-x64-musl` | Linux | x86_64 (Alpine) | musl libc |
+| `linux-aarch64` | Linux | ARM64 (glibc) | Standard |
+| `linux-aarch64-musl` | Linux | ARM64 (Alpine) | musl libc |
+| `windows-x64` | Windows | x86_64 | Standard |
+| `windows-aarch64` | Windows | ARM64 | Standard |
+
+Baseline (no AVX2) variants exist for `darwin-x64`, `linux-x64`, and `linux-x64-musl` — auto-selected on older CPUs (pre-2013 Intel/AMD). Any target can have `-profile` appended via `--debug`.
+
+<details>
+<summary>OS and architecture detection logic</summary>
+
+```
+uname -s → "Darwin"  → darwin
+           "Linux"   → linux
+           "MINGW*"  → redirect to PowerShell script
+           "MSYS*"   → redirect to PowerShell script
+
+uname -m → "x86_64" | "amd64"  → x64
+           "aarch64" | "arm64"  → aarch64
+```
+
+</details>
+
+---
+
+## Edge Case Detection
+
+### Alpine Linux (musl)
+
+**Detection:** `/etc/alpine-release` exists.
+**Effect:** Appends `-musl` to target. Standard Linux binary will fail on musl.
+
+### Rosetta 2 (macOS Intel on Apple Silicon)
+
+**Detection:** `sysctl -n sysctl.proc_translated` returns `1`.
+**Effect:** Switches `darwin-x64` → `darwin-aarch64` for native ARM performance.
+
+### AVX2 Baseline (older x86_64 CPUs)
+
+**Detection:** `grep avx2 /proc/cpuinfo` finds no match (Linux), or `sysctl -a` lacks `AVX2` (macOS).
+**Effect:** Appends `-baseline`. Pre-2013 CPUs crash with `SIGILL` without this.
+
+### Variant Application Order
+
+```
+Base target → Alpine musl → Rosetta 2 (skips AVX2) → AVX2 baseline → Debug profile
+```
+
+Rosetta 2 runs before AVX2 check. If detected, target switches to ARM and AVX2 is never checked.
+
+---
+
+## Install Flow
+
+1. **Windows check** — MINGW/MSYS/CYGWIN detected? Print PowerShell command, exit
+2. **Dependency check** — requires `curl` + (`unzip` or `tar`)
+3. **Argument parsing** — max 4 flags
+4. **Platform detection** — OS + architecture via `uname`
+5. **Variant detection** — Alpine, Rosetta 2, AVX2, debug
+6. **Download** — try `.zip` first (if `unzip`), fallback `.tar.xz` (if `tar`)
+7. **Extract & install** — temp dir, extract, `mv → $INSTALL_DIR/bedrud`, `chmod +x`
+8. **Verify** — run `bedrud --version`
+9. **PATH check** — already in PATH? Skip. `--skip-shell`? Print manual command. Otherwise → modify RC file
+10. **Completions** — run `bedrud completions`
+11. **Done** — print success + reload instructions
+
+Download URL format: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.zip`
+
+---
+
+## PATH & Shell Configuration
+
+When `--skip-shell` is not set, the installer adds the install directory to your PATH.
+
+| Shell | RC File |
+|-------|---------|
+| fish | `~/.config/fish/config.fish` |
+| zsh | `$ZDOTDIR/.zshrc` (default `~/.zshrc`) |
+| bash (macOS) | `~/.bash_profile`, then `~/.bashrc` |
+| bash (Linux) | `~/.bashrc`, then `~/.bash_profile` |
+
+**What gets added:**
+
+```bash
+# bedrud
+export PATH="$HOME/bin:$PATH"  # bedrud
+```
+
+The `# bedrud` comment marker prevents duplicate entries — safe to re-run.
+
+**Windows:** Uses `[Environment]::SetEnvironmentVariable("PATH", ..., "User")` at the registry level. No RC file needed.
+
+**Reload shell after install:**
+
+```bash
+source ~/.bashrc    # bash
+source ~/.zshrc     # zsh
+source ~/.config/fish/config.fish  # fish
+```
+
+---
+
+## Offline / Air-Gapped Installs
+
+### Download and Transfer
+
+```bash
+curl -fsSL -o bedrud.zip \
+  https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux-x64.zip
+scp bedrud.zip airgapped-server:/tmp/
+# On target:
+unzip -o /tmp/bedrud.zip -d /tmp/bedrud-extracted
+mv /tmp/bedrud-extracted/bedrud ~/bin/
+chmod +x ~/bin/bedrud
+```
+
+### Self-Hosted Mirror
+
+```bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+```
+
+### Direct Binary
+
+Download from [Releases](https://github.com/bedrud-ir/bedrud/releases), extract, move to a directory in your `PATH`.
+
+---
+
+## Uninstall
+
+```bash
+rm ~/bin/bedrud
+# Remove PATH line from shell RC (search for "# bedrud"):
+#   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
+```
+
+For systemd server installs:
+
+```bash
+sudo bedrud uninstall
+```
+
+Windows:
+
+```powershell
+Remove-Item "$env:USERPROFILE\bin\bedrud.exe"
+# Remove from PATH via System Properties → Environment Variables
+```
+
+---
+
+## Troubleshooting
+
+### `command not found: bedrud`
+
+```bash
+source ~/.bashrc    # reload shell
+echo $PATH | tr ':' '\n' | grep "$HOME/bin"  # check PATH
+```
+
+If missing:
+
+```bash
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### `unzip is required`
+
+```bash
+sudo apt install unzip      # Debian / Ubuntu
+sudo dnf install unzip      # Fedora / RHEL
+apk add unzip               # Alpine
+```
+
+### `Failed to download bedrud`
+
+1. Check internet connection
+2. Verify target exists at [Releases](https://github.com/bedrud-ir/bedrud/releases)
+3. Try a specific version: `--version v1.0.0`
+4. Your platform may not have a pre-built binary yet
+
+### Alpine: `not found` or `no such file`
+
+Running glibc build on musl. Installer detects Alpine automatically — if it didn't, check the download URL contains `-musl`.
+
+### macOS: Running x64 under Rosetta (slow)
+
+Force native ARM:
+
+```bash
+arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+```
+
+### Windows: "running scripts is disabled"
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+irm https://get.bedrud.org/install.ps1 | iex
+```

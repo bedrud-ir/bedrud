@@ -1,0 +1,8 @@
+.DS_Store
+.env
+.env.*
+node_modules/
+dist/
+.astro/
+!.astro/types.d.ts
+public/search-index-*.json

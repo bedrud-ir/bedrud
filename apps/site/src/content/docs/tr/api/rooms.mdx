@@ -1,0 +1,298 @@
+---
+title: Odalar API'si
+description: Oda yönetimi uç noktaları
+order: 24
+---
+
+Oda yönetimi uç noktaları `/api/room/` altındadır. Tüm uç noktalar kimlik doğrulaması gerektirir.
+
+## Genel Bakış
+
+| Uç Nokta | Yöntem | Açıklama |
+|----------|--------|----------|
+| `/api/room/create` | POST | Yeni oda oluştur |
+| `/api/room/join` | POST | Odaya katıl ve LiveKit token al |
+| `/api/room/list` | GET | Kullanılabilir odaları listele |
+| `/api/room/:roomId/kick/:identity` | POST | Bir katılımcıyı at (yönetici) |
+| `/api/room/:roomId/mute/:identity` | POST | Bir katılımcıyı sessize al (yönetici) |
+| `/api/room/:roomId/video/:identity/off` | POST | Katılımcı videosunu kapat (yönetici) |
+
+---
+
+## Uç Noktalar
+
+### Oda Oluştur
+
+Yeni bir toplantı odası oluşturun. Kimliği doğrulanmış kullanıcı oda yöneticisi olur.
+
+```
+POST /api/room/create
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**İstek Gövdesi:**
+
+```json
+{
+  "name": "team-standup",
+  "isPublic": true,
+  "mode": "standard",
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  }
+}
+```
+
+> **Not:** `name` alanı **isteğe bağlıdır**. Atlanır veya boş bırakılırsa, sunucu `xxx-xxxx-xxx`
+> formatında rastgele bir URL uyumlu isim otomatik olarak oluşturur (ör. `bkf-qmzl-rja`).
+
+**Oda İsim Kuralları:**
+
+Oda isimleri URL'de `https://bedrud.xyz/m/NAME` şeklinde görünür, bu nedenle URL uyumlu olmalıdır:
+
+| Kural | Açıklama |
+|-------|----------|
+| **İzin verilen karakterler** | Küçük harfler (`a-z`), rakamlar (`0-9`) ve tireler (`-`) |
+| **Minimum uzunluk** | 3 karakter |
+| **Maksimum uzunluk** | 63 karakter |
+| **Özel karakter yok** | `#`, `@`, `_`, `.`, `/`, `\`, `<`, `>`, `&`, `%`, `+`, `=`, `;`, `:`, `'`, `"`, `?`, `!`, boşluk vb. **kullanılamaz** |
+| **Başta/sonda tire olamaz** | `-room` ve `room-` geçersizdir |
+| **Ardışık tire olamaz** | `room--name` geçersizdir |
+| **Yalnızca küçük harf** | Büyük harfler reddedilir; giriş otomatik olarak küçük harfe dönüştürülür |
+| **Benzersiz** | Her oda ismi benzersiz olmalıdır |
+
+**Yanıt (200):**
+
+```json
+{
+  "id": "uuid",
+  "name": "team-standup",
+  "createdBy": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 0,
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
+}
+```
+
+### Alanlar
+
+| Alan | Tür | Zorunlu | Açıklama |
+|------|-----|---------|----------|
+| `name` | string | Hayır | URL uyumlu oda ismi (atlanırsa otomatik oluşturulur) |
+| `isPublic` | boolean | Hayır | Odanın genel listelemelerde görünmesi |
+| `mode` | string | Hayır | Oda modu (ör. `"standard"`) |
+| `maxParticipants` | number | Hayır | Maksimum katılımcı sayısı |
+| `settings.allowChat` | boolean | Hayır | Metin sohbetinin etkin olup olmadığı |
+| `settings.allowVideo` | boolean | Hayır | Videonun etkin olup olmadığı |
+| `settings.allowAudio` | boolean | Hayır | Sesanın etkin olup olmadığı |
+| `settings.requireApproval` | boolean | Hayır | Katılımcıların yönetici onayı gerektirip gerektirmediği |
+| `settings.e2ee` | boolean | Hayır | Uçtan uca şifrelemenin etkin olup olmadığı |
+
+---
+
+### Odaya Katıl
+
+Var olan bir odaya katılın ve medya bağlantısı için bir LiveKit token alın.
+
+```
+POST /api/room/join
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**İstek Gövdesi:**
+
+```json
+{
+  "roomName": "team-standup"
+}
+```
+
+**Yanıt (200):**
+
+```json
+{
+  "id": "uuid",
+  "name": "team-standup",
+  "token": "eyJ...",
+  "createdBy": "user-uuid",
+  "adminId": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 20,
+  "expiresAt": "2026-02-16T12:00:00Z",
+  "settings": { ... },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
+}
+```
+
+`token`, imzalı bir LiveKit erişim token'ıdır. WebSocket üzerinden LiveKit sunucusuna bağlanmak için kullanın:
+
+```javascript
+import { Room } from 'livekit-client';
+
+const room = new Room();
+await room.connect(livekitUrl, token);
+```
+
+---
+
+### Odaları Listele
+
+Kullanıcının oluşturduğu odaların listesini alın.
+
+```
+GET /api/room/list
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**Yanıt (200):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "team-standup",
+    "createdBy": "user-uuid",
+    "isActive": true,
+    "maxParticipants": 20,
+    "expiresAt": "2026-02-16T12:00:00Z",
+    "settings": { ... },
+    "mode": "standard",
+    "relationship": "creator"
+  }
+]
+```
+
+---
+
+### Katılımcıyı At
+
+Bir katılımcıyı odadan çıkarın. Bunu yalnızca oda yöneticisi yapabilir.
+
+```
+POST /api/room/:roomId/kick/:identity
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**Yanıt (200):**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+### Katılımcıyı Sessize Al
+
+Bir katılımcının mikrofonunu sessize alın. Bunu yalnızca oda yöneticisi yapabilir.
+
+```
+POST /api/room/:roomId/mute/:identity
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**Yanıt (200):**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+### Katılımcı Videosunu Kapat
+
+Bir katılımcının kamerasını kapatın. Bunu yalnızca oda yöneticisi yapabilir.
+
+```
+POST /api/room/:roomId/video/:identity/off
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**Yanıt (200):**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+## Yönetici Kontrolleri
+
+Oda yöneticisi eylemleri (atma, sessize alma, video kapatma) yalnızca odayı oluşturan kullanıcıya (`adminId`) açıktır. Yönetici olmayan bir kullanıcı bu eylemleri denediğinde 403 hatası döner.
+
+### İzinler Matrisi
+
+| Eylem | Oda Yöneticisi | Süper Yönetici | Normal Kullanıcı | Misafir |
+|-------|---------------|---------------|-----------------|---------|
+| Oda oluşturma | Evet | Evet | Evet | Hayır |
+| Odaya katılma | Evet | Evet | Evet | Evet |
+| Odaları listeleme | Evet | Evet | Evet | Evet |
+| Atma | Evet | Evet | Hayır | Hayır |
+| Sessize alma | Evet | Evet | Hayır | Hayır |
+| Video kapatma | Evet | Evet | Hayır | Hayır |
+
+## Hata Yanıtları
+
+Tüm hatalar tutarlı bir format izler:
+
+```json
+{
+  "error": "human-readable error message"
+}
+```
+
+### Oda Oluşturma Hataları
+
+| Durum | Hata Mesajı | Açıklama |
+|-------|-------------|----------|
+| 400 | `"Invalid request body"` | Hatalı biçimlendirilmiş JSON |
+| 400 | `"room name must contain only lowercase letters, numbers, and hyphens"` | İsim özel karakterler içeriyor (`#`, `@`, `_` vb.) |
+| 400 | `"room name must be at least 3 characters"` | İsim çok kısa |
+| 400 | `"room name must be at most 63 characters"` | İsim çok uzun |
+| 409 | `"a room with this name already exists"` | Yinelenen isim |
+| 500 | `"Failed to create media room"` | LiveKit sunucu hatası |
+| 500 | `"Failed to create room"` | Veritabanı hatası |
+
+### Genel Hatalar
+
+| Durum | Anlamı |
+|-------|--------|
+| 400 | Hatalı istek (eksik/geçersiz veri) |
+| 401 | Kimlik doğrulaması yapılmamış |
+| 403 | Yetkisiz (yönetici olmayan, yönetici eylemi deniyor) |
+| 404 | Oda bulunamadı |
+| 409 | Çakışma (yinelenen kaynak) |
+| 500 | İç sunucu hatası |
+
+---
+
+## Ayrıca bakınız
+
+- [Mimari Genel Bakış](/tr/docs/architecture/overview) - veri modeli ve toplantı bağlantı akışı
+- [API İşleyicileri](/tr/docs/backend/api-handlers) - oda uç noktalarının nasıl uygulandığı

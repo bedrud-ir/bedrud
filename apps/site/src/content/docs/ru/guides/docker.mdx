@@ -1,0 +1,157 @@
+---
+title: Руководство по Docker
+description: Запуск Bedrud с Docker
+order: 29
+---
+
+Bedrud предоставляет многоэтапный Dockerfile для сборки и запуска в контейнерах.
+
+## Быстрый старт
+
+```bash
+# Сборка
+docker build -t bedrud .
+
+# Запуск
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  bedrud
+```
+
+## Обзор Dockerfile
+
+Dockerfile использует три этапа для минимизации размера финального образа:
+
+### Этап 1: Сборка фронтенда
+
+```dockerfile
+FROM node:22-alpine AS frontend
+RUN npm install -g bun
+WORKDIR /build/apps/web
+COPY apps/web/package.json apps/web/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY apps/web/ ./
+RUN bun run build:embed
+```
+
+Устанавливает Bun, выполняет SSR пререндеринг React-приложения и копирует ассеты в `server/frontend/`.
+
+### Этап 2: Сборка сервера
+
+```dockerfile
+FROM golang:1.24-alpine AS backend
+RUN apk add --no-cache gcc musl-dev
+WORKDIR /build/server
+COPY server/go.mod server/go.sum ./
+RUN go mod download
+COPY server/ ./
+COPY --from=frontend /build/server/frontend ./frontend/
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /bedrud ./cmd/bedrud/main.go
+# CGO is required for SQLite (uses C bindings)
+```
+
+Компилирует Go-бинарник с встроенным фронтендом. CGO включён для поддержки SQLite.
+
+### Этап 3: Среда выполнения
+
+```dockerfile
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=backend /bedrud /usr/local/bin/bedrud
+EXPOSE 8090 7880
+ENTRYPOINT ["bedrud"]
+CMD ["run"]
+```
+
+Минимальный образ Alpine только с бинарником, CA-сертификатами и данными часовых поясов.
+
+## Порты
+
+| Порт | Сервис | Протокол |
+|------|---------|----------|
+| 8090 | API + Web UI | HTTP |
+| 7880 | LiveKit | WebSocket + HTTP |
+| 50000-60000 | RTC медиа | UDP |
+
+Для медиапотоков LiveKit также может потребоваться открыть диапазон UDP-портов RTC (по умолчанию: 50000-60000).
+
+## Тома
+
+Смонтируйте том для постоянных данных:
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v bedrud-data:/var/lib/bedrud \
+  bedrud
+```
+
+## Конфигурация
+
+Передайте файл пользовательской конфигурации:
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v /path/to/config.yaml:/etc/bedrud/config.yaml \
+  -v bedrud-data:/var/lib/bedrud \
+  bedrud run --config /etc/bedrud/config.yaml
+```
+
+Или используйте переменные окружения:
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -e JWT_SECRET=my-production-secret \
+  -e LIVEKIT_API_KEY=prodkey \
+  -e LIVEKIT_API_SECRET=prodsecret \
+  bedrud
+```
+
+## Готовые образы
+
+Docker-образы публикуются в GitHub Container Registry при каждом релизе:
+
+```bash
+# Последний релиз
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+
+# Определённая версия
+docker pull ghcr.io/bedrud-ir/bedrud:v1.0.0
+```
+
+## Пример Docker Compose
+
+```yaml
+services:
+  bedrud:
+    image: ghcr.io/bedrud-ir/bedrud:latest
+    ports:
+      - "8090:8090"
+      - "7880:7880"
+    volumes:
+      - bedrud-data:/var/lib/bedrud
+      - ./config.yaml:/etc/bedrud/config.yaml
+    environment:
+      - JWT_SECRET=change-me
+    restart: unless-stopped
+
+volumes:
+  bedrud-data:
+```
+
+---
+
+## См. также
+
+- [Справочник конфигурации](/ru/docs/getting-started/configuration) - полные параметры конфигурации и переменные окружения
+- [Руководство по развёртыванию](/ru/docs/guides/deployment) - продакшен-развёртывание с Docker

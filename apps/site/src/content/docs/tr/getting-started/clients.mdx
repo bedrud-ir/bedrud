@@ -1,0 +1,264 @@
+---
+title: İstemci Kurulumu
+description: Masaüstü ve mobil uygulamaları kurun
+order: 3
+---
+
+Katılmak için toplantı bağlantısını bir tarayıcıda açın - kurulum gerekmez. Yerel bir uygulama deneyimi için aşağıdan platformunuza uygun istemciyi kurun.
+
+---
+
+## Tarayıcı (Sıfır Kurulum)
+
+Toplantı URL'sini **Chrome**, **Firefox**, **Edge** veya **Safari**'de açın. Kamera ve mikrofon erişimi HTTPS gerektirir (sunucu yöneticiniz bunu halleder).
+
+İndirme gerekmez, eklenti gerekmez, konuk erişimi etkinse hesap gerekmez.
+
+---
+
+## Android
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="google-play">Google Play</TabsTrigger>
+    <TabsTrigger value="apk-sideload">APK (yan yükleme)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="google-play">
+
+    Google Play'de **Bedrud** arayın veya sunucu yöneticinizden doğrudan bağlantıyı takip edin.
+  </TabsContent>
+  <TabsContent value="apk-sideload">
+
+    En son APK'yı [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases/latest) sayfasından indirin:
+
+    ```bash
+    # Telefonunuza aktarın, ardından kurmak için açın
+    ```
+
+    Cihaz ayarlarınızda **Bilinmeyen kaynaklardan yükleme**'yi etkinleştirmeniz gerekebilir.
+  </TabsContent>
+</Tabs>
+
+---
+
+## iOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="app-store">App Store</TabsTrigger>
+    <TabsTrigger value="ipa-sideload">IPA (yan yükleme)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="app-store">
+
+    App Store'da **Bedrud** arayın veya sunucu yöneticinizden doğrudan bağlantıyı takip edin.
+  </TabsContent>
+  <TabsContent value="ipa-sideload">
+
+    En son IPA'yı [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases/latest) sayfasından indirin. AltStore veya benzer bir araçla yan yükleyin.
+  </TabsContent>
+</Tabs>
+
+---
+
+## Linux Masaüstü
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="appimage-recommended">AppImage (önerilen)</TabsTrigger>
+    <TabsTrigger value="flatpak">Flatpak</TabsTrigger>
+    <TabsTrigger value="snap">Snap</TabsTrigger>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+    <TabsTrigger value="portable-tarxz">Taşınabilir tar.xz</TabsTrigger>
+  </TabsList>
+  <TabsContent value="appimage-recommended">
+
+    Kurulum gerekmez. İndirin, çalıştırılabilir yapın, çalıştırın:
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
+    chmod +x bedrud-desktop-linux-x86_64.AppImage
+    ./bedrud-desktop-linux-x86_64.AppImage
+    ```
+
+    <Callout type="tip">
+        AppImage'ı uygulama başlatıcınıza entegre etmek için [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) kullanın.
+    </Callout>
+  </TabsContent>
+  <TabsContent value="flatpak">
+
+    ```bash
+    flatpak install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.flatpak
+    flatpak run ir.bedrud.Desktop
+    ```
+  </TabsContent>
+  <TabsContent value="snap">
+
+    ```bash
+    sudo snap install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="ubuntu-debian-apt">
+
+    Bedrud apt deposu sisteminizde zaten yapılandırılmışsa:
+
+    ```bash
+    sudo apt install bedrud-desktop
+    ```
+
+    Depo kurulumu için bkz. [Paket Kurulumu kılavuzu](/tr/docs/guides/packages).
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-desktop-bin
+    ```
+  </TabsContent>
+  <TabsContent value="fedora-rhel-dnf">
+
+    Bedrud DNF deposu zaten yapılandırılmışsa:
+
+    ```bash
+    sudo dnf install bedrud-desktop
+    ```
+
+    Depo kurulumu için bkz. [Paket Kurulumu kılavuzu](/tr/docs/guides/packages).
+  </TabsContent>
+  <TabsContent value="portable-tarxz">
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.tar.xz
+    tar xf bedrud-desktop-linux-x86_64.tar.xz
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## macOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="homebrew-recommended">Homebrew (önerilen)</TabsTrigger>
+    <TabsTrigger value="dmg-apple-silicon">Apple Silicon (.dmg)</TabsTrigger>
+    <TabsTrigger value="dmg-intel">Intel (.dmg)</TabsTrigger>
+    <TabsTrigger value="apple-silicon-arm64">Apple Silicon (tar.gz)</TabsTrigger>
+    <TabsTrigger value="intel-x8664">Intel (tar.gz)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="homebrew-recommended">
+
+    ```bash
+    brew tap bedrud-ir/bedrud
+    brew install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="dmg-apple-silicon">
+
+    DMG'yi [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases/latest) sayfasından indirin:
+
+    | Mimari | Dosya |
+    |---|---|
+    | Apple Silicon | `bedrud-desktop-macos-arm64.dmg` |
+
+    DMG'yi açın, Bedrud'u Uygulamalar'a sürükleyin. Gatekeeper uygulamayı engellerse, **Sistem Ayarları → Gizlilik ve Güvenlik**'e gidin ve **Yine de Aç**'a tıklayın.
+  </TabsContent>
+  <TabsContent value="dmg-intel">
+
+    DMG'yi [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases/latest) sayfasından indirin:
+
+    | Mimari | Dosya |
+    |---|---|
+    | Intel | `bedrud-desktop-macos-x86_64.dmg` |
+
+    DMG'yi açın, Bedrud'u Uygulamalar'a sürükleyin. Gatekeeper uygulamayı engellerse, **Sistem Ayarları → Gizlilik ve Güvenlik**'e gidin ve **Yine de Aç**'a tıklayın.
+  </TabsContent>
+  <TabsContent value="apple-silicon-arm64">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="intel-x8664">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="warning">
+    macOS derlemeleri **imzalanmamış** olabilir. Gatekeeper uygulamayı engellerse, yukarıdaki `xattr` komutunu çalıştırın veya **Sistem Ayarları → Gizlilik ve Güvenlik**'e gidip **Yine de Aç**'a tıklayın.
+</Callout>
+
+---
+
+## Windows
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="winget">WinGet</TabsTrigger>
+    <TabsTrigger value="chocolatey">Chocolatey</TabsTrigger>
+    <TabsTrigger value="nsis-installer">NSIS Kurucusu</TabsTrigger>
+    <TabsTrigger value="portable-zip">Taşınabilir .zip</TabsTrigger>
+  </TabsList>
+  <TabsContent value="winget">
+
+    ```powershell
+    winget install Bedrud.BedrudDesktop
+    ```
+  </TabsContent>
+  <TabsContent value="chocolatey">
+
+    ```powershell
+    choco install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="nsis-installer">
+
+    Kurucusu [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases/latest) sayfasından indirin:
+
+    | Mimari | Dosya |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64-setup.exe` |
+    | ARM64 | `bedrud-desktop-windows-arm64-setup.exe` |
+
+    Kurucusu çalıştırın. Uygulama Başlat Menüsü'nde ve Program Ekle/Kaldır'da görünür.
+  </TabsContent>
+  <TabsContent value="portable-zip">
+
+    [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases/latest) sayfasından indirin ve çıkarın:
+
+    | Mimari | Dosya |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64.zip` |
+    | ARM64 | `bedrud-desktop-windows-arm64.zip` |
+
+    Kurulum gerekmez - çıkarılan klasörden `bedrud-desktop.exe` dosyasını çalıştırın.
+  </TabsContent>
+</Tabs>
+
+---
+
+## Bir Sunucuya Bağlanma
+
+Masaüstü uygulamasını ilk açtığınızda bir sunucu URL'si istenir.
+
+1. Sunucu yöneticiniz tarafından sağlanan URL'yi girin (örn. `https://meet.example.com`)
+2. Bir hesap kaydedin veya giriş yapın
+3. Bir toplantı odası oluşturun veya katılın
+
+Masaüstü uygulaması **birden fazla sunucuya** bağlanmayı destekler. Daha fazlasını **Ayarlar**'dan ekleyin.
+
+---
+
+## Tüm İndirmeler
+
+Tüm istemci kurucuları ve ikili dosyaları [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases/latest) sayfasında mevcuttur.
+
+Tüm paket yöneticileri, depolar ve platformlar için tam referans için bkz. [Paket Kurulumu Kılavuzu](/tr/docs/guides/packages).

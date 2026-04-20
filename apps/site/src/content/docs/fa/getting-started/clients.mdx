@@ -1,0 +1,242 @@
+---
+title: نصب کلاینت
+description: نصب اپلیکیشن‌های دسکتاپ و موبایل
+order: 3
+---
+
+لینک جلسه را در مرورگر باز کنید تا بپیوندید - نصب لازم نیست. برای تجربه اپلیکیشن بومی، کلاینت را برای پلتفرم خود در زیر نصب کنید.
+
+---
+
+## مرورگر (بدون نصب)
+
+URL جلسه را در **Chrome**، **Firefox**، **Edge**، یا **Safari** باز کنید. دسترسی به دوربین و میکروفون نیاز به HTTPS دارد (ادمین سرور شما این را مدیریت می‌کند).
+
+بدون دانلود، بدون افزونه، بدون حساب مورد نیاز اگر دسترسی مهمان فعال باشد.
+
+---
+
+## Android
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="google-play">Google Play</TabsTrigger>
+    <TabsTrigger value="apk-sideload">APK (sideload)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="google-play">
+
+    در Google Play برای **Bedrud** جستجو کنید، یا لینک مستقیم را از ادمین سرور خود دنبال کنید.
+  </TabsContent>
+  <TabsContent value="apk-sideload">
+
+    آخرین APK را از [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) دانلود کنید:
+
+    ```bash
+    # به تلفن خود منتقل کنید، سپس برای نصب باز کنید
+    ```
+
+    ممکن است نیاز به فعال کردن **نصب از منابع ناشناخته** در تنظیمات دستگاه خود داشته باشید.
+  </TabsContent>
+</Tabs>
+
+---
+
+## iOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="app-store">App Store</TabsTrigger>
+    <TabsTrigger value="ipa-sideload">IPA (sideload)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="app-store">
+
+    در App Store برای **Bedrud** جستجو کنید، یا لینک مستقیم را از ادمین سرور خود دنبال کنید.
+  </TabsContent>
+  <TabsContent value="ipa-sideload">
+
+    آخرین IPA را از [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) دانلود کنید. با استفاده از AltStore یا ابزار مشابه sideload کنید.
+  </TabsContent>
+</Tabs>
+
+---
+
+## دسکتاپ Linux
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="appimage-recommended">AppImage (توصیه شده)</TabsTrigger>
+    <TabsTrigger value="flatpak">Flatpak</TabsTrigger>
+    <TabsTrigger value="snap">Snap</TabsTrigger>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+    <TabsTrigger value="portable-tarxz">Portable tar.xz</TabsTrigger>
+  </TabsList>
+  <TabsContent value="appimage-recommended">
+
+    نصب لازم نیست. دانلود کنید، قابل اجرا کنید، اجرا کنید:
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
+    chmod +x bedrud-desktop-linux-x86_64.AppImage
+    ./bedrud-desktop-linux-x86_64.AppImage
+    ```
+
+    <Callout type="tip">
+        برای ادغام AppImage در راه‌انداز اپلیکیشن خود، از [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) استفاده کنید.
+    </Callout>
+  </TabsContent>
+  <TabsContent value="flatpak">
+
+    ```bash
+    flatpak install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.flatpak
+    flatpak run ir.bedrud.Desktop
+    ```
+  </TabsContent>
+  <TabsContent value="snap">
+
+    ```bash
+    sudo snap install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="ubuntu-debian-apt">
+
+    اگر مخزن apt بدرود قبلاً روی سیستم شما پیکربندی شده است:
+
+    ```bash
+    sudo apt install bedrud-desktop
+    ```
+
+    برای تنظیم مخزن به [راهنمای نصب بسته](/fa/docs/guides/packages) ببینید.
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-desktop-bin
+    ```
+  </TabsContent>
+  <TabsContent value="fedora-rhel-dnf">
+
+    اگر مخزن DNF بدرود قبلاً پیکربندی شده است:
+
+    ```bash
+    sudo dnf install bedrud-desktop
+    ```
+
+    برای تنظیم مخزن به [راهنمای نصب بسته](/fa/docs/guides/packages) ببینید.
+  </TabsContent>
+  <TabsContent value="portable-tarxz">
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.tar.xz
+    tar xf bedrud-desktop-linux-x86_64.tar.xz
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## macOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="homebrew-recommended">Homebrew (توصیه شده)</TabsTrigger>
+    <TabsTrigger value="apple-silicon-arm64">Apple Silicon (arm64)</TabsTrigger>
+    <TabsTrigger value="intel-x8664">Intel (x86_64)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="homebrew-recommended">
+
+    ```bash
+    brew tap bedrud-ir/bedrud
+    brew install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="apple-silicon-arm64">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="intel-x8664">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="warning">
+    ساخت‌های macOS ممکن است **بدون امضا** باشند. اگر Gatekeeper اپلیکیشن را مسدود کرد، دستور `xattr` بالا را اجرا کنید، یا به **تنظیمات سیستم → حریم خصوصی و امنیت** بروید و **به هر حال باز کنید** را کلیک کنید.
+</Callout>
+
+---
+
+## Windows
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="winget">WinGet</TabsTrigger>
+    <TabsTrigger value="chocolatey">Chocolatey</TabsTrigger>
+    <TabsTrigger value="nsis-installer">نصب‌کننده NSIS</TabsTrigger>
+    <TabsTrigger value="portable-zip">Portable .zip</TabsTrigger>
+  </TabsList>
+  <TabsContent value="winget">
+
+    ```powershell
+    winget install Bedrud.BedrudDesktop
+    ```
+  </TabsContent>
+  <TabsContent value="chocolatey">
+
+    ```powershell
+    choco install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="nsis-installer">
+
+    نصب‌کننده را از [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) دانلود کنید:
+
+    | معماری | فایل |
+|---|---|
+| x86_64 | `bedrud-desktop-windows-x86_64-setup.exe` |
+| ARM64 | `bedrud-desktop-windows-arm64-setup.exe` |
+
+    نصب‌کننده را اجرا کنید. اپلیکیشن در منوی استارت و افزودن/حذف برنامه‌ها ظاهر می‌شود.
+  </TabsContent>
+  <TabsContent value="portable-zip">
+
+    دانلود و استخراج از [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest):
+
+    | معماری | فایل |
+|---|---|
+| x86_64 | `bedrud-desktop-windows-x86_64.zip` |
+| ARM64 | `bedrud-desktop-windows-arm64.zip` |
+
+    نصب لازم نیست - `bedrud-desktop.exe` را از پوشه استخراج شده اجرا کنید.
+  </TabsContent>
+</Tabs>
+
+---
+
+## اتصال به سرور
+
+وقتی برای اولین بار اپلیکیشن دسکتاپ را باز می‌کنید، از شما URL سرور درخواست می‌شود.
+
+۱. URL ارائه شده توسط ادمین سرور خود را وارد کنید (مثلاً `https://meet.example.com`)
+۲. ثبت‌نام کنید یا وارد شوید
+۳. اتاق جلسه ایجاد کنید یا به آن بپیوندید
+
+اپلیکیشن دسکتاپ اتصال به **چندین سرور** را پشتیبانی می‌کند. موارد بیشتر را در **تنظیمات** اضافه کنید.
+
+---
+
+## تمام دانلود‌ها
+
+همه نصب‌کننده‌ها و باینری‌های کلاینت در صفحه [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) موجود هستند.
+
+برای مرجع کامل همه مدیران بسته، مخازن و پلتفرم‌ها، به [راهنمای نصب بسته](/fa/docs/guides/packages) ببینید.

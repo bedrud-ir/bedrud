@@ -1,0 +1,171 @@
+---
+import { Icon } from "astro-icon/components";
+import { type Locale, t } from "../../i18n/utils";
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+
+type CellStatus = "win" | "neutral" | "lose" | "partial";
+
+const sections = [
+  {
+    key: "deployment",
+    rows: ["deploy", "ram", "install"] as const,
+  },
+  {
+    key: "features",
+    rows: [
+      "nativeClients",
+      "guestJoin",
+      "audioProcessing",
+      "screenShare",
+      "recording",
+    ] as const,
+  },
+  {
+    key: "integrations",
+    rows: ["sipIntegration", "whiteboard", "maxUsers"] as const,
+  },
+  {
+    key: "licensing",
+    rows: ["license", "communitySize"] as const,
+  },
+] as const;
+
+const allRows = sections.flatMap(section =>
+  section.rows.map(row => ({ section: section.key, row }))
+);
+
+const statusIconName: Record<CellStatus, string> = {
+  win: "lucide:check",
+  neutral: "lucide:minus",
+  partial: "lucide:minus",
+  lose: "lucide:x",
+};
+
+const statusIconClass: Record<CellStatus, string> = {
+  win: "size-3.5 shrink-0 text-emerald-500",
+  neutral: "size-3.5 shrink-0 text-muted-foreground/50",
+  partial: "size-3.5 shrink-0 text-amber-500",
+  lose: "size-3.5 shrink-0 text-muted-foreground/40",
+};
+
+const statusIconStrokeWidth: Record<CellStatus, string> = {
+  win: "2.5",
+  neutral: "2",
+  partial: "2",
+  lose: "2.5",
+};
+
+const cellStatuses: Record<
+  string,
+  { bedrud: CellStatus; jitsi: CellStatus; bbb: CellStatus }
+> = {
+  deploy: { bedrud: "win", jitsi: "lose", bbb: "lose" },
+  ram: { bedrud: "win", jitsi: "lose", bbb: "lose" },
+  install: { bedrud: "win", jitsi: "partial", bbb: "lose" },
+  nativeClients: { bedrud: "win", jitsi: "win", bbb: "lose" },
+  guestJoin: { bedrud: "win", jitsi: "win", bbb: "lose" },
+  audioProcessing: { bedrud: "win", jitsi: "neutral", bbb: "neutral" },
+  screenShare: { bedrud: "neutral", jitsi: "neutral", bbb: "neutral" },
+  recording: { bedrud: "neutral", jitsi: "partial", bbb: "win" },
+  sipIntegration: { bedrud: "lose", jitsi: "win", bbb: "win" },
+  whiteboard: { bedrud: "lose", jitsi: "lose", bbb: "win" },
+  maxUsers: { bedrud: "partial", jitsi: "win", bbb: "win" },
+  license: { bedrud: "win", jitsi: "win", bbb: "partial" },
+  communitySize: { bedrud: "partial", jitsi: "win", bbb: "win" },
+};
+
+function cellValue(row: string, col: "bedrud" | "jitsi" | "bbb"): string {
+  return t(lang, `comparison.rows.${row}${col.charAt(0).toUpperCase() + col.slice(1)}`);
+}
+---
+
+<section id="comparison" class="relative scroll-mt-20 section-y">
+  <div class="section-container">
+    <div class="max-w-lg">
+      <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
+        {t(lang, "comparison.title")}
+      </h2>
+      <p class="mt-4 text-lg text-muted-foreground">
+        {t(lang, "comparison.subtitle")}
+      </p>
+    </div>
+
+    <div class="relative mt-14 w-full rounded-2xl bg-card shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08),0px_2px_2px_rgba(0,0,0,0.04)] dark:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.1),0px_2px_2px_rgba(0,0,0,0.04)]">
+      <div class="w-full overflow-x-auto">
+        <table class="w-full caption-bottom text-sm">
+          <thead class="sticky top-0 z-20 bg-card [&_tr]:border-b">
+            <tr class="border-border/40 hover:bg-transparent">
+              <th class="h-10 px-4 text-start align-middle font-medium text-muted-foreground min-w-[140px] sticky left-0 z-10 bg-background border-e border-border" />
+              <th class="h-10 px-4 text-start align-middle font-medium text-muted-foreground p-5 text-[17px] font-semibold tracking-tight text-foreground">
+                {t(lang, "comparison.bedrud")}
+              </th>
+              <th class="h-10 px-4 text-start align-middle font-medium text-muted-foreground p-5 text-[17px] font-semibold tracking-tight text-foreground">
+                {t(lang, "comparison.jitsi")}
+              </th>
+              <th class="h-10 px-4 text-start align-middle font-medium text-muted-foreground p-5 text-[17px] font-semibold tracking-tight text-foreground">
+                {t(lang, "comparison.bbb")}
+              </th>
+            </tr>
+          </thead>
+          <tbody class="[&_tr:last-child]:border-0">
+            {allRows.map((item, index) => {
+              const statuses = cellStatuses[item.row];
+              const prevSection = index > 0 ? allRows[index - 1].section : null;
+              const showSectionHeader = item.section !== prevSection;
+
+              return (
+                <Fragment>
+                  {showSectionHeader && (
+                    <tr class="border-none hover:bg-transparent">
+                      <td
+                        colspan={4}
+                        class="bg-muted/50 p-4 align-middle pt-8 pb-3 text-sm font-semibold uppercase tracking-widest text-muted-foreground"
+                      >
+                        {t(lang, `comparison.sections.${item.section}`)}
+                      </td>
+                    </tr>
+                  )}
+                  <tr class="border-border/40 transition-colors hover:bg-muted/30">
+                    <td class="p-4 align-middle text-[15px] leading-relaxed text-muted-foreground sticky left-0 z-10 bg-background border-e border-border">
+                      {t(lang, `comparison.rows.${item.row}`)}
+                    </td>
+                    <td class="p-4 align-middle bg-primary/[0.07] border-s-2 border-primary/20">
+                      <span class="inline-flex items-center gap-2.5">
+                        <Icon name={statusIconName[statuses.bedrud]} class={statusIconClass[statuses.bedrud]} stroke-width={statusIconStrokeWidth[statuses.bedrud]} />
+                        <span class="font-mono text-[13px] font-medium text-foreground">
+                          {cellValue(item.row, "bedrud")}
+                        </span>
+                      </span>
+                    </td>
+                    <td class="p-4 align-middle">
+                      <span class="inline-flex items-center gap-2.5">
+                        <Icon name={statusIconName[statuses.jitsi]} class={statusIconClass[statuses.jitsi]} stroke-width={statusIconStrokeWidth[statuses.jitsi]} />
+                        <span class="font-mono text-[13px] font-medium text-foreground">
+                          {cellValue(item.row, "jitsi")}
+                        </span>
+                      </span>
+                    </td>
+                    <td class="p-4 align-middle">
+                      <span class="inline-flex items-center gap-2.5">
+                        <Icon name={statusIconName[statuses.bbb]} class={statusIconClass[statuses.bbb]} stroke-width={statusIconStrokeWidth[statuses.bbb]} />
+                        <span class="font-mono text-[13px] font-medium text-foreground">
+                          {cellValue(item.row, "bbb")}
+                        </span>
+                      </span>
+                    </td>
+                  </tr>
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div class="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-card to-transparent md:hidden" aria-hidden="true" />
+    </div>
+  </div>
+</section>

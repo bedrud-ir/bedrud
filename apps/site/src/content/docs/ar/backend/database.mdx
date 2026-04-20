@@ -1,0 +1,64 @@
+---
+title: قاعدة البيانات والنماذج
+description: نماذج البيانات ومخطط قاعدة البيانات
+order: 17
+---
+
+يستخدم Bedrud **GORM** كأداة ORM، ويدعم كلًا من SQLite و PostgreSQL.
+
+## قواعد البيانات المدعومة
+- **SQLite:** يُستخدم افتراضيًا لسهولة التطوير والتركيبات الصغيرة. تُخزَّن قاعدة البيانات في ملف (عادةً `bedrud.db`).
+- **PostgreSQL:** مُوصى به لبيئات الإنتاج ذات المستخدمين الكثيرين.
+
+يمكنك تهيئة نوع قاعدة البيانات وتفاصيل الاتصال في ملف `config.yaml` تحت قسم `database:`.
+
+## النماذج الأساسية
+
+تقع النماذج في `internal/models/`. إليك أهمها:
+
+### المستخدم (`user.go`)
+
+يخزّن معلومات الحساب بما في ذلك بيانات الاعتماد والأدوار.
+
+### الغرفة (`room.go`)
+تمثل جلسة اجتماع. تستخدم **البنى المدمجة** في GORM لتنظيم الإعدادات.
+بدلاً من جدول منفصل أو كتلة JSON، تُخزَّن حقول `RoomSettings` (مثل `allow_chat`، `allow_video`) مباشرة في جدول `rooms` مع بادئة `settings_` (مثلاً `settings_allow_chat`). هذا يوفر نموذجًا نظيفًا في Go مع الحفاظ على بنية قاعدة بيانات مسطحة وعالية الأداء.
+
+### مفتاح المرور (`passkey.go`)
+
+يخزّن المفاتيح العامة FIDO2/WebAuthn لتسجيل الدخول بدون كلمة مرور.
+
+### أنواع مخصصة: `StringArray`
+
+تتعامل قواعد بيانات SQL القياسية مع المصفوفات بشكل مختلف (PostgreSQL لديها مصفوفات أصلية، SQLite لا). للحفاظ على التوافق، يُعرّف Bedrud نوع `StringArray` في `internal/models/user.go`.
+
+- يُنفّذ `sql.Scanner` و `driver.Valuer`.
+- في **PostgreSQL**، يستخدم النوع الأصلي `text[]`.
+- في **SQLite**، يُحوّل المصفوفة إلى سلسلة نصية (مثلاً `{admin,user}`) للتخزين.
+
+### إدارة المفاتيح الأجنبية
+
+لا يتعامل `AutoMigrate` في GORM مع المفاتيح الأساسية المركبة (مثلاً `room_participants`).
+
+في `internal/database/migrations.go`، ينفّذ Bedrud عبارات `ALTER TABLE` يدويًا لضمان تطبيق قيود المفاتيح الأجنبية (مثل `ON DELETE CASCADE`) بشكل صحيح في الإنتاج (PostgreSQL).
+
+## نمط المستودع
+
+تستخدم الخلفية **نمط المستودع** للوصول إلى قاعدة البيانات. المعالجات لا تستدعي GORM مباشرة - بل تستخدم مستودعًا.
+
+مثال:
+```go
+// In handler:
+user, err := h.userRepo.GetByEmail(email)
+
+// In repository:
+func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+    var user models.User
+    err := r.db.Where("email = ?", email).First(&user).Error
+    return &user, err
+}
+```
+
+## التهييرات التلقائية
+
+عند بدء الخادم، يشغّل "AutoMigrate" تلقائيًا. هذا ينشئ أو يُحدّث جداول قاعدة البيانات بناءً على بنى Go في `internal/models`. لا حاجة لعبارات `CREATE TABLE` يدوية للتغييرات البسيطة على المخطط.

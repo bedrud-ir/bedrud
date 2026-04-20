@@ -1,0 +1,18 @@
+---
+import { Icon } from "astro-icon/components";
+import { type Locale, t } from "../../i18n/utils";
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+---
+
+<a
+  href={`/${lang}/blog`}
+  class="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+>
+  <Icon name="lucide:arrow-left" class="size-4" />
+  {t(lang, "blog.backToBlog")}
+</a>

@@ -1,4 +1,4 @@
-.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android dev-desktop build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim build-desktop deploy test-back push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open clean full-clean
+.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android dev-desktop dev-site build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim build-desktop build-site deploy test-back push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open clean full-clean
 
 GREEN  := \033[0;32m
 RED    := \033[0;31m
@@ -18,6 +18,7 @@ help:
 	@echo "  dev-livekit          Run local LiveKit server"
 	@echo "  dev-ios              Open iOS project in Xcode"
 	@echo "  dev-android          Open Android project in Android Studio"
+	@echo "  dev-site             Run Astro site dev server"
 	@echo ""
 	@echo "API Docs:"
 	@echo "  swagger-gen          Regenerate Swagger docs from annotations (requires swag)"
@@ -29,6 +30,7 @@ help:
 	@echo "  build-front          Build frontend only"
 	@echo "  build-back           Build backend only"
 	@echo "  build-dist           Build production linux/amd64 tarball"
+	@echo "  build-site           Build Astro site (SSG)"
 	@echo ""
 	@echo "Local (Single Binary):"
 	@echo "  local-build          Build frontend+backend into one binary"
@@ -99,6 +101,7 @@ init:
 	fi
 	@# 5. Install frontend and backend dependencies
 	cd apps/web && bun install
+	cd apps/site && bun install
 	cd server && go mod tidy && go mod download
 	@echo "\n✅ Bedrud is ready! Run 'make dev' to start."
 
@@ -145,6 +148,10 @@ dev-ios:
 # Open Android project in Android Studio
 dev-android:
 	open -a "Android Studio" "$(CURDIR)/apps/android"
+
+# Run Astro site dev server
+dev-site:
+	cd apps/site && bun run dev
 
 # Build frontend
 build-front:
@@ -215,6 +222,10 @@ dev-desktop:
 # Build optimised desktop release binary
 build-desktop:
 	cargo build -p bedrud-desktop --release
+
+# Build Astro site (SSG)
+build-site:
+	cd apps/site && bun run build
 
 # Build iOS for simulator (debug)
 build-ios-sim:
@@ -293,6 +304,7 @@ clean:
 	@find server/frontend -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
 	@rm -rf apps/android/app/build/
 	@rm -rf apps/ios/build/
+	@rm -rf apps/site/dist/
 	@rm -rf target/
 	@echo "✅ Clean complete"
 
@@ -300,6 +312,7 @@ clean:
 full-clean: clean
 	@echo "➜ Removing installed dependencies..."
 	@rm -rf apps/web/node_modules/
+	@rm -rf apps/site/node_modules/
 	@rm -rf apps/android/.gradle/
 	@rm -rf apps/android/build/
 	@cd server && go clean -modcache 2>/dev/null || true

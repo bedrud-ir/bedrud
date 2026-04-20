@@ -1,0 +1,132 @@
+---
+title: Server Architecture
+description: Backend server design et components
+order: 7
+---
+
+Le Bedrud server est une Go application qui fournit la REST API, sert l'embedded web frontend, et gère le LiveKit media server.
+
+## Technology Stack
+
+| Technology | Purpose |
+|-----------|---------|
+| Go 1.24 | Core language |
+| Fiber v2 | Web framework (Express-like) |
+| GORM | ORM pour SQLite et PostgreSQL |
+| LiveKit Protocol SDK | WebRTC room et token management |
+| Zerolog | Structured JSON logging |
+| Goth | Multi-provider OAuth2 |
+| go-passkeys | FIDO2/WebAuthn support |
+| golang-jwt | JWT token creation et validation |
+| gocron | Background job scheduling |
+| Swagger (swaggo) | API documentation generation |
+
+## Directory Structure
+
+```
+server/
+├── cmd/
+│   ├── server/main.go        # Development entry point
+│   └── bedrud/main.go        # Production entry point (avec install/livekit flags)
+├── internal/
+│   ├── auth/                  # Authentication services
+│   │   ├── auth.go            # Core auth service (register, login, OAuth)
+│   │   ├── jwt.go             # JWT token creation et validation
+│   │   └── session_store.go   # Gorilla session store pour OAuth state
+│   ├── database/              # Database initialization et migrations
+│   ├── handlers/              # HTTP request handlers (controller layer)
+│   │   ├── auth_handler.go    # Auth endpoints
+│   │   ├── room.go            # Room endpoints
+│   │   └── users.go           # User management endpoints
+│   ├── middleware/             # Fiber middleware
+│   │   └── auth.go            # JWT validation, permission checks
+│   ├── models/                # GORM models (database schemas)
+│   │   ├── user.go            # User model
+│   │   ├── room.go            # Room model
+│   │   └── passkey.go         # Passkey model
+│   ├── repository/            # Data access layer (SQL via GORM)
+│   │   ├── user_repository.go
+│   │   ├── room_repository.go
+│   │   └── passkey_repository.go
+│   ├── livekit/               # Embedded LiveKit server management
+│   ├── scheduler/             # Background job scheduling
+│   └── utils/                 # TLS et autres utilities
+├── frontend/                  # Embedded web frontend (populated au build time)
+├── config.yaml                # Development configuration
+├── livekit.yaml               # Development LiveKit configuration
+├── go.mod
+└── go.sum
+```
+
+## Layered Architecture
+
+Le serveur suit une three-layer architecture :
+
+```mermaid
+flowchart TB
+    HTTP[HTTP Request] --> Middleware
+    Middleware["Middleware<br/>JWT validation, CORS, logging"] --> Handlers
+    Handlers["Handlers<br/>Parse requests, call services, format responses"] --> Services
+    Services["Services<br/>Business logic (auth, room management)"] --> Repository
+    Repository["Repository<br/>Database queries via GORM"] --> Database
+    Database["Database<br/>SQLite (dev) or PostgreSQL (production)"]
+```
+
+## Key Patterns
+
+### Embedded Frontend
+
+Le web frontend est compilé à static files et embedded dans le Go binary en utilisant `//go:embed` :
+
+```go
+//go:embed frontend/*
+var frontendFS embed.FS
+```
+
+Au build time, `bun run build:embed` SSR pre-renders la React app et copies `dist/client/` dans `server/frontend/`. Le Go compiler then bundles it dans le binary. Le Fiber server sert ces files pour n'importe quelle non-API route.
+
+### JWT Authentication
+
+Le middleware extrait le JWT depuis le `Authorization: Bearer <token>` header, le valide, et attache le user context à la request. Protected routes utilisent `RequireAccess` middleware pour check user roles.
+
+### LiveKit Token Generation
+
+Quand un user rejoint une room, le serveur :
+
+1. Valide les room permissions
+2. Crée un LiveKit access token signé avec le API secret
+3. Returns le token au client
+4. Le client se connecte directement à LiveKit en utilisant le token
+
+### Swagger Documentation
+
+L'API documentation est auto-générée depuis code annotations en utilisant swaggo. En développement, elle est available à `/api/swagger/`.
+
+## Database
+
+### SQLite (Default)
+
+Pour le développement et les small deployments, Bedrud utilise SQLite. Le database file est stocké au configured `database.path` (default : `data.db`).
+
+### PostgreSQL
+
+Pour la production avec higher concurrency requirements, configurez une PostgreSQL connection string. GORM handles les deux dialects transparently.
+
+### Migrations
+
+GORM auto-migrates le schema au startup basé sur les model structs. Les models sont defined dans `internal/models/`.
+
+## Background Jobs
+
+Le `gocron` scheduler runs periodic tasks tels que :
+- Cleaning up expired refresh tokens
+- Removing stale room participants
+
+---
+
+## See also
+
+- [Backend Code Structure](/fr/docs/backend/structure) - directory map et coding standards
+- [API Handlers](/fr/docs/backend/api-handlers) - routing et request lifecycle
+- [Database et Models](/fr/docs/backend/database) - GORM models et repository pattern
+- [Authentication Flow](/fr/docs/backend/authentication) - JWT, OAuth, et passkey internals

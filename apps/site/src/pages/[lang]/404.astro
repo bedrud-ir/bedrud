@@ -1,0 +1,36 @@
+---
+import Base from "~/layouts/Base.astro";
+import { t, getDir, type Locale, isValidLocale, supportedLocales } from "~/i18n/utils";
+
+export function getStaticPaths() {
+  return supportedLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang: rawLang } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+const title = t(lang, "notFound.title");
+const description = t(lang, "notFound.description");
+const backToHome = t(lang, "notFound.backToHome");
+---
+
+<Base title={title} description={description}>
+  <main class="min-h-screen flex flex-col items-center justify-center px-4 text-center" dir={getDir(lang)}>
+    <div class="max-w-2xl">
+      <h1 class="text-6xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        404
+      </h1>
+      <h2 class="text-3xl font-bold mb-6 text-gray-900 dark:text-gray-100">
+        {title}
+      </h2>
+      <p class="text-xl text-gray-600 dark:text-gray-400 mb-8">
+        {description}
+      </p>
+      <a
+        href={`/${lang}`}
+        class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+      >
+        {backToHome}
+      </a>
+    </div>
+  </main>
+</Base>

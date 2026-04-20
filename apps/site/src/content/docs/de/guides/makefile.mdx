@@ -1,0 +1,138 @@
+---
+title: Makefile-Referenz
+description: Build-Automatisierungsbefehle
+order: 31
+---
+
+Das root-`Makefile` ist das zentrale Build-Orchestrierungstool für das Bedrud-Monorepo. Es bietet Befehle für Entwicklung, Building und Bereitstellung auf allen Plattformen.
+
+## Verwendung
+
+```bash
+make <target>
+make help       # Show all available targets
+```
+
+## Entwicklungs-Targets
+
+| Target | Beschreibung |
+|--------|-------------|
+| `make init` | Alle Abhängigkeiten installieren (Web + Server) |
+| `make dev` | LiveKit + Server + Web gleichzeitig ausführen |
+| `make dev-web` | Nur den Frontend-Dev-Server ausführen |
+| `make dev-server` | Nur den Backend-Server ausführen |
+| `make dev-livekit` | Lokalen LiveKit-Server ausführen |
+| `make dev-ios` | iOS-Projekt in Xcode öffnen |
+| `make dev-android` | Android-Projekt in Android Studio öffnen |
+
+### `make init`
+
+Installiert Abhängigkeiten für sowohl das Web-Frontend als auch den Go-Server:
+
+```bash
+cd apps/web && bun install
+cd server && go mod tidy && go mod download
+```
+
+### `make dev`
+
+Startet alle drei Entwicklungsdienste gleichzeitig. Drücken Sie `Ctrl+C`, um alle zu stoppen:
+
+- **LiveKit** unter `localhost:7880`
+- **Server** unter `localhost:8090`
+- **Web** unter `localhost:3000`
+
+## Build-Targets
+
+| Target | Beschreibung |
+|--------|-------------|
+| `make build` | Frontend + Backend erstellen (eingebettet) |
+| `make build-front` | Nur Frontend erstellen |
+| `make build-back` | Nur Backend erstellen |
+| `make build-dist` | Produktions-Tarball für linux/amd64 erstellen |
+
+### `make build`
+
+Vollständiger Produktions-Build:
+
+1. Führt `bun run build:embed` aus - SSR-prerendert die React-App und kopiert Assets nach `server/frontend/`
+2. Erstellt das Go-Binary mit dem eingebetteten Frontend
+
+Ausgabe: `server/dist/bedrud`
+
+### `make build-dist`
+
+Erstellt ein komprimiertes, produktionsbereites Distributionspaket:
+
+1. Führt `make build` aus
+2. Cross-Kompilierung für `linux/amd64` mit entfernten Debug-Symbolen
+3. Erstellt `dist/bedrud_linux_amd64.tar.xz`
+
+## Android-Targets
+
+| Target | Beschreibung |
+|--------|-------------|
+| `make build-android-debug` | Debug-APK erstellen |
+| `make build-android` | Release-APK erstellen (erfordert Keystore) |
+| `make install-android` | Release-APK auf verbundenem Gerät installieren |
+| `make release-android` | Build + Release-APK installieren |
+
+### APK-Ausgabepfade
+
+- Debug: `apps/android/app/build/outputs/apk/debug/app-debug.apk`
+- Release: `apps/android/app/build/outputs/apk/release/app-release.apk`
+
+## iOS-Targets
+
+| Target | Beschreibung |
+|--------|-------------|
+| `make build-ios` | iOS-Archiv erstellen (Release) |
+| `make export-ios` | IPA aus Archiv exportieren |
+| `make build-ios-sim` | Für iOS-Simulator erstellen (Debug) |
+
+### Ausgabepfade
+
+- Archiv: `apps/ios/build/Bedrud.xcarchive`
+- IPA: `apps/ios/build/export/Bedrud.ipa`
+
+## Deploy-Target
+
+| Target | Beschreibung |
+|--------|-------------|
+| `make deploy ARGS=...` | Das Bereitstellungs-CLI-Tool ausführen |
+
+### Beispiel
+
+```bash
+make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
+```
+
+Dies führt das Python-CLI unter `tools/cli/bedrud.py` mit den angegebenen Argumenten aus.
+
+## Bereinigungs-Targets
+
+| Target | Beschreibung |
+|--------|-------------|
+| `make clean` | Build-Artefakte und kompilierte Binaries entfernen |
+| `make full-clean` | Artefakte + alle installierten Abhängigkeiten entfernen |
+
+### `make clean`
+
+Entfernt:
+
+- `dist/` - Distributions-Tarballs
+- `server/dist/` - Kompiliertes Server-Binary
+- `apps/web/dist/` - React-Build-Ausgabe
+- `server/frontend/`-Inhalte - Eingebettete Frontend-Assets
+- `apps/android/app/build/` - Android-Build-Ausgaben
+- `apps/ios/build/` - iOS-Build-Ausgaben
+
+### `make full-clean`
+
+Alles was `clean` tut, plus:
+
+- `apps/web/node_modules/`
+- `apps/android/.gradle/`
+- Go-Modul-Cache (`go clean -modcache`)
+
+Führen Sie danach `make init` aus, um die Abhängigkeiten erneut zu installieren.

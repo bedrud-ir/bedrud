@@ -1,0 +1,67 @@
+---
+title: Advanced Topics
+description: Advanced backend features
+order: 22
+---
+
+本文档介绍了 Bedrud 单二进制架构背后的内部技术决策。
+
+## 1. Fiber 到标准库的桥接
+Bedrud 使用 **Fiber** 以获得高性能，但某些依赖如 **Goth**（OAuth）和 **LiveKit SDK**（Twirp）需要标准 Go 的 `http.ResponseWriter` 和 `http.Request`。
+
+为了桥接这两个世界，Bedrud 在 `internal/handlers/auth.go` 中实现了**适配器模式**：
+
+### `responseWriter` 适配器
+```go
+type responseWriter struct {
+    ctx     *fiber.Ctx
+    headers http.Header
+    status  int
+}
+```
+此结构体实现了 `http.ResponseWriter` 接口。当标准库函数（如 Goth）调用 `Header().Add()` 时，适配器将其存储在本地 `headers` 映射中。当调用 `WriteHeader()` 时，它会手动将所有头部信息复制回 **Fiber 上下文**。
+
+### 目的
+它允许 Bedrud 保持极高的性能（使用 Fiber），同时与标准 Go Web 库的庞大生态系统保持完全兼容。
+
+## 2. LiveKit 反向代理
+Bedrud 通过将所有媒体信令路由到主端口来避免端口管理问题。
+
+### 工作原理：
+
+1.  **检测：** 如果 `LIVEKIT_INTERNAL_HOST` 指向 `127.0.0.1`，Bedrud 启动内部媒体引擎。
+2.  **挂载：** 在 `/livekit` 路由上挂载 `httputil.NewSingleHostReverseProxy`。
+3.  **路径剥离：** 使用自定义 **Director** 函数去除 `/livekit` 前缀，使媒体服务器收到请求时如同在根路径一样。
+4.  **WebSocket 支持：** 由于代理通过 `adaptor.HTTPHandler` 操作底层 TCP 流，它原生支持 LiveKit 用于实时信令的 WebSocket。
+
+## 3. 存储效率：Embedded Structs
+Bedrud 大量使用 GORM 的 `embedded` 标签来保持数据库 schema 的扁平和优化。
+
+**`models/room.go` 中的示例：**
+```go
+type Room struct {
+    ID       string       `gorm:"primaryKey"`
+    Settings RoomSettings `gorm:"embedded;embeddedPrefix:settings_"`
+}
+```
+这使得 GORM 直接在 `rooms` 表中创建如 `settings_allow_chat` 的列。这比 `JOIN` 更快，比 `JSON` 字段更具可搜索性。
+
+## 4. 测试基础设施
+Bedrud 使用 `internal/testutil` 包遵循"数据库优先"的测试策略。
+
+### `SetupTestDB` 逻辑：
+
+- 为每个测试创建一个唯一的 **SQLite 内存** 数据库。
+- 自动运行所有迁移。
+- 提供干净的测试环境，确保测试的确定性和并行执行能力。
+
+运行后端测试：
+```bash
+go test ./internal/...
+```
+
+## 5. 安全性：令牌轮换与撤销
+与简单的 JWT 实现不同，Bedrud 在每次刷新时**同时**轮换两个令牌。
+
+- **Refresh Token 重用检测：** 一旦 refresh token 被用于获取新的令牌对，它就会被阻止。
+- **清理机制：** `BlockedRefreshToken` 表确保即使 refresh token 被盗，在用户正常登出或刷新会话后也无法使用。

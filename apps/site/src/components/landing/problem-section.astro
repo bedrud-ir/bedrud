@@ -1,0 +1,60 @@
+---
+import { Icon } from "astro-icon/components";
+import { type Locale, t } from "../../i18n/utils";
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+
+const cards = [
+  {
+    key: "perSeatPricing",
+    icon: "lucide:alert-triangle",
+    color: "text-rose-600 dark:text-rose-400",
+    bg: "bg-rose-500/10 dark:bg-rose-500/15",
+  },
+  {
+    key: "vendorLockIn",
+    icon: "lucide:lock",
+    color: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-500/10 dark:bg-amber-500/15",
+  },
+  {
+    key: "selfHostedNightmare",
+    icon: "lucide:server-crash",
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-500/10 dark:bg-blue-500/15",
+  },
+] as const;
+---
+
+<section id="problem" class="relative scroll-mt-20 section-y">
+  <div class="section-container">
+    <div class="mx-auto max-w-2xl text-center" data-animate="fade-up">
+      <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
+        {t(lang, "problem.title")}
+      </h2>
+      <p class="mt-4 text-lg text-muted-foreground">
+        {t(lang, "problem.subtitle")}
+      </p>
+    </div>
+
+    <div class="mt-14 grid gap-5 sm:grid-cols-3">
+      {cards.map(({ key, icon, color, bg }, i) => (
+        <div data-animate="fade-up" style={`transition-delay: ${(i + 1) * 80}ms`} class="group relative rounded-2xl bg-card p-7 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08)] transition-[shadow] duration-300 hover:shadow-[0px_0px_0px_1px_rgba(0,0,0,0.12),0px_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.1)] dark:hover:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.14),0px_2px_4px_rgba(0,0,0,0.2)] sm:p-8">
+          <div class={`inline-flex size-11 items-center justify-center rounded-xl ${bg}`}>
+            <Icon name={icon} class={`size-5 ${color}`} stroke-width="1.5" />
+          </div>
+          <h3 class="mt-5 text-[17px] font-semibold tracking-tight">
+            {t(lang, `problem.${key}.title`)}
+          </h3>
+          <p class="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+            {t(lang, `problem.${key}.description`)}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

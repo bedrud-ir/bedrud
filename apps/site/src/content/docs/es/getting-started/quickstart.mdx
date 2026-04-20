@@ -1,0 +1,256 @@
+---
+title: Inicio Rápido
+description: Implementa Bedrud y únete a una reunión de video en menos de 5 minutos
+order: 1
+---
+
+Implementa Bedrud y únete a una reunión de video en menos de 5 minutos.
+
+**En esta guía:**
+
+1. **Obtener la CLI** — instalación en un solo comando (o descarga manual)
+2. **Implementar el servidor** — `bedrud install` configura todo
+3. **Verificar** — confirma que los servicios están en ejecución
+4. **Crear administrador y unirse** — abre el navegador, promuévete a administrador, inicia la reunión
+
+**Más información:**
+
+- [CLI Installer](/es/docs/getting-started/cli-installer) — flags, plataformas, instalaciones sin conexión
+- [Instalación](/es/docs/getting-started/installation) — gestores de paquetes, Docker, opciones avanzadas
+- [Configuración](/es/docs/getting-started/configuration) — puertos, base de datos, autenticación, TURN
+
+> **Un solo binario, sin internet necesario después de la descarga.** Incluye un servidor de medios integrado y SQLite: funciona en redes aisladas. Transfiere el archivo, ejecuta un comando, listo.
+
+---
+
+## Lo que Necesitas
+
+| Requisito | Detalles |
+|-----------|---------|
+| Un servidor Linux | amd64 o arm64, con acceso `sudo` y `systemd`. macOS/Windows: usa Docker o WSL2 para el servidor |
+| Puertos abiertos | `8090`, `7880`, `50000–60000/udp`. Para TLS automático: también `80` y `443` |
+| Un dominio (opcional) | Con registro DNS A que apunte a tu servidor. ¿Sin dominio? Funciona con IP - consulta las alternativas a continuación |
+
+> **Cómo funciona:** Ejecutas un **servidor** Bedrud. Las personas se unen a reuniones en su **navegador** (sin instalación) o a través de **aplicaciones nativas** (Android, Windows, macOS, Linux).
+
+---
+
+## 1. Obtener la CLI de Bedrud
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="macos-linux">macOS / Linux</TabsTrigger>
+    <TabsTrigger value="windows">Windows (PowerShell)</TabsTrigger>
+    <TabsTrigger value="manual">Descarga manual</TabsTrigger>
+  </TabsList>
+  <TabsContent value="macos-linux">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    Recarga tu shell después de la instalación:
+
+    ```bash
+    source ~/.bashrc  # o ~/.zshrc
+    ```
+
+    Verifica:
+
+    ```bash
+    bedrud --version
+    ```
+
+    Para flags (`--version`, `--install-dir`, `--skip-shell`, instalaciones sin conexión), consulta [CLI Installer](/es/docs/getting-started/cli-installer).
+  </TabsContent>
+  <TabsContent value="windows">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    ```
+
+    Cierra y vuelve a abrir tu terminal, luego verifica:
+
+    ```powershell
+    bedrud --version
+    ```
+  </TabsContent>
+  <TabsContent value="manual">
+
+    Descarga y extrae manualmente. Reemplaza `linux_amd64` con tu plataforma (`linux_arm64`, `darwin_amd64`, `darwin_arm64`):
+
+    ```bash
+    curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+    tar -xJf bedrud.tar.xz
+    chmod +x bedrud
+    sudo mv bedrud /usr/local/bin/
+    ```
+
+    Para todas las plataformas, consulta [CLI Installer](/es/docs/getting-started/cli-installer#platform-targets).
+
+    > **¿Sin internet en el servidor?** Descarga en cualquier máquina, transfiere vía USB o `scp bedrud.tar.xz usuario@servidor:/tmp/`, luego extrae allí. El binario es completamente autónomo: cero solicitudes salientes después de la transferencia.
+
+    > **¿La descarga falló?** Verifica el acceso a internet, o verifica la URL en [github.com/bedrud-ir/bedrud/releases](https://github.com/bedrud-ir/bedrud/releases/latest).
+  </TabsContent>
+</Tabs>
+
+---
+
+## 2. Implementar el servidor
+
+> **La configuración del servidor requiere Linux con systemd.** macOS y Windows no soportan `bedrud install` directamente — usa [Docker](#docker) o [WSL2](#sistemas-no-linux) en su lugar.
+
+Reemplaza `meet.example.com` y `admin@example.com` con tus valores:
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com --email admin@example.com
+```
+
+Instala el binario del servidor en `/usr/local/bin`, genera configuración, crea servicios systemd, aprovisiona TLS, inicia todo.
+
+> **¿Puerto 80 o 443 ocupado?** Detén servicios en conflicto: `sudo systemctl stop nginx apache2 caddy`, luego vuelve a ejecutar.
+
+> **¿Sin dominio?** Usa la IP de tu servidor en su lugar:
+> ```bash
+> sudo ./bedrud install --tls --ip 1.2.3.4
+> ```
+> Esto usa un certificado autofirmado. Los navegadores advertirán pero el video funciona. Para certificados de confianza en redes internas, consulta [Guía de TLS Interno](/es/docs/guides/internal-tls).
+
+---
+
+## 3. Verificar
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+```
+
+Esperado: `200`
+
+> **¿No es 200?** Verifica el estado del servicio: `sudo systemctl status bedrud livekit`. Verifica los registros: `journalctl -u bedrud -u livekit --no-pager -n 50`.
+
+---
+
+## 4. Registrar y Crear Administrador
+
+Abre `https://meet.example.com` (o `https://<tu-ip>:8090`) en tu navegador:
+
+<CreateAdmin createOption />
+
+3. Inicia sesión (o recarga) - la sección **Admin** aparece en la barra lateral (Visión general, Usuarios, Salas, Configuración). Éxito: eres administrador.
+4. **Crea una sala** → **Únete** → **Compartir video/audio** - otorga permisos de cámara/micrófono cuando se te solicite
+
+> **Panel de administración** - Después de promocionar, inicia sesión para acceder al panel de administración en `/dashboard/admin`. Gestiona usuarios, salas, configuración del sistema y tokens de invitación.
+
+> **Referencia de CLI** - Gestión completa de usuarios: `bedrud user promote`, `demote`, `create`, `delete`.
+
+**Clientes nativos** para Android, Windows, macOS y Linux: [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest). O comparte el enlace de la reunión: los participantes se unen desde cualquier navegador.
+
+---
+
+## Rutas de Instalación Alternativas
+
+### Docker
+
+```bash
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+Configuración personalizada, Docker Compose y variables de entorno: consulta [Guía de Docker](/es/docs/guides/docker).
+
+### Compilar desde el Código Fuente
+
+Requiere [Go 1.24+](https://go.dev/dl/) y [Bun](https://bun.sh/):
+
+```bash
+git clone https://github.com/bedrud-ir/bedrud.git
+cd bedrud
+make init
+make local-run
+```
+
+`make init` instala LiveKit, crea configuración, obtiene dependencias. `make local-run` compila e inicia en `http://localhost:8090`.
+
+### HTTP Simple (solo desarrollo / localhost)
+
+```bash
+sudo ./bedrud install --ip 127.0.0.1
+```
+
+> **Advertencia:** Los navegadores bloquean cámara/micrófono en sitios no HTTPS excepto en `localhost`. HTTP es solo para desarrollo.
+
+### Sistemas No Linux
+
+El comando `bedrud install` configura servicios systemd y es solo para Linux. El instalador CLI (paso 1) funciona en cualquier plataforma y coloca el binario en PATH. Para la configuración del servidor, usa Docker o WSL2.
+
+| SO      | Cómo                                                     |
+|---------|---------------------------------------------------------|
+| macOS   | El instalador CLI se instala automáticamente en `~/bin/`                 |
+| Windows | El instalador CLI se instala automáticamente en `%USERPROFILE%\bin\`     |
+| Docker  | Funciona en cualquier SO con Docker (ver arriba)                 |
+
+---
+
+## Redes Internas
+
+¿Sin dominio público o internet saliente? Consulta [Guía de TLS Interno](/es/docs/guides/internal-tls) para configuración de CA privada y configuración del almacén de confianza del cliente.
+
+---
+
+## Configuración
+
+El instalador genera `/etc/bedrud/config.yaml`. Los valores predeterminados funcionan para la mayoría de configuraciones.
+Cambia `jwtSecret` y `sessionSecret` para producción, luego reinicia:
+
+```bash
+sudo systemctl restart bedrud livekit
+```
+
+Para ajustar la capacidad de salas, tiempos de espera o puertos de medios, consulta [sección LiveKit en Configuración](/es/docs/getting-started/configuration#livekit-configuration).
+
+Referencia completa: [Configuración](/es/docs/getting-started/configuration)
+
+---
+
+## Solución de Problemas
+
+| Problema | Solución |
+|----------|----------|
+| Puerto 80/443 en uso | `sudo systemctl stop nginx apache2 caddy` |
+| Los servicios no inician | `journalctl -u bedrud -u livekit --no-pager -n 50` |
+| Errores de certificado TLS | Verifica DNS: `dig meet.example.com`. Debe apuntar a la IP del servidor |
+| Sin video / WebRTC falló | Se requiere HTTPS para la cámara. Usa `--tls`. Abre UDP 50000–60000 en el firewall |
+| Conflictos de puerto LiveKit | Usa los indicadores `--lk-port`, `--lk-tcp-port`, `--lk-udp-port` |
+| Firewall bloqueando medios | `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
+| Advertencias de certificado autofirmado | Consulta [Guía de TLS Interno](/es/docs/guides/internal-tls) para configuración de CA privada |
+
+---
+
+## Desinstalación
+
+```bash
+# Instalación binaria
+sudo ./bedrud uninstall
+
+# Docker
+docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
+
+# Compilación desde código fuente
+# Ctrl+C para detener, luego: make clean
+```
+
+---
+
+## Próximos Pasos
+
+- [Referencia del CLI Installer](/es/docs/getting-started/cli-installer) — flags, plataformas, instalaciones sin conexión, solución de problemas
+- [Referencia de Configuración](/es/docs/getting-started/configuration) — puertos, base de datos, proveedores de autenticación, TURN
+- [Guía de Instalación](/es/docs/getting-started/installation) — gestores de paquetes, Docker, indicadores avanzados
+- [Guía de TLS Interno](/es/docs/guides/internal-tls) — implementación aislada, CA privada
+- [Guía de Implementación](/es/docs/guides/deployment) — configuración de producción, proxy inverso, escalado
+- [Visión General de la Arquitectura](/es/docs/architecture/overview) — cómo encajan las piezas
+- [Documentación de API](http://localhost:8090/api/swagger) — Swagger UI (instancia en ejecución)

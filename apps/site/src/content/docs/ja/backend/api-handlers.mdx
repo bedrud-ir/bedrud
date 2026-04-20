@@ -1,0 +1,95 @@
+---
+title: APIハンドラ
+description: REST APIエンドポイントの実装
+order: 19
+---
+
+Bedrudは**Fiber**ウェブフレームワークを使用しています（Go向けのExpressライクなAPI）。
+
+## ルーティングロジック
+
+ルートは`internal/server/server.go`で定義されています。ミドルウェアやプレフィックスの適用を容易にするため、ルートをグループ化しています。
+
+### メイングループ:
+
+- **`/api/auth`**: 認証用の公開ルートと保護ルート。
+- **`/api/room`**: ルーム管理用の保護ルート。
+- **`/api/admin`**: `superadmin`ロールのユーザーに限定されたルート。
+- **`/livekit`**: 組み込みのLiveKit音声・ビデオサーバーにリクエストを転送する特別なプロキシグループ。
+
+## 特殊なハンドラロジック
+
+### ルーム管理 (`internal/handlers/room.go`)
+`RoomHandler`はBedrudのルームメタデータとLiveKitのメディアエンジン間の変換を行います。
+
+#### 1. ルーム作成
+`POST /api/room/create`でルームが作成される際:
+
+- **正規化:** ルーム名はトリムされ、小文字に変換されます。
+- **自動生成:** 名前が指定されていない場合、BedrudはランダムなURLセーフな名前を生成します（例: `fancy-blue-whale`）。
+- **同期作成:** バックエンドはまず内部LiveKit APIを呼び出してメディアセッションを作成し、その後ローカルデータベースにメタデータを保存します。
+
+#### 2. 参加とトークン
+`POST /api/room/join`でユーザーが参加する際:
+
+- **アクセス制御:** バックエンドはルームが存在するか、ユーザーが承認されているかを確認します。
+- **トークン生成:** 署名付きJWT（Join Token）が以下の内容で生成されます:
+  - `Identity`: BedrudのユーザーID。
+  - `Name`: ユーザーの表示名。
+  - `Grants`: `CanJoin`、`CanPublish`、`CanSubscribe`などの特定の権限。
+- **クライアントハンドシェイク:** フロントエンドはローカルのルームメタデータとLiveKitトークンの両方を受け取り、WebRTC接続を開始します。
+
+## 管理者・ユーザー管理 (`internal/handlers/users.go`)
+`/api/admin`配下のルートは、`RequireAccess("superadmin")`ミドルウェアによって厳格に保護されています。
+
+### 1. ユーザー管理
+`UsersHandler`は管理者に以下の操作を許可します:
+
+- **全ユーザーの取得:** 認証プロバイダーや最終ログインメタデータを含む、登録済みユーザーの完全な一覧を取得します。
+- **ステータス更新:** アカウントアクセスを即座に有効化または無効化します。ユーザーを無効化すると、ログインやトークンの更新が直ちにブロックされます。
+
+### 2. ルーム概要
+管理者ルートでは、作成者に関係なく、プラットフォーム全体のアクティブなルームと過去のルームの一覧を取得できます。これはプラットフォームモデレーションを目的としています。
+
+## リクエストライフサイクル
+
+1.  **リクエスト受信**: FiberがHTTPリクエストを受け取ります。
+2.  **ミドルウェア**:
+
+    - `recover`: エラー発生時にサーバーのクラッシュを防ぎます。
+    - `cors`: Cross-Origin Resource Sharingを処理します。
+    - `Protected`: （オプション）`Authorization`ヘッダーの有効なJWTを確認します。
+3.  **ハンドラ**: `internal/handlers`内の関数が呼び出されます。
+
+    - `c.BodyParser`を使用してJSONボディ（もしあれば）を解析します。
+    - 必要なServiceまたはRepositoryを呼び出します。
+    - `c.JSON`を使用してJSONレスポンスを返します。
+
+## 例: ルーム作成ハンドラ
+
+```go
+func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
+    var input struct {
+        Name string `json:"name"`
+    }
+    // 1. Parse Input
+    if err := c.BodyParser(&input); err != nil {
+        return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+    }
+
+    // 2. Business Logic (via Repository)
+    room := &models.Room{Name: input.Name}
+    if err := h.roomRepo.Create(room); err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to create room"})
+    }
+
+    // 3. Response
+    return c.Status(201).JSON(room)
+}
+```
+
+## 静的ファイル（フロントエンド）
+
+ウェブフロントエンドはビルド時にGoバイナリに**埋め込まれます**。Fiberは`filesystem.New`を使用して`frontend/`ディレクトリからReactファイルを配信します。
+
+`/api`で始まらないルートはすべて、Reactアプリの`index.html`にリダイレクトされます。これにより、ページリフレッシュ時の404エラーなしでクライアントサイドルーティングが有効になります。

@@ -1,0 +1,108 @@
+---
+title: Katkıda Bulunma
+description: Bedrud projesine nasıl katkıda bulunulur
+order: 34
+---
+
+Bedrud projesine katkılarınız memnuniyetle karşılanır. Bu rehber, değişikliklerin nasıl gönderileceğini açıklar.
+
+> **Not:** Resmi katkıda bulunma rehberi depo kök dizinindedir: [CONTRIBUTING.md](https://github.com/bedrud-ir/bedrud/blob/main/CONTRIBUTING.md). Bu sayfa yalnızca referans amacıyla arşivlenmiştir.
+
+## Başlangıç
+
+1. Depoyu fork edin
+2. Fork'unuzu klonlayın
+3. `main` dalından bir özellik dalı oluşturun
+4. Değişikliklerinizi yapın
+5. Bir pull request gönderin
+
+## Ön Koşullar
+
+- Go 1.22+
+- Bun (web ön ucu için)
+- Rust (masaüstü uygulaması için)
+- Make
+- Git
+
+## Geliştirme Kurulumu
+
+```bash
+# GitHub'da forkladıktan sonra fork'unuzu klonlayın
+git clone https://github.com/<your-username>/bedrud.git
+cd bedrud
+make init
+make dev
+```
+
+Ayrıntılı kurulum talimatları için [Geliştirme İş Akışı](/tr/docs/guides/development) sayfasına bakın.
+
+## Proje Yapısı
+
+| Dizin           | Dil              | Açıklama                        |
+|-----------------|------------------|---------------------------------|
+| `server/`       | Go               | Arka uç API ve gömülü LiveKit  |
+| `apps/web/`     | TypeScript/React | Web ön ucu                      |
+| `apps/desktop/` | Rust + Slint     | Masaüstü uygulaması             |
+| `apps/android/` | Kotlin           | Android uygulaması              |
+| `apps/ios/`     | Swift            | iOS uygulaması                  |
+| `agents/`       | Python           | Bot aracıları                   |
+| `packages/`     | TypeScript       | Paylaşılan tür tanımları        |
+| `tools/cli/`    | Python           | Dağıtım CLI'si                  |
+| `docs/`         | Markdown         | Belgelendirme                   |
+
+## Kod Stili
+
+| Dil              | Standart                 |
+|------------------|--------------------------|
+| Go               | `gofmt`                  |
+| TypeScript/React | Biome                    |
+| Kotlin           | Android Studio varsayılanları |
+| Swift            | Xcode varsayılanları     |
+| Python           | ruff                     |
+
+## Pull Request Süreci
+
+1. **Dal adlandırması:** `feature/description`, `fix/description` veya `docs/description`
+2. **Commit mesajları:** `<eylem> <neyi> <neden>` (ör., `add user model for auth feature`, `fix login redirect for expired sessions`)
+3. **CI kontrolleri:** Tüm GitHub Actions kontrolleri geçmelidir
+4. **Açıklama:** Nelerin değiştiğini ve nedenini belirtin
+
+### CI Kontrolleri
+
+Her PR'da şu kontroller otomatik olarak çalışır:
+
+| Kontrol | Doğruladığı şey                    |
+|---------|-------------------------------------|
+| Server  | `go vet`, derleme, testler          |
+| Web     | TypeScript tip kontrolü, derleme    |
+| Android | Lint, birim testleri                |
+| iOS     | Derleme, test (simülatör)           |
+
+## Sorun Bildirme
+
+[GitHub Issues](https://github.com/bedrud-ir/bedrud/issues) üzerinden şu bilgilerle sorun bildirebilirsiniz:
+
+- Hatayı yeniden oluşturma adımları
+- Beklenen ve gerçekleşen davranış
+- Ortam bilgileri (işletim sistemi, tarayıcı, uygulama sürümü)
+
+## Belgelendirme
+
+Belgeler `docs/` dizininde yer alır ve [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) ile oluşturulur.
+
+### Yerel Önizleme
+
+```bash
+pip install mkdocs-material
+mkdocs serve
+```
+
+Ardından tarayıcınızda `http://localhost:8000` adresini açın.
+
+### Yapı
+
+Belge sayfaları konuya göre düzenlenmiştir. Navigasyon, proje kök dizinindeki `mkdocs.yml` dosyasında tanımlanır.
+
+## Lisans
+
+Katkıda bulunarak, katkılarınızın [Apache License 2.0](https://github.com/bedrud-ir/bedrud/blob/main/LICENSE) kapsamında lisanslanmasını kabul etmiş olursunuz.

@@ -1,0 +1,34 @@
+---
+title: Despliegue
+description: Estrategias de despliegue del backend
+order: 21
+---
+
+El instalador integrado configura un servidor Linux nuevo para uso en producción con un solo comando.
+
+<InstallerSteps />
+
+<SystemdServices />
+
+## Seguridad y TLS
+
+El instalador gestiona la seguridad automáticamente:
+
+- **ACME (Let's Encrypt):** Si proporcionas un dominio y un correo electrónico, configura la renovación automática de certificados.
+- **Certificados Auto-firmados:** Si no se proporciona un dominio, genera un certificado auto-firmado para que el sitio siga funcionando mediante HTTPS.
+- **Proxy Inverso:** El backend actúa como proxy inverso. Recibe el tráfico en el puerto 443 y envía las solicitudes `/livekit` al servidor de medios interno.
+
+## Desinstalación
+
+Si necesitas eliminar Bedrud, puedes ejecutar:
+```bash
+sudo bedrud uninstall
+```
+Esto detiene los servicios, elimina los archivos de systemd y borra las carpetas de configuración y datos.
+
+---
+
+## Consulta también
+
+- [Guía de Despliegue](/es/docs/guides/deployment) - instrucciones completas de despliegue en producción
+- [Modo Appliance](/es/docs/guides/appliance) - referencia de configuración de binario único

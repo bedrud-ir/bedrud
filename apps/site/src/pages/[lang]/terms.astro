@@ -1,0 +1,66 @@
+---
+import Landing from "~/layouts/Landing.astro";
+import { isValidLocale, type Locale, supportedLocales, t } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return supportedLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang: rawLang } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+
+const sections = [
+  "acceptance",
+  "services",
+  "accounts",
+  "acceptableUse",
+  "intellectualProperty",
+  "termination",
+  "liability",
+  "governingLaw",
+  "changes",
+  "contact",
+] as const;
+---
+
+<Landing
+  lang={lang}
+  narrow={true}
+  title={t(lang, "terms.meta.title")}
+  description={t(lang, "terms.meta.description")}
+>
+  <h1
+    data-animate="fade-up"
+    class="text-4xl font-bold tracking-tight"
+  >
+    {t(lang, "terms.title")}
+  </h1>
+  <p
+    data-animate="fade-up"
+    class="mt-2 text-sm text-muted-foreground"
+    style="transition-delay: 80ms"
+  >
+    {t(lang, "terms.lastUpdated")}
+  </p>
+  <p
+    data-animate="fade-up"
+    class="mt-6 text-muted-foreground leading-relaxed"
+    style="transition-delay: 120ms"
+  >
+    {t(lang, "terms.intro")}
+  </p>
+
+  <div class="mt-10 space-y-10">
+    {sections.map((key, i) => (
+      <section
+        data-animate="fade-up"
+        style={`transition-delay: ${160 + i * 80}ms`}
+      >
+        <h2 class="text-xl font-semibold">{t(lang, `terms.${key}.title`)}</h2>
+        <p class="mt-3 text-muted-foreground leading-relaxed">
+          {t(lang, `terms.${key}.content`)}
+        </p>
+      </section>
+    ))}
+  </div>
+</Landing>

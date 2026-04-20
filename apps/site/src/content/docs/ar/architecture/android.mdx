@@ -1,0 +1,166 @@
+---
+title: تطبيق Android
+description: تطبيق Android الأصلي
+order: 9
+---
+
+تطبيق بدرود لنظام Android مبني بـ Jetpack Compose وKotlin، يوفر تجربة اجتماعات فيديو أصلية مع وضع الصورة داخل الصورة والروابط العميقة ودعم تعدد المثيلات.
+
+## حزمة التقنيات
+
+| التقنية | الإصدار | الغرض |
+|-----------|---------|---------|
+| Kotlin | 2.1.0 | اللغة |
+| Jetpack Compose | Material 3 | أدوات واجهة المستخدم |
+| Koin | 4.0.0 | حقن التبعية |
+| Retrofit + OkHttp | Latest | عميل HTTP |
+| LiveKit Android SDK | 2.23.3 | وسائط WebRTC |
+| Credentials API | Latest | دعم مفاتيح المرور |
+| Encrypted SharedPreferences | Latest | التخزين الآمن |
+| Coil | Latest | تحميل الصور |
+
+**الهدف:** الحد الأدنى SDK 28، الهدف SDK 35، JDK 17
+
+## هيكل المجلدات
+
+```
+apps/android/app/src/main/java/com/bedrud/app/
+├── BedrudApplication.kt           # Application class (Koin init)
+├── MainActivity.kt                # Single-activity entry point
+├── core/
+│   ├── api/                       # Retrofit API client
+│   │   ├── ApiClient.kt           # Base HTTP client with auth interceptor
+│   │   ├── AuthApi.kt             # Auth endpoint definitions
+│   │   └── RoomApi.kt             # Room endpoint definitions
+│   ├── auth/
+│   │   └── AuthManager.kt         # Token management, login/logout
+│   ├── call/
+│   │   ├── CallService.kt         # Foreground service for calls
+│   │   └── CallConnectionService.kt  # Android ConnectionService
+│   ├── deeplink/
+│   │   └── DeepLinkHandler.kt     # Handle bedrud.com deep links
+│   ├── di/
+│   │   └── AppModule.kt           # Koin module definitions
+│   ├── instance/
+│   │   ├── InstanceManager.kt     # Central multi-instance orchestrator
+│   │   ├── InstanceStore.kt       # Persistent instance storage
+│   │   └── InstanceDeps.kt        # Per-instance dependency container
+│   ├── livekit/
+│   │   └── RoomManager.kt         # LiveKit room connection manager
+│   └── pip/
+│       └── PipManager.kt          # Picture-in-Picture controller
+├── models/
+│   ├── User.kt                    # User data model
+│   ├── Room.kt                    # Room data model
+│   ├── Instance.kt                # Server instance model
+│   └── ApiResponse.kt             # API response wrappers
+└── ui/
+    ├── screens/
+    │   ├── auth/
+    │   │   ├── LoginScreen.kt     # Email/password + passkey login
+    │   │   └── RegisterScreen.kt  # Account registration
+    │   ├── dashboard/
+    │   │   └── DashboardScreen.kt # Room list and management
+    │   ├── meeting/
+    │   │   └── MeetingScreen.kt   # Video call interface
+    │   ├── instance/
+    │   │   ├── AddInstanceScreen.kt    # Add server instance
+    │   │   └── InstanceSwitcher.kt     # Switch between instances
+    │   ├── profile/
+    │   │   └── ProfileScreen.kt   # User profile
+    │   └── settings/
+    │       └── SettingsScreen.kt  # App settings
+    ├── components/                 # Reusable Compose components
+    └── theme/                      # Material 3 theme definition
+```
+
+## بنية تعدد المثيلات
+
+يدعم تطبيق Android الاتصال بعدة خوادم بدرود في وقت واحد.
+
+```mermaid
+flowchart TB
+    subgraph IM ["InstanceManager (Koin singleton)"]
+        IS["InstanceStore<br/>Persists list to SharedPreferences"]
+        AI["Active Instance (StateFlow)"]
+        INST["instances: List Instance"]
+    end
+
+    subgraph DEPS ["InstanceDeps"]
+        AM["AuthManager"]
+        AC["ApiClient"]
+        AA["AuthApi"]
+        RA["RoomApi"]
+        PM["PasskeyManager"]
+        RM["RoomManager"]
+    end
+
+    AI --> DEPS
+```
+
+### النمط الرئيسي
+
+جميع التبعيات لكل مثيل مُعرَضة كـ `StateFlow<T?>` على `InstanceManager`. تجمعها المكونات القابلة للتركيب:
+
+```kotlin
+val authManager = instanceManager.authManager.collectAsState().value ?: return
+val roomApi = instanceManager.roomApi.collectAsState().value ?: return
+```
+
+نمط `?: return` يضمن أن المكون القابل للتركيب لا يُعرَض حتى يُهيَّأ المثيل بالكامل.
+
+### مسار التنقل
+
+```mermaid
+flowchart LR
+    A["No instances"] --> B[AddInstanceScreen]
+    C["Has instances, not logged in"] --> D[LoginScreen]
+    E["Has instances, logged in"] --> F[DashboardScreen]
+```
+
+يظهر مبدّل المثيلات كـ `ModalBottomSheet` يُنشَط من شريط أدوات لوحة التحكم.
+
+## الميزات
+
+### الروابط العميقة
+
+يتعامل التطبيق مع الروابط التالية:
+
+- `https://bedrud.com/m/*` - انضمام مباشر للغرفة
+- `https://bedrud.com/c/*` - انضمام للغرفة بالرمز
+
+تُهيَّأ عبر فلاتر الأهداف في `AndroidManifest.xml`.
+
+### إدارة المكالمات
+
+- **CallService** - خدمة أمامية تحافظ على الاتصال أثناء المكالمات
+- **CallConnectionService** - يتكامل مع إطار الاتصالات في Android لواجهة مكالمات مناسبة
+- الصلاحيات المطلوبة: `MANAGE_OWN_CALLS`، `FOREGROUND_SERVICE_PHONE_CALL`، `FOREGROUND_SERVICE_CAMERA`، `FOREGROUND_SERVICE_MICROPHONE`
+
+### الصورة داخل الصورة
+
+تدعم شاشة الاجتماع وضع PiP، مما يسمح للمستخدمين برؤية بث الفيديو أثناء استخدام تطبيقات أخرى.
+
+### مفاتيح المرور
+
+يستخدم Credentials API في Android لتسجيل والدخول بمفاتيح مرور FIDO2/WebAuthn.
+
+## البناء
+
+```bash
+# Debug APK
+make build-android-debug
+
+# Release APK (requires keystore.properties)
+make build-android
+
+# Build + install on connected device
+make release-android
+
+# Open in Android Studio
+make dev-android
+```
+
+### توقيع الإصدار
+
+تتطلب بنيات الإصدار ملف `keystore.properties` في جذر مشروع Android يحتوي على تهيئة التوقيع.

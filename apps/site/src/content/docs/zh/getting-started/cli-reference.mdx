@@ -1,0 +1,292 @@
+---
+title: CLI Reference
+description: Command-line interface documentation
+order: 5
+---
+
+`bedrud` 命令行界面的完整参考。
+
+## 概要
+
+```bash
+# Subcommand style
+bedrud <command> [flags]
+
+# Flag style
+bedrud --livekit --config <path>
+bedrud --run --config <path>
+```
+
+## 命令
+
+### `run` / `server`
+
+启动 Bedrud 会议服务器，包含 API、嵌入式 Web 前端和嵌入式 LiveKit（如已配置）。
+
+```bash
+bedrud run    [--config <path>]
+bedrud server [--config <path>]
+```
+
+| 标志 | 默认值 | 说明 |
+|------|--------|------|
+| `--config` | `$CONFIG_PATH` 环境变量 → `"config.yaml"` | Bedrud YAML 配置文件路径 |
+
+**行为：**
+- 从指定路径或默认路径加载配置
+- 如配置为内部模式则启动嵌入式 LiveKit
+- 初始化 SQLite/PostgreSQL 数据库并运行迁移
+- 创建包含所有 API 路由的 Fiber HTTP 服务器
+- 提供嵌入式 React 前端
+- 支持 ACME（Let's Encrypt）、self-signed TLS、手动 TLS 或纯 HTTP
+- 收到 SIGTERM/SIGINT 时优雅关闭
+
+**实现：** `server/internal/server/server.go`
+
+---
+
+### `--livekit`
+
+仅启动嵌入式 LiveKit 媒体服务器。从 Go embed 中提取二进制文件到临时目录。
+
+```bash
+bedrud --livekit --config <path>
+```
+
+| 标志 | 默认值 | 说明 |
+|------|--------|------|
+| `--config` | （必需） | LiveKit YAML 配置文件路径 |
+
+**使用者：** `bedrud install` 创建的 systemd `livekit.service`
+
+**实现：** `server/internal/livekit/server.go`
+
+---
+
+### `--run`
+
+`bedrud run` 的别名，`--config` 标志行为相同。由 systemd `bedrud.service` 使用。
+
+```bash
+bedrud --run --config <path>
+```
+
+---
+
+### `install`
+
+在 Debian/Linux 系统上安装 Bedrud。创建 systemd 服务、配置文件、目录和 TLS 证书。
+
+```bash
+bedrud install [flags]
+```
+
+| 标志 | 默认值 | 说明 |
+|------|--------|------|
+| `--tls` | `false` | 启用 HTTPS（等同于 `--self-signed`） |
+| `--self-signed` | `false` | 生成 self-signed TLS 证书 |
+| `--no-tls` | `false` | 完全禁用 TLS（纯 HTTP）。覆盖 `--tls` 和 `--self-signed` |
+| `--ip` | 自动检测 | 覆盖自动检测的服务器 IP 地址 |
+| `--domain` | `""` | 用于 Let's Encrypt 或 self-signed 证书的域名 |
+| `--email` | `""` | 用于 Let's Encrypt 注册的邮箱 |
+| `--port` | `"443"`（TLS）/ `"8090"`（HTTP） | 覆盖监听端口 |
+| `--cert` | `""` | 现有 PEM 证书文件路径 |
+| `--key` | `""` | 现有 PEM 私钥文件路径 |
+| `--lk-port` | `"7880"` | 覆盖 LiveKit API/WebSocket 端口 |
+| `--lk-tcp-port` | `"7881"` | 覆盖 LiveKit RTC TCP 端口 |
+| `--lk-udp-port` | `"7882"` | 覆盖 LiveKit RTC UDP 端口 |
+| `--fresh` | `false` | 安装前删除已有安装 |
+| `--behind-proxy` | `false` | 服务器在 CDN/反向代理后面（Cloudflare、nginx） |
+| `--external-livekit` | `""` | 完全外部 LiveKit 服务器的 URL（不同机器） |
+| `--livekit-domain` | `""` | 本地 LiveKit 服务器的独立域名（绕过 CDN） |
+
+**执行步骤：**
+1. 如果使用 `--fresh`，停止并删除之前的安装
+2. 提示输入 IP、域名、邮箱、TLS 模式（非交互且未提供标志时）
+3. 创建目录：`/etc/bedrud`、`/var/lib/bedrud`、`/var/lib/bedrud/certs`、`/var/log/bedrud`
+4. 将二进制文件复制到 `/usr/local/bin/bedrud`
+5. 在 `/etc/bedrud/config.yaml` 生成 Bedrud 服务器配置
+6. 在 `/etc/bedrud/livekit.yaml` 生成 LiveKit 媒体服务器配置
+7. 在 `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` 生成 self-signed 证书（如启用 TLS 且无自定义证书）
+8. 创建 systemd `livekit.service`（除非使用外部 LiveKit）
+9. 创建 systemd `bedrud.service`
+10. 执行 `systemctl daemon-reload`，启用并启动两个服务
+11. 打印访问 URL
+
+**TLS 选项：**
+- `--domain` + `--email` → ACME（Let's Encrypt）
+- `--self-signed` 或 `--tls` → self-signed 证书
+- `--cert` + `--key` → 自定义证书
+- `--no-tls` → 仅纯 HTTP
+
+**LiveKit 拓扑：**
+- 默认（嵌入式）：LiveKit 本地运行，通过 Bedrud 在 `/livekit` 代理
+- `--livekit-domain`：LiveKit 本地运行但客户端通过其独立域名直连
+- `--external-livekit`：无本地 LiveKit；连接到远程服务器
+
+**实现：** `server/internal/install/debian.go`
+
+**相关文档：** [安装指南](/zh/docs/getting-started/installation) • [部署指南](/zh/docs/guides/deployment) • [后端部署逻辑](/zh/docs/backend/deployment)
+
+---
+
+### `uninstall`
+
+从系统中删除 Bedrud。
+
+```bash
+bedrud uninstall
+```
+
+**删除内容：**
+- 停止并禁用 systemd 服务：`bedrud`、`livekit`
+- 从 `/etc/systemd/system/` 删除 systemd 单元文件
+- 删除二进制文件：`/usr/local/bin/bedrud`、`/tmp/bedrud`、`/tmp/bedrud-livekit-server`
+- 删除目录：`/etc/bedrud`、`/var/lib/bedrud`、`/var/log/bedrud`
+
+**实现：** `server/internal/install/debian.go`
+
+**相关文档：** [安装指南 - 卸载](/zh/docs/getting-started/installation#uninstallation)
+
+---
+
+### `user`
+
+管理 Bedrud 数据库中的用户。
+
+```bash
+bedrud user <subcommand> [--config <path>] <flags>
+```
+
+| 全局标志 | 默认值 | 说明 |
+|----------|--------|------|
+| `--config` | `/etc/bedrud/config.yaml` | Bedrud 配置文件路径（用于定位数据库） |
+
+#### `create`
+
+使用本地身份验证（bcrypt 哈希密码）创建新用户。
+
+```bash
+bedrud user create --email <email> --password <password> --name <name>
+```
+
+**必需标志：**
+- `--email`：用户邮箱地址
+- `--password`：用户密码，存储前使用 bcrypt 哈希
+- `--name`：用户显示名称
+
+**访问级别：** `user`（非超级管理员）。使用 `promote` 授予管理员权限。
+
+#### `delete`
+
+通过邮箱地址删除用户。
+
+```bash
+bedrud user delete --email <email>
+```
+
+#### `promote`
+
+授予用户 `superadmin` 访问权限。
+
+```bash
+bedrud user promote --email <email>
+```
+
+#### `demote`
+
+移除用户的 `superadmin` 访问权限（降级为 `user` 级别）。
+
+```bash
+bedrud user demote --email <email>
+```
+
+**实现：** `server/internal/usercli/usercli.go`
+
+---
+
+### `help`
+
+显示包含所有命令和标志的使用说明。
+
+```bash
+bedrud help
+```
+
+不提供参数时也会触发。显示 `printUsage()` 输出。
+
+---
+
+## 示例
+
+### 基本开发服务器启动
+
+```bash
+# 使用当前目录的默认 config.yaml 运行
+bedrud run
+
+# 使用自定义配置运行
+bedrud run --config /path/to/config.yaml
+
+# 通过环境变量（回退方式）
+export CONFIG_PATH=/etc/bedrud/config.yaml
+bedrud run
+```
+
+### 交互式安装（提示输入）
+
+```bash
+bedrud install
+```
+
+### 使用 Let's Encrypt 的非交互式安装
+
+```bash
+bedrud install --domain example.com --email admin@example.com
+```
+
+### 自定义端口的 self-signed TLS
+
+```bash
+bedrud install --self-signed --port 8443 --lk-port 7880 --lk-tcp-port 7881 --lk-udp-port 7882
+```
+
+### CDN 后部署 + 独立 LiveKit 域名
+
+```bash
+bedrud install --domain bedrud.example.com --email admin@example.com --livekit-domain lk.example.com --behind-proxy
+```
+
+### 全新重新安装
+
+```bash
+bedrud install --fresh --domain example.com --email admin@example.com
+```
+
+### 用户管理
+
+```bash
+# 创建第一个管理员用户
+bedrud user create --email admin@example.com --password secret123 --name "Admin User"
+
+# 授予 superadmin 权限
+bedrud user promote --email admin@example.com
+
+# 创建普通用户
+bedrud user create --email user@example.com --password pass456 --name "Regular User"
+
+# 删除用户
+bedrud user delete --email user@example.com
+
+# 移除管理员权限
+bedrud user demote --email admin@example.com
+```
+
+---
+
+## 相关文档
+
+- [安装指南](/zh/docs/getting-started/installation) - 详细的 `bedrud install` 步骤说明、TLS 拓扑、安装后步骤
+- [配置参考](/zh/docs/getting-started/configuration) - 服务器和 LiveKit 配置文件结构
+- [后端部署逻辑](/zh/docs/backend/deployment) - `install` 和 `uninstall` 的内部工作原理
+- [部署指南](/zh/docs/guides/deployment) - 完整的部署选项，包括 systemd 服务

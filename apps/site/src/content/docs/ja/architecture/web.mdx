@@ -1,0 +1,155 @@
+---
+title: Web フロントエンド
+description: React Web アプリケーションアーキテクチャ
+order: 8
+---
+
+Bedrud Web フロントエンドは TanStack Start、TailwindCSS v4、shadcn/ui で構築された React アプリケーションです。本番環境では、サーバーサイドレンダリングによって HTML シェルがプリレンダリングされます。Go バイナリはこのシェルと静的クライアントアセットを組み込みます。
+
+## テクノロジースタック
+
+| テクノロジー | 目的 |
+|-----------|---------|
+| React 19 | UI フレームワーク |
+| TanStack Start | SSR フレームワークとファイルベースルーティング |
+| TanStack Router | クライアントサイドルーティング |
+| TanStack Query | サーバー状態とデータフェッチ |
+| TailwindCSS 4 | Utility-first スタイリング |
+| shadcn/ui + Radix UI | アクセシブルなコンポーネントプリミティブ |
+| Zustand | クライアントサイド認証状態 |
+| Vite 7 | ビルドツールと開発サーバー |
+| LiveKit React SDK | WebRTC メディア処理 |
+| Zod | スキーマバリデーション |
+| Lucide React | アイコンライブラリ |
+| Bun | パッケージマネージャー |
+
+## ディレクトリ構造
+
+```
+apps/web/
+├── src/
+│   ├── routes/                    # TanStack Router file-based routes
+│   │   ├── index.tsx              # Home / landing page
+│   │   ├── __root.tsx             # Root layout
+│   │   ├── auth/
+│   │   │   ├── login.tsx          # Sign-in page
+│   │   │   └── register.tsx       # Sign-up page
+│   │   ├── dashboard/             # User dashboard
+│   │   ├── m.$meetId.tsx          # Meeting room page
+│   │   ├── admin/                 # Admin panel
+│   │   │   ├── index.tsx          # Overview
+│   │   │   ├── rooms.$id.tsx      # Room detail
+│   │   │   ├── users.$id.tsx      # User detail
+│   │   │   └── settings.tsx       # Server settings + invite tokens
+│   │   └── settings.tsx           # Account settings page
+│   ├── components/
+│   │   ├── admin/                 # Admin table components
+│   │   │   ├── RoomTable.tsx
+│   │   │   └── UserTable.tsx
+│   │   ├── auth/                  # Auth UI (OAuth, Passkey buttons)
+│   │   ├── dashboard/             # Room cards, create room dialog
+│   │   ├── meeting/               # Video tiles, controls, device picker
+│   │   │   ├── ControlsBar.tsx
+│   │   │   ├── DeviceSelector.tsx
+│   │   │   ├── ParticipantGrid.tsx
+│   │   │   ├── ChatPanel.tsx
+│   │   │   └── SpotlightView.tsx
+│   │   ├── ui/                    # shadcn/ui component library
+│   │   └── ThemeToggle.tsx        # Light/dark mode switcher
+│   └── lib/
+│       ├── api.ts                 # authFetch wrapper
+│       └── auth.store.ts          # Zustand auth store (tokens, user)
+├── scripts/
+│   └── embed.mjs                  # SSR pre-render + copy to server/frontend/
+├── public/                        # Static assets
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+## 認証フロー
+
+認証状態は `src/lib/auth.store.ts` の Zustand ストアで管理されます。
+
+1. **ログイン** - ユーザーが認証情報を `POST /api/auth/login` に送信
+2. **トークン保存** - アクセストークンとリフレッシュトークンを `localStorage` に保存
+3. **自動注入** - `authFetch` がすべての API 呼び出しをラップし、`Authorization: Bearer` ヘッダーを追加
+4. **自動リフレッシュ** - リクエストが 401 を返した場合、`authFetch` はリフレッシュトークンを使用してトークンのリフレッシュを試行
+5. **ログアウト** - トークンをクリアし、ログインページにリダイレクト
+
+### authFetch
+
+`src/lib/api.ts` の `authFetch` 関数は `fetch` のドロップイン代替で、以下の機能を持ちます。
+
+- すべてのリクエストに JWT アクセストークンをアタッチ
+- 401 レスポンスを検知し、トークンのリフレッシュを試行
+- リフレッシュに失敗した場合、ユーザーをログアウト
+
+## 会議ページ
+
+`/m/$meetId` の会議ルームでは以下を処理します。
+
+- **LiveKit 接続** - 参加API から取得したトークンでメディアサーバーに接続
+- **トラック描画** - 他の参加者からの音声/ビデオトラックを購読
+- **デバイス選択** - ルームを離れることなく、通話中にカメラ、マイク、スピーカーを切り替え
+- **管理者コントロール** - ルーム作成者はキック、ミュート、ビデオオフボタンを表示
+- **チャット** - `ChatPanel` によるルーム内テキストチャット
+- **スポットライトビュー** - 特定の参加者にフォーカス
+
+## 管理者パネル
+
+`/admin` の管理者パネルでは以下を提供します。
+
+- **ルーム管理** - テーブル表示からルーム詳細ページへドリルダウン
+- **ユーザー管理** - テーブル表示から個別のユーザーアカウントとロール編集へドリルダウン
+- **サーバー設定** - インスタンス全体のオプション、アクセス制御、招待リンクを設定
+- **招待トークン** - 招待リンクの生成と取り消しで参加者を管理
+
+## ダークモード
+
+`ThemeToggle` コンポーネントでアプリのどこからでもライト/ダークテーマを切り替えられます。設定は `localStorage` に永続化され、読み込み時に適用されます。
+
+## ビルド
+
+### 開発
+
+```bash
+cd apps/web
+bun run dev      # Starts Vite dev server with HMR at localhost:3000
+```
+
+開発サーバーは `/api` と `/livekit` リクエストを `localhost:8090` の Go サーバーにプロキシします。
+
+### 本番（スタンドアロン Web バンドル）
+
+```bash
+cd apps/web
+bun run build    # Outputs static client assets to dist/client/ and SSR server to dist/server/
+```
+
+### 本番（Go バイナリに組み込み）
+
+```bash
+cd apps/web
+bun run build:embed
+```
+
+このコマンドは `scripts/embed.mjs` を実行し、以下の処理を行います。
+
+1. `bun run build` を実行して `dist/client/` と `dist/server/` を生成
+2. SSR サーバーをローカルで起動
+3. `/` をフェッチしてプリレンダリングされた HTML シェルをキャプチャ
+4. `dist/client/` を `server/frontend/` にコピー
+5. レンダリングされた HTML を `server/frontend/index.html` として書き出し
+
+### 型チェック
+
+```bash
+bun run check    # Runs tsc --noEmit
+```
+
+---
+
+## 関連項目
+
+- [Web デザインシステム](https://github.com/bedrud-ir/bedrud/tree/main/apps/web/AGENTS.md) - UI コンポーネントパターン、カラートークン、スタイリングルール

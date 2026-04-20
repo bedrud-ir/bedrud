@@ -1,0 +1,67 @@
+---
+title: Gelişmiş Konular
+description: Gelişmiş arka uç özellikleri
+order: 22
+---
+
+Bu belge, Bedrud'un tek ikili dosya mimarisinin ardındaki iç teknik kararları kapsar.
+
+## 1. Fiber-Standard Köprüsü
+Bedrud hızı için **Fiber** kullanır, ancak **Goth** (OAuth) ve **LiveKit SDK** (Twirp) gibi bazı bağımlılıklar standart Go `http.ResponseWriter` ve `http.Request` bekler.
+
+Bu iki dünyayı köprülemek için Bedrud, `internal/handlers/auth.go` dosyasında bir **Bağdaştırıcı Örüntüsü** (Adapter Pattern) uygular:
+
+### `responseWriter` Bağdaştırıcısı
+```go
+type responseWriter struct {
+    ctx     *fiber.Ctx
+    headers http.Header
+    status  int
+}
+```
+Bu yapı, `http.ResponseWriter` arayüzünü uygular. Standart kütüphane fonksiyonu (ör. Goth) `Header().Add()` çağırdığında, bağdaştırıcı bunu yerel bir `headers` haritasında saklar. `WriteHeader()` çağrıldığında, tüm başlıkları manuel olarak **Fiber Bağlamına** kopyalar.
+
+### Amaç
+Bedrud'un son derece hızlı kalmasını (Fiber kullanarak) sağlarken, standart Go web kütüphanelerinin geniş ekosistemiyle tam uyumluluk sürdürülür.
+
+## 2. LiveKit Ters Vekil İşlemleri
+Bedrud, tüm medya sinyalleşmesini ana portu üzerinden yönlendirerek port yönetimi sorunlarını önler.
+
+### Nasıl çalışır:
+
+1.  **Algılama:** `LIVEKIT_INTERNAL_HOST` değeri `127.0.0.1`'i gösteriyorsa, Bedrud dahili medya motorunu başlatır.
+2.  **Bağlama:** `/livekit` rotasına bir `httputil.NewSingleHostReverseProxy` bağlar.
+3.  **Yol Kırpma:** Medya sunucusunun isteği kök dizinde gelmiş gibi alması için `/livekit` önekini kaldıran özel bir **Director** fonksiyonu kullanılır.
+4.  **WebSocket Desteği:** Vekil, `adaptor.HTTPHandler` aracılığıyla temel TCP akışı üzerinde çalıştığından, LiveKit tarafından gerçek zamanlı sinyalleşme için kullanılan WebSocket'leri doğal olarak destekler.
+
+## 3. Depolama Verimliliği: Gömülü Yapılar
+Bedrud, veritabanı şemasını düz ve optimize tutmak için GORM'un `embedded` etiketinden yoğun olarak yararlanır.
+
+**`models/room.go` dosyasından örnek:**
+```go
+type Room struct {
+    ID       string       `gorm:"primaryKey"`
+    Settings RoomSettings `gorm:"embedded;embeddedPrefix:settings_"`
+}
+```
+Bu, GORM'un `settings_allow_chat` gibi sütunları doğrudan `rooms` tablosunda oluşturmasını sağlar. Bu, bir `JOIN`'den daha hızlı ve bir `JSON` blob'undan daha aranabilirdir.
+
+## 4. Test Altyapısı
+Bedrud, `internal/testutil` paketini kullanarak "DB-First" test stratejisi izler.
+
+### `SetupTestDB` mantığı:
+
+- Her test için benzersiz bir **SQLite bellek içi** veritabanı oluşturur.
+- Tüm göçleri otomatik olarak çalıştırır.
+- Temiz bir başlangıç sağlayarak testlerin deterministik ve paralel çalışabilmesini güvence altına alır.
+
+Arka uç testlerini çalıştırmak için:
+```bash
+go test ./internal/...
+```
+
+## 5. Güvenlik: Jeton Rotasyonu ve İptali
+Basit JWT uygulamalarının aksine, Bedrud her yenilemede **her iki** jetonu da döndürür.
+
+- **Yenileme Jetonu Yeniden Kullanım Algılama:** Bir yenileme jetonu yeni bir çift almak için kullanıldığında engellenir.
+- **Temizlik:** `BlockedRefreshToken` tablosu, bir yenileme jetonu çalınmış olsa bile, kullanıcı temiz bir şekilde oturumu kapattıktan veya oturumunu yeniledikten sonra kullanılamayacağını güvence altına alır.

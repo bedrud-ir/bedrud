@@ -1,0 +1,297 @@
+---
+title: ルームAPI
+description: ルーム管理エンドポイント
+order: 24
+---
+
+ルーム管理エンドポイントは `/api/room/` 以下にあります。すべてのエンドポイントで認証が必要です。
+
+## 概要
+
+| エンドポイント | メソッド | 説明 |
+|----------|--------|-------------|
+| `/api/room/create` | POST | 新しいルームを作成 |
+| `/api/room/join` | POST | ルームに参加し、LiveKitトークンを取得 |
+| `/api/room/list` | GET | 利用可能なルームを一覧表示 |
+| `/api/room/:roomId/kick/:identity` | POST | 参加者をキック（管理者） |
+| `/api/room/:roomId/mute/:identity` | POST | 参加者をミュート（管理者） |
+| `/api/room/:roomId/video/:identity/off` | POST | 参加者のビデオを無効化（管理者） |
+
+---
+
+## エンドポイント
+
+### ルームの作成
+
+新しいミーティングルームを作成します。認証済みユーザーがルーム管理者になります。
+
+```
+POST /api/room/create
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**リクエストボディ：**
+
+```json
+{
+  "name": "team-standup",
+  "isPublic": true,
+  "mode": "standard",
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  }
+}
+```
+
+> **注意：** `name` フィールドは**省略可能**です。省略または空の場合、サーバーが `xxx-xxxx-xxx` 形式（例：`bkf-qmzl-rja`）のランダムなURLセーフな名前を自動生成します。
+
+**ルーム名のルール：**
+
+ルーム名はURLの一部として `https://bedrud.xyz/m/NAME` に表示されるため、URLセーフである必要があります：
+
+| ルール | 説明 |
+|------|-------------|
+| **使用可能な文字** | 小文字（`a-z`）、数字（`0-9`）、ハイフン（`-`） |
+| **最小文字数** | 3文字 |
+| **最大文字数** | 63文字 |
+| **特殊文字不可** | `#`、`@`、`_`、`.`、`/`、`\`、`<`、`>`、`&`、`%`、`+`、`=`、`;`、`:`、`'`、`"`、`?`、`!`、スペースなどは**使用できません** |
+| **先頭・末尾のハイフン不可** | `-room` と `room-` は無効です |
+| **連続するハイフン不可** | `room--name` は無効です |
+| **小文字のみ** | 大文字は拒否されます。入力は自動的に小文字に変換されます |
+| **一意性** | 各ルーム名は一意である必要があります |
+
+**レスポンス (200)：**
+
+```json
+{
+  "id": "uuid",
+  "name": "team-standup",
+  "createdBy": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 0,
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
+}
+```
+
+### フィールド
+
+| フィールド | 型 | 必須 | 説明 |
+|-------|------|----------|-------------|
+| `name` | string | いいえ | URLセーフなルーム名（省略時は自動生成） |
+| `isPublic` | boolean | いいえ | パブリックリストに表示するかどうか |
+| `mode` | string | いいえ | ルームモード（例：`"standard"`） |
+| `maxParticipants` | number | いいえ | 最大参加者数 |
+| `settings.allowChat` | boolean | いいえ | テキストチャットを有効にするかどうか |
+| `settings.allowVideo` | boolean | いいえ | ビデオを有効にするかどうか |
+| `settings.allowAudio` | boolean | いいえ | オーディオを有効にするかどうか |
+| `settings.requireApproval` | boolean | いいえ | 参加時に管理者の承認が必要かどうか |
+| `settings.e2ee` | boolean | いいえ | 端末間暗号化を有効にするかどうか |
+
+---
+
+### ルームへの参加
+
+既存のルームに参加し、メディア接続用のLiveKitトークンを取得します。
+
+```
+POST /api/room/join
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**リクエストボディ：**
+
+```json
+{
+  "roomName": "team-standup"
+}
+```
+
+**レスポンス (200)：**
+
+```json
+{
+  "id": "uuid",
+  "name": "team-standup",
+  "token": "eyJ...",
+  "createdBy": "user-uuid",
+  "adminId": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 20,
+  "expiresAt": "2026-02-16T12:00:00Z",
+  "settings": { ... },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
+}
+```
+
+`token` は署名済みのLiveKitアクセストークンです。WebSocket経由でLiveKitサーバーに接続するために使用します：
+
+```javascript
+import { Room } from 'livekit-client';
+
+const room = new Room();
+await room.connect(livekitUrl, token);
+```
+
+---
+
+### ルーム一覧の取得
+
+ユーザーが作成したルームの一覧を取得します。
+
+```
+GET /api/room/list
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**レスポンス (200)：**
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "team-standup",
+    "createdBy": "user-uuid",
+    "isActive": true,
+    "maxParticipants": 20,
+    "expiresAt": "2026-02-16T12:00:00Z",
+    "settings": { ... },
+    "mode": "standard",
+    "relationship": "creator"
+  }
+]
+```
+
+---
+
+### 参加者のキック
+
+参加者をルームから退出させます。ルーム管理者のみが実行できます。
+
+```
+POST /api/room/:roomId/kick/:identity
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**レスポンス (200)：**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+### 参加者のミュート
+
+参加者のマイクをミュートします。ルーム管理者のみが実行できます。
+
+```
+POST /api/room/:roomId/mute/:identity
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**レスポンス (200)：**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+### 参加者のビデオの無効化
+
+参加者のカメラをオフにします。ルーム管理者のみが実行できます。
+
+```
+POST /api/room/:roomId/video/:identity/off
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**レスポンス (200)：**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+## 管理者コントロール
+
+ルーム管理者の操作（キック、ミュート、ビデオオフ）は、ルームを作成したユーザー（`adminId`）のみが実行できます。管理者以外のユーザーがこれらの操作を試みると、403エラーが返されます。
+
+### 権限マトリックス
+
+| 操作 | ルーム管理者 | Super Admin | 一般ユーザー | ゲスト |
+|--------|-----------|-------------|-------------|-------|
+| ルーム作成 | はい | はい | はい | いいえ |
+| ルーム参加 | はい | はい | はい | はい |
+| ルーム一覧 | はい | はい | はい | はい |
+| キック | はい | はい | いいえ | いいえ |
+| ミュート | はい | はい | いいえ | いいえ |
+| ビデオオフ | はい | はい | いいえ | いいえ |
+
+## エラーレスポンス
+
+すべてのエラーは統一された形式に従います：
+
+```json
+{
+  "error": "human-readable error message"
+}
+```
+
+### ルーム作成エラー
+
+| ステータスコード | エラーメッセージ | 説明 |
+|--------|---------------|-------------|
+| 400 | `"Invalid request body"` | 不正なJSON形式 |
+| 400 | `"room name must contain only lowercase letters, numbers, and hyphens"` | 名前に特殊文字が含まれている（`#`、`@`、`_` など） |
+| 400 | `"room name must be at least 3 characters"` | 名前が短すぎます |
+| 400 | `"room name must be at most 63 characters"` | 名前が長すぎます |
+| 409 | `"a room with this name already exists"` | 名前が重複しています |
+| 500 | `"Failed to create media room"` | LiveKitサーバーエラー |
+| 500 | `"Failed to create room"` | データベースエラー |
+
+### 一般エラー
+
+| ステータスコード | 意味 |
+|--------|---------|
+| 400 | 不正なリクエスト（データの不足または無効） |
+| 401 | 未認証 |
+| 403 | 権限なし（非管理者が管理者操作を試行） |
+| 404 | ルームが見つかりません |
+| 409 | 競合（リソースの重複） |
+| 500 | サーバー内部エラー |
+
+---
+
+## 関連ドキュメント
+
+- [アーキテクチャ概要](/ja/docs/architecture/overview) - データモデルとミーティング接続フロー
+- [APIハンドラー](/ja/docs/backend/api-handlers) - ルームエンドポイントの実装方法

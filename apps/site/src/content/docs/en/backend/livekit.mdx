@@ -1,0 +1,97 @@
+---
+title: LiveKit Integration
+description: WebRTC media server integration
+order: 20
+---
+
+Bedrud uses **LiveKit** to handle real-time video and audio communication. LiveKit provides the SFU (Selective Forwarding Unit) media server, and Bedrud handles authentication, room management, and admin controls.
+
+## Embedded vs. External
+
+Bedrud supports two LiveKit deployment modes:
+
+1.  **Embedded Mode (Default):** The backend starts and manages a LiveKit server process internally. No additional infrastructure is required - the backend handles the LiveKit process lifecycle.
+2.  **External Mode:** Bedrud connects to a separate LiveKit server or cluster. This is useful for horizontal scaling or when using a managed LiveKit Cloud instance.
+
+### Configuring External Mode
+
+To use an external LiveKit server, set the following keys in `config.yaml`:
+
+```yaml
+livekit:
+  host: "livekit.example.com:7880"
+  api_key: "your-api-key"
+  api_secret: "your-api-secret"
+  embedded: false
+```
+
+When `embedded` is `false`, Bedrud skips starting the embedded LiveKit binary. The API key and secret must match the external server's credentials.
+
+For LiveKit cluster setup and configuration, refer to the [LiveKit documentation](https://docs.livekit.io).
+
+## How It Works
+
+### 1. Room Creation
+
+When a user creates a room in Bedrud, the server does not create a LiveKit room immediately. LiveKit rooms are created on demand when the first participant joins.
+
+### 2. Join Tokens
+
+When a user joins a meeting:
+
+1.  The frontend sends a request to `/api/room/join`.
+2.  The backend verifies the user has permission to join that room.
+3.  The backend uses its API Key and Secret to generate a signed JWT (Join Token).
+4.  The token contains:
+
+    - The room name.
+    - The user's identity (display name).
+    - Permissions - for example, whether the user can publish audio or share their screen.
+5.  The frontend receives this token and connects directly to the LiveKit media port (default `7880`).
+
+### 3. Room Controls (Admin)
+
+The backend uses the LiveKit Go SDK to perform administrative actions:
+
+- **Kick:** Disconnects a participant.
+- **Mute:** Force-mutes a participant's microphone.
+- **Permissions:** Changes what a participant can do in real-time.
+
+## Network Architecture
+
+- **API Port (8090/443):** Handles HTTP requests and WebSocket signaling for call setup.
+- **Media Port (7880):** Handles video and audio data using WebRTC protocols. ICE/TCP fallback uses port 7881 when UDP is blocked.
+- **TURN Port (3478 UDP / 5349 TLS):** Relays media for clients behind restrictive NATs or firewalls. See [TURN Server Guide](/en/docs/architecture/turn-server).
+
+For firewall and port requirements, see [WebRTC Connectivity](/en/docs/architecture/webrtc-connectivity).
+
+## Error Handling
+
+### LiveKit Unreachable
+
+If the LiveKit server is unreachable, token generation may still succeed (tokens are created locally using the API key and secret). However, the client will fail to connect to the media server. Symptoms:
+
+- Client receives a valid join token but the WebRTC connection times out.
+- LiveKit SDK emits a `Reconnecting` event or connection error.
+
+**Check:** Verify the LiveKit server is running (`systemctl status livekit`) and the host/port in `config.yaml` is correct.
+
+### Embedded LiveKit Process Crashes
+
+In embedded mode, if the LiveKit child process crashes:
+
+- The Bedrud API server continues to run (rooms can be listed, users can log in).
+- Active meetings lose media connectivity.
+- New join requests will generate tokens, but clients cannot connect.
+
+**Check:** Inspect logs at `/var/log/bedrud/bedrud.log` or run `journalctl -u livekit -f` for crash details.
+
+### Token Expiration
+
+LiveKit join tokens have a short validity window. If a client waits too long between receiving the token and connecting, the token will expire. The client must request a new token via `/api/room/join`.
+
+## See also
+
+- [TURN Server Guide](/en/docs/architecture/turn-server) - TURN architecture, configuration, TLS, and troubleshooting
+- [WebRTC Connectivity](/en/docs/architecture/webrtc-connectivity) - full STUN/ICE/TURN/SFU connectivity stack
+- [Architecture Overview](/en/docs/architecture/overview) - full system architecture

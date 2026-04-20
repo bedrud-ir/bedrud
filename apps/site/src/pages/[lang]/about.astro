@@ -1,0 +1,22 @@
+---
+import AboutSection from "~/components/landing/about-section";
+import ContributorsSection from "~/components/landing/contributors-section";
+import Landing from "~/layouts/Landing.astro";
+import { isValidLocale, type Locale, supportedLocales, t } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return supportedLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang: rawLang } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+---
+
+<Landing
+  lang={lang}
+  title={t(lang, "aboutPage.meta.title")}
+  description={t(lang, "aboutPage.meta.description")}
+>
+  <AboutSection client:visible lang={lang} />
+  <ContributorsSection client:visible lang={lang} />
+</Landing>

@@ -1,0 +1,271 @@
+---
+title: API احراز هویت
+description: نقاط پایانی و روش‌های احراز هویت
+order: 23
+---
+
+تمام نقاط پایانی احراز هویت تحت `/api/auth/` هستند.
+
+## نمای کلی
+
+Bedrud از چندین روش احراز هویت پشتیبانی می‌کند:
+
+| روش | نقطه پایانی | توضیحات |
+|--------|----------|-------------|
+| ایمیل/رمز عبور | `POST /api/auth/login` | ورود سنتی |
+| ثبت‌نام | `POST /api/auth/register` | ایجاد حساب کاربری |
+| مهمان | `POST /api/auth/guest-login` | دسترسی موقت |
+| OAuth | `GET /api/auth/:provider/login` | ورود از طریق شبکه‌های اجتماعی |
+| کلیدهای عبور | `POST /api/auth/passkey/*` | FIDO2/WebAuthn |
+| تازه‌سازی توکن | `POST /api/auth/refresh` | تمدید توکن دسترسی |
+
+## فرمت توکن
+
+احراز هویت موفق جفت توکن JWT برمی‌گرداند:
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+- **توکن دسترسی** - کوتاه‌مدت، در هدر `Authorization` استفاده می‌شود
+- **توکن تازه‌سازی** - طولانی‌مدت، برای دریافت توکن‌های دسترسی جدید استفاده می‌شود
+
+### استفاده از توکن‌ها
+
+توکن دسترسی را در تمام درخواست‌های احراز هویت شده شامل کنید:
+
+```
+Authorization: Bearer <accessToken>
+```
+
+---
+
+## نقاط پایانی
+
+### ثبت‌نام
+
+ایجاد یک حساب کاربری جدید.
+
+```
+POST /api/auth/register
+```
+
+**بدنه درخواست:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "name": "John Doe"
+}
+```
+
+**پاسخ (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### ورود
+
+احراز هویت با ایمیل و رمز عبور.
+
+```
+POST /api/auth/login
+```
+
+**بدنه درخواست:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**پاسخ (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### ورود مهمان
+
+به عنوان مهمان بدون ایجاد حساب کاربری وارد شوید. مهمانان دسترسی محدودی دارند.
+
+```
+POST /api/auth/guest-login
+```
+
+**بدنه درخواست:**
+
+```json
+{
+  "name": "Guest User"
+}
+```
+
+**پاسخ (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "name": "Guest User",
+    "role": "guest"
+  }
+}
+```
+
+---
+
+### دریافت کاربر فعلی
+
+دریافت پروفایل کاربر احراز هویت شده.
+
+```
+GET /api/auth/me
+```
+
+**هدرها:** `Authorization: Bearer <accessToken>`
+
+**پاسخ (200):**
+
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "avatar": "https://...",
+  "role": "user",
+  "provider": "email"
+}
+```
+
+---
+
+### تازه‌سازی توکن
+
+تبدیل یک توکن تازه‌سازی به یک توکن دسترسی جدید.
+
+```
+POST /api/auth/refresh
+```
+
+**بدنه درخواست:**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**پاسخ (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ..."
+}
+```
+
+---
+
+### خروج
+
+باطل کردن توکن تازه‌سازی فعلی.
+
+```
+POST /api/auth/logout
+```
+
+**هدرها:** `Authorization: Bearer <accessToken>`
+
+**بدنه درخواست:**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**پاسخ (200):**
+
+```json
+{
+  "message": "logged out"
+}
+```
+
+---
+
+### ورود OAuth
+
+شروع یک فرآیند OAuth با یک provider اجتماعی.
+
+```
+GET /api/auth/:provider/login
+```
+
+**ارائه‌دهندگان پشتیبانی‌شده:**
+
+| provider | مسیر |
+|----------|------|
+| Google | `/api/auth/google/login` |
+| GitHub | `/api/auth/github/login` |
+| Twitter | `/api/auth/twitter/login` |
+
+سرور کاربر را به صفحه مجوز provider هدایت می‌کند. پس از موافقت، provider کاربر را به URL برگشت هدایت می‌کند و سرور توکن‌های JWT را برمی‌گرداند.
+
+---
+
+## پاسخ‌های خطا
+
+تمام نقاط پایانی احراز هویت خطاها را با این فرمت برمی‌گردانند:
+
+```json
+{
+  "error": "invalid credentials"
+}
+```
+
+| وضعیت | معنی |
+|--------|---------|
+| 400 | درخواست نامعتبر (فیلدهای گم‌شده، خطای اعتبارسنجی) |
+| 401 | اعتبارنامه نامعتبر یا توکن منقضی شده |
+| 409 | ایمیل قبلاً ثبت‌نام شده است |
+| 500 | خطای داخلی سرور |
+
+---
+
+## مشاهده همچنین
+
+- [جریان احراز هویت](/fa/docs/backend/authentication) - نحوه کار داخلی JWT، OAuth و کلیدهای عبور
+- [API کلیدهای عبور](/fa/docs/api/passkeys) - مرجع نقاط پایانی FIDO2/WebAuthn

@@ -1,0 +1,73 @@
+---
+title: TLS الداخلي
+description: شهادات موقعة ذاتيًا للشبكات الداخلية
+order: 30
+---
+
+للشبكات المعزولة - لا نطاق عام، لا إنترنت صادر، اتصال محدود.
+
+تتطلب المتصفحات HTTPS موثوقًا للوصول إلى الكاميرا/الميكروفون عبر WebRTC. الشهادات الموقعة ذاتيًا تعمل لكنها تظهر تحذيرات. لإعداد نظيف، أنشئ CA خاصًا ووزّعه على العملاء.
+
+## إنشاء CA خاص وشهادة خادم
+
+```bash
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=Bedrud Internal CA"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=<your-server-ip-or-hostname>"
+openssl x509 -req -days 365 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+sudo ./bedrud install --tls --cert server.crt --key server.key --ip YOUR_SERVER_IP
+```
+
+## إضافة CA إلى مخازن ثقة العملاء
+
+وزّع `ca.crt` على جميع أجهزة العملاء:
+
+### Windows
+
+```powershell
+certmgr.msc  # Right-click ca.crt → Install Certificate → Trusted Root CAs
+```
+
+### macOS
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt
+```
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
+sudo update-ca-certificates
+```
+
+### Linux (Arch/Fedora)
+
+```bash
+sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
+sudo update-ca-trust
+```
+
+أعد تشغيل المتصفحات، ثم افتح `https://YOUR_SERVER_IP` (استبدل بعنوان IP الفعلي للخادم، مثلاً `192.168.1.100`). بعد إعادة التشغيل، ستكون الشهادة موثوقة وسيعمل الوصول إلى الكاميرا/الميكروفون بدون تحذيرات.
+
+## حل المشكلات
+
+| المشكلة | الحل |
+|---------|-----|
+| المتصفح لا يزال يحذر من عدم ثقة الشهادة | امسح ذاكرة التخزين المؤقت للمتصفح، أعد التشغيل بعد تثبيت CA |
+| الكاميرا/الميكروفون محظوران | تحقق أن CA في Trusted Root CAs، وليس وسيطًا |
+| الشهادة منتهية الصلاحية | أعد التوليد بقيمة `-days` أطول |
+| عدم تطابق CN | تأكد أن CN في شهادة الخادم يطابق IP أو اسم المضيف في URL |
+
+---
+
+## انظر أيضًا
+- [دليل التثبيت](/ar/docs/getting-started/installation) - طرق التثبيت
+- [مرجع الإعدادات](/ar/docs/getting-started/configuration) - جميع خيارات الإعداد

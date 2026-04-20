@@ -1,0 +1,108 @@
+---
+title: المساهمة
+description: كيفية المساهمة في Bedrud
+order: 34
+---
+
+نرحب بمساهماتكم في Bedrud. يغطي هذا الدليل عملية تقديم التغييرات.
+
+> **ملاحظة:** دليل المساهمة الرسمي موجود في جذر المستودع: [CONTRIBUTING.md](https://github.com/bedrud-ir/bedrud/blob/main/CONTRIBUTING.md). هذه الصفحة محفوظة للرجوع إليها فقط.
+
+## البدء
+
+١. قم بعمل نسخة fork للمستودع
+٢. انسخ نسختك fork
+٣. أنشئ فرع ميزة من `main`
+٤. أجرِ تغييراتك
+٥. قدّم طلب سحب pull request
+
+## المتطلبات المسبقة
+
+- Go 1.22+
+- Bun (لواجهة الويب الأمامية)
+- Rust (لتطبيق سطح المكتب)
+- Make
+- Git
+
+## إعداد بيئة التطوير
+
+```bash
+# After forking on GitHub, clone your fork
+git clone https://github.com/<your-username>/bedrud.git
+cd bedrud
+make init
+make dev
+```
+
+راجع [سير عمل التطوير](/ar/docs/guides/development) للحصول على تعليمات الإعداد التفصيلية.
+
+## هيكل المشروع
+
+| الدليل          | اللغة            | الوصف                                      |
+|-----------------|------------------|--------------------------------------------|
+| `server/`       | Go               | واجهة برمجة التطبيقات الخلفية وخادم LiveKit المدمج |
+| `apps/web/`     | TypeScript/React | واجهة الويب الأمامية                       |
+| `apps/desktop/` | Rust + Slint     | تطبيق سطح المكتب                           |
+| `apps/android/` | Kotlin           | تطبيق أندرويد                              |
+| `apps/ios/`     | Swift            | تطبيق iOS                                  |
+| `agents/`       | Python           | وكلاء البوت                                |
+| `packages/`     | TypeScript       | تعريفات الأنواع المشتركة                   |
+| `tools/cli/`    | Python           | واجهة سطر الأوامر للنشر                    |
+| `docs/`         | Markdown         | التوثيق                                    |
+
+## أسلوب الكتابة
+
+| اللغة            | المعيار                                 |
+|------------------|-----------------------------------------|
+| Go               | `gofmt`                                 |
+| TypeScript/React | Biome                                   |
+| Kotlin           | الإعدادات الافتراضية لـ Android Studio |
+| Swift            | الإعدادات الافتراضية لـ Xcode          |
+| Python           | ruff                                    |
+
+## عملية طلب السحب
+
+١. **تسمية الفروع:** `feature/description` أو `fix/description` أو `docs/description`
+٢. **رسائل الالتزام:** `<action> <what> for <why>` (مثال: `add user model for auth feature` أو `fix login redirect for expired sessions`)
+٣. **فحوصات CI:** يجب أن تجتاز جميع فحوصات GitHub Actions
+٤. **الوصف:** أدرج ما الذي تغير ولماذا
+
+### فحوصات CI
+
+يُشغَّل على كل طلب سحب هذه الفحوصات تلقائيًا:
+
+| الفحص    | ما الذي يتم التحقق منه         |
+|----------|-------------------------------|
+| الخادم   | `go vet`، البناء، الاختبارات  |
+| الويب    | فحص أنواع TypeScript، البناء  |
+| أندرويد  | Lint، اختبارات الوحدة         |
+| iOS      | البناء، الاختبار (المحاكي)    |
+
+## الإبلاغ عن المشكلات
+
+قدّم مشكلاتك على [GitHub Issues](https://github.com/bedrud-ir/bedrud/issues) مع:
+
+- خطوات إعادة الإنتاج
+- السلوك المتوقع مقابل الفعلي
+- تفاصيل البيئة (نظام التشغيل، المتصفح، إصدار التطبيق)
+
+## التوثيق
+
+يوجد التوثيق في `docs/` ويُبنى باستخدام [MkDocs Material](https://squidfunk.github.io/mkdocs-material/).
+
+### المعاينة المحلية
+
+```bash
+pip install mkdocs-material
+mkdocs serve
+```
+
+ثم افتح `http://localhost:8000` في متصفحك.
+
+### الهيكل
+
+تُنظَّم صفحات التوثيق حسب الموضوع. يُعرَّف التنقل في `mkdocs.yml` في جذر المشروع.
+
+## الترخيص
+
+بمساهمتك، فإنك توافق على أن مساهماتك ستكون مرخصة بموجب [Apache License 2.0](https://github.com/bedrud-ir/bedrud/blob/main/LICENSE).

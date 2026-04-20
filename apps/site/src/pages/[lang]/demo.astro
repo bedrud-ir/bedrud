@@ -1,0 +1,92 @@
+---
+import { DEMO_URL, DOCS_URL } from "../../lib/config";
+import { DemoFaqSection } from "~/components/landing/demo-faq-section";
+import DemoFeaturesSection from "~/components/landing/demo-features-section.astro";
+import MeetingPreview from "~/components/landing/meeting-preview.astro";
+import Landing from "~/layouts/Landing.astro";
+import { isValidLocale, type Locale, supportedLocales, t } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return supportedLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang: rawLang } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+---
+
+<Landing
+  lang={lang}
+  title={t(lang, "demoPage.meta.title")}
+  description={t(lang, "demoPage.meta.description")}
+>
+  <section class="py-20">
+    <div class="mx-auto max-w-3xl px-6 text-center">
+      <h1
+        data-animate="fade-up"
+        class="text-4xl font-bold tracking-tight sm:text-5xl"
+      >
+        {t(lang, "demoPage.hero.headline")}
+      </h1>
+      <p
+        data-animate="fade-up"
+        class="mt-4 text-lg text-muted-foreground"
+        style="transition-delay: 80ms"
+      >
+        {t(lang, "demoPage.hero.subtitle")}
+      </p>
+
+      <div
+        data-animate="fade-up"
+        class="mt-10"
+        style="transition-delay: 160ms"
+      >
+        <a
+          href={DEMO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center justify-center rounded-md bg-primary px-8 py-4 text-lg font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          {t(lang, "demoPage.cta.tryNow")}
+        </a>
+      </div>
+
+      <p
+        data-animate="fade-up"
+        class="mt-6 text-sm text-muted-foreground"
+        style="transition-delay: 240ms"
+      >
+        {t(lang, "demoPage.cta.noInstall")}
+      </p>
+    </div>
+  </section>
+
+  <section
+    data-animate="fade-up"
+    class="mx-auto max-w-5xl px-6"
+    style="transition-delay: 100ms"
+  >
+    <div class="overflow-hidden rounded-2xl border shadow-2xl dark:shadow-none">
+      <div class="aspect-video">
+        <MeetingPreview lang={lang} />
+      </div>
+    </div>
+  </section>
+
+  <DemoFeaturesSection lang={lang} />
+  <DemoFaqSection client:visible lang={lang} />
+
+  <section class="pb-20">
+    <div
+      data-animate="fade-up"
+      class="mx-auto max-w-3xl border-t px-6 pt-8 text-center"
+    >
+      <p class="text-muted-foreground">{t(lang, "demoPage.selfHost.text")}</p>
+      <a
+        href={`/${lang}/docs`}
+        class="mt-2 inline-flex items-center text-primary underline-offset-4 hover:underline"
+      >
+        {t(lang, "demoPage.selfHost.cta")}
+      </a>
+    </div>
+  </section>
+</Landing>

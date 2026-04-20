@@ -1,0 +1,55 @@
+---
+title: Documentation Backend
+description: Vue d'ensemble de l'architecture système du backend Bedrud
+order: 15
+---
+
+## Introduction
+
+Le backend Bedrud est une plateforme de réunion binaire unique écrite en **Go 1.24+**. Toutes les dépendances - serveur média, frontend web, serveur TURN - sont intégrées dans un seul exécutable.
+
+### Technologies Clés
+
+- **Framework Principal :** [Fiber v2](https://gofiber.io/) (Routeur sans allocation, API de type Express).
+- **Couche Base de Données :** [GORM](https://gorm.io/) avec support de **SQLite** (standard) et **PostgreSQL** (production).
+- **Moteur Média :** [LiveKit](https://livekit.io/) (Intégré comme binaire frère).
+- **Système d'Auth :** Auth multicauche supportant JWT, OAuth2 (Google/GitHub/Twitter), et Passkeys FIDO2 sans mot de passe.
+- **Actifs Statiques Intégrés :** Utilise le package `embed` de Go 1.16+ pour regrouper le frontend React (actifs client pré-rendus SSR).
+- **Déploiement :** Installateur automatique intégré Debian/Ubuntu avec orchestration systemd et support ACME (Let's Encrypt).
+
+## Pourquoi cette Architecture ?
+
+Les plateformes WebRTC exécutent généralement des services séparés pour la signalisation, TURN, service web, et gestion de base de données. Bedrud consolide ces services dans un seul binaire en :
+
+1.  **Extrayant** le binaire du serveur média au moment de l'exécution.
+2.  **Proxyant** le trafic média via le port HTTP(S) principal.
+3.  **Automatisant** la configuration au niveau de l'OS (SSL, systemd) via le binaire lui-même.
+
+## Architecture de Haut Niveau
+
+Le backend suit une architecture en couches standard :
+
+1.  **Couche Serveur (`internal/server`) :** Configure l'application Fiber, les routes et les middlewares.
+2.  **Couche Handler (`internal/handlers`) :** Gère les requêtes et réponses HTTP.
+3.  **Couche Référentiel (`internal/repository`) :** Gère les requêtes de base de données en utilisant GORM.
+4.  **Couche Modèle (`internal/models`) :** Définit les tables de base de données et les structures Go.
+5.  **Couche Service/Logique :** Intégrée dans les handlers et référentiels pour la simplicité, avec des packages spécialisés comme `internal/auth` et `internal/livekit`.
+
+## Point d'Entrée Principal
+
+L'application démarre dans `server/cmd/bedrud/main.go`. Elle a trois modes principaux :
+
+- `run` : Démarre le serveur de réunion complet.
+- `livekit` : Démarre uniquement le serveur média intégré.
+- `install` : Configure automatiquement le serveur sur les systèmes Debian/Ubuntu.
+
+## Sections de Documentation
+
+- [**Structure du Code**](/fr/docs/backend/structure) : Où tout est-il situé ?
+- [**Base de Données & Modèles**](/fr/docs/backend/database) : Comment les données sont-elles stockées ?
+- [**Authentification**](/fr/docs/backend/authentication) : Comment les utilisateurs se connectent-ils ?
+- [**Handlers API**](/fr/docs/backend/api-handlers) : Comment les requêtes sont-elles traitées ?
+- [**Intégration LiveKit**](/fr/docs/backend/livekit) : Comment le serveur vidéo fonctionne-t-il ?
+- [**Connectivité WebRTC**](/fr/docs/architecture/webrtc-connectivity) : Comment les clients établissent-ils des connexions média ? (STUN/ICE/TURN/SFU)
+- [**Serveur TURN**](/fr/docs/architecture/turn-server) : Architecture, configuration et dépannage du relais TURN
+- [**Installation & Déploiement**](/fr/docs/backend/deployment) : Comment l'installateur automatique fonctionne-t-il ?

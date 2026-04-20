@@ -1,0 +1,110 @@
+---
+import { Icon } from "astro-icon/components";
+import { type Locale, t } from "../../i18n/utils";
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+
+const features = [
+  {
+    key: "oneCommandDeploy",
+    icon: "lucide:terminal",
+    iconBg: "bg-blue-500/10 dark:bg-blue-500/15",
+    iconColor: "text-blue-600 dark:text-blue-400",
+    link: "/install",
+  },
+  {
+    key: "fiveDollarVps",
+    icon: "lucide:server",
+    iconBg: "bg-emerald-500/10 dark:bg-emerald-500/15",
+    iconColor: "text-emerald-600 dark:text-emerald-400",
+    link: "/docs/guides/deployment",
+  },
+  {
+    key: "webrtcLatency",
+    icon: "lucide:zap",
+    iconBg: "bg-violet-500/10 dark:bg-violet-500/15",
+    iconColor: "text-violet-600 dark:text-violet-400",
+    link: "/docs/architecture/webrtc-connectivity",
+  },
+  {
+    key: "enterpriseSso",
+    icon: "lucide:shield-check",
+    iconBg: "bg-amber-500/10 dark:bg-amber-500/15",
+    iconColor: "text-amber-600 dark:text-amber-400",
+    link: "/docs/backend/authentication",
+  },
+  {
+    key: "guestJoin",
+    icon: "lucide:user-plus",
+    iconBg: "bg-rose-500/10 dark:bg-rose-500/15",
+    iconColor: "text-rose-600 dark:text-rose-400",
+    link: "/docs/getting-started/clients",
+  },
+  {
+    key: "recording",
+    icon: "lucide:video",
+    iconBg: "bg-sky-500/10 dark:bg-sky-500/15",
+    iconColor: "text-sky-600 dark:text-sky-400",
+    link: "/docs/architecture/webrtc-connectivity",
+  },
+];
+---
+
+<section id="features" class="relative scroll-mt-20 section-y">
+  <div class="section-container">
+    <div class="max-w-lg" data-animate="fade-up">
+      <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
+        {t(lang, "features.title")}
+      </h2>
+      <p class="mt-4 text-lg leading-relaxed text-muted-foreground">
+        {t(lang, "features.subtitle")}
+      </p>
+    </div>
+
+    <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {features.map(({ key, icon, iconBg, iconColor, link }, i) => (
+        <a
+          href={`/${lang}${link}`}
+          data-animate="fade-up"
+          style={`transition-delay: ${(i + 1) * 80}ms`}
+          class="group relative block rounded-2xl bg-card p-7 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08)] transition-[shadow] duration-300 hover:shadow-[0px_0px_0px_1px_rgba(0,0,0,0.12),0px_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.1)] dark:hover:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.14),0px_2px_4px_rgba(0,0,0,0.2)] sm:p-8"
+        >
+          <div class={`inline-flex size-11 items-center justify-center rounded-xl ${iconBg}`}>
+            <Icon name={icon} class={`size-5 ${iconColor}`} stroke-width="1.5" />
+          </div>
+
+          <h3 class="mt-5 text-[17px] font-semibold tracking-tight">
+            {t(lang, `features.${key}.title`)}
+          </h3>
+          <p class="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+            {t(lang, `features.${key}.description`)}
+          </p>
+
+          <div class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary/70 transition-colors group-hover:text-primary">
+            {t(lang, "featuresPage.learnMore")}
+            <Icon name="lucide:arrow-right" class="size-3.5" stroke-width="2" />
+          </div>
+        </a>
+      ))}
+    </div>
+
+    <div class="mt-12 flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
+      <div class="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-4 py-2">
+        <Icon name="lucide:check" class="size-4 text-emerald-500" stroke-width="2" />
+        <span>{t(lang, "hero.objectionBullets.screenSharing")}</span>
+      </div>
+      <div class="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-4 py-2">
+        <Icon name="lucide:check" class="size-4 text-emerald-500" stroke-width="2" />
+        <span>{t(lang, "hero.objectionBullets.sso")}</span>
+      </div>
+      <div class="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-4 py-2">
+        <Icon name="lucide:check" class="size-4 text-emerald-500" stroke-width="2" />
+        <span>{t(lang, "hero.objectionBullets.webrtc")}</span>
+      </div>
+    </div>
+  </div>
+</section>

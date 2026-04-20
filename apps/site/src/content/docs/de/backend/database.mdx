@@ -1,0 +1,64 @@
+---
+title: Datenbank & Modelle
+description: Datenmodelle und Datenbank-Schema
+order: 17
+---
+
+Bedrud verwendet **GORM** als ORM und unterstützt sowohl SQLite als auch PostgreSQL.
+
+## Unterstützte Datenbanken
+- **SQLite:** Standardmäßig für einfache Entwicklung und kleine Installationen verwendet. Die Datenbank wird in einer Datei gespeichert (üblicherweise `bedrud.db`).
+- **PostgreSQL:** Empfohlen für Produktionsumgebungen mit vielen Benutzern.
+
+Sie können den Datenbanktyp und die Verbindungsdetails in der Datei `config.yaml` im Abschnitt `database:` konfigurieren.
+
+## Kernmodelle
+
+Die Modelle befinden sich in `internal/models/`. Hier sind die wichtigsten:
+
+### User (`user.go`)
+
+Speichert Kontoinformationen einschließlich Anmeldedaten und Rollen.
+
+### Room (`room.go`)
+Repräsentiert eine Meeting-Sitzung. Sie verwendet GORMs **Embedded Structs**, um Einstellungen zu organisieren.
+Anstelle einer separaten Tabelle oder eines JSON-Blobs werden die `RoomSettings`-Felder (wie `allow_chat`, `allow_video`) direkt in der `rooms`-Tabelle mit dem Präfix `settings_` gespeichert (z. B. `settings_allow_chat`). Dies bietet ein sauberes Modell in Go und erhält gleichzeitig eine flache, performante Datenbankstruktur.
+
+### Passkey (`passkey.go`)
+
+Speichert FIDO2/WebAuthn-Public-Keys für passwortloses Login.
+
+### Benutzerdefinierter Typ: `StringArray`
+
+Standard-SQL-Datenbanken verarbeiten Arrays unterschiedlich (PostgreSQL hat native Arrays, SQLite nicht). Um die Kompatibilität zu gewährleisten, definiert Bedrud einen `StringArray`-Typ in `internal/models/user.go`.
+
+- Er implementiert `sql.Scanner` und `driver.Valuer`.
+- In **PostgreSQL** verwendet er den nativen `text[]`-Typ.
+- In **SQLite** serialisiert er das Array in einen String (z. B. `{admin,user}`) zur Speicherung.
+
+### Fremdschlüsselverwaltung
+
+GORMs `AutoMigrate` verarbeitet keine zusammengesetzten Primärschlüssel (z. B. `room_participants`).
+
+In `internal/database/migrations.go` führt Bedrud manuell `ALTER TABLE`-Anweisungen aus, um sicherzustellen, dass Fremdschlüssel-Beschränkungen (wie `ON DELETE CASCADE`) in der Produktion (PostgreSQL) korrekt angewendet werden.
+
+## Repository-Muster
+
+Das Backend verwendet das **Repository-Muster** für den Datenbankzugriff. Handler rufen GORM nicht direkt auf – sie verwenden ein Repository.
+
+Beispiel:
+```go
+// In handler:
+user, err := h.userRepo.GetByEmail(email)
+
+// In repository:
+func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+    var user models.User
+    err := r.db.Where("email = ?", email).First(&user).Error
+    return &user, err
+}
+```
+
+## Automatische Migrationen
+
+Beim Serverstart werden automatisch „AutoMigrate"-Operationen ausgeführt. Diese erstellen oder aktualisieren Datenbanktabellen basierend auf den Go-Strukturen in `internal/models`. Für einfache Schema-Änderungen sind keine manuellen `CREATE TABLE`-Anweisungen erforderlich.

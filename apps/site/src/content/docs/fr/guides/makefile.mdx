@@ -1,0 +1,138 @@
+---
+title: Référence du Makefile
+description: Commandes d'automatisation de build
+order: 31
+---
+
+Le `Makefile` à la racine est l'outil central d'orchestration de build pour le monorepo Bedrud. Il fournit des commandes pour le développement, le build et le déploiement sur toutes les plateformes.
+
+## Utilisation
+
+```bash
+make <cible>
+make help       # Afficher toutes les cibles disponibles
+```
+
+## Cibles de développement
+
+| Cible | Description |
+|--------|-------------|
+| `make init` | Installer toutes les dépendances (web + serveur) |
+| `make dev` | Exécuter LiveKit + serveur + web simultanément |
+| `make dev-web` | Exécuter uniquement le serveur de développement frontend |
+| `make dev-server` | Exécuter uniquement le serveur backend |
+| `make dev-livekit` | Exécuter le serveur LiveKit local |
+| `make dev-ios` | Ouvrir le projet iOS dans Xcode |
+| `make dev-android` | Ouvrir le projet Android dans Android Studio |
+
+### `make init`
+
+Installe les dépendances pour le frontend web et le serveur Go :
+
+```bash
+cd apps/web && bun install
+cd server && go mod tidy && go mod download
+```
+
+### `make dev`
+
+Démarre les trois services de développement simultanément. Appuyez sur `Ctrl+C` pour tout arrêter :
+
+- **LiveKit** à `localhost:7880`
+- **Serveur** à `localhost:8090`
+- **Web** à `localhost:3000`
+
+## Cibles de build
+
+| Cible | Description |
+|--------|-------------|
+| `make build` | Build frontend + backend (intégré) |
+| `make build-front` | Build uniquement le frontend |
+| `make build-back` | Build uniquement le backend |
+| `make build-dist` | Build tarball production linux/amd64 |
+
+### `make build`
+
+Build de production complet :
+
+1. Exécute `bun run build:embed` - pré-rendu SSR de l'application React et copie des assets dans `server/frontend/`
+2. Build le binaire Go avec le frontend intégré
+
+Sortie : `server/dist/bedrud`
+
+### `make build-dist`
+
+Crée une distribution compressée prête pour la production :
+
+1. Exécute `make build`
+2. Compilation croisée pour `linux/amd64` avec symboles de débogage supprimés
+3. Crée `dist/bedrud_linux_amd64.tar.xz`
+
+## Cibles Android
+
+| Cible | Description |
+|--------|-------------|
+| `make build-android-debug` | Build APK de débogage |
+| `make build-android` | Build APK de release (nécessite keystore) |
+| `make install-android` | Installer APK de release sur l'appareil connecté |
+| `make release-android` | Build + installation APK de release |
+
+### Chemins de sortie APK
+
+- Débogage : `apps/android/app/build/outputs/apk/debug/app-debug.apk`
+- Release : `apps/android/app/build/outputs/apk/release/app-release.apk`
+
+## Cibles iOS
+
+| Cible | Description |
+|--------|-------------|
+| `make build-ios` | Build archive iOS (Release) |
+| `make export-ios` | Exporter IPA depuis l'archive |
+| `make build-ios-sim` | Build pour simulateur iOS (Debug) |
+
+### Chemins de sortie
+
+- Archive : `apps/ios/build/Bedrud.xcarchive`
+- IPA : `apps/ios/build/export/Bedrud.ipa`
+
+## Cible de déploiement
+
+| Cible | Description |
+|--------|-------------|
+| `make deploy ARGS=...` | Exécuter l'outil CLI de déploiement |
+
+### Exemple
+
+```bash
+make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
+```
+
+Cela exécute le CLI Python à `tools/cli/bedrud.py` avec les arguments fournis.
+
+## Cibles de nettoyage
+
+| Cible | Description |
+|--------|-------------|
+| `make clean` | Supprimer les artefacts de build et les binaires compilés |
+| `make full-clean` | Supprimer les artefacts + toutes les dépendances installées |
+
+### `make clean`
+
+Supprime :
+
+- `dist/` - tarballs de distribution
+- `server/dist/` - binaire serveur compilé
+- `apps/web/dist/` - sortie de build React
+- contenu `server/frontend/` - assets frontend intégrés
+- `apps/android/app/build/` - sorties de build Android
+- `apps/ios/build/` - sorties de build iOS
+
+### `make full-clean`
+
+Tout ce que fait `clean`, plus :
+
+- `apps/web/node_modules/`
+- `apps/android/.gradle/`
+- Cache de modules Go (`go clean -modcache`)
+
+Exécutez `make init` ensuite pour réinstaller les dépendances.

@@ -1,0 +1,73 @@
+---
+title: Internal TLS
+description: Self-signed certificates for internal networks
+order: 30
+---
+
+适用于隔离网络--没有公网域名、没有出站互联网、连通性受限。
+
+浏览器需要受信任的 HTTPS 才能通过 WebRTC 访问摄像头/麦克风。自签名证书可以工作但会显示警告。要获得干净的设置，请生成一个私有 CA 并将其分发给客户端。
+
+## 生成私有 CA 和服务器证书
+
+```bash
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=Bedrud Internal CA"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=<your-server-ip-or-hostname>"
+openssl x509 -req -days 365 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+sudo ./bedrud install --tls --cert server.crt --key server.key --ip YOUR_SERVER_IP
+```
+
+## 将 CA 添加到客户端信任存储
+
+将 `ca.crt` 分发到所有客户端机器：
+
+### Windows
+
+```powershell
+certmgr.msc  # Right-click ca.crt → Install Certificate → Trusted Root CAs
+```
+
+### macOS
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt
+```
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
+sudo update-ca-certificates
+```
+
+### Linux (Arch/Fedora)
+
+```bash
+sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
+sudo update-ca-trust
+```
+
+重启浏览器，然后打开 `https://YOUR_SERVER_IP`（替换为服务器的实际 IP 地址，例如 `192.168.1.100`）。重启后，证书将被信任，摄像头/麦克风访问将正常工作，不会出现警告。
+
+## 故障排除
+
+| 问题 | 解决方案 |
+|---------|-----|
+| 浏览器仍然警告证书不受信任 | 清除浏览器缓存，安装 CA 后重启浏览器 |
+| 摄像头/麦克风被阻止 | 验证 CA 位于受信任的根证书颁发机构中，而不是中间证书颁发机构 |
+| 证书已过期 | 使用更长的 `-days` 值重新生成 |
+| CN 不匹配 | 确保服务器证书的 CN 与 URL 中的 IP 或主机名匹配 |
+
+---
+
+## 另请参阅
+- [安装指南](/zh/docs/getting-started/installation) - 安装方法
+- [配置参考](/zh/docs/getting-started/configuration) - 完整配置选项

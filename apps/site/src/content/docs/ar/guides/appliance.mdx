@@ -1,0 +1,109 @@
+---
+title: وضع الجهاز الجاهز
+description: إعداد جهاز مكوَّن مسبقًا
+order: 33
+---
+
+مُصمَّم Bedrud ليعمل كـ "جهاز جاهز" مكتفٍ ذاتيًا لاجتماعات الفيديو. ملف ثنائي تنفيذي واحد يحتوي كل ما يلزم - الواجهة والخلفية وخادم وسائط LiveKit.
+
+## الميزات الرئيسية
+
+| الميزة | الوصف |
+|---------|-------------|
+| لا تبعيات خارجية | لا حاجة لـ Node.js أو Redis أو خادم وسائط منفصل |
+| خادم وسائط مضمن | ملف LiveKit الثنائي مُضمَّن ويُدار تلقائيًا |
+| واجهة مضمنة | واجهة React مُترجمة ومعروضة مسبقًا SSR داخل الملف الثنائي Go |
+| تخزين SQLite | لا حاجة لخادم قاعدة بيانات |
+| TLS مدمج | شهادات موقعة ذاتيًا أو Let's Encrypt |
+| مثبّت مدمج | يُعدّد systemd والأدلة والإعدادات |
+
+## تشغيل الملف الثنائي
+
+### بدء خادم Bedrud
+
+```bash
+./bedrud --run --config config.yaml
+```
+
+### بدء خادم وسائط LiveKit
+
+```bash
+./bedrud --livekit --config livekit.yaml
+```
+
+الملف الثنائي يحتوي كلًا من خادم API وخادم الوسائط. استخدم الأعلام لاختيار أيهما تريد بدءه.
+
+## التثبيت
+
+### تثبيت سريع (Debian/Ubuntu)
+
+```bash
+# With Let's Encrypt TLS
+sudo ./bedrud install --tls --domain meet.example.com --email admin@example.com
+
+# With self-signed certificate
+sudo ./bedrud install --tls --ip 1.2.3.4
+
+# Plain HTTP (dev only)
+sudo ./bedrud install --ip 1.2.3.4
+```
+
+<InstallerSteps />
+
+### بنية الخدمات
+
+بعد التثبيت، تعمل خدمتا systemd:
+
+```mermaid
+flowchart LR
+    BS["bedrud.service<br/>bedrud --run<br/>(API + Web UI)"]
+    LS["livekit.service<br/>bedrud --livekit<br/>(WebRTC media)"]
+    DB["SQLite database"]
+
+    BS --> LS
+    BS --> DB
+```
+
+## ملفات الإعدادات
+
+| الملف | الغرض |
+|------|---------|
+| `/etc/bedrud/config.yaml` | إعدادات الخادم الرئيسية |
+| `/etc/bedrud/livekit.yaml` | إعدادات خادم الوسائط |
+| `/var/lib/bedrud/bedrud.db` | قاعدة بيانات SQLite |
+| `/var/log/bedrud/bedrud.log` | سجلات التطبيق |
+
+راجع [مرجع الإعدادات](/ar/docs/getting-started/configuration) لجميع الخيارات.
+
+## ما بعد التثبيت
+
+### أنشئ أول مسؤول
+
+<CreateAdmin />
+
+### تحقق من حالة الخدمات
+
+```bash
+systemctl status bedrud livekit
+```
+
+### عرض السجلات
+
+```bash
+tail -f /var/log/bedrud/bedrud.log
+journalctl -u bedrud -f
+```
+
+## إلغاء التثبيت
+
+```bash
+sudo ./bedrud uninstall
+```
+
+يزيل هذا بالكامل:
+
+- ملفات خدمة systemd
+- الملف الثنائي من `/usr/local/bin/`
+- الإعدادات في `/etc/bedrud/`
+- البيانات في `/var/lib/bedrud/`
+- السجلات في `/var/log/bedrud`

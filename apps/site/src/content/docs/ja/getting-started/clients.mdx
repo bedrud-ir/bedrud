@@ -1,0 +1,264 @@
+---
+title: クライアントインストール
+description: デスクトップ・モバイルアプリをインストールする
+order: 3
+---
+
+ブラウザで会議リンクを開くだけで参加できます。インストールは不要です。ネイティブアプリでの利用をご希望の場合は、以下から各プラットフォーム用のクライアントをインストールしてください。
+
+---
+
+## ブラウザ（インストール不要）
+
+**Chrome**、**Firefox**、**Edge**、または **Safari** で会議 URL を開きます。カメラとマイクのアクセスには HTTPS が必要です（サーバー管理者が設定します）。
+
+ゲストアクセスが有効な場合、ダウンロード、拡張機能、アカウントは不要です。
+
+---
+
+## Android
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="google-play">Google Play</TabsTrigger>
+    <TabsTrigger value="apk-sideload">APK（サイドロード）</TabsTrigger>
+  </TabsList>
+  <TabsContent value="google-play">
+
+    Google Play で **Bedrud** を検索するか、サーバー管理者からの直接リンクを開いてください。
+  </TabsContent>
+  <TabsContent value="apk-sideload">
+
+    [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) から最新 APK をダウンロードします：
+
+    ```bash
+    # スマホに転送して開き、インストール
+    ```
+
+    デバイスの設定で **不明なソースからのインストール** を有効にする必要がある場合があります。
+  </TabsContent>
+</Tabs>
+
+---
+
+## iOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="app-store">App Store</TabsTrigger>
+    <TabsTrigger value="ipa-sideload">IPA（サイドロード）</TabsTrigger>
+  </TabsList>
+  <TabsContent value="app-store">
+
+    App Store で **Bedrud** を検索するか、サーバー管理者からの直接リンクを開いてください。
+  </TabsContent>
+  <TabsContent value="ipa-sideload">
+
+    [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) から最新 IPA をダウンロードします。AltStore または類似ツールでサイドロードします。
+  </TabsContent>
+</Tabs>
+
+---
+
+## Linux デスクトップ
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="appimage-recommended">AppImage（推奨）</TabsTrigger>
+    <TabsTrigger value="flatpak">Flatpak</TabsTrigger>
+    <TabsTrigger value="snap">Snap</TabsTrigger>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+    <TabsTrigger value="portable-tarxz">Portable tar.xz</TabsTrigger>
+  </TabsList>
+  <TabsContent value="appimage-recommended">
+
+    インストール不要。ダウンロードして実行権限を付与し、実行します：
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
+    chmod +x bedrud-desktop-linux-x86_64.AppImage
+    ./bedrud-desktop-linux-x86_64.AppImage
+    ```
+
+    <Callout type="tip">
+        AppImage をアプリケーションランチャーに統合するには、[AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) を使用してください。
+    </Callout>
+  </TabsContent>
+  <TabsContent value="flatpak">
+
+    ```bash
+    flatpak install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.flatpak
+    flatpak run ir.bedrud.Desktop
+    ```
+  </TabsContent>
+  <TabsContent value="snap">
+
+    ```bash
+    sudo snap install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="ubuntu-debian-apt">
+
+    Bedrud の apt リポジトリがすでに設定されている場合：
+
+    ```bash
+    sudo apt install bedrud-desktop
+    ```
+
+    リポジトリのセットアップについては [パッケージインストールガイド](/ja/docs/guides/packages) を参照。
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-desktop-bin
+    ```
+  </TabsContent>
+  <TabsContent value="fedora-rhel-dnf">
+
+    Bedrud の DNF リポジトリがすでに設定されている場合：
+
+    ```bash
+    sudo dnf install bedrud-desktop
+    ```
+
+    リポジトリのセットアップについては [パッケージインストールガイド](/ja/docs/guides/packages) を参照。
+  </TabsContent>
+  <TabsContent value="portable-tarxz">
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.tar.xz
+    tar xf bedrud-desktop-linux-x86_64.tar.xz
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## macOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="homebrew-recommended">Homebrew（推奨）</TabsTrigger>
+    <TabsTrigger value="dmg-apple-silicon">Apple Silicon (.dmg)</TabsTrigger>
+    <TabsTrigger value="dmg-intel">Intel (.dmg)</TabsTrigger>
+    <TabsTrigger value="apple-silicon-arm64">Apple Silicon (tar.gz)</TabsTrigger>
+    <TabsTrigger value="intel-x8664">Intel (tar.gz)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="homebrew-recommended">
+
+    ```bash
+    brew tap bedrud-ir/bedrud
+    brew install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="dmg-apple-silicon">
+
+    [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) から DMG をダウンロードします：
+
+    | アーキテクチャ | ファイル |
+    |---|---|
+    | Apple Silicon | `bedrud-desktop-macos-arm64.dmg` |
+
+    DMG を開き、Bedrud をアプリケーションにドラッグします。Gatekeeper でブロックされた場合は、**システム設定 → プライバシーとセキュリティ** に移動し、**このまま開く** をクリックします。
+  </TabsContent>
+  <TabsContent value="dmg-intel">
+
+    [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) から DMG をダウンロードします：
+
+    | アーキテクチャ | ファイル |
+    |---|---|
+    | Intel | `bedrud-desktop-macos-x86_64.dmg` |
+
+    DMG を開き、Bedrud をアプリケーションにドラッグします。Gatekeeper でブロックされた場合は、**システム設定 → プライバシーとセキュリティ** に移動し、**このまま開く** をクリックします。
+  </TabsContent>
+  <TabsContent value="apple-silicon-arm64">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="intel-x8664">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="warning">
+    macOS ビルドは **未署名** の場合があります。Gatekeeper でブロックされた場合は、上記の `xattr` コマンドを実行するか、**システム設定 → プライバシーとセキュリティ** に移動して **このまま開く** をクリックしてください。
+</Callout>
+
+---
+
+## Windows
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="winget">WinGet</TabsTrigger>
+    <TabsTrigger value="chocolatey">Chocolatey</TabsTrigger>
+    <TabsTrigger value="nsis-installer">NSIS インストーラー</TabsTrigger>
+    <TabsTrigger value="portable-zip">Portable .zip</TabsTrigger>
+  </TabsList>
+  <TabsContent value="winget">
+
+    ```powershell
+    winget install Bedrud.BedrudDesktop
+    ```
+  </TabsContent>
+  <TabsContent value="chocolatey">
+
+    ```powershell
+    choco install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="nsis-installer">
+
+    [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) からインストーラーをダウンロードします：
+
+    | アーキテクチャ | ファイル |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64-setup.exe` |
+    | ARM64 | `bedrud-desktop-windows-arm64-setup.exe` |
+
+    インストーラーを実行します。スタートメニューとプログラムの追加と削除に表示されます。
+  </TabsContent>
+  <TabsContent value="portable-zip">
+
+    [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) からダウンロードして展開します：
+
+    | アーキテクチャ | ファイル |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64.zip` |
+    | ARM64 | `bedrud-desktop-windows-arm64.zip` |
+
+    インストール不要。展開したフォルダから `bedrud-desktop.exe` を実行します。
+  </TabsContent>
+</Tabs>
+
+---
+
+## サーバーへの接続
+
+デスクトップアプリを初めて開くと、サーバー URL の入力を求められます。
+
+1. サーバー管理者から提供された URL を入力（例: `https://meet.example.com`）
+2. アカウントを登録するか、ログインします
+3. ミーティングルームを作成または参加します
+
+デスクトップアプリは **複数サーバー** への接続に対応しています。**設定** で追加できます。
+
+---
+
+## すべてのダウンロード
+
+すべてのクライアントインストーラーとバイナリは [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) ページにあります。
+
+すべてのパッケージマネージャー、リポジトリ、プラットフォームの完全リファレンスについては、[パッケージインストールガイド](/ja/docs/guides/packages) を参照してください。

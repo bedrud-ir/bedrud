@@ -1,0 +1,138 @@
+---
+title: Referencia del Makefile
+description: Comandos de automatización de compilación
+order: 31
+---
+
+El `Makefile` raíz es la herramienta central de orquestación de compilación del monorepo de Bedrud. Proporciona comandos para desarrollo, compilación y despliegue en todas las plataformas.
+
+## Uso
+
+```bash
+make <target>
+make help       # Mostrar todos los targets disponibles
+```
+
+## Targets de desarrollo
+
+| Target | Descripción |
+|--------|-------------|
+| `make init` | Instalar todas las dependencias (web + servidor) |
+| `make dev` | Ejecutar LiveKit + servidor + web simultáneamente |
+| `make dev-web` | Ejecutar solo el servidor de desarrollo del frontend |
+| `make dev-server` | Ejecutar solo el servidor backend |
+| `make dev-livekit` | Ejecutar el servidor local de LiveKit |
+| `make dev-ios` | Abrir el proyecto de iOS en Xcode |
+| `make dev-android` | Abrir el proyecto de Android en Android Studio |
+
+### `make init`
+
+Instala las dependencias tanto del frontend web como del servidor Go:
+
+```bash
+cd apps/web && bun install
+cd server && go mod tidy && go mod download
+```
+
+### `make dev`
+
+Inicia los tres servicios de desarrollo simultáneamente. Presiona `Ctrl+C` para detener todos:
+
+- **LiveKit** en `localhost:7880`
+- **Servidor** en `localhost:8090`
+- **Web** en `localhost:3000`
+
+## Targets de compilación
+
+| Target | Descripción |
+|--------|-------------|
+| `make build` | Compilar frontend + backend (embebido) |
+| `make build-front` | Compilar solo el frontend |
+| `make build-back` | Compilar solo el backend |
+| `make build-dist` | Compilar tarball de producción para linux/amd64 |
+
+### `make build`
+
+Compilación completa de producción:
+
+1. Ejecuta `bun run build:embed` - pre-renderiza con SSR la aplicación React y copia los assets a `server/frontend/`
+2. Compila el binario de Go con el frontend embebido
+
+Resultado: `server/dist/bedrud`
+
+### `make build-dist`
+
+Crea una distribución comprimida lista para producción:
+
+1. Ejecuta `make build`
+2. Compila cruzadamente para `linux/amd64` con símbolos de depuración eliminados
+3. Crea `dist/bedrud_linux_amd64.tar.xz`
+
+## Targets de Android
+
+| Target | Descripción |
+|--------|-------------|
+| `make build-android-debug` | Compilar APK de depuración |
+| `make build-android` | Compilar APK de producción (requiere keystore) |
+| `make install-android` | Instalar APK de producción en un dispositivo conectado |
+| `make release-android` | Compilar + instalar APK de producción |
+
+### Rutas de salida de APK
+
+- Depuración: `apps/android/app/build/outputs/apk/debug/app-debug.apk`
+- Producción: `apps/android/app/build/outputs/apk/release/app-release.apk`
+
+## Targets de iOS
+
+| Target | Descripción |
+|--------|-------------|
+| `make build-ios` | Compilar archivo de iOS (Release) |
+| `make export-ios` | Exportar IPA desde el archivo |
+| `make build-ios-sim` | Compilar para simulador de iOS (Debug) |
+
+### Rutas de salida
+
+- Archivo: `apps/ios/build/Bedrud.xcarchive`
+- IPA: `apps/ios/build/export/Bedrud.ipa`
+
+## Target de despliegue
+
+| Target | Descripción |
+|--------|-------------|
+| `make deploy ARGS=...` | Ejecutar la herramienta CLI de despliegue |
+
+### Ejemplo
+
+```bash
+make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
+```
+
+Esto ejecuta la CLI de Python en `tools/cli/bedrud.py` con los argumentos proporcionados.
+
+## Targets de limpieza
+
+| Target | Descripción |
+|--------|-------------|
+| `make clean` | Eliminar artefactos de compilación y binarios compilados |
+| `make full-clean` | Eliminar artefactos + todas las dependencias instaladas |
+
+### `make clean`
+
+Elimina:
+
+- `dist/` - tarballs de distribución
+- `server/dist/` - binario compilado del servidor
+- `apps/web/dist/` - resultado de compilación de React
+- Contenido de `server/frontend/` - assets del frontend embebido
+- `apps/android/app/build/` - resultados de compilación de Android
+- `apps/ios/build/` - resultados de compilación de iOS
+
+### `make full-clean`
+
+Todo lo que hace `clean`, además de:
+
+- `apps/web/node_modules/`
+- `apps/android/.gradle/`
+- Caché de módulos de Go (`go clean -modcache`)
+
+Ejecuta `make init` después para reinstalar las dependencias.

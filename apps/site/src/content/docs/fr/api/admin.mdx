@@ -1,0 +1,147 @@
+---
+title: API d'administration
+description: Opérations administratives
+order: 25
+---
+
+Les points de terminaison d'administration sont sous `/api/admin/`. Ils nécessitent le rôle **Super Admin**.
+
+## Vue d'ensemble
+
+| Point de terminaison | Méthode | Description |
+|---------------------|---------|-------------|
+| `/api/admin/users` | GET | Lister tous les utilisateurs |
+| `/api/admin/users/:id/status` | PUT | Activer ou désactiver un utilisateur |
+
+---
+
+## Points de terminaison
+
+### Lister tous les utilisateurs
+
+Récupère la liste de tous les utilisateurs enregistrés.
+
+```
+GET /api/admin/users
+```
+
+**En-têtes :** `Authorization: Bearer <accessToken>`
+
+**Rôle requis :** Super Admin
+
+**Réponse (200) :**
+
+```json
+{
+  "users": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "avatar": "https://...",
+      "role": "user",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": "uuid-2",
+      "email": "admin@example.com",
+      "name": "Admin User",
+      "role": "admin",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-10T08:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### Mettre à jour le statut d'un utilisateur
+
+Activer ou désactiver un compte utilisateur. Les utilisateurs désactivés ne peuvent pas se connecter.
+
+```
+PUT /api/admin/users/:id/status
+```
+
+**En-têtes :** `Authorization: Bearer <accessToken>`
+
+**Rôle requis :** Super Admin
+
+**Paramètres d'URL :**
+
+| Paramètre | Description |
+|-----------|-------------|
+| `id` | UUID de l'utilisateur |
+
+**Corps de la requête :**
+
+```json
+{
+  "isActive": false
+}
+```
+
+**Réponse (200) :**
+
+```json
+{
+  "message": "user status updated",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "isActive": false
+  }
+}
+```
+
+---
+
+## Rôles d'utilisateur
+
+| Rôle | Description | Autorisations |
+|------|-------------|---------------|
+| `guest` | Utilisateur temporaire | Rejoindre uniquement les salles |
+| `user` | Utilisateur régulier | Créer/rejoindre des salles, gérer son propre profil |
+| `admin` | Super Admin | Toutes les autorisations utilisateur + gérer les utilisateurs, voir toutes les salles |
+
+### Créer un administrateur
+
+Les utilisateurs administrateurs sont créés via la CLI :
+
+```bash
+# Créer un utilisateur
+bedrud user create --email "admin@example.com" --password "securepassword" --name "Admin"
+
+# Promouvoir en administrateur
+bedrud user promote --email "admin@example.com"
+```
+
+Il n'y a pas de point de terminaison API pour promouvoir les utilisateurs - c'est intentionnel pour des raisons de sécurité.
+
+---
+
+## Réponses d'erreur
+
+```json
+{
+  "error": "forbidden"
+}
+```
+
+| Statut | Signification |
+|--------|--------------|
+| 401 | Non authentifié |
+| 403 | Pas un Super Admin |
+| 404 | Utilisateur non trouvé |
+| 500 | Erreur interne du serveur |
+
+---
+
+## Voir aussi
+
+- [Gestionnaires d'API et routage](/fr/docs/backend/api-handlers) - comment les routes d'administration sont implémentées
+- [API des salles](/fr/docs/api/rooms) - points de terminaison de gestion des salles

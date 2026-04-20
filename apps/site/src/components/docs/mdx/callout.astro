@@ -1,0 +1,51 @@
+---
+import { Info, CheckCircle, AlertTriangle, AlertCircle } from "lucide-react";
+
+type CalloutType = "note" | "info" | "tip" | "warning" | "danger";
+
+interface Props {
+	type?: CalloutType;
+	title?: string;
+}
+
+const { type = "note", title } = Astro.props;
+
+const variants: Record<CalloutType, { icon: typeof Info; className: string }> = {
+	note: {
+		icon: Info,
+		className:
+			"border-blue-500/20 bg-blue-500/10 text-blue-500 dark:border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400",
+	},
+	info: {
+		icon: Info,
+		className:
+			"border-blue-500/20 bg-blue-500/10 text-blue-500 dark:border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400",
+	},
+	tip: {
+		icon: CheckCircle,
+		className:
+			"border-emerald-500/20 bg-emerald-500/10 text-emerald-500 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400",
+	},
+	warning: {
+		icon: AlertTriangle,
+		className:
+			"border-amber-500/20 bg-amber-500/10 text-amber-500 dark:border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-400",
+	},
+	danger: {
+		icon: AlertCircle,
+		className:
+			"border-red-500/20 bg-red-500/10 text-red-500 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400",
+	},
+};
+
+const variant = variants[type];
+const Icon = variant.icon;
+---
+
+<div class={`my-6 flex gap-3 rounded-lg border px-4 py-5 ${variant.className}`}>
+	<Icon class="mt-0.5 size-5 shrink-0" />
+	<div class="flex-1">
+		{title && <h4 class="mb-2 font-semibold">{title}</h4>}
+		<div class="text-sm"><slot /></div>
+	</div>
+</div>

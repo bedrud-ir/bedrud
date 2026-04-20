@@ -1,0 +1,147 @@
+---
+title: 管理者API
+description: 管理操作用エンドポイント
+order: 25
+---
+
+管理者エンドポイントは `/api/admin/` 以下にあります。これらには **Super Admin** ロールが必要です。
+
+## 概要
+
+| エンドポイント | メソッド | 説明 |
+|----------|--------|-------------|
+| `/api/admin/users` | GET | すべてのユーザーを一覧表示 |
+| `/api/admin/users/:id/status` | PUT | ユーザーの有効化・無効化 |
+
+---
+
+## エンドポイント
+
+### ユーザー一覧の取得
+
+登録済みのすべてのユーザーの一覧を取得します。
+
+```
+GET /api/admin/users
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**必要なロール：** Super Admin
+
+**レスポンス (200)：**
+
+```json
+{
+  "users": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "avatar": "https://...",
+      "role": "user",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": "uuid-2",
+      "email": "admin@example.com",
+      "name": "Admin User",
+      "role": "admin",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-10T08:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### ユーザーステータスの更新
+
+ユーザーアカウントを有効化または無効化します。無効化されたユーザーはログインできません。
+
+```
+PUT /api/admin/users/:id/status
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**必要なロール：** Super Admin
+
+**URLパラメータ：**
+
+| パラメータ | 説明 |
+|-----------|-------------|
+| `id` | ユーザーUUID |
+
+**リクエストボディ：**
+
+```json
+{
+  "isActive": false
+}
+```
+
+**レスポンス (200)：**
+
+```json
+{
+  "message": "user status updated",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "isActive": false
+  }
+}
+```
+
+---
+
+## ユーザーロール
+
+| ロール | 説明 | 権限 |
+|------|-------------|------------|
+| `guest` | 一時ユーザー | ルームへの参加のみ |
+| `user` | 一般ユーザー | ルームの作成・参加、プロフィール管理 |
+| `admin` | Super Admin | すべてのユーザー権限 + ユーザー管理、すべてのルームの閲覧 |
+
+### 管理者の作成
+
+管理者ユーザーはCLI経由で作成します：
+
+```bash
+# ユーザーの作成
+bedrud user create --email "admin@example.com" --password "securepassword" --name "Admin"
+
+# 管理者への昇格
+bedrud user promote --email "admin@example.com"
+```
+
+ユーザーを管理者に昇格させるAPIエンドポイントは意図的に用意されていません。これはセキュリティ上の理由です。
+
+---
+
+## エラーレスポンス
+
+```json
+{
+  "error": "forbidden"
+}
+```
+
+| ステータスコード | 意味 |
+|--------|---------|
+| 401 | 未認証 |
+| 403 | Super Admin権限がありません |
+| 404 | ユーザーが見つかりません |
+| 500 | サーバー内部エラー |
+
+---
+
+## 関連ドキュメント
+
+- [APIハンドラーとルーティング](/ja/docs/backend/api-handlers) - 管理者ルートの実装方法
+- [Rooms API](/ja/docs/api/rooms) - ルーム管理エンドポイント

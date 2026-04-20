@@ -1,0 +1,499 @@
+---
+title: نصب سرور
+description: نصب سرور بدرود روی لینوکس
+order: 2
+---
+
+این راهنما نصب **سرور بدرود** (API، Web UI، media server WebRTC) روی لینوکس را پوشش می‌دهد. برای کلاینت دسکتاپ و موبایل [نصب کلاینت](/fa/docs/getting-started/clients) را ببینید.
+
+---
+
+## پیش‌نیازها
+
+| نیاز | جزئیات |
+|------|--------|
+| **سیستم‌عامل** | Debian 12+، Ubuntu 22.04+، Arch Linux (rolling)، Fedora 39+ |
+| **معماری** | amd64 (x86_64) یا arm64 (aarch64) |
+| **دسترسی** | Root یا sudo |
+| **سیستم init** | systemd |
+| **سخت‌افزار** | حداقل ۱ vCPU، ۵۱۲ MB RAM. برای ۱۰+ اتاق همزمان ۲ vCPU، ۲ GB RAM توصیه می‌شود |
+| **پورت‌ها** | `8090` (API + Web UI)، `7880` (LiveKit WebSocket)، `50000–60000/udp` (مدیا WebRTC) |
+| **TLS خودکار** | همچنین پورت‌های `80` و `443` را باز کنید. نیاز دامنه با رکورد DNS A که به این سرور اشاره می‌کند |
+| **ابزارها** | `curl`، `tar` (در اکثر توزیع‌ها از پیش نصب شده) |
+
+> **دامنه ندارید؟** بدرود با آدرس IP و self-signed TLS کار می‌کند. مرورگرها هشدار گواهی نشان می‌دهند اما ویدیو و صدا کار می‌کنند. برای گواهی‌های قابل اعتماد در شبکه‌های داخلی، به [راهنمای TLS داخلی](/fa/docs/guides/internal-tls) ببینید.
+
+---
+
+## ۱. نصب با یک دستور (توصیه‌شده)
+
+باینری CLI بِدْرود را دانلود و در PATH شما نصب می‌کند. روی لینوکس، مک‌او‌اس و ویندوز کار می‌کند.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="bash">macOS / Linux (Bash)</TabsTrigger>
+    <TabsTrigger value="powershell">Windows (PowerShell)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="bash">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    پس از نصب، شل را بارگذاری مجدد کنید:
+
+    ```bash
+    source ~/.bashrc  # یا ~/.zshrc
+    ```
+
+  </TabsContent>
+  <TabsContent value="powershell">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    ```
+
+  </TabsContent>
+</Tabs>
+
+بررسی:
+
+```bash
+bedrud --version
+```
+
+<Callout type="tip">
+    نصب سفارشی؟ از پارامترهایی مثل `--version 0.12.0`، `--install-dir /opt/bedrud` یا `--skip-shell` استفاده کنید. مرجع کامل: [نصب‌کننده CLI](/fa/docs/getting-started/cli-installer).
+</Callout>
+
+---
+
+## ۲. نصب از طریق package manager
+
+از طریق package manager توزیع خود نصب کنید.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="ubuntu-debian-apt">
+
+    ```bash
+    curl -fsSL https://bedrud-ir.github.io/bedrud/bedrud.gpg.key \
+      | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/bedrud.gpg
+
+    echo "deb https://bedrud-ir.github.io/bedrud stable main" \
+      | sudo tee /etc/apt/sources.list.d/bedrud.list
+
+    sudo apt update && sudo apt install bedrud
+    ```
+
+    سپس نصب‌کننده تعاملی را اجرا کنید:
+
+    ```bash
+    sudo bedrud install
+    ```
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-bin
+    sudo bedrud install
+    ```
+  </TabsContent>
+  <TabsContent value="fedora-rhel-dnf">
+
+    ```bash
+    sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key \
+      -o /etc/pki/rpm-gpg/RPM-GPG-KEY-bedrud
+
+    sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.repo \
+      -o /etc/yum.repos.d/bedrud.repo
+
+    sudo dnf install bedrud
+    sudo bedrud install
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="tip">
+    برای نصب کلاینت دسکتاپ (Linux، macOS، Windows) به [نصب کلاینت](/fa/docs/getting-started/clients) ببینید.
+</Callout>
+
+---
+
+## ۳. Docker
+
+بدرود را در یک container اجرا کنید — بدون نصب مستقیم روی سرور لینوکس، بدون systemd، بدون دانلود باینری.
+
+### ایمیج از پیش ساخته‌شده (سریع‌ترین)
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+### Docker Compose
+
+```yaml
+services:
+  bedrud:
+    image: ghcr.io/bedrud-ir/bedrud:latest
+    ports:
+      - "8090:8090"
+      - "7880:7880"
+      - "50000-60000:50000-60000/udp"
+    volumes:
+      - bedrud-data:/var/lib/bedrud
+    restart: unless-stopped
+
+volumes:
+  bedrud-data:
+```
+
+### پورت‌ها
+
+| پورت | سرویس | پروتکل |
+|------|-------|--------|
+| 8090 | API + Web UI | HTTP |
+| 7880 | LiveKit | WebSocket + HTTP |
+| 50000–60000 | مدیا WebRTC | UDP |
+
+### پیکربندی
+
+یک فایل تنظیمات را عبور دهید یا از متغیرهای محیطی استفاده کنید:
+
+```bash
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -e JWT_SECRET=change-this-to-a-random-string \
+  -e LIVEKIT_API_KEY=prodkey \
+  -e LIVEKIT_API_SECRET=prodsecret \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+<Callout type="warning">
+    رمزهای پیش‌فرض JWT و LiveKit فقط برای تست سریع هستند. قبل از در معرض قرار دادن کانتینر به اینترنت، آن‌ها را تغییر دهید.
+</Callout>
+
+اسناد کامل Docker شامل حجم‌ها، reverse proxy، و تنظیمات TLS: [راهنمای Docker](/fa/docs/guides/docker).
+
+---
+
+## ۴. نصب تعاملی
+
+اگر فایل باینری `bedrud` را قبلاً روی سرور دارید:
+
+```bash
+sudo ./bedrud install
+```
+
+نصب‌کننده IP سرور را خودکار تشخیص می‌دهد و سوالات زیر را می‌پرسد:
+
+| درخواست | پیش‌فرض | یادداشت |
+|---------|---------|---------|
+| **آدرس IP** | تشخیص خودکار (اولین IPv4 غیر لوپ‌بک) | برای پذیرش Enter را بزنید، یا IP دیگری تایپ کنید |
+| **دامنه** | خالی (فقط IP) | در صورت ارائه با ایمیل، TLS Let's Encrypt را فعال می‌کند |
+| **ایمیل** | خالی | برای ثبت‌نام Let's Encrypt استفاده می‌شود (فقط اگر دامنه تنظیم شده باشد) |
+| **self-signed TLS** | بله | هنگامی که دامنه ارائه نشده ارائه می‌شود. پیش‌فرض `Y` است |
+
+وقتی stdin به pipe تبدیل شود (حالت غیرتعاملی)، هیچ سوالی پرسیده نمی‌شود و از فلگ‌ها و پیش‌فرض‌ها استفاده می‌شود.
+
+---
+
+## ۵. غیرتعاملی (مبتنی بر فلگ)
+
+با فلگ، تمام سوالات را رد کنید.
+
+### Let's Encrypt (دامنه مورد نیاز)
+
+**نیاز:** رکورد DNS A که به IP سرور اشاره می‌کند.
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com --email webmaster@example.com
+```
+
+### self-signed TLS (مبتنی بر IP)
+
+**نیاز:** هیچ‌چیز اضافی. فوراً کار می‌کند.
+
+```bash
+sudo ./bedrud install --tls --ip 1.2.3.4
+```
+
+### HTTP ساده (فقط توسعه / localhost)
+
+**نیاز:** localhost یا `127.0.0.1`. مرورگر دوربین/میکروفون را بدون HTTPS مسدود می‌کند (به‌جز localhost).
+
+```bash
+sudo ./bedrud install --ip 1.2.3.4
+```
+
+### self-signed برای دامنه (تست قبل از DNS)
+
+**نیاز:** نام دامنه (DNS لازم نیست فعال باشد).
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com
+```
+
+### پورت سفارشی
+
+**نیاز:** پورت آزاد.
+
+```bash
+sudo ./bedrud install --tls --port 8443 --domain meet.example.com
+```
+
+### Certificateهای خارجی
+
+**نیاز:** فایل‌های fullchain و کلید خصوصی با فرمت PEM.
+
+```bash
+sudo ./bedrud install --tls --cert /path/to/fullchain.pem --key /path/to/privkey.pem
+```
+
+### پورت‌های سفارشی LiveKit
+
+**نیاز:** هر سه پورت در فایروال باز باشند.
+
+```bash
+sudo ./bedrud install --lk-port 9000 --lk-tcp-port 9001 --lk-udp-port 9002
+```
+
+### پشت reverse proxy
+
+**نیاز:** یک reverse proxy (Nginx، Caddy، Traefik، Cloudflare) که TLS را terminate کند.
+
+```bash
+sudo ./bedrud install --behind-proxy --domain meet.example.com
+```
+
+`behindProxy: true` در config تنظیم می‌شود و trusted proxy headerها پیکربندی می‌شوند.
+
+### LiveKit خارجی
+
+**نیاز:** سرور LiveKit جداگانه‌ای که در حال اجرا باشد و از این ماشین قابل دسترسی باشد.
+
+```bash
+sudo ./bedrud install --external-livekit https://livekit.example.com
+```
+
+LiveKit داخلی نصب نمی‌شود. API Key و Secret باید در هر دو config مطابقت داشته باشند.
+
+### دامنه جداگانه LiveKit
+
+**نیاز:** دامنه‌ای که مستقیماً به IP سرور resolve شود (از CDN عبور نکند).
+
+```bash
+sudo ./bedrud install --livekit-domain lk.example.com --domain meet.example.com
+```
+
+وقتی دامنه اصلی پشت Cloudflare است اما WebRTC به اتصال مستقیم نیاز دارد، مفید است.
+
+### مرجع تمام فلگ‌ها
+
+| فلگ | پیش‌فرض | توضیح |
+|------|---------|-------|
+| `--tls` | `false` | فعال کردن HTTPS (self-signed یا Let's Encrypt) |
+| `--self-signed` | `false` | تولید self-signed TLS certificate |
+| `--no-tls` | `false` | غیرفعال کردن TLS به طور کامل (بر `--tls` غلبه می‌کند) |
+| `--ip` | تشخیص خودکار | جایگزینی آدرس IP سرور تشخیص داده شده |
+| `--domain` | `""` | نام دامنه برای Let's Encrypt یا self-signed certificate |
+| `--email` | `""` | ایمیل برای ثبت‌نام Let's Encrypt |
+| `--port` | `"443"` (TLS) / `"8090"` (HTTP) | جایگزینی پورت شنیدن |
+| `--cert` | `""` | مسیر فایل گواهی موجود (PEM) |
+| `--key` | `""` | مسیر فایل کلید خصوصی موجود (PEM) |
+| `--lk-port` | `"7880"` | پورت API/WebSocket LiveKit |
+| `--lk-tcp-port` | `"7881"` | پورت TCP RTC LiveKit |
+| `--lk-udp-port` | `"7882"` | پورت UDP RTC LiveKit |
+| `--fresh` | `false` | حذف نصب موجود قبل از نصب |
+| `--behind-proxy` | `false` | سرور پشت reverse proxy / CDN است |
+| `--external-livekit` | `""` | URL یک سرور LiveKit کاملاً خارجی |
+| `--livekit-domain` | `""` | دامنه جداگانه برای LiveKit (عبور از CDN) |
+
+---
+
+## ۶. کاملاً خودکار (CLI Python)
+
+سرور را از ماشین локального build، آپلود و پیکربندی کنید.
+
+**نیاز:** Python 3.12+، [uv](https://docs.astral.sh/uv/)، دسترسی SSH به سرور، Go 1.24+ و Bun نصب‌شده محلی.
+
+```bash
+cd tools/cli
+uv run python bedrud.py --auto-config \
+  --ip <your-server-ip> \
+  --user root \
+  --auth-key ~/.ssh/id_rsa \
+  --domain meet.example.com \
+  --acme-email admin@example.com
+```
+
+**مراحل:**
+
+۱. باینری backend (`dist/bedrud`) را build می‌کند
+۲. به `bedrud.tar.xz` فشرده می‌کند
+۳. با rsync به سرور آپلود می‌کند
+۴. سرویس‌های متضاد را حذف می‌کند (Nginx، Apache، Caddy)
+۵. فایروال را پیکربندی می‌کند (UFW)
+۶. `install` را روی سرور اجرا می‌کند
+
+| فلگ | توضیح |
+|------|-------|
+| `--ip` | آدرس IP سرور |
+| `--user` | کاربر SSH (پیش‌فرض: root) |
+| `--auth-key` | مسیر کلید خصوصی SSH |
+| `--domain` | نام دامنه برای Let's Encrypt |
+| `--acme-email` | ایمیل برای Let's Encrypt |
+| `--uninstall` | حذف بدرود از سرور |
+
+---
+
+<InstallerSteps />
+
+### نقاط ورود سرویس
+
+```
+bedrud --run --config /etc/bedrud/config.yaml       # API + سرور وب
+bedrud --livekit --config /etc/bedrud/livekit.yaml   # media server
+```
+
+---
+
+## پس از نصب
+
+<CreateAdmin />
+
+### تأیید سرویس‌ها
+
+```bash
+systemctl status bedrud livekit
+```
+
+### تأیید API
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+```
+
+انتظار: `200`
+
+### بررسی فایروال
+
+```bash
+sudo ufw status
+```
+
+اطمینان حاصل کنید که پورت‌های `8090/tcp`، `7880/tcp`، و `50000:60000/udp` مجاز هستند:
+
+```bash
+sudo ufw allow 8090/tcp
+sudo ufw allow 7880/tcp
+sudo ufw allow 50000:60000/udp
+```
+
+### مشاهده لاگ‌ها
+
+```bash
+tail -f /var/log/bedrud/bedrud.log
+```
+
+یا از طریق journalctl:
+
+```bash
+journalctl -u bedrud -u livekit -f
+```
+
+---
+
+## ارتقاء
+
+### package manager
+
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt upgrade bedrud
+
+# Arch Linux
+yay -Syu bedrud-bin
+
+# Fedora / RHEL
+sudo dnf upgrade bedrud
+```
+
+سرویس‌ها پس از ارتقاء بسته به طور خودکار restart می‌شوند.
+
+### دانلود باینری
+
+آخرین نسخه را دانلود کنید و نصب را دوباره اجرا کنید. نصب‌کننده امن است که دوباره اجرا شود - باینری و تنظیمات را بازنویسی می‌کند در حالی که دیتابیس را حفظ می‌کند:
+
+```bash
+curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+tar -xJf bedrud.tar.xz && chmod +x bedrud
+sudo ./bedrud install --fresh
+```
+
+<Callout type="tip">
+    `--fresh` نصب قدیمی را اول حذف می‌کند. برای حفظ تنظیمات و دیتابیس موجود، آن را حذف کنید.
+</Callout>
+
+### Docker
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+docker stop bedrud && docker rm bedrud
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+با Docker Compose:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+---
+
+## حذف نصب
+
+برای حذف کامل بدرود:
+
+```bash
+sudo bedrud uninstall
+```
+
+این سرویس‌ها را متوقف می‌کند، واحدهای systemd را حذف می‌کند، باینری را از `/usr/local/bin` حذف می‌کند، و `/etc/bedrud`، `/var/lib/bedrud`، و `/var/log/bedrud` را پاک می‌کند.
+
+---
+
+## عیب‌یابی
+
+| مشکل | راه حل |
+|------|--------|
+| **پورت ۸۰/۴۴۳ در استفاده است** | وب‌سرورهای متضاد را متوقف کنید: `systemctl stop nginx apache2 caddy` |
+| **سرویس‌ها شروع نمی‌شوند** | لاگ‌ها را بررسی کنید: `journalctl -u bedrud -u livekit --no-pager -n 50` |
+| **مشکلات گواهی TLS** | DNS را تأیید کنید: `dig +short meet.example.com` - باید IP این سرور را برگرداند |
+| **تداخل پورت LiveKit** | از فلگ‌های `--lk-port`، `--lk-tcp-port`، `--lk-udp-port` برای تغییر پورت‌ها استفاده کنید |
+| **نصب موفقیت‌آمیز بود اما ۴۰۴ در Web UI** | Frontend جاسازی نشده است. قبل از `bedrud install` با `make build` بسازید. ساخته‌های فقط باینری frontend را رد می‌کنند |
+| **نصب موفقیت‌آمیز بود اما سرویس‌ها خراب شدند** | بررسی شکست‌های بی‌صدا: `journalctl -u bedrud --no-pager -n 100`. تنظیمات را در `/etc/bedrud/config.yaml` تأیید کنید |
+| **پورت قبلاً در استفاده است (فرآیند ناشناخته)** | آن را پیدا کنید: `ss -tlnp \| grep 8090` یا `ss -ulnp \| grep 7880` |
+| **فایروال مدیا را مسدود می‌کند** | پورت‌ها را باز کنید: `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
+| **هشدارهای self-signed certificate** | مورد انتظار. برای تنظیم CA خصوصی به [راهنمای TLS داخلی](/fa/docs/guides/internal-tls) ببینید |
+| **بدون ویدیو / WebRTC شکست خورد** | برای دسترسی دوربین HTTPS لازم است. از `--tls` استفاده کنید. اطمینان حاصل کنید که UDP ۵۰۰۰۰–۶۰۰۰۰ باز است |
+| **reverse proxy: IP کلاینت اشتباه** | از فلگ `--behind-proxy` استفاده کنید. هدرهای پروکسی قابل اعتماد را پیکربندی می‌کند |

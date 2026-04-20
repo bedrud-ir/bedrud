@@ -1,0 +1,499 @@
+---
+title: Sunucu Kurulumu
+description: Bedrud sunucusunu Linux'a kurun
+order: 2
+---
+
+Bu kılavuz, bir Linux sunucusuna **Bedrud sunucusunun** (API, web arayüzü, WebRTC medya sunucusu) kurulmasını kapsar. Masaüstü ve mobil istemci uygulamaları için bkz. [İstemci Kurulumu](/tr/docs/getting-started/clients).
+
+---
+
+## Ön Koşullar
+
+| Gereksinim | Detaylar |
+|-------------|---------|
+| **İşletim sistemi** | Debian 12+, Ubuntu 22.04+, Arch Linux (rolling), Fedora 39+ |
+| **Mimari** | amd64 (x86_64) veya arm64 (aarch64) |
+| **Erişim** | Root veya sudo |
+| **Başlatma sistemi** | systemd |
+| **Donanım** | 1 vCPU, 512 MB RAM minimum. 10+ eşzamanlı oda için 2 vCPU, 2 GB RAM önerilir |
+| **Bağlantı noktaları** | `8090` (API + web arayüzü), `7880` (LiveKit WebSocket), `50000–60000/udp` (WebRTC medya) |
+| **Otomatik TLS** | Ayrıca `80` ve `443` bağlantı noktalarını açın. Bu sunucuya işaret eden DNS A kaydına sahip bir alan adı gerektirir |
+| **Araçlar** | `curl`, `tar` (çoğu dağıtımda önceden yüklüdür) |
+
+> **Alan adınız yok mu?** Bedrud, kendi imzalı TLS kullanarak bir IP adresiyle çalışır. Tarayıcılar sertifika uyarısı gösterir ama video ve ses çalışır. Dahili ağlarda güvenilir sertifikalar için bkz. [Dahili TLS Kılavuzu](/tr/docs/guides/internal-tls).
+
+---
+
+## 1. Tek Komutla Kurulum (Önerilen)
+
+Bedrud CLI ikili dosyasını indirir ve PATH'inize kurar. Linux, macOS ve Windows'ta çalışır.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="bash">macOS / Linux (Bash)</TabsTrigger>
+    <TabsTrigger value="powershell">Windows (PowerShell)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="bash">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    Kurulumdan sonra kabuğunuzu yeniden yükleyin:
+
+    ```bash
+    source ~/.bashrc  # veya ~/.zshrc
+    ```
+
+  </TabsContent>
+  <TabsContent value="powershell">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    ```
+
+  </TabsContent>
+</Tabs>
+
+Doğrulayın:
+
+```bash
+bedrud --version
+```
+
+<Callout type="tip">
+    Kurulumu özelleştirmek mi istiyorsunuz? `--version 0.12.0`, `--install-dir /opt/bedrud` veya `--skip-shell` gibi parametreleri kullanın. Tam referans: [CLI Kurulumu](/tr/docs/getting-started/cli-installer).
+</Callout>
+
+---
+
+## 2. Paket Yöneticisi ile Kurulum
+
+Dağıtımınızın paket yöneticisi aracılığıyla kurun.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="ubuntu-debian-apt">
+
+    ```bash
+    curl -fsSL https://bedrud-ir.github.io/bedrud/bedrud.gpg.key \
+      | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/bedrud.gpg
+
+    echo "deb https://bedrud-ir.github.io/bedrud stable main" \
+      | sudo tee /etc/apt/sources.list.d/bedrud.list
+
+    sudo apt update && sudo apt install bedrud
+    ```
+
+    Ardından etkileşimli kurucuyu çalıştırın:
+
+    ```bash
+    sudo bedrud install
+    ```
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-bin
+    sudo bedrud install
+    ```
+  </TabsContent>
+  <TabsContent value="fedora-rhel-dnf">
+
+    ```bash
+    sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key \
+      -o /etc/pki/rpm-gpg/RPM-GPG-KEY-bedrud
+
+    sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.repo \
+      -o /etc/yum.repos.d/bedrud.repo
+
+    sudo dnf install bedrud
+    sudo bedrud install
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="tip">
+    Masaüstü istemci kurulumu (Linux, macOS, Windows) için bkz. [İstemci Kurulumu](/tr/docs/getting-started/clients).
+</Callout>
+
+---
+
+## 3. Docker
+
+Bedrud'u bir konteynerde çalıştırın - Linux sunucu kurulumu, systemd veya ikili dosya indirmesi gerekmez.
+
+### Önceden Derlenmiş İmaj (en hızlı)
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+### Docker Compose
+
+```yaml
+services:
+  bedrud:
+    image: ghcr.io/bedrud-ir/bedrud:latest
+    ports:
+      - "8090:8090"
+      - "7880:7880"
+      - "50000-60000:50000-60000/udp"
+    volumes:
+      - bedrud-data:/var/lib/bedrud
+    restart: unless-stopped
+
+volumes:
+  bedrud-data:
+```
+
+### Bağlantı Noktaları
+
+| Bağlantı Noktası | Servis | Protokol |
+|------|---------|----------|
+| 8090 | API + Web Arayüzü | HTTP |
+| 7880 | LiveKit | WebSocket + HTTP |
+| 50000–60000 | WebRTC medya | UDP |
+
+### Yapılandırma
+
+Bir yapılandırma dosyası geçirin veya ortam değişkenlerini kullanın:
+
+```bash
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -e JWT_SECRET=change-this-to-a-random-string \
+  -e LIVEKIT_API_KEY=prodkey \
+  -e LIVEKIT_API_SECRET=prodsecret \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+<Callout type="warning">
+    Varsayılan JWT ve LiveKit anahtarları yalnızca hızlı test içindir. Konteyneri internete açmadan önce bunları değiştirin.
+</Callout>
+
+Birimler, ters vekil sunucu ve TLS kurulumu dahil tam Docker belgeleri: [Docker Kılavuzu](/tr/docs/guides/docker).
+
+---
+
+## 4. Etkileşimli Kurulum
+
+Sunucuda zaten `bedrud` ikili dosyasına sahipseniz:
+
+```bash
+sudo ./bedrud install
+```
+
+Kurucu sunucunuzun IP'sini otomatik algılar ve şunları sorar:
+
+| İstem | Varsayılan | Notlar |
+|--------|---------|-------|
+| **IP adresi** | Otomatik algılandı (ilk geri döngü olmayan IPv4) | Kabul etmek için Enter'a basın veya farklı bir IP yazın |
+| **Alan adı** | Boş (yalnızca IP) | Bir e-posta ile sağlanırsa, Let's Encrypt TLS'yi etkinleştirir |
+| **E-posta** | Boş | Let's Encrypt kaydı için kullanılır (yalnızca alan adı ayarlandığında) |
+| **Kendi imzalı TLS** | Evet | Alan adı sağlanmadığında sunulur. Varsayılan `Y` |
+
+stdin borulandığında (etkileşimli olmayan mod) tüm istemler atlanır - bunun yerine bayraklar ve varsayılanlar kullanılır.
+
+---
+
+## 5. Etkileşimli Olmayan (Bayrak Tabanlı)
+
+Bayrakları geçirerek tüm istemleri atlayın.
+
+### Let's Encrypt (alan adı gerekli)
+
+**Gerektirir:** Alan adınız için DNS A kaydının zaten bu sunucunun IP'sine işaret etmesi.
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com --email webmaster@example.com
+```
+
+### Kendi İmzalı TLS (IP tabanlı)
+
+**Gerektirir:** Ek bir şey gerekmez. Hemen çalışır.
+
+```bash
+sudo ./bedrud install --tls --ip 1.2.3.4
+```
+
+### Düz HTTP (yalnızca geliştirme / dahili)
+
+**Gerektirir:** localhost veya `127.0.0.1`. Tarayıcılar localhost dışında HTTPS olmayan sitelerde kamera/mikrofonu engeller.
+
+```bash
+sudo ./bedrud install --ip 1.2.3.4
+```
+
+### Alan Adı için Kendi İmzalı (DNS öncesi test)
+
+**Gerektirir:** Alan adı (DNS'in henüz çözümlenmesi gerekmez).
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com
+```
+
+### Özel Bağlantı Noktası
+
+**Gerektirir:** Bağlantı noktası zaten kullanımda olmamalı.
+
+```bash
+sudo ./bedrud install --tls --port 8443 --domain meet.example.com
+```
+
+### Harici Sertifikalar
+
+**Gerektirir:** PEM biçiminde fullchain ve özel anahtar dosyaları.
+
+```bash
+sudo ./bedrud install --tls --cert /path/to/fullchain.pem --key /path/to/privkey.pem
+```
+
+### Özel LiveKit Bağlantı Noktaları
+
+**Gerektirir:** Üç bağlantı noktasının da güvenlik duvarınızda açık olması.
+
+```bash
+sudo ./bedrud install --lk-port 9000 --lk-tcp-port 9001 --lk-udp-port 9002
+```
+
+### Ters Vekil Sunucu Arkasında
+
+**Gerektirir:** Bedrud önünde TLS sonlandıran bir ters vekil sunucu (Nginx, Caddy, Traefik, Cloudflare).
+
+```bash
+sudo ./bedrud install --behind-proxy --domain meet.example.com
+```
+
+Yapılandırmada `behindProxy: true` ayarlar ve güvenilir vekil başlıklarını yapılandırır.
+
+### Harici LiveKit Sunucusu
+
+**Gerektirir:** Bu makineden erişilebilen, zaten çalışan ayrı bir LiveKit sunucusu.
+
+```bash
+sudo ./bedrud install --external-livekit https://livekit.example.com
+```
+
+Gömülü LiveKit kurulumunu atlar. API anahtarı ve gizli anahtar her iki yapılandırmada da eşleşmelidir.
+
+### Ayrı LiveKit Alan Adı
+
+**Gerektirir:** Herhangi bir CDN'yi atlayarak doğrudan bu sunucuya çözümlenen bir alan adı.
+
+```bash
+sudo ./bedrud install --livekit-domain lk.example.com --domain meet.example.com
+```
+
+Ana alan adı Cloudflare arkasındayken WebRTC medyasının doğrudan bağlantıya ihtiyaç duyduğu durumlarda kullanışlıdır.
+
+### Tüm Bayraklar Referansı
+
+| Bayrak | Varsayılan | Açıklama |
+|------|---------|-------------|
+| `--tls` | `false` | HTTPS'yi etkinleştir (kendi imzalı veya Let's Encrypt) |
+| `--self-signed` | `false` | Kendi imzalı TLS sertifikası oluştur |
+| `--no-tls` | `false` | TLS'yi tamamen devre dışı bırak (`--tls`'i geçersiz kılar) |
+| `--ip` | otomatik algılandı | Sunucu IP adresini geçersiz kıl |
+| `--domain` | `""` | Let's Encrypt veya kendi imzalı sertifika için alan adı |
+| `--email` | `""` | Let's Encrypt kaydı için e-posta |
+| `--port` | `443` (TLS) / `8090` (HTTP) | Dinleme bağlantı noktasını geçersiz kıl |
+| `--cert` | `""` | Mevcut sertifika dosyasının yolu (PEM) |
+| `--key` | `""` | Mevcut özel anahtar dosyasının yolu (PEM) |
+| `--lk-port` | `7880` | LiveKit API bağlantı noktası |
+| `--lk-tcp-port` | `7881` | LiveKit RTC TCP bağlantı noktası |
+| `--lk-udp-port` | `7882` | LiveKit RTC UDP bağlantı noktası |
+| `--fresh` | `false` | Kurulumdan önce mevcut kurulumu kaldır |
+| `--behind-proxy` | `false` | Sunucu bir ters vekil / CDN arkasında |
+| `--external-livekit` | `""` | Harici bir LiveKit sunucusunun URL'si |
+| `--livekit-domain` | `""` | LiveKit için ayrı alan adı (CDN'yi atlar) |
+
+---
+
+## 6. Tamamen Otomatik (Python CLI)
+
+Yerel makinenizden derleyin, yükleyin ve sunucunuzu yapılandırın.
+
+**Gerektirir:** Python 3.12+, [uv](https://docs.astral.sh/uv/) (Python paket çalıştırıcı), hedef sunucuya SSH anahtarı erişimi, yerel olarak Go 1.24+ ve Bun kurulu.
+
+```bash
+cd tools/cli
+uv run python bedrud.py --auto-config \
+  --ip <sunucu-ipniz> \
+  --user root \
+  --auth-key ~/.ssh/id_rsa \
+  --domain meet.example.com \
+  --acme-email admin@example.com
+```
+
+**Yaptığı işler:**
+
+1. Arka uç ikili dosyasını derler (`dist/bedrud`)
+2. `bedrud.tar.xz` olarak sıkıştırır
+3. rsync ile sunucuya yükler
+4. Çakışan servisleri temizler (Nginx, Apache, Caddy)
+5. Güvenlik duvarını yapılandırır (UFW)
+6. Sunucuda dahili `install` mantığını çalıştırır
+
+| Bayrak | Açıklama |
+|------|-------------|
+| `--ip` | Sunucu IP adresi |
+| `--user` | SSH kullanıcısı (varsayılan: root) |
+| `--auth-key` | SSH özel anahtarının yolu |
+| `--domain` | Let's Encrypt için alan adı |
+| `--acme-email` | Let's Encrypt için e-posta |
+| `--uninstall` | Bedrud'u sunucudan kaldır |
+
+---
+
+<InstallerSteps />
+
+### Servis Giriş Noktaları
+
+```
+bedrud --run --config /etc/bedrud/config.yaml       # API + web sunucusu
+bedrud --livekit --config /etc/bedrud/livekit.yaml   # Medya sunucusu
+```
+
+---
+
+## Kurulum Sonrası
+
+<CreateAdmin />
+
+### Servisleri Doğrulayın
+
+```bash
+systemctl status bedrud livekit
+```
+
+### API'yi Doğrulayın
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+```
+
+Beklenen: `200`
+
+### Güvenlik Duvarını Kontrol Edin
+
+```bash
+sudo ufw status
+```
+
+`8090/tcp`, `7880/tcp` ve `50000:60000/udp` bağlantı noktalarının izin verildiğinden emin olun:
+
+```bash
+sudo ufw allow 8090/tcp
+sudo ufw allow 7880/tcp
+sudo ufw allow 50000:60000/udp
+```
+
+### Günlükleri Görüntüleyin
+
+```bash
+tail -f /var/log/bedrud/bedrud.log
+```
+
+Veya journalctl ile:
+
+```bash
+journalctl -u bedrud -u livekit -f
+```
+
+---
+
+## Yükseltme
+
+### Paket Yöneticisi
+
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt upgrade bedrud
+
+# Arch Linux
+yay -Syu bedrud-bin
+
+# Fedora / RHEL
+sudo dnf upgrade bedrud
+```
+
+Paket yükseltmesinden sonra servisler otomatik olarak yeniden başlar.
+
+### İkili Dosya İndirme
+
+En son sürümü indirin ve kurulumu tekrar çalıştırın. Kurucu tekrar çalıştırılabilir - veritabanını korurken ikili dosyayı ve yapılandırmayı üzerine yazar:
+
+```bash
+curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+tar -xJf bedrud.tar.xz && chmod +x bedrud
+sudo ./bedrud install --fresh
+```
+
+<Callout type="tip">
+    `--fresh` önce eski kurulumu kaldırır. Mevcut yapılandırmanızı ve veritabanınızı korumak için bunu kullanmayın.
+</Callout>
+
+### Docker
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+docker stop bedrud && docker rm bedrud
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+Docker Compose ile:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+---
+
+## Kaldırma
+
+Bedrud'u tamamen kaldırmak için:
+
+```bash
+sudo bedrud uninstall
+```
+
+Bu, servisleri durdurur, systemd birimlerini kaldırır, `/usr/local/bin` dizininden ikili dosyayı siler ve `/etc/bedrud`, `/var/lib/bedrud` ve `/var/log/bedrud` dizinlerini temizler.
+
+---
+
+## Sorun Giderme
+
+| Sorun | Çözüm |
+|---------|----------|
+| **80/443 bağlantı noktası kullanımda** | Çakışan web sunucularını durdurun: `systemctl stop nginx apache2 caddy` |
+| **Servisler başlamıyor** | Günlükleri kontrol edin: `journalctl -u bedrud -u livekit --no-pager -n 50` |
+| **TLS sertifika sorunları** | DNS'i doğrulayın: `dig +short meet.example.com` - bu sunucunun IP'sini döndürmeli |
+| **LiveKit bağlantı noktası çakışmaları** | Bağlantı noktalarını değiştirmek için `--lk-port`, `--lk-tcp-port`, `--lk-udp-port` bayraklarını kullanın |
+| **Kurulum başarılı ama web arayüzünde 404** | Önyüz gömülü değil. `bedrud install` öncesinde `make build` ile derleyin. Yalnızca ikili dosya derlemeleri önyüzü atlar |
+| **Kurulum başarılı ama servisler çöktü** | Sessiz hataları kontrol edin: `journalctl -u bedrud --no-pager -n 100`. Yapılandırmayı `/etc/bedrud/config.yaml` konumunda doğrulayın |
+| **Bağlantı noktası zaten kullanımda (bilinmeyen süreç)** | Bulun: `ss -tlnp \| grep 8090` veya `ss -ulnp \| grep 7880` |
+| **Güvenlik duvarı medyayı engelliyor** | Bağlantı noktalarını açın: `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
+| **Kendi imzalı sertifika uyarıları** | Beklenen davranış. Özel CA kurulumu için bkz. [Dahili TLS Kılavuzu](/tr/docs/guides/internal-tls) |
+| **Video yok / WebRTC başarısız** | Kamera erişimi için HTTPS gerekli. `--tls` kullanın. UDP 50000–60000'ün açık olduğundan emin olun |
+| **Ters vekil sunucu: yanlış istemci IP'si** | `--behind-proxy` bayrağını kullanın. Güvenilir vekil başlıklarını yapılandırır |

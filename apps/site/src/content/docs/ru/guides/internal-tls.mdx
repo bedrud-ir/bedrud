@@ -1,0 +1,73 @@
+---
+title: Внутренний TLS
+description: Самоподписанные сертификаты для внутренних сетей
+order: 30
+---
+
+Для изолированных сетей - без публичного домена, без исходящего интернета, ограниченное соединение.
+
+Браузеры требуют доверенный HTTPS для доступа к камере/микрофону через WebRTC. Самоподписанные сертификаты работают, но показывают предупреждения. Для чистой настройки создайте частный CA и распространите его на клиенты.
+
+## Создание частного CA и серверного сертификата
+
+```bash
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=Bedrud Internal CA"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=<your-server-ip-or-hostname>"
+openssl x509 -req -days 365 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+sudo ./bedrud install --tls --cert server.crt --key server.key --ip YOUR_SERVER_IP
+```
+
+## Добавление CA в хранилища доверия клиентов
+
+Распространите `ca.crt` на все клиентские машины:
+
+### Windows
+
+```powershell
+certmgr.msc  # Правый клик на ca.crt → Установить сертификат → Доверенные корневые ЦС
+```
+
+### macOS
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt
+```
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
+sudo update-ca-certificates
+```
+
+### Linux (Arch/Fedora)
+
+```bash
+sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
+sudo update-ca-trust
+```
+
+Перезапустите браузеры, затем откройте `https://YOUR_SERVER_IP` (замените на фактический IP-адрес сервера, например, `192.168.1.100`). После перезапуска сертификат будет доверенным, а доступ к камере и микрофону будет работать без предупреждений.
+
+## Устранение неполадок
+
+| Проблема | Решение |
+|---------|-----|
+| Браузер всё ещё предупреждает о недоверенном сертификате | Очистите кэш браузера, перезапустите браузер после установки CA |
+| Камера/микрофон заблокированы | Убедитесь, что CA находится в «Доверенных корневых ЦС», а не в промежуточных |
+| Сертификат истёк | Перегенерируйте с большим значением `-days` |
+| Несовпадение CN | Убедитесь, что CN серверного сертификата совпадает с IP или именем хоста в URL |
+
+---
+
+## См. также
+- [Руководство по установке](/ru/docs/getting-started/installation) - способы установки
+- [Справочник конфигурации](/ru/docs/getting-started/configuration) - полные параметры конфигурации

@@ -1,0 +1,256 @@
+---
+title: Быстрый старт
+description: Разверните Bedrud и присоединитесь к видеоконференции за 5 минут
+order: 1
+---
+
+Разверните Bedrud и присоединитесь к видеоконференции за 5 минут.
+
+**В этом руководстве:**
+
+1. **Получите CLI** — установка одной командой (или ручная загрузка)
+2. **Разверните сервер** — `bedrud install` настроит всё автоматически
+3. **Проверьте** — убедитесь, что службы работают
+4. **Создайте администратора и подключитесь** — откройте браузер, назначьте права, начните конференцию
+
+**Дополнительная информация:**
+
+- [CLI Установщик](/ru/docs/getting-started/cli-installer) — флаги, платформы, автономная установка
+- [Установка сервера](/ru/docs/getting-started/installation) — пакетные менеджеры, Docker, расширенные параметры
+- [Конфигурация](/ru/docs/getting-started/configuration) — порты, база данных, аутентификация, TURN
+
+> **Единый бинарный файл, после загрузки интернет не нужен.** Включает встроенный медиасервер и SQLite - работает в изолированных сетях. Скопируйте файл, выполните одну команду - готово.
+
+---
+
+## Что вам понадобится
+
+| Требование | Подробности |
+|-------------|---------|
+| Linux-сервер | amd64 или arm64, с доступом `sudo` и `systemd`. Для macOS/Windows: используйте Docker или WSL2 для сервера |
+| Открытые порты | `8090`, `7880`, `50000–60000/udp`. Для авто-TLS: также `80` и `443` |
+| Домен (опционально) | С DNS A-записью, указывающей на ваш сервер. Нет домена? Работает с IP - см. альтернативы ниже |
+
+> **Как это работает:** Вы запускаете один **сервер** Bedrud. Люди подключаются к конференциям в своём **браузере** (без установки) или через **нативные приложения** (Android, Windows, macOS, Linux).
+
+---
+
+## 1. Установите CLI Bedrud
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="macos-linux">macOS / Linux</TabsTrigger>
+    <TabsTrigger value="windows">Windows (PowerShell)</TabsTrigger>
+    <TabsTrigger value="manual">Ручная загрузка</TabsTrigger>
+  </TabsList>
+  <TabsContent value="macos-linux">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    Перезагрузите оболочку после установки:
+
+    ```bash
+    source ~/.bashrc  # или ~/.zshrc
+    ```
+
+    Проверьте:
+
+    ```bash
+    bedrud --version
+    ```
+
+    Для флагов (`--version`, `--install-dir`, `--skip-shell`, автономная установка), см. [CLI Установщик](/ru/docs/getting-started/cli-installer).
+  </TabsContent>
+  <TabsContent value="windows">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    ```
+
+    Закройте и снова откройте терминал, затем проверьте:
+
+    ```powershell
+    bedrud --version
+    ```
+  </TabsContent>
+  <TabsContent value="manual">
+
+    Загрузите и распакуйте вручную. Замените `linux_amd64` на вашу платформу (`linux_arm64`, `darwin_amd64`, `darwin_arm64`):
+
+    ```bash
+    curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+    tar -xJf bedrud.tar.xz
+    chmod +x bedrud
+    sudo mv bedrud /usr/local/bin/
+    ```
+
+    Для всех целевых платформ см. [CLI Установщик](/ru/docs/getting-started/cli-installer#platform-targets).
+
+    > **Нет интернета на сервере?** Загрузите на любой компьютер, перенесите через USB или `scp bedrud.tar.xz user@server:/tmp/`, затем распакуйте. Бинарный файл полностью автономен — никаких исходящих запросов после переноса.
+
+    > **Загрузка не удалась?** Проверьте доступ в интернет или убедитесь, что URL доступен: [github.com/bedrud-ir/bedrud/releases](https://github.com/bedrud-ir/bedrud/releases/latest).
+  </TabsContent>
+</Tabs>
+
+---
+
+## 2. Разверните сервер
+
+> **Установка сервера требует Linux с systemd.** macOS и Windows не поддерживают `bedrud install` напрямую — используйте [Docker](#docker) или [WSL2](#системы-отличные-от-linux) вместо этого.
+
+Замените `meet.example.com` и `admin@example.com` на свои значения:
+
+```bash
+sudo bedrud install --tls --domain meet.example.com --email admin@example.com
+```
+
+Устанавливает бинарный файл в `/usr/local/bin`, генерирует конфигурацию, создаёт службы systemd, подготавливает TLS и запускает всё.
+
+> **Порт 80 или 443 занят?** Остановите конфликтующие службы: `sudo systemctl stop nginx apache2 caddy`, затем запустите установку снова.
+
+> **Нет домена?** Используйте IP-адрес сервера:
+> ```bash
+> sudo bedrud install --tls --ip 1.2.3.4
+> ```
+> Будет использован самоподписанный сертификат. Браузер покажет предупреждение, но видео будет работать. Для доверенных сертификатов во внутренних сетях см. [Руководство по внутреннему TLS](/ru/docs/guides/internal-tls).
+
+---
+
+## 3. Проверка
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+```
+
+Ожидаемый результат: `200`
+
+> **Не 200?** Проверьте статус служб: `sudo systemctl status bedrud livekit`. Проверьте журналы: `journalctl -u bedrud -u livekit --no-pager -n 50`.
+
+---
+
+## 4. Регистрация и создание администратора
+
+Откройте `https://meet.example.com` (или `https://<ваш-ip>:8090`) в браузере:
+
+<CreateAdmin createOption />
+
+1. Войдите в систему (или обновите страницу) — в боковой панели появится раздел **Администрирование** (Обзор, Пользователи, Комнаты, Настройки). Готово - вы администратор.
+2. **Создайте комнату** → **Подключитесь** → **Включите видео/аудио** - разрешите доступ к камере и микрофону при запросе
+
+> **Панель администратора** — После назначения роли войдите в систему для доступа к панели администратора по адресу `/dashboard/admin`. Управляйте пользователями, комнатами, системными настройками и токенами приглашений.
+
+> **Справка по CLI** — Полное управление пользователями: `bedrud user promote`, `demote`, `create`, `delete`.
+
+**Нативные клиенты** для Android, Windows, macOS и Linux: [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest). Или поделитесь ссылкой на конференцию - участники подключатся в любом браузере.
+
+---
+
+## Альтернативные способы установки
+
+### Docker
+
+```bash
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+Пользовательская конфигурация, Docker Compose и переменные окружения: см. [Руководство по Docker](/ru/docs/guides/docker).
+
+### Сборка из исходного кода
+
+Требуется [Go 1.24+](https://go.dev/dl/) и [Bun](https://bun.sh/):
+
+```bash
+git clone https://github.com/bedrud-ir/bedrud.git
+cd bedrud
+make init
+make local-run
+```
+
+`make init` устанавливает LiveKit, создаёт конфигурацию, загружает зависимости. `make local-run` собирает и запускает на `http://localhost:8090`.
+
+### Обычный HTTP (только для разработки / localhost)
+
+```bash
+sudo bedrud install --ip 127.0.0.1
+```
+
+> **Предупреждение:** Браузеры блокируют доступ к камере и микрофону по не-HTTPS, кроме `localhost`. HTTP - только для разработки.
+
+### Системы, отличные от Linux
+
+Команда `bedrud install` настраивает службы systemd и работает только в Linux. CLI-установщик (шаг 1) работает везде и помещает бинарный файл в PATH. Для установки сервера используйте Docker или WSL2.
+
+| ОС      | Способ                                                     |
+|---------|---------------------------------------------------------|
+| macOS   | CLI-установщик автоматически устанавливает в `~/bin/`     |
+| Windows | CLI-установщик автоматически устанавливает в `%USERPROFILE%\bin\` |
+| Docker  | Работает на любой ОС с Docker (см. выше)                  |
+
+---
+
+## Внутренние сети
+
+Нет публичного домена или исходящего интернета? См. [Руководство по внутреннему TLS](/ru/docs/guides/internal-tls) для настройки приватного центра сертификации и конфигурации хранилища доверенных сертификатов на клиентах.
+
+---
+
+## Конфигурация
+
+Установщик генерирует `/etc/bedrud/config.yaml`. Значения по умолчанию подходят для большинства конфигураций.
+Измените `jwtSecret` и `sessionSecret` для production, затем перезапустите:
+
+```bash
+sudo systemctl restart bedrud livekit
+```
+
+Для настройки вместимости комнат, таймаутов или медиапортов см. [Раздел LiveKit в Конфигурации](/ru/docs/getting-started/configuration#livekit-configuration).
+
+Полная справка: [Конфигурация](/ru/docs/getting-started/configuration)
+
+---
+
+## Устранение неполадок
+
+| Проблема | Решение |
+|---------|-----|
+| Порт 80/443 занят | `sudo systemctl stop nginx apache2 caddy` |
+| Службы не запускаются | `journalctl -u bedrud -u livekit --no-pager -n 50` |
+| Ошибки сертификата TLS | Проверьте DNS: `dig meet.example.com`. Должен указывать на IP сервера |
+| Нет видео / ошибка WebRTC | Для камеры требуется HTTPS. Используйте `--tls`. Откройте UDP 50000–60000 на файрволе |
+| Конфликт портов LiveKit | Используйте флаги `--lk-port`, `--lk-tcp-port`, `--lk-udp-port` |
+| Файрвол блокирует медиа | `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
+| Предупреждения самоподписанного сертификата | См. [Руководство по внутреннему TLS](/ru/docs/guides/internal-tls) для настройки приватного CA |
+
+---
+
+## Удаление
+
+```bash
+# Установка из бинарного файла
+sudo bedrud uninstall
+
+# Docker
+docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
+
+# Сборка из исходного кода
+# Ctrl+C для остановки, затем: make clean
+```
+
+---
+
+## Следующие шаги
+
+- [CLI Установщик](/ru/docs/getting-started/cli-installer) — флаги, целевые платформы, автономная установка, устранение неполадок
+- [Справка по конфигурации](/ru/docs/getting-started/configuration) — порты, база данных, провайдеры аутентификации, TURN
+- [Руководство по установке](/ru/docs/getting-started/installation) — пакетные менеджеры, Docker, расширенные флаги
+- [Руководство по внутреннему TLS](/ru/docs/guides/internal-tls) — изолированное развёртывание, приватный CA
+- [Руководство по развёртыванию](/ru/docs/guides/deployment) — настройка production, обратный прокси, масштабирование
+- [Обзор архитектуры](/ru/docs/architecture/overview) — как компоненты работают вместе
+- [Документация API](http://localhost:8090/api/swagger) — Swagger UI (на запущенном экземпляре)

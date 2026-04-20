@@ -1,0 +1,138 @@
+---
+title: Makefile Reference
+description: Build automation commands
+order: 31
+---
+
+根目录的 `Makefile` 是 Bedrud monorepo 的中央构建编排工具。它提供了跨所有平台的开发、构建和部署命令。
+
+## 用法
+
+```bash
+make <target>
+make help       # Show all available targets
+```
+
+## 开发目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make init` | 安装所有依赖（Web + 服务器） |
+| `make dev` | 同时运行 LiveKit + 服务器 + Web |
+| `make dev-web` | 仅运行前端开发服务器 |
+| `make dev-server` | 仅运行后端服务器 |
+| `make dev-livekit` | 运行本地 LiveKit 服务器 |
+| `make dev-ios` | 在 Xcode 中打开 iOS 项目 |
+| `make dev-android` | 在 Android Studio 中打开 Android 项目 |
+
+### `make init`
+
+安装 Web 前端和 Go 服务器的依赖：
+
+```bash
+cd apps/web && bun install
+cd server && go mod tidy && go mod download
+```
+
+### `make dev`
+
+同时启动三个开发服务。按 `Ctrl+C` 停止所有：
+
+- **LiveKit** 在 `localhost:7880`
+- **服务器** 在 `localhost:8090`
+- **Web** 在 `localhost:3000`
+
+## 构建目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make build` | 构建前端 + 后端（嵌入） |
+| `make build-front` | 仅构建前端 |
+| `make build-back` | 仅构建后端 |
+| `make build-dist` | 构建生产版 linux/amd64 tar 包 |
+
+### `make build`
+
+完整的生产构建：
+
+1. 运行 `bun run build:embed` - SSR 预渲染 React 应用并将资源复制到 `server/frontend/`
+2. 构建嵌入前端的 Go 二进制文件
+
+输出：`server/dist/bedrud`
+
+### `make build-dist`
+
+创建压缩的、生产就绪的分发包：
+
+1. 运行 `make build`
+2. 交叉编译 `linux/amd64`，去除调试符号
+3. 创建 `dist/bedrud_linux_amd64.tar.xz`
+
+## Android 目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make build-android-debug` | 构建 debug APK |
+| `make build-android` | 构建 release APK（需要 keystore） |
+| `make install-android` | 在已连接的设备上安装 release APK |
+| `make release-android` | 构建 + 安装 release APK |
+
+### APK 输出路径
+
+- Debug：`apps/android/app/build/outputs/apk/debug/app-debug.apk`
+- Release：`apps/android/app/build/outputs/apk/release/app-release.apk`
+
+## iOS 目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make build-ios` | 构建 iOS 归档（Release） |
+| `make export-ios` | 从归档导出 IPA |
+| `make build-ios-sim` | 为 iOS 模拟器构建（Debug） |
+
+### 输出路径
+
+- 归档：`apps/ios/build/Bedrud.xcarchive`
+- IPA：`apps/ios/build/export/Bedrud.ipa`
+
+## 部署目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make deploy ARGS=...` | 运行部署 CLI 工具 |
+
+### 示例
+
+```bash
+make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
+```
+
+这将使用提供的参数运行 `tools/cli/bedrud.py` Python CLI。
+
+## 清理目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make clean` | 删除构建产物和编译后的二进制文件 |
+| `make full-clean` | 删除产物 + 所有已安装的依赖 |
+
+### `make clean`
+
+删除：
+
+- `dist/` - 分发包
+- `server/dist/` - 编译后的服务器二进制文件
+- `apps/web/dist/` - React 构建输出
+- `server/frontend/` 内容 - 嵌入的前端资源
+- `apps/android/app/build/` - Android 构建输出
+- `apps/ios/build/` - iOS 构建输出
+
+### `make full-clean`
+
+执行 `clean` 的所有操作，另外还包括：
+
+- `apps/web/node_modules/`
+- `apps/android/.gradle/`
+- Go 模块缓存（`go clean -modcache`）
+
+之后运行 `make init` 以重新安装依赖。

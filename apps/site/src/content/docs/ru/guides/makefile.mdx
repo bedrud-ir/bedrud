@@ -1,0 +1,138 @@
+---
+title: Справочник Makefile
+description: Команды автоматизации сборки
+order: 31
+---
+
+Корневой `Makefile` - центральный инструмент оркестрации сборки монорепозитория Bedrud. Он предоставляет команды для разработки, сборки и развёртывания на всех платформах.
+
+## Использование
+
+```bash
+make <target>
+make help       # Показать все доступные цели
+```
+
+## Цели разработки
+
+| Цель | Описание |
+|--------|-------------|
+| `make init` | Установить все зависимости (web + server) |
+| `make dev` | Запустить LiveKit + сервер + web параллельно |
+| `make dev-web` | Запустить только dev-сервер фронтенда |
+| `make dev-server` | Запустить только backend-сервер |
+| `make dev-livekit` | Запустить локальный сервер LiveKit |
+| `make dev-ios` | Открыть iOS-проект в Xcode |
+| `make dev-android` | Открыть Android-проект в Android Studio |
+
+### `make init`
+
+Устанавливает зависимости для веб-фронтенда и Go-сервера:
+
+```bash
+cd apps/web && bun install
+cd server && go mod tidy && go mod download
+```
+
+### `make dev`
+
+Запускает все три dev-сервиса параллельно. Нажмите `Ctrl+C`, чтобы остановить все:
+
+- **LiveKit** на `localhost:7880`
+- **Сервер** на `localhost:8090`
+- **Web** на `localhost:3000`
+
+## Цели сборки
+
+| Цель | Описание |
+|--------|-------------|
+| `make build` | Собрать фронтенд + backend (встроенный) |
+| `make build-front` | Собрать только фронтенд |
+| `make build-back` | Собрать только backend |
+| `make build-dist` | Собрать продакшен-тарболл linux/amd64 |
+
+### `make build`
+
+Полная продакшен-сборка:
+
+1. Запускает `bun run build:embed` - SSR пререндеринг React-приложения и копирование ассетов в `server/frontend/`
+2. Собирает Go-бинарник с встроенным фронтендом
+
+Результат: `server/dist/bedrud`
+
+### `make build-dist`
+
+Создаёт сжатый, готовый к продакшену дистрибутив:
+
+1. Запускает `make build`
+2. Кросс-компилирует для `linux/amd64` с обрезанными отладочными символами
+3. Создаёт `dist/bedrud_linux_amd64.tar.xz`
+
+## Цели Android
+
+| Цель | Описание |
+|--------|-------------|
+| `make build-android-debug` | Собрать debug APK |
+| `make build-android` | Собрать release APK (требуется keystore) |
+| `make install-android` | Установить release APK на подключённое устройство |
+| `make release-android` | Собрать + установить release APK |
+
+### Пути вывода APK
+
+- Debug: `apps/android/app/build/outputs/apk/debug/app-debug.apk`
+- Release: `apps/android/app/build/outputs/apk/release/app-release.apk`
+
+## Цели iOS
+
+| Цель | Описание |
+|--------|-------------|
+| `make build-ios` | Собрать iOS-архив (Release) |
+| `make export-ios` | Экспортировать IPA из архива |
+| `make build-ios-sim` | Собрать для iOS Simulator (Debug) |
+
+### Пути вывода
+
+- Архив: `apps/ios/build/Bedrud.xcarchive`
+- IPA: `apps/ios/build/export/Bedrud.ipa`
+
+## Цель развёртывания
+
+| Цель | Описание |
+|--------|-------------|
+| `make deploy ARGS=...` | Запустить CLI-инструмент развёртывания |
+
+### Пример
+
+```bash
+make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
+```
+
+Запускает Python CLI из `tools/cli/bedrud.py` с переданными аргументами.
+
+## Цели очистки
+
+| Цель | Описание |
+|--------|-------------|
+| `make clean` | Удалить артефакты сборки и скомпилированные бинарники |
+| `make full-clean` | Удалить артефакты + все установленные зависимости |
+
+### `make clean`
+
+Удаляет:
+
+- `dist/` - дистрибутивные тарболлы
+- `server/dist/` - скомпилированный серверный бинарник
+- `apps/web/dist/` - вывод сборки React
+- Содержимое `server/frontend/` - встроенные ассеты фронтенда
+- `apps/android/app/build/` - вывод сборки Android
+- `apps/ios/build/` - вывод сборки iOS
+
+### `make full-clean`
+
+Всё, что делает `clean`, плюс:
+
+- `apps/web/node_modules/`
+- `apps/android/.gradle/`
+- Кэш Go-модулей (`go clean -modcache`)
+
+После этого выполните `make init` для переустановки зависимостей.

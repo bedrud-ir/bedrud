@@ -1,0 +1,271 @@
+---
+title: API аутентификации
+description: Эндпоинты и методы аутентификации
+order: 23
+---
+
+Все эндпоинты аутентификации находятся под `/api/auth/`.
+
+## Обзор
+
+Bedrud поддерживает несколько методов аутентификации:
+
+| Метод | Эндпоинт | Описание |
+|--------|----------|-------------|
+| Email/Пароль | `POST /api/auth/login` | Обычный вход |
+| Регистрация | `POST /api/auth/register` | Создание аккаунта |
+| Гостевой вход | `POST /api/auth/guest-login` | Временный доступ |
+| OAuth | `GET /api/auth/:provider/login` | Вход через соцсети |
+| Passkeys | `POST /api/auth/passkey/*` | FIDO2/WebAuthn |
+| Обновление токена | `POST /api/auth/refresh` | Обновление access-токена |
+
+## Формат токена
+
+При успешной аутентификации возвращается пара JWT-токенов:
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+- **Access Token** - короткоживущий, используется в заголовке `Authorization`
+- **Refresh Token** - долгоживущий, используется для получения новых access-токенов
+
+### Использование токенов
+
+Добавляйте access token во все авторизованные запросы:
+
+```
+Authorization: Bearer <accessToken>
+```
+
+---
+
+## Эндпоинты
+
+### Регистрация
+
+Создание новой учётной записи пользователя.
+
+```
+POST /api/auth/register
+```
+
+**Тело запроса:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "name": "John Doe"
+}
+```
+
+**Ответ (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### Вход
+
+Аутентификация по email и паролю.
+
+```
+POST /api/auth/login
+```
+
+**Тело запроса:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**Ответ (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### Гостевой вход
+
+Вход в качестве гостя без создания аккаунта. Гости имеют ограниченные права.
+
+```
+POST /api/auth/guest-login
+```
+
+**Тело запроса:**
+
+```json
+{
+  "name": "Guest User"
+}
+```
+
+**Ответ (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "name": "Guest User",
+    "role": "guest"
+  }
+}
+```
+
+---
+
+### Получение текущего пользователя
+
+Получение профиля авторизованного пользователя.
+
+```
+GET /api/auth/me
+```
+
+**Заголовки:** `Authorization: Bearer <accessToken>`
+
+**Ответ (200):**
+
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "avatar": "https://...",
+  "role": "user",
+  "provider": "email"
+}
+```
+
+---
+
+### Обновление токена
+
+Обмен refresh-токена на новый access-токен.
+
+```
+POST /api/auth/refresh
+```
+
+**Тело запроса:**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**Ответ (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ..."
+}
+```
+
+---
+
+### Выход
+
+Аннулирование текущего refresh-токена.
+
+```
+POST /api/auth/logout
+```
+
+**Заголовки:** `Authorization: Bearer <accessToken>`
+
+**Тело запроса:**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**Ответ (200):**
+
+```json
+{
+  "message": "logged out"
+}
+```
+
+---
+
+### Вход через OAuth
+
+Запуск потока OAuth через социального провайдера.
+
+```
+GET /api/auth/:provider/login
+```
+
+**Поддерживаемые провайдеры:**
+
+| Провайдер | Путь |
+|----------|------|
+| Google | `/api/auth/google/login` |
+| GitHub | `/api/auth/github/login` |
+| Twitter | `/api/auth/twitter/login` |
+
+Сервер перенаправляет пользователя на страницу авторизации провайдера. После согласия провайдер перенаправляет обратно на callback URL, и сервер возвращает JWT-токены.
+
+---
+
+## Ответы об ошибках
+
+Все эндпоинты аутентификации возвращают ошибки в следующем формате:
+
+```json
+{
+  "error": "invalid credentials"
+}
+```
+
+| Статус | Значение |
+|--------|---------|
+| 400 | Некорректный запрос (отсутствующие поля, ошибка валидации) |
+| 401 | Неверные учётные данные или истёкший токен |
+| 409 | Email уже зарегистрирован |
+| 500 | Внутренняя ошибка сервера |
+
+---
+
+## См. также
+
+- [Поток аутентификации](/ru/docs/backend/authentication) - как работают JWT, OAuth и passkeys внутри
+- [API Passkeys](/ru/docs/api/passkeys) - справочник по эндпоинтам FIDO2/WebAuthn

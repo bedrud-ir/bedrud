@@ -1,0 +1,42 @@
+---
+import { CtaSection } from "~/components/landing/cta-section";
+import { FaqSection } from "~/components/landing/faq-section";
+import FeaturesSection from "~/components/landing/features-section.astro";
+import { HeroSection } from "~/components/landing/hero-section";
+import { JourneyStepper } from "~/components/landing/journey-stepper";
+import ProblemSection from "~/components/landing/problem-section.astro";
+import Landing from "~/layouts/Landing.astro";
+import { isValidLocale, type Locale, supportedLocales, t } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return supportedLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang: rawLang } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+
+<Landing
+  lang={lang}
+  title={t(lang, "meta.title")}
+  description={t(lang, "meta.description")}
+  jsonLd={[
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Bedrud",
+      url: canonicalURL.href,
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Linux",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    },
+  ]}
+>
+  <HeroSection client:load lang={lang} />
+  <ProblemSection lang={lang} />
+  <FeaturesSection lang={lang} />
+  <JourneyStepper client:idle lang={lang} />
+  <FaqSection client:visible lang={lang} />
+  <CtaSection client:visible lang={lang} />
+</Landing>

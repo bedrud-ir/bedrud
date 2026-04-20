@@ -1,0 +1,138 @@
+---
+title: Makefile リファレンス
+description: ビルド自動化コマンド
+order: 31
+---
+
+ルートの `Makefile` は Bedrud モノレポの中心的なビルドオーケストレーションツールです。開発、ビルド、デプロイのためのコマンドをすべてのプラットフォーム向けに提供します。
+
+## 使い方
+
+```bash
+make <target>
+make help       # 利用可能なターゲットをすべて表示
+```
+
+## 開発ターゲット
+
+| ターゲット | 説明 |
+|--------|-------------|
+| `make init` | すべての依存関係をインストール（Web + サーバー） |
+| `make dev` | LiveKit + サーバー + Web を同時に実行 |
+| `make dev-web` | フロントエンドの開発サーバーのみ実行 |
+| `make dev-server` | バックエンドサーバーのみ実行 |
+| `make dev-livekit` | ローカルの LiveKit サーバーを実行 |
+| `make dev-ios` | iOS プロジェクトを Xcode で開く |
+| `make dev-android` | Android プロジェクトを Android Studio で開く |
+
+### `make init`
+
+Web フロントエンドと Go サーバーの両方の依存関係をインストールします：
+
+```bash
+cd apps/web && bun install
+cd server && go mod tidy && go mod download
+```
+
+### `make dev`
+
+3つの開発サービスを同時に起動します。`Ctrl+C` ですべて停止します：
+
+- **LiveKit** - `localhost:7880`
+- **Server** - `localhost:8090`
+- **Web** - `localhost:3000`
+
+## ビルドターゲット
+
+| ターゲット | 説明 |
+|--------|-------------|
+| `make build` | フロントエンド + バックエンドをビルド（組み込み） |
+| `make build-front` | フロントエンドのみビルド |
+| `make build-back` | バックエンドのみビルド |
+| `make build-dist` | 本番用 linux/amd64 tarball をビルド |
+
+### `make build`
+
+本番ビルド全体を実行します：
+
+1. `bun run build:embed` を実行 - React アプリを SSR で事前レンダリングし、アセットを `server/frontend/` にコピー
+2. フロントエンドを組み込んだ Go バイナリをビルド
+
+出力：`server/dist/bedrud`
+
+### `make build-dist`
+
+圧縮済みの本番配布ファイルを作成します：
+
+1. `make build` を実行
+2. `linux/amd64` 向けにクロスコンパイル（デバッグシンボルを除去）
+3. `dist/bedrud_linux_amd64.tar.xz` を作成
+
+## Android ターゲット
+
+| ターゲット | 説明 |
+|--------|-------------|
+| `make build-android-debug` | デバッグ APK をビルド |
+| `make build-android` | リリース APK をビルド（キーストアが必要） |
+| `make install-android` | リリース APK を接続済みデバイスにインストール |
+| `make release-android` | リリース APK をビルド + インストール |
+
+### APK の出力パス
+
+- デバッグ：`apps/android/app/build/outputs/apk/debug/app-debug.apk`
+- リリース：`apps/android/app/build/outputs/apk/release/app-release.apk`
+
+## iOS ターゲット
+
+| ターゲット | 説明 |
+|--------|-------------|
+| `make build-ios` | iOS アーカイブをビルド（Release） |
+| `make export-ios` | アーカイブから IPA をエクスポート |
+| `make build-ios-sim` | iOS シミュレータ用にビルド（Debug） |
+
+### 出力パス
+
+- アーカイブ：`apps/ios/build/Bedrud.xcarchive`
+- IPA：`apps/ios/build/export/Bedrud.ipa`
+
+## デプロイターゲット
+
+| ターゲット | 説明 |
+|--------|-------------|
+| `make deploy ARGS=...` | デプロイ CLI ツールを実行 |
+
+### 例
+
+```bash
+make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
+```
+
+`tools/cli/bedrud.py` の Python CLI を指定された引数で実行します。
+
+## クリーンターゲット
+
+| ターゲット | 説明 |
+|--------|-------------|
+| `make clean` | ビルド成果物とコンパイル済みバイナリを削除 |
+| `make full-clean` | 成果物 + インストール済みの依存関係をすべて削除 |
+
+### `make clean`
+
+以下を削除します：
+
+- `dist/` - 配布用 tarball
+- `server/dist/` - コンパイル済みサーバーバイナリ
+- `apps/web/dist/` - React ビルド出力
+- `server/frontend/` の内容 - 組み込みフロントエンドアセット
+- `apps/android/app/build/` - Android ビルド出力
+- `apps/ios/build/` - iOS ビルド出力
+
+### `make full-clean`
+
+`clean` の内容に加えて以下も削除します：
+
+- `apps/web/node_modules/`
+- `apps/android/.gradle/`
+- Go モジュールキャッシュ（`go clean -modcache`）
+
+実行後、`make init` を再実行して依存関係を再インストールしてください。

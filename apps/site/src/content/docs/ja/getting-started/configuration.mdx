@@ -1,0 +1,233 @@
+---
+title: 設定
+description: Bedrud をニーズに合わせて設定する
+order: 4
+---
+
+Bedrud はメインサーバーと組み込み LiveKit メディアサーバーの両方に YAML 設定ファイルを使用します。
+
+**関連項目:** [クイックスタート](/ja/docs/getting-started/quickstart) | [インストール](/ja/docs/getting-started/installation) | [デプロイメントガイド](/ja/docs/guides/deployment) | [Docker ガイド](/ja/docs/guides/docker)
+
+## 本番環境の最低設定
+
+デフォルト設定は開発用として機能します。本番環境では `/etc/bedrud/config.yaml` で以下の値を変更してください：
+
+```yaml
+auth:
+  jwtSecret: "change-to-random-string-32-chars"
+  sessionSecret: "change-to-another-random-string"
+```
+
+変更後に再起動します：
+
+```bash
+sudo systemctl restart bedrud livekit
+```
+
+完全なリファレンスは以下をご覧ください。
+
+---
+
+## サーバー設定
+
+**場所:** `server/config.yaml`（開発）または `/etc/bedrud/config.yaml`（本番）
+
+### 完全なリファレンス
+
+```yaml
+server:
+  port: 8090                    # HTTP ポート
+  host: "localhost"             # バインドアドレス
+
+database:
+  type: "sqlite"                # データベースタイプ: sqlite または postgres
+  path: "data.db"               # SQLite データベースファイルのパス
+
+logger:
+  level: "debug"                # ログレベル: debug, info, warn, error
+  outputPath: ""                # ログファイルのパス（空 = stdout）
+
+livekit:
+  host: "http://localhost:8090/livekit"  # 外部 LiveKit URL
+  internalHost: "http://127.0.0.1:7880"  # 内部 LiveKit URL
+  apiKey: "devkey"              # LiveKit API キー
+  apiSecret: "devsecret"        # LiveKit API シークレット
+
+auth:
+  jwtSecret: "your-jwt-secret"           # JWT トークン署名用シークレット
+  tokenDuration: 24                       # トークン有効期限（時間）
+  sessionSecret: "your-session-secret"    # セッションクッキー用シークレット
+  frontendURL: "http://localhost:8090"    # フロントエンド URL（OAuth リダイレクト用）
+
+  # OAuth プロバイダー（任意）
+  google:
+    clientId: ""
+    clientSecret: ""
+  github:
+    clientId: ""
+    clientSecret: ""
+  twitter:
+    clientKey: ""
+    clientSecret: ""
+
+cors:
+  allowedOrigins: "http://localhost:8090,http://localhost:3000"  # カンマ区切り
+  allowedHeaders: "Origin, Content-Type, Accept, Authorization"
+  allowedMethods: "GET, POST, PUT, DELETE, OPTIONS"
+  allowCredentials: true
+```
+
+### 主要設定
+
+#### データベース
+
+デフォルトでは、Bedrud は設定された `path` の SQLite ファイルを使用します。高い同時実行性が求められる本番環境では、接続文字列を指定して PostgreSQL に切り替えてください。PostgreSQL 使用時、`path` フィールドにはファイルパスではなく接続文字列を指定します：
+
+```yaml
+database:
+  type: "postgres"
+  path: "postgres://user:password@localhost:5432/bedrud?sslmode=disable"
+```
+
+#### 認証
+
+`jwtSecret` はアクセストークンとリフレッシュトークンの署名に使用されます。本番環境ではデフォルト値から変更してください。
+
+**OAuth プロバイダー** は任意です。設定しない場合、UI にソーシャルログインボタンは表示されません。各プロバイダーは、該当サービスで OAuth アプリを登録し、クライアント ID とシークレットを提供する必要があります。
+
+#### CORS
+
+`allowedOrigins` 文字列（カンマ区切り）には、フロントエンドを提供する URL を含める必要があります。開発環境では `http://localhost:3000` です。本番環境ではドメイン（例: `https://meet.example.com`）を設定します。
+
+---
+
+## LiveKit 設定
+
+**場所:** `server/config/livekit.yaml`（開発）または `/etc/bedrud/livekit.yaml`（本番）
+
+```yaml
+port: 7880                      # LiveKit HTTP/WebSocket ポート
+
+rtc:
+  port_range_start: 50000       # UDP ポート範囲の開始
+  port_range_end: 60000         # UDP ポート範囲の終了
+  use_external_ip: true         # RTC に外部 IP を使用
+
+turn:
+  enabled: true
+  domain: "localhost"
+  tls_port: 5349
+  udp_port: 3478
+
+keys:
+  devkey: "devsecret"           # サーバー設定と一致させること
+
+logging:
+  level: info
+
+room:
+  auto_create: true              # 参加者が参加したときにルームを自動作成
+  empty_timeout: 60              # 空のルームを削除するまでの秒数
+  departure_timeout: 60          # 全参加者が退室後、ルームを保持する秒数
+  max_participants: 20           # ルームの最大参加者数（0 = 無制限）
+  enable_remote_unmute: true     # 参加者のサーバー側ミュート解除を許可
+```
+
+<Callout type="warning">
+    `livekit.yaml` の `keys` は、サーバーの `config.yaml` の `livekit.apiKey` および `livekit.apiSecret` と一致している必要があります。
+</Callout>
+
+### RTC ポート範囲
+
+LiveKit はメディアストリームに UDP ポートを使用します。デフォルト範囲 `50000-60000` はほとんどのセットアップで機能します。ファイアウォールの背後で実行する場合は、これらのポートが開放されていることを確認してください。
+
+アーキテクチャとトラブルシューティングについては [WebRTC 接続性](/ja/docs/architecture/webrtc-connectivity) を参照してください。
+
+### TURN サーバー
+
+組み込み TURN サーバーは、制限的な NAT や企業ファイアウォールの背後にいるクライアントのメディアをリレーします。デフォルトでポート 3478 (UDP) と 5349 (TLS) で有効です。
+
+TURN は最終手段のリレーです。ほとんどのクライアント（約 80%）は UDP で直接接続し、TURN を使用しません。TURN がアクティブになると、サーバーがすべてのリレーメディアの帯域幅を担います。
+
+**TLS 要件:** TURN/TLS（ポート 5349）には有効な TLS 証明書が必要です。本番環境では、`turn.tls_port: 443` を設定し、`cert_file`/`key_file` を証明書に指定するか、前面に Layer 4 ロードバランサーを配置して `external_tls: true` を設定します。
+
+アーキテクチャ、設定詳細、帯域幅計算、トラブルシューティングについては [TURN サーバーガイド](/ja/docs/architecture/turn-server) を参照してください。
+
+### ルーム設定
+
+`room:` セクションはミーティングルームの動作を制御します：
+
+- **`auto_create`** - 参加者が参加したときにルームを自動作成（デフォルト: `true`）
+- **`empty_timeout`** - 誰も参加しなかったルームを削除するまでの秒数（デフォルト: `60`）
+- **`departure_timeout`** - 全参加者が退室後、ルームをアクティブに保持する秒数（デフォルト: `60`）
+- **`max_participants`** - ルームの最大参加者数。制限なしにするには `0` を設定（デフォルト: `20`）
+- **`enable_remote_unmute`** - 参加者のサーバー側ミュート/ミュート解除を許可（デフォルト: `true`）
+
+**キャパシティのチューニング:**
+- 小規模チームミーティング: `max_participants: 10-20`
+- 大規模ウェビナー: `max_participants: 100`（または無制限の `0`）
+- リソース制約のあるサーバー: `max_participants` を下げて CPU/メモリ使用量を削減
+
+---
+
+## 環境変数
+
+設定値は環境変数で上書きできます。命名規則はセクションごとのプレフィックスに従います：
+
+Docker デプロイメントについては [Docker ガイド](/ja/docs/guides/docker) を参照してください。
+
+```bash
+export SERVER_PORT=8090
+export DB_PATH=/var/lib/bedrud/bedrud.db
+export JWT_SECRET=production-secret
+export LIVEKIT_HOST=http://localhost:8090/livekit
+export LIVEKIT_API_KEY=prodkey
+export LIVEKIT_API_SECRET=prodsecret
+```
+
+### 環境変数の完全リファレンス
+
+| 環境変数 | YAML パス | 説明 |
+|---------|-----------|-------------|
+| `SERVER_PORT` | `server.port` | HTTP リッスンポート |
+| `SERVER_ENABLE_TLS` | `server.enableTLS` | HTTPS を有効化（`true`/`false`） |
+| `SERVER_CERT_FILE` | `server.certFile` | TLS 証明書のパス |
+| `SERVER_KEY_FILE` | `server.keyFile` | TLS 秘密鍵のパス |
+| `SERVER_DOMAIN` | `server.domain` | ドメイン名 |
+| `SERVER_EMAIL` | `server.email` | Let's Encrypt 用メールアドレス |
+| `SERVER_USE_ACME` | `server.useACME` | Let's Encrypt 自動取得を有効化（`true`/`false`） |
+| `SERVER_TRUSTED_PROXIES` | `server.trustedProxies` | カンマ区切りの信頼済みプロキシ IP |
+| `SERVER_PROXY_HEADER` | `server.proxyHeader` | クライアント IP を読み取るヘッダー（例: `X-Forwarded-For`） |
+| `DB_HOST` | `database.host` | データベースホスト（PostgreSQL） |
+| `DB_PORT` | `database.port` | データベースポート |
+| `DB_USER` | `database.user` | データベースユーザー |
+| `DB_PASSWORD` | `database.password` | データベースパスワード |
+| `DB_NAME` | `database.dbname` | データベース名 |
+| `DB_TYPE` | `database.type` | `sqlite` または `postgres` |
+| `DB_PATH` | `database.path` | SQLite ファイルパスまたは PostgreSQL 接続文字列 |
+| `LIVEKIT_HOST` | `livekit.host` | 外部 LiveKit URL |
+| `LIVEKIT_INTERNAL_HOST` | `livekit.internalHost` | 内部 LiveKit URL |
+| `LIVEKIT_API_KEY` | `livekit.apiKey` | LiveKit API キー |
+| `LIVEKIT_API_SECRET` | `livekit.apiSecret` | LiveKit API シークレット |
+| `JWT_SECRET` | `auth.jwtSecret` | JWT トークン署名用シークレット |
+| `AUTH_FRONTEND_URL` | `auth.frontendURL` | OAuth リダイレクト用フロントエンド URL |
+| `CORS_ALLOWED_ORIGINS` | `cors.allowedOrigins` | カンマ区切りの許可オリジン |
+| `CORS_ALLOWED_HEADERS` | `cors.allowedHeaders` | 許可リクエストヘッダー |
+| `CORS_ALLOWED_METHODS` | `cors.allowedMethods` | 許可 HTTP メソッド |
+| `CORS_ALLOW_CREDENTIALS` | `cors.allowCredentials` | 認証情報を許可（`true`/`false`） |
+| `CORS_EXPOSE_HEADERS` | `cors.exposeHeaders` | ブラウザに公開するヘッダー |
+| `CORS_MAX_AGE` | `cors.maxAge` | プリフライトキャッシュ期間（秒） |
+
+---
+
+## 本番環境チェックリスト
+
+- [ ] `jwtSecret` と `sessionSecret` を強力なランダム値に変更
+- [ ] `logger.level` を `info` または `warn` に設定
+- [ ] TLS を設定（インストーラーまたはリバースプロキシ経由）
+- [ ] `cors.allowedOrigins` を本番ドメインに設定
+- [ ] 必要に応じて OAuth プロバイダーを設定
+- [ ] ファイアウォールで LiveKit RTC ポート範囲を開放
+- [ ] `/var/log/bedrud/` のログローテーションを設定
+
+本番環境の完全なセットアップについては、[デプロイメントガイド](/ja/docs/guides/deployment) を参照してください。

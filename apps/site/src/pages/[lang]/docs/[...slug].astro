@@ -1,0 +1,252 @@
+---
+import DocsLayout from "~/layouts/DocsLayout.astro";
+import { getCollection, render } from "astro:content";
+import {
+  getNextDoc,
+  getPreviousDoc,
+  sections,
+} from "../../../content/docs/sidebar";
+import {
+  isValidLocale,
+  type Locale,
+  supportedLocales,
+  t,
+} from "../../../i18n/utils";
+import Callout from "~/components/docs/mdx/callout.astro";
+import CreateAdmin from "~/components/docs/mdx/create-admin.astro";
+import InstallerSteps from "~/components/docs/mdx/installer-steps.astro";
+import SystemdServices from "~/components/docs/mdx/systemd-services.astro";
+import Tabs from "~/components/docs/mdx/tabs.astro";
+import TabsList from "~/components/docs/mdx/tabs-list.astro";
+import TabsTrigger from "~/components/docs/mdx/tabs-trigger.astro";
+import TabsContent from "~/components/docs/mdx/tabs-content.astro";
+
+export async function getStaticPaths() {
+  const allDocs = (await getCollection("docs")).filter((d) => !d.data.draft);
+  const docsByLocale = new Map<string, Map<string, typeof allDocs[number]>>();
+  for (const doc of allDocs) {
+    const [locale, ...rest] = doc.id.split("/");
+    const slug = rest.join("/");
+    if (!docsByLocale.has(locale)) docsByLocale.set(locale, new Map());
+    docsByLocale.get(locale)!.set(slug, doc);
+  }
+  const enDocs = docsByLocale.get("en") ?? new Map();
+  return supportedLocales.flatMap((lang) =>
+    Array.from(enDocs.entries()).map(([slug, enDoc]) => {
+      const localeDoc = docsByLocale.get(lang)?.get(slug);
+      return {
+        params: { lang, slug },
+        props: { doc: localeDoc ?? enDoc },
+      };
+    }),
+  );
+}
+
+const { lang: rawLang, slug } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+const { doc } = Astro.props;
+const { Content } = await render(doc);
+
+const mdxComponents = {
+  Callout,
+  CreateAdmin,
+  InstallerSteps,
+  SystemdServices,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+};
+const title = `${doc.data.title}${t(lang, "docs.titleSuffix")}`;
+const description = doc.data.description || t(lang, "meta.description");
+
+let sectionTitle: string | undefined;
+for (const section of sections) {
+  if (section.items.some((item) => item.slug === slug)) {
+    sectionTitle = t(lang, `docs.sections.${section.titleKey}`);
+    break;
+  }
+}
+
+const previous = getPreviousDoc(slug ?? "");
+const next = getNextDoc(slug ?? "");
+
+const headLinks: { rel: string; href: string }[] = [];
+if (previous) headLinks.push({ rel: "prev", href: `/${lang}/docs/${previous.slug}` });
+if (next) headLinks.push({ rel: "next", href: `/${lang}/docs/${next.slug}` });
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+
+const articleProps = {
+  ...(doc.data.date && { publishedTime: doc.data.date.toISOString() }),
+  ...(doc.data.lastModified && { modifiedTime: doc.data.lastModified.toISOString() }),
+  ...(doc.data.author && { authors: [doc.data.author] }),
+  ...(doc.data.tags && { tags: doc.data.tags }),
+};
+
+const breadcrumbItems = [
+  { "@type": "ListItem", position: 1, name: t(lang, "nav.home"), item: `https://bedrud.org/${lang}` },
+  { "@type": "ListItem", position: 2, name: t(lang, "nav.docs"), item: `https://bedrud.org/${lang}/docs` },
+  { "@type": "ListItem", position: 3, name: doc.data.title },
+];
+---
+
+<DocsLayout
+  lang={lang}
+  title={title}
+  description={description}
+  currentSlug={slug}
+  image={doc.data.image}
+  article={articleProps}
+  headLinks={headLinks}
+  jsonLd={[
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: doc.data.title,
+      description: doc.data.description,
+      url: canonicalURL.href,
+      ...(doc.data.date && { datePublished: doc.data.date.toISOString() }),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: breadcrumbItems,
+    },
+  ]}
+>
+  <nav
+    class="mb-8 flex items-center gap-1.5 text-sm text-muted-foreground"
+    aria-label={t(lang, "a11y.breadcrumb")}
+  >
+    <ol class="flex items-center gap-1.5">
+      <li>
+        <a
+          href={`/${lang}`}
+          class="transition-colors hover:text-foreground"
+        >
+          {t(lang, "nav.home")}
+        </a>
+      </li>
+      <li>/</li>
+      <li>
+        <a
+          href={`/${lang}/docs`}
+          class="transition-colors hover:text-foreground"
+        >
+          {t(lang, "nav.docs")}
+        </a>
+      </li>
+      {sectionTitle && (
+        <>
+          <li>/</li>
+          <li>{sectionTitle}</li>
+        </>
+      )}
+      <li>/</li>
+      <li class="text-foreground" aria-current="page">
+        {doc.data.title}
+      </li>
+    </ol>
+  </nav>
+
+  <article class="prose prose-neutral dark:prose-invert max-w-none" data-diagram-error={t(lang, "docs.diagramError")}>
+    <Content components={mdxComponents} />
+  </article>
+
+  <script>
+    import mermaid from "mermaid";
+
+    let initialized = false;
+
+    function initMermaid() {
+      if (initialized) return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: document.documentElement.classList.contains("dark")
+          ? "dark"
+          : "default",
+        securityLevel: "loose",
+      });
+      initialized = true;
+    }
+
+    async function renderDiagrams() {
+      const codes = document.querySelectorAll(
+        'code[data-language="mermaid"]',
+      );
+      if (!codes.length) return;
+      initMermaid();
+      for (const codeEl of codes) {
+        const figure = codeEl.closest("figure");
+        if (!figure || figure.dataset.mermaidDone) continue;
+        figure.dataset.mermaidDone = "true";
+        const diagram = codeEl.textContent.trim();
+        const container = document.createElement("div");
+        container.className = "mermaid-container";
+        container.style.direction = "ltr";
+        figure.replaceWith(container);
+        const id = `mermaid-${Math.random().toString(36).slice(2)}`;
+        try {
+          const { svg, bindFunctions } = await mermaid.render(id, diagram);
+          container.innerHTML = svg;
+          bindFunctions?.(container);
+        } catch (err) {
+          const orphan = document.getElementById(`d${id}`);
+          orphan?.remove();
+          container.className = "mermaid-error";
+          const errMsgEl = document.querySelector('[data-diagram-error]');
+          const errMsg = errMsgEl ? (errMsgEl as HTMLElement).dataset.diagramError || "" : "";
+          container.innerHTML =
+            `<strong>${errMsg}</strong><pre style="margin-top:0.5rem;font-size:0.75rem;white-space:pre-wrap">${String(err)}</pre>`;
+        }
+      }
+    }
+
+    document.addEventListener("astro:page-load", renderDiagrams);
+  </script>
+
+  <nav
+    class="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2"
+    aria-label={t(lang, "a11y.articleNav")}
+  >
+    {previous && (
+      <a
+        href={`/${lang}/docs/${previous.slug}`}
+        rel="prev"
+        class="group relative rounded-lg border bg-card p-6 text-card-foreground transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-md"
+      >
+        <div class="flex items-center gap-2 text-muted-foreground">
+          <span class="text-sm">{t(lang, "docs.previous")}</span>
+        </div>
+        <h3 class="mt-2 text-lg font-semibold leading-none tracking-tight">
+          {previous.title}
+        </h3>
+        {previous.description && (
+          <p class="mt-2 text-sm text-muted-foreground">
+            {previous.description}
+          </p>
+        )}
+      </a>
+    )}
+    {next && (
+      <a
+        href={`/${lang}/docs/${next.slug}`}
+        rel="next"
+        class="group relative rounded-lg border bg-card p-6 text-card-foreground transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-md"
+      >
+        <div class="flex items-center gap-2 text-muted-foreground">
+          <span class="text-sm">{t(lang, "docs.next")}</span>
+        </div>
+        <h3 class="mt-2 text-lg font-semibold leading-none tracking-tight">
+          {next.title}
+        </h3>
+        {next.description && (
+          <p class="mt-2 text-sm text-muted-foreground">
+            {next.description}
+          </p>
+        )}
+      </a>
+    )}
+  </nav>
+</DocsLayout>

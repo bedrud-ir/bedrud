@@ -1,0 +1,109 @@
+---
+title: Modo appliance
+description: Configuración preestablecida de appliance
+order: 33
+---
+
+Bedrud está diseñado para ejecutarse como un «appliance» autocontenido para videoconferencias. Un único binario ejecutable empaqueta todo lo necesario - frontend, backend y el servidor de medios LiveKit.
+
+## Características principales
+
+| Característica | Descripción |
+|----------------|-------------|
+| Cero dependencias externas | No necesita Node.js, Redis ni un servidor de medios separado |
+| Servidor de medios embebido | El binario de LiveKit se incluye y gestiona automáticamente |
+| Frontend embebido | La UI de React se compila y pre-renderiza con SSR en el binario de Go |
+| Almacenamiento SQLite | No requiere servidor de base de datos |
+| TLS integrado | Certificados autofirmados o Let's Encrypt |
+| Instalador integrado | Configura systemd, directorios y configuraciones |
+
+## Ejecución del binario
+
+### Iniciar el servidor Bedrud
+
+```bash
+./bedrud --run --config config.yaml
+```
+
+### Iniciar el servidor de medios LiveKit
+
+```bash
+./bedrud --livekit --config livekit.yaml
+```
+
+El binario contiene tanto el servidor de API como el servidor de medios. Usa flags para elegir cuál iniciar.
+
+## Instalación
+
+### Instalación rápida (Debian/Ubuntu)
+
+```bash
+# Con TLS de Let's Encrypt
+sudo ./bedrud install --tls --domain meet.example.com --email admin@example.com
+
+# Con certificado autofirmado
+sudo ./bedrud install --tls --ip 1.2.3.4
+
+# HTTP sin cifrar (solo desarrollo)
+sudo ./bedrud install --ip 1.2.3.4
+```
+
+<InstallerSteps />
+
+### Arquitectura de servicios
+
+Después de la instalación, se ejecutan dos servicios systemd:
+
+```mermaid
+flowchart LR
+    BS["bedrud.service<br/>bedrud --run<br/>(API + Web UI)"]
+    LS["livekit.service<br/>bedrud --livekit<br/>(WebRTC media)"]
+    DB["SQLite database"]
+
+    BS --> LS
+    BS --> DB
+```
+
+## Archivos de configuración
+
+| Archivo | Propósito |
+|---------|-----------|
+| `/etc/bedrud/config.yaml` | Configuración principal del servidor |
+| `/etc/bedrud/livekit.yaml` | Configuración del servidor de medios |
+| `/var/lib/bedrud/bedrud.db` | Base de datos SQLite |
+| `/var/log/bedrud/bedrud.log` | Logs de la aplicación |
+
+Consulta la [referencia de configuración](/es/docs/getting-started/configuration) para todas las opciones.
+
+## Post-instalación
+
+### Crear tu primer administrador
+
+<CreateAdmin />
+
+### Verificar estado de los servicios
+
+```bash
+systemctl status bedrud livekit
+```
+
+### Ver logs
+
+```bash
+tail -f /var/log/bedrud/bedrud.log
+journalctl -u bedrud -f
+```
+
+## Desinstalación
+
+```bash
+sudo ./bedrud uninstall
+```
+
+Esto elimina completamente:
+
+- Archivos de servicio systemd
+- Binario de `/usr/local/bin/`
+- Configuración en `/etc/bedrud/`
+- Datos en `/var/lib/bedrud/`
+- Logs en `/var/log/bedrud`

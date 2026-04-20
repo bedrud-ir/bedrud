@@ -1,0 +1,256 @@
+---
+title: Hızlı Başlangıç
+description: Bedrud'u 5 dakikadan kısa sürede dağıtın ve video toplantısına katılın
+order: 1
+---
+
+Bedrud'u dağıtın ve 5 dakikadan kısa sürede video toplantısına katılın.
+
+**Bu kılavuz:**
+
+1. **CLI'yi edinin** — tek komutla kurulum (veya manuel indirme)
+2. **Sunucuyu dağıtın** — `bedrud install` her şeyi ayarlar
+3. **Doğrulayın** — servislerin çalıştığını onaylayın
+4. **Yönetici oluşturun & katılın** — tarayıcıyı açın, kendinizi yükseltin, toplantıyı başlatın
+
+**Daha fazla bilgi:**
+
+- [CLI Kurulumu](/tr/docs/getting-started/cli-installer) — bayraklar, platformlar, çevrimdışı kurulumlar
+- [Sunucu Kurulumu](/tr/docs/getting-started/installation) — paket yöneticileri, Docker, gelişmiş seçenekler
+- [Yapılandırma](/tr/docs/getting-started/configuration) — bağlantı noktaları, veritabanı, kimlik doğrulama, TURN
+
+> **Tek ikili dosya, indirdikten sonra internet gerekmez.** Gömülü medya sunucusu ve SQLite içerir - izole ağlarda çalışır. Dosyayı aktarın, bir komut çalıştırın, bitti.
+
+---
+
+## İhtiyacınız Olanlar
+
+| Gereksinim | Detaylar |
+|-------------|---------|
+| Bir Linux sunucusu | amd64 veya arm64, `sudo` erişimi ve `systemd` ile. macOS/Windows: sunucu için Docker veya WSL2 kullanın |
+| Açık bağlantı noktaları | `8090`, `7880`, `50000–60000/udp`. Otomatik TLS için: ayrıca `80` ve `443` |
+| Bir alan adı (isteğe bağlı) | Sunucunuza işaret eden DNS A kaydı ile. Alan adınız yok mu? IP ile çalışır — aşağıdaki alternatiflere bakın |
+
+> **Nasıl çalışır:** Bir Bedrud **sunucusu** çalıştırırsınız. Kişiler **tarayıcıda** (kurulum gerekmez) veya **yerel uygulamalarla** (Android, Windows, macOS, Linux) toplantılara katılır.
+
+---
+
+## 1. Bedrud CLI'yi Kurun
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="macos-linux">macOS / Linux</TabsTrigger>
+    <TabsTrigger value="windows">Windows (PowerShell)</TabsTrigger>
+    <TabsTrigger value="manual">Manuel İndirme</TabsTrigger>
+  </TabsList>
+  <TabsContent value="macos-linux">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    Kurulumdan sonra kabuğunuzu yeniden yükleyin:
+
+    ```bash
+    source ~/.bashrc  # veya ~/.zshrc
+    ```
+
+    Doğrulayın:
+
+    ```bash
+    bedrud --version
+    ```
+
+    Bayraklar (`--version`, `--install-dir`, `--skip-shell`, çevrimdışı kurulumlar) için bkz. [CLI Kurulumu](/tr/docs/getting-started/cli-installer).
+  </TabsContent>
+  <TabsContent value="windows">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    ```
+
+    Terminalinizi kapatıp yeniden açın, ardından doğrulayın:
+
+    ```powershell
+    bedrud --version
+    ```
+  </TabsContent>
+  <TabsContent value="manual">
+
+    Manuel olarak indirin ve çıkarın. `linux_amd64` değerini platformunuza göre değiştirin (`linux_arm64`, `darwin_amd64`, `darwin_arm64`):
+
+    ```bash
+    curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+    tar -xJf bedrud.tar.xz
+    chmod +x bedrud
+    sudo mv bedrud /usr/local/bin/
+    ```
+
+    Tüm platform hedefleri için bkz. [CLI Kurulumu](/tr/docs/getting-started/cli-installer#platform-targets).
+
+    > **Sunucuda internet yok mu?** Herhangi bir makinede indirin, USB ile veya `scp bedrud.tar.xz user@server:/tmp/` ile aktarın, ardından orada çıkarın. İkili dosya tamamen kendi kendine yetkidir - aktarımdan sonra sıfır dışarıya istek.
+
+    > **İndirme başarısız oldu mu?** İnternet erişimini kontrol edin veya URL'yi [github.com/bedrud-ir/bedrud/releases](https://github.com/bedrud-ir/bedrud/releases/latest) adresinden doğrulayın.
+  </TabsContent>
+</Tabs>
+
+---
+
+## 2. Sunucuyu Dağıtın
+
+> **Sunucu kurulumu Linux ve systemd gerektirir.** macOS ve Windows `bedrud install` komutunu doğrudan desteklemez — bunun yerine [Docker](#docker) veya [WSL2](#linux-dışı-sistemler) kullanın.
+
+`meet.example.com` ve `admin@example.com` değerlerini kendinize göre değiştirin:
+
+```bash
+sudo bedrud install --tls --domain meet.example.com --email admin@example.com
+```
+
+Sunucu ikili dosyasını `/usr/local/bin` dizinine kurar, yapılandırma oluşturur, systemd servislerini oluşturur, TLS sağlar ve her şeyi başlatır.
+
+> **80 veya 443 bağlantı noktası meşgul mü?** Çakışan servisleri durdurun: `sudo systemctl stop nginx apache2 caddy`, ardından tekrar çalıştırın.
+
+> **Alan adınız yok mu?** Bunun yerine sunucu IP'nizi kullanın:
+> ```bash
+> sudo bedrud install --tls --ip 1.2.3.4
+> ```
+> Bu, kendi imzalı bir sertifika kullanır. Tarayıcılar uyarı verir ama video çalışır. Dahili ağlarda güvenilir sertifikalar için bkz. [Dahili TLS Kılavuzu](/tr/docs/guides/internal-tls).
+
+---
+
+## 3. Doğrulayın
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+```
+
+Beklenen: `200`
+
+> **200 değil mi?** Servis durumunu kontrol edin: `sudo systemctl status bedrud livekit`. Günlükleri kontrol edin: `journalctl -u bedrud -u livekit --no-pager -n 50`.
+
+---
+
+## 4. Kaydolun ve Yönetici Oluşturun
+
+Tarayıcınızda `https://meet.example.com` (veya `https://<sizin-ip>:8090`) adresini açın:
+
+<CreateAdmin createOption />
+
+1. Giriş yapın (veya sayfayı yenileyin) — kenar çubuğunda **Yönetici** bölümü görünür (Genel Bakış, Kullanıcılar, Odalar, Ayarlar). Başarılı: yöneticisiniz.
+2. **Bir oda oluşturun** → **Katılın** → **Video/ ses paylaşın** - istendiğinde kamera/mikrofon izinlerini verin
+
+> **Yönetici paneli** — Terfi ettikten sonra, giriş yaparak `/dashboard/admin` adresinden yönetici paneline erişin. Kullanıcıları, odaları, sistem ayarlarını ve davet jetonlarını yönetin.
+
+> **CLI referansı** — Tam kullanıcı yönetimi: `bedrud user promote`, `demote`, `create`, `delete`.
+
+**Yerel istemciler** için Android, Windows, macOS ve Linux: [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases/latest). Veya toplantı bağlantısını paylaşın — katılımcılar herhangi bir tarayıcıda katılır.
+
+---
+
+## Alternatif Kurulum Yolları
+
+### Docker
+
+```bash
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+Özel yapılandırma, Docker Compose ve ortam değişkenleri için bkz. [Docker kılavuzu](/tr/docs/guides/docker).
+
+### Kaynaktan Derleme
+
+[Go 1.24+](https://go.dev/dl/) ve [Bun](https://bun.sh/) gerektirir:
+
+```bash
+git clone https://github.com/bedrud-ir/bedrud.git
+cd bedrud
+make init
+make local-run
+```
+
+`make init` LiveKit'i kurar, yapılandırma oluşturur, bağımlılıkları indirir. `make local-run` derler ve `http://localhost:8090` adresinde başlatır.
+
+### Düz HTTP (yalnızca geliştirme / localhost)
+
+```bash
+sudo bedrud install --ip 127.0.0.1
+```
+
+> **Uyarı:** Tarayıcılar `localhost` dışında HTTPS olmayan sitelerde kamera/mikrofonu engeller. HTTP yalnızca geliştirme içindir.
+
+### Linux Dışı Sistemler
+
+`bedrud install` komutu systemd servislerini ayarlar ve yalnızca Linux içindir. CLI kurulumu (1. adım) her platformda çalışır ve ikili dosyayı PATH'e yerleştirir. Sunucu kurulumu için Docker veya WSL2 kullanın.
+
+| İşletim Sistemi | Nasıl |
+|---------|-------|
+| macOS   | CLI kurulumu otomatik olarak `~/bin/` dizinine kurar |
+| Windows | CLI kurulumu otomatik olarak `%USERPROFILE%\bin\` dizinine kurar |
+| Docker  | Docker yüklü herhangi bir işletim sisteminde çalışır (yukarıya bakın) |
+
+---
+
+## Dahili Ağlar
+
+Genel alan adınız veya dışarıya internet bağlantınız yok mu? Özel CA kurulumu ve istemci güven deposu yapılandırması için bkz. [Dahili TLS Kılavuzu](/tr/docs/guides/internal-tls).
+
+---
+
+## Yapılandırma
+
+Kurucu `/etc/bedrud/config.yaml` dosyasını oluşturur. Varsayılanlar çoğu kurulum için uygundur.
+Üretim için `jwtSecret` ve `sessionSecret` değerlerini değiştirin, ardından yeniden başlatın:
+
+```bash
+sudo systemctl restart bedrud livekit
+```
+
+Oda kapasitesini, zaman aşımlarını veya medya bağlantı noktalarını ayarlamak için bkz. [Yapılandırma'da LiveKit bölümü](/tr/docs/getting-started/configuration#livekit-configuration).
+
+Tam referans: [Yapılandırma](/tr/docs/getting-started/configuration)
+
+---
+
+## Sorun Giderme
+
+| Sorun | Çözüm |
+|---------|-----|
+| 80/443 bağlantı noktası kullanımda | `sudo systemctl stop nginx apache2 caddy` |
+| Servisler başlamıyor | `journalctl -u bedrud -u livekit --no-pager -n 50` |
+| TLS sertifika hataları | DNS'i doğrulayın: `dig meet.example.com`. Sunucu IP'sine işaret etmeli |
+| Video yok / WebRTC başarısız | Kamera için HTTPS gerekli. `--tls` kullanın. Güvenlik duvarında UDP 50000–60000'i açın |
+| LiveKit bağlantı noktası çakışmaları | `--lk-port`, `--lk-tcp-port`, `--lk-udp-port` bayraklarını kullanın |
+| Güvenlik duvarı medyayı engelliyor | `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
+| Kendi imzalı sertifika uyarıları | Özel CA kurulumu için bkz. [Dahili TLS Kılavuzu](/tr/docs/guides/internal-tls) |
+
+---
+
+## Kaldırma
+
+```bash
+# İkili dosya kurulumu
+sudo bedrud uninstall
+
+# Docker
+docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
+
+# Kaynak derlemesi
+# Durdurmak için Ctrl+C, ardından: make clean
+```
+
+---
+
+## Sonraki Adımlar
+
+- [CLI Kurulumu Referansı](/tr/docs/getting-started/cli-installer) — bayraklar, platform hedefleri, çevrimdışı kurulumlar, sorun giderme
+- [Yapılandırma Referansı](/tr/docs/getting-started/configuration) — bağlantı noktaları, veritabanı, kimlik doğrulama sağlayıcıları, TURN
+- [Kurulum Kılavuzu](/tr/docs/getting-started/installation) — paket yöneticileri, Docker, gelişmiş bayraklar
+- [Dahili TLS Kılavuzu](/tr/docs/guides/internal-tls) — izole dağıtım, özel CA
+- [Dağıtım Kılavuzu](/tr/docs/guides/deployment) — üretim kurulumu, ters vekil sunucu, ölçeklendirme
+- [Mimari Genel Bakış](/tr/docs/architecture/overview) — parçalar nasıl bir araya gelir
+- [API Belgeleri](http://localhost:8090/api/swagger) — Swagger UI (çalışan örnek)

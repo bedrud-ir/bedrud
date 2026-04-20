@@ -1,0 +1,138 @@
+---
+title: مرجع Makefile
+description: أوامر أتمتة البناء
+order: 31
+---
+
+ملف `Makefile` الرئيسي هو أداة تنسيق البناء المركزية لمستودع Bedrud الأحادي. يوفر أوامر للتطوير والبناء والنشر عبر جميع المنصات.
+
+## الاستخدام
+
+```bash
+make <target>
+make help       # Show all available targets
+```
+
+## أهداف التطوير
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make init` | تثبيت جميع التبعيات (الويب + الخادم) |
+| `make dev` | تشغيل LiveKit + الخادم + الويب بشكل متزامن |
+| `make dev-web` | تشغيل خادم تطوير الواجهة فقط |
+| `make dev-server` | تشغيل خادم الخلفية فقط |
+| `make dev-livekit` | تشغيل خادم LiveKit المحلي |
+| `make dev-ios` | فتح مشروع iOS في Xcode |
+| `make dev-android` | فتح مشروع Android في Android Studio |
+
+### `make init`
+
+يثبّت التبعيات لكل من واجهة الويب وخادم Go:
+
+```bash
+cd apps/web && bun install
+cd server && go mod tidy && go mod download
+```
+
+### `make dev`
+
+يُشغّل خدمات التطوير الثلاث بشكل متزامن. اضغط `Ctrl+C` لإيقاف الكل:
+
+- **LiveKit** على `localhost:7880`
+- **الخادم** على `localhost:8090`
+- **الويب** على `localhost:3000`
+
+## أهداف البناء
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make build` | بناء الواجهة + الخلفية (مضمنة) |
+| `make build-front` | بناء الواجهة فقط |
+| `make build-back` | بناء الخلفية فقط |
+| `make build-dist` | بناء أرشيف إنتاج linux/amd64 |
+
+### `make build`
+
+بناء إنتاجي كامل:
+
+١. يُشغّل `bun run build:embed` - يجري SSR للعرض المسبق لتطبيق React وينسخ الأصول إلى `server/frontend/`
+٢. يبني الملف الثنائي Go مع الواجهة المضمنة
+
+المخرجات: `server/dist/bedrud`
+
+### `make build-dist`
+
+ينشئ توزيعة إنتاجية مضغوطة:
+
+١. يُشغّل `make build`
+٢. يُترجم تصادريًا لـ `linux/amd64` مع إزالة رموز التنقيح
+٣. ينشئ `dist/bedrud_linux_amd64.tar.xz`
+
+## أهداف Android
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make build-android-debug` | بناء APK تصحيح |
+| `make build-android` | بناء APK إصدار (يتطلب مخزن مفاتيح) |
+| `make install-android` | تثبيت APK الإصدار على الجهاز المتصل |
+| `make release-android` | بناء + تثبيت APK الإصدار |
+
+### مسارات مخرجات APK
+
+- التصحيح: `apps/android/app/build/outputs/apk/debug/app-debug.apk`
+- الإصدار: `apps/android/app/build/outputs/apk/release/app-release.apk`
+
+## أهداف iOS
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make build-ios` | بناء أرشيف iOS (إصدار) |
+| `make export-ios` | تصدير IPA من الأرشيف |
+| `make build-ios-sim` | بناء لمحاكي iOS (تصحيح) |
+
+### مسارات المخرجات
+
+- الأرشيف: `apps/ios/build/Bedrud.xcarchive`
+- IPA: `apps/ios/build/export/Bedrud.ipa`
+
+## هدف النشر
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make deploy ARGS=...` | تشغيل أداة نشر CLI |
+
+### مثال
+
+```bash
+make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
+```
+
+يُشغّ هذا أداة CLI في Python عند `tools/cli/bedrud.py` بالمعطيات المقدمة.
+
+## أهداف التنظيف
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make clean` | إزالة مُنتَجات البناء والملفات الثنائية المُترجمة |
+| `make full-clean` | إزالة المُنتَجات + جميع التبعيات المثبتة |
+
+### `make clean`
+
+يزيل:
+
+- `dist/` - أرشيفات التوزيعة
+- `server/dist/` - الملف الثنائي المُترجم للخادم
+- `apps/web/dist/` - مخرجات بناء React
+- محتويات `server/frontend/` - أصول الواجهة المضمنة
+- `apps/android/app/build/` - مخرجات بناء Android
+- `apps/ios/build/` - مخرجات بناء iOS
+
+### `make full-clean`
+
+كل ما يفعله `clean`، بالإضافة إلى:
+
+- `apps/web/node_modules/`
+- `apps/android/.gradle/`
+- ذاكرة تخزين وحدات Go (`go clean -modcache`)
+
+شغّل `make init` بعدها لإعادة تثبيت التبعيات.

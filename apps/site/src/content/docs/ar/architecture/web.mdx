@@ -1,0 +1,155 @@
+---
+title: واجهة الويب
+description: بنية تطبيق الويب React
+order: 8
+---
+
+واجهة بدرود الوي هي تطبيق React مبني بـ TanStack Start وTailwindCSS v4 وshadcn/ui. في الإنتاج، يقوم العرض من جانب الخادم بتهيئة هيكل HTML مسبقًا. يُدمِج الملف الثنائي Go هذا الهيكل مع أصول العميل الثابتة.
+
+## حزمة التقنيات
+
+| التقنية | الغرض |
+|-----------|---------|
+| React 19 | إطار عمل واجهة المستخدم |
+| TanStack Start | إطار عمل SSR والتوجيه القائم على الملفات |
+| TanStack Router | التوجيه من جانب العميل |
+| TanStack Query | حالة الخادم وجلب البيانات |
+| TailwindCSS 4 | تنسيق قائم على الأدوات |
+| shadcn/ui + Radix UI | مكونات أولية سهلة الوصول |
+| Zustand | حالة المصادقة من جانب العميل |
+| Vite 7 | أداة البناء وخادم التطوير |
+| LiveKit React SDK | معالجة وسائط WebRTC |
+| Zod | التحقق من المخططات |
+| Lucide React | مكتبة الأيقونات |
+| Bun | مدير الحزم |
+
+## هيكل المجلدات
+
+```
+apps/web/
+├── src/
+│   ├── routes/                    # TanStack Router file-based routes
+│   │   ├── index.tsx              # Home / landing page
+│   │   ├── __root.tsx             # Root layout
+│   │   ├── auth/
+│   │   │   ├── login.tsx          # Sign-in page
+│   │   │   └── register.tsx       # Sign-up page
+│   │   ├── dashboard/             # User dashboard
+│   │   ├── m.$meetId.tsx          # Meeting room page
+│   │   ├── admin/                 # Admin panel
+│   │   │   ├── index.tsx          # Overview
+│   │   │   ├── rooms.$id.tsx      # Room detail
+│   │   │   ├── users.$id.tsx      # User detail
+│   │   │   └── settings.tsx       # Server settings + invite tokens
+│   │   └── settings.tsx           # Account settings page
+│   ├── components/
+│   │   ├── admin/                 # Admin table components
+│   │   │   ├── RoomTable.tsx
+│   │   │   └── UserTable.tsx
+│   │   ├── auth/                  # Auth UI (OAuth, Passkey buttons)
+│   │   ├── dashboard/             # Room cards, create room dialog
+│   │   ├── meeting/               # Video tiles, controls, device picker
+│   │   │   ├── ControlsBar.tsx
+│   │   │   ├── DeviceSelector.tsx
+│   │   │   ├── ParticipantGrid.tsx
+│   │   │   ├── ChatPanel.tsx
+│   │   │   └── SpotlightView.tsx
+│   │   ├── ui/                    # shadcn/ui component library
+│   │   └── ThemeToggle.tsx        # Light/dark mode switcher
+│   └── lib/
+│       ├── api.ts                 # authFetch wrapper
+│       └── auth.store.ts          # Zustand auth store (tokens, user)
+├── scripts/
+│   └── embed.mjs                  # SSR pre-render + copy to server/frontend/
+├── public/                        # Static assets
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+## مسار المصادقة
+
+تُدار حالة المصادقة عبر مخزن Zustand في `src/lib/auth.store.ts`:
+
+١. **تسجيل الدخول** - يرسل المستخدم بيانات الاعتماد إلى `POST /api/auth/login`
+٢. **تخزين الرموز** - تُحفَظ رموز الوصول والتحديث في `localStorage`
+٣. **الإرفاق التلقائي** - `authFetch` يغلف كل استدعاء API، مضيفًا ترويسة `Authorization: Bearer`
+٤. **التحديث التلقائي** - عندما يُرجِع الطلب خطأ 401، يحاول `authFetch` تحديث الرمز باستخدام رمز التحديث
+٥. **تسجيل الخروج** - يمسح الرموز ويعيد التوجيه لصفحة تسجيل الدخول
+
+### authFetch
+
+دالة `authFetch` في `src/lib/api.ts` هي بديل مباشر لـ `fetch` تقوم بما يلي:
+
+- إرفاق رمز وصول JWT بكل طلب
+- التقاط استجابات 401 ومحاولة تحديث الرمز
+- تسجيل خروج المستخدم إذا فشل التحديث
+
+## صفحة الاجتماع
+
+صفحة الغرفة على `/m/$meetId` تتولى:
+
+- **اتصال LiveKit** - الاتصال بخادم الوسائط بالرمز من API الانضمام
+- **عرض المسارات** - الاشتراك في مسارات الصوت/الفيديو من المشاركين الآخرين
+- **اختيار الأجهزة** - تبديل الكاميرا أو الميكروفون أو السماعة أثناء المكالمة بدون مغادرة الغرفة
+- **أدوات المسؤول** - يرى منشئ الغرفة أزرار الطرد والكتم وإيقاف الفيديو
+- **الدردشة** - دردشة نصية داخل الغرفة عبر `ChatPanel`
+- **عرض التركيز** - التركيز على مشارك واحد
+
+## لوحة تحكم المسؤول
+
+توفر لوحة تحكم المسؤول على `/admin`:
+
+- **إدارة الغرف** - عرض جدولي مع إمكانية الوصول لصفحات تفاصيل الغرف
+- **إدارة المستخدمين** - عرض جدولي مع إمكانية الوصول لحسابات المستخدمين الفردية وتعديل الأدوار
+- **إعدادات الخادم** - تهيئة الخيارات على مستوى المثيل، وأدوات التحكم في الوصول، وروابط الدعوة
+- **رموز الدعوة** - إنشاء وإلغاء روابط الدعوة للتحكم فيمن يمكنه الانضمام
+
+## الوضع الداكن
+
+يتيح مكون `ThemeToggle` للمستخدمين التبديل بين السمات الفاتحة والداكنة من أي مكان في التطبيق. تُحفَظ التفضيلات في `localStorage` وتُطبَّق عند التحميل.
+
+## البناء
+
+### التطوير
+
+```bash
+cd apps/web
+bun run dev      # Starts Vite dev server with HMR at localhost:3000
+```
+
+يُوجِّه خادم التطوير طلبات `/api` و`/livekit` إلى خادم Go على `localhost:8090`.
+
+### الإنتاج (حزمة ويب مستقلة)
+
+```bash
+cd apps/web
+bun run build    # Outputs static client assets to dist/client/ and SSR server to dist/server/
+```
+
+### الإنتاج (مدمج في الملف الثنائي Go)
+
+```bash
+cd apps/web
+bun run build:embed
+```
+
+يشغّل `scripts/embed.mjs` الذي يقوم بما يلي:
+
+١. تشغيل `bun run build` لإنتاج `dist/client/` و`dist/server/`
+٢. بدء تشغيل خادم SSR محليًا
+٣. جلب `/` لالتقاط هيكل HTML المُعرَض مسبقًا
+٤. نسخ `dist/client/` إلى `server/frontend/`
+٥. كتابة HTML المعروض كـ `server/frontend/index.html`
+
+### فحص الأنواع
+
+```bash
+bun run check    # Runs tsc --noEmit
+```
+
+---
+
+## انظر أيضًا
+
+- [نظام تصميم الويب](https://github.com/bedrud-ir/bedrud/tree/main/apps/web/AGENTS.md) - أنماط مكونات واجهة المستخدم، والرموز المميزة للألوان، وقواعد التنسيق

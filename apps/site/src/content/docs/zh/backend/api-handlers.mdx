@@ -1,0 +1,95 @@
+---
+title: API Handlers
+description: REST API endpoint implementations
+order: 19
+---
+
+Bedrud 使用 **Fiber** Web 框架（Go 的类 Express API）。
+
+## 路由逻辑
+
+路由定义在 `internal/server/server.go` 中。我们对路由进行分组，以便轻松应用 middleware 或前缀。
+
+### 主要路由组：
+
+- **`/api/auth`**：认证的公共和受保护路由。
+- **`/api/room`**：房间管理的受保护路由。
+- **`/api/admin`**：仅限 `superadmin` 角色用户访问的路由。
+- **`/livekit`**：特殊的代理路由组，将请求发送到内嵌的 LiveKit 音视频服务器。
+
+## 专用 Handler 逻辑
+
+### 房间管理（`internal/handlers/room.go`）
+`RoomHandler` 在 Bedrud 的房间元数据和 LiveKit 的媒体引擎之间进行转换。
+
+#### 1. 房间创建
+通过 `POST /api/room/create` 创建房间时：
+
+- **规范化：** 房间名称会被修剪并转为小写。
+- **自动生成：** 如果未提供名称，Bedrud 会生成一个随机的 URL 安全名称（如 `fancy-blue-whale`）。
+- **同步创建：** 后端首先调用内部 LiveKit API 创建媒体会话，然后将元数据保存到本地数据库中。
+
+#### 2. 加入与令牌
+当用户通过 `POST /api/room/join` 加入时：
+
+- **访问控制：** 后端检查房间是否存在以及用户是否已授权。
+- **令牌生成：** 生成一个签名的 JWT（加入令牌），包含：
+  - `Identity`：Bedrud 中的用户 ID。
+  - `Name`：用户的显示名称。
+  - `Grants`：特定权限，如 `CanJoin`、`CanPublish`、`CanSubscribe`。
+- **客户端握手：** 前端同时获取本地房间元数据和 LiveKit 令牌，以启动 WebRTC 连接。
+
+## 管理员与用户管理（`internal/handlers/users.go`）
+`/api/admin` 下的路由由 `RequireAccess("superadmin")` middleware 严格保护。
+
+### 1. 用户控制
+`UsersHandler` 允许管理员：
+
+- **列出所有用户：** 获取已注册用户的完整目录，包括其认证提供商和最后登录的元数据。
+- **更新状态：** 即时激活或停用账户访问权限。停用用户会立即阻止其登录或刷新令牌。
+
+### 2. 房间概览
+管理员路由允许列出整个平台上所有活跃和历史房间，无论创建者是谁。这用于平台管理。
+
+## 请求生命周期
+
+1.  **请求到达**：Fiber 接收 HTTP 请求。
+2.  **Middleware**：
+
+    - `recover`：防止服务器在出错时崩溃。
+    - `cors`：处理跨源资源共享。
+    - `Protected`：（可选）检查 `Authorization` 头中是否存在有效的 JWT。
+3.  **Handler**：调用 `internal/handlers` 中的函数。
+
+    - 使用 `c.BodyParser` 解析 JSON 请求体（如果有）。
+    - 调用必要的 Service 或 Repository。
+    - 使用 `c.JSON` 返回 JSON 响应。
+
+## 示例：创建房间 Handler
+
+```go
+func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
+    var input struct {
+        Name string `json:"name"`
+    }
+    // 1. Parse Input
+    if err := c.BodyParser(&input); err != nil {
+        return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+    }
+
+    // 2. Business Logic (via Repository)
+    room := &models.Room{Name: input.Name}
+    if err := h.roomRepo.Create(room); err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to create room"})
+    }
+
+    // 3. Response
+    return c.Status(201).JSON(room)
+}
+```
+
+## 静态文件（前端）
+
+Web 前端在构建时**嵌入**到 Go 二进制文件中。Fiber 使用 `filesystem.New` 从 `frontend/` 目录提供 React 文件。
+
+任何不以 `/api` 开头的路由都会重定向到 React 应用的 `index.html`。这使得客户端路由在页面刷新时不会出现 404 错误。

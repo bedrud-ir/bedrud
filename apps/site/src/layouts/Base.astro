@@ -1,0 +1,190 @@
+---
+import { ClientRouter } from "astro:transitions";
+import { SEO } from "astro-seo";
+import { getDir, isValidLocale, supportedLocales, t, type Locale } from "../i18n/utils";
+import "../styles/global.css";
+
+interface Props {
+  lang?: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  article?: {
+    publishedTime?: string;
+    modifiedTime?: string;
+    authors?: string[];
+    tags?: string[];
+  };
+  headLinks?: { rel: string; href: string }[];
+  jsonLd?: Record<string, unknown>[];
+}
+
+const {
+  lang: rawLang = "en",
+  title: rawTitle,
+  description: rawDescription,
+  image,
+  article,
+  headLinks = [],
+  jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "Bedrud",
+      url: "https://bedrud.org",
+      logo: "https://bedrud.org/favicon.svg",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Bedrud",
+      url: "https://bedrud.org",
+    },
+  ],
+} = Astro.props;
+
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+const title = rawTitle ?? t(lang, "meta.title");
+const description = rawDescription ?? t(lang, "meta.description");
+const dir = getDir(lang);
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const pathWithoutLang = Astro.url.pathname.replace(`/${lang}`, "");
+
+const bcp47Map: Record<string, string> = {
+  en: "en-US",
+  de: "de-DE",
+  fr: "fr-FR",
+  es: "es-ES",
+  zh: "zh-CN",
+  ja: "ja-JP",
+  tr: "tr-TR",
+  fa: "fa-IR",
+  ar: "ar-SA",
+  ru: "ru-RU",
+};
+
+const languageAlternates = supportedLocales.map((loc) => ({
+  href: new URL(`/${loc}${pathWithoutLang}`, Astro.site).href,
+  hrefLang: bcp47Map[loc] ?? loc,
+}));
+languageAlternates.push({
+  href: new URL(`/en${pathWithoutLang}`, Astro.site).href,
+  hrefLang: "x-default",
+});
+
+const ogImage = image
+  ? new URL(image, Astro.site).href
+  : new URL("/og-image.svg", Astro.site).href;
+---
+
+<html lang={lang} dir={dir} class="overflow-x-hidden">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <SEO
+      title={title}
+      description={description}
+      canonical={canonicalURL.href}
+      languageAlternates={languageAlternates}
+      openGraph={{
+        basic: {
+          title,
+          type: article ? "article" : "website",
+          image: ogImage,
+          url: canonicalURL.href,
+        },
+        optional: {
+          description,
+          locale: lang,
+          siteName: "Bedrud",
+        },
+        image: {
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+        ...(article && {
+          article: {
+            publishedTime: article.publishedTime,
+            modifiedTime: article.modifiedTime,
+            authors: article.authors,
+            tags: article.tags,
+          },
+        }),
+      }}
+      twitter={{
+        card: "summary_large_image",
+        title,
+        description,
+        image: ogImage,
+        imageAlt: title,
+      }}
+      extend={{
+        link: [
+          { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+          { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+          {
+            rel: "apple-touch-icon",
+            sizes: "180x180",
+            href: "/apple-touch-icon.png",
+          },
+          { rel: "manifest", href: "/manifest.json" },
+          ...headLinks,
+        ],
+        meta: [{ name: "theme-color", content: "#ffffff" }],
+      }}
+    />
+    {jsonLd.map((data) => (
+      <script type="application/ld+json" set:html={JSON.stringify(data)} />
+    ))}
+    <ClientRouter />
+    <script is:inline>
+      (function () {
+        var stored = localStorage.getItem("theme");
+        if (
+          stored === "dark" ||
+          (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        ) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+    <script is:inline>
+      document.addEventListener("astro:after-swap", function () {
+        var stored = localStorage.getItem("theme");
+        if (
+          stored === "dark" ||
+          (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        ) {
+          document.documentElement.classList.add("dark");
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <a href="#main-content" class="skip-link">{t(lang, "skipToContent")}</a>
+    <slot />
+    <script is:inline>
+      function initAnimations() {
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add("in-view");
+                observer.unobserve(e.target);
+              }
+            });
+          },
+          { threshold: 0.1 },
+        );
+        document
+          .querySelectorAll("[data-animate]:not(.in-view)")
+          .forEach(function (el) {
+            observer.observe(el);
+          });
+      }
+      initAnimations();
+      document.addEventListener("astro:after-swap", initAnimations);
+    </script>
+  </body>
+</html>

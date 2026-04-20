@@ -1,0 +1,166 @@
+---
+title: Android アプリ
+description: ネイティブ Android アプリケーション
+order: 9
+---
+
+Bedrud Android アプリは Jetpack Compose と Kotlin で構築され、ピクチャーインピクチャー、ディープリンク、マルチインスタンスサポートを備えたネイティブビデオ会議エクスペリエンスを提供します。
+
+## テクノロジースタック
+
+| テクノロジー | バージョン | 目的 |
+|-----------|---------|---------|
+| Kotlin | 2.1.0 | 言語 |
+| Jetpack Compose | Material 3 | UI ツールキット |
+| Koin | 4.0.0 | 依存性注入 |
+| Retrofit + OkHttp | Latest | HTTP クライアント |
+| LiveKit Android SDK | 2.23.3 | WebRTC メディア |
+| Credentials API | Latest | パスキーサポート |
+| Encrypted SharedPreferences | Latest | 安全な保存 |
+| Coil | Latest | 画像読み込み |
+
+**ターゲット：** Min SDK 28、Target SDK 35、JDK 17
+
+## ディレクトリ構造
+
+```
+apps/android/app/src/main/java/com/bedrud/app/
+├── BedrudApplication.kt           # Application class (Koin init)
+├── MainActivity.kt                # Single-activity entry point
+├── core/
+│   ├── api/                       # Retrofit API client
+│   │   ├── ApiClient.kt           # Base HTTP client with auth interceptor
+│   │   ├── AuthApi.kt             # Auth endpoint definitions
+│   │   └── RoomApi.kt             # Room endpoint definitions
+│   ├── auth/
+│   │   └── AuthManager.kt         # Token management, login/logout
+│   ├── call/
+│   │   ├── CallService.kt         # Foreground service for calls
+│   │   └── CallConnectionService.kt  # Android ConnectionService
+│   ├── deeplink/
+│   │   └── DeepLinkHandler.kt     # Handle bedrud.com deep links
+│   ├── di/
+│   │   └── AppModule.kt           # Koin module definitions
+│   ├── instance/
+│   │   ├── InstanceManager.kt     # Central multi-instance orchestrator
+│   │   ├── InstanceStore.kt       # Persistent instance storage
+│   │   └── InstanceDeps.kt        # Per-instance dependency container
+│   ├── livekit/
+│   │   └── RoomManager.kt         # LiveKit room connection manager
+│   └── pip/
+│       └── PipManager.kt          # Picture-in-Picture controller
+├── models/
+│   ├── User.kt                    # User data model
+│   ├── Room.kt                    # Room data model
+│   ├── Instance.kt                # Server instance model
+│   └── ApiResponse.kt             # API response wrappers
+└── ui/
+    ├── screens/
+    │   ├── auth/
+    │   │   ├── LoginScreen.kt     # Email/password + passkey login
+    │   │   └── RegisterScreen.kt  # Account registration
+    │   ├── dashboard/
+    │   │   └── DashboardScreen.kt # Room list and management
+    │   ├── meeting/
+    │   │   └── MeetingScreen.kt   # Video call interface
+    │   ├── instance/
+    │   │   ├── AddInstanceScreen.kt    # Add server instance
+    │   │   └── InstanceSwitcher.kt     # Switch between instances
+    │   ├── profile/
+    │   │   └── ProfileScreen.kt   # User profile
+    │   └── settings/
+    │       └── SettingsScreen.kt  # App settings
+    ├── components/                 # Reusable Compose components
+    └── theme/                      # Material 3 theme definition
+```
+
+## マルチインスタンスアーキテクチャ
+
+Android アプリは複数の Bedrud サーバーへの同時接続をサポートします。
+
+```mermaid
+flowchart TB
+    subgraph IM ["InstanceManager (Koin singleton)"]
+        IS["InstanceStore<br/>Persists list to SharedPreferences"]
+        AI["Active Instance (StateFlow)"]
+        INST["instances: List Instance"]
+    end
+
+    subgraph DEPS ["InstanceDeps"]
+        AM["AuthManager"]
+        AC["ApiClient"]
+        AA["AuthApi"]
+        RA["RoomApi"]
+        PM["PasskeyManager"]
+        RM["RoomManager"]
+    end
+
+    AI --> DEPS
+```
+
+### 主要なパターン
+
+インスタンスごとの依存関係はすべて `InstanceManager` 上の `StateFlow<T?>` として公開されます。コンポーザブルはこれらを収集します。
+
+```kotlin
+val authManager = instanceManager.authManager.collectAsState().value ?: return
+val roomApi = instanceManager.roomApi.collectAsState().value ?: return
+```
+
+`?: return` パターンにより、インスタンスが完全に初期化されるまでコンポーザブルは描画されません。
+
+### ナビゲーションフロー
+
+```mermaid
+flowchart LR
+    A["No instances"] --> B[AddInstanceScreen]
+    C["Has instances, not logged in"] --> D[LoginScreen]
+    E["Has instances, logged in"] --> F[DashboardScreen]
+```
+
+インスタンススイッチャーは Dashboard ツールバーからトリガーされる `ModalBottomSheet` として表示されます。
+
+## 機能
+
+### ディープリンク
+
+アプリは以下の URL パターンを処理します。
+
+- `https://bedrud.com/m/*` - ルームへの直接参加
+- `https://bedrud.com/c/*` - コードによるルーム参加
+
+`AndroidManifest.xml` のインテントフィルターで設定されています。
+
+### 通話管理
+
+- **CallService** - 通話中に接続を維持するフォアグラウンドサービス
+- **CallConnectionService** - Android のテレフォニーフレームワークとの統合で適切な通話 UI を表示
+- 必要なパーミッション：`MANAGE_OWN_CALLS`、`FOREGROUND_SERVICE_PHONE_CALL`、`FOREGROUND_SERVICE_CAMERA`、`FOREGROUND_SERVICE_MICROPHONE`
+
+### ピクチャーインピクチャー
+
+会議画面は PiP モードをサポートし、他のアプリを使用中でもビデオフィードを表示できます。
+
+### パスキー
+
+Android の Credentials API を使用して FIDO2/WebAuthn パスキーの登録とログインを行います。
+
+## ビルド
+
+```bash
+# Debug APK
+make build-android-debug
+
+# Release APK (requires keystore.properties)
+make build-android
+
+# Build + install on connected device
+make release-android
+
+# Open in Android Studio
+make dev-android
+```
+
+### リリース署名
+
+リリースビルドには Android プロジェクトルートに署名設定を含む `keystore.properties` ファイルが必要です。

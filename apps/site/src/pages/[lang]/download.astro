@@ -1,0 +1,37 @@
+---
+import { DownloadSection } from "~/components/landing/download-section";
+import Landing from "~/layouts/Landing.astro";
+import { isValidLocale, type Locale, supportedLocales, t } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return supportedLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang: rawLang } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+---
+
+<Landing
+  lang={lang}
+  title={t(lang, "downloadPage.meta.title")}
+  description={t(lang, "downloadPage.meta.description")}
+>
+  <section class="pt-20 pb-2">
+    <div class="mx-auto max-w-7xl px-6 text-center">
+      <h1
+        data-animate="fade-up"
+        class="text-4xl font-bold tracking-tight sm:text-5xl"
+      >
+        {t(lang, "downloadPage.title")}
+      </h1>
+      <p
+        data-animate="fade-up"
+        class="mt-4 text-lg text-muted-foreground"
+        style="transition-delay: 80ms"
+      >
+        {t(lang, "downloadPage.subtitle")}
+      </p>
+    </div>
+  </section>
+  <DownloadSection client:load lang={lang} />
+</Landing>

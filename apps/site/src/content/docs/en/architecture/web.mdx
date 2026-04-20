@@ -1,0 +1,155 @@
+---
+title: Web Frontend
+description: React web application architecture
+order: 8
+---
+
+The Bedrud web frontend is a React application built with TanStack Start, TailwindCSS v4, and shadcn/ui. In production, server-side rendering pre-renders an HTML shell. The Go binary embeds this shell alongside the static client assets.
+
+## Technology Stack
+
+| Technology | Purpose |
+|-----------|---------|
+| React 19 | UI framework |
+| TanStack Start | SSR framework and file-based routing |
+| TanStack Router | Client-side routing |
+| TanStack Query | Server state and data fetching |
+| TailwindCSS 4 | Utility-first styling |
+| shadcn/ui + Radix UI | Accessible component primitives |
+| Zustand | Client-side auth state |
+| Vite 7 | Build tool and dev server |
+| LiveKit React SDK | WebRTC media handling |
+| Zod | Schema validation |
+| Lucide React | Icon library |
+| Bun | Package manager |
+
+## Directory Structure
+
+```
+apps/web/
+├── src/
+│   ├── routes/                    # TanStack Router file-based routes
+│   │   ├── index.tsx              # Home / landing page
+│   │   ├── __root.tsx             # Root layout
+│   │   ├── auth/
+│   │   │   ├── login.tsx          # Sign-in page
+│   │   │   └── register.tsx       # Sign-up page
+│   │   ├── dashboard/             # User dashboard
+│   │   ├── m.$meetId.tsx          # Meeting room page
+│   │   ├── admin/                 # Admin panel
+│   │   │   ├── index.tsx          # Overview
+│   │   │   ├── rooms.$id.tsx      # Room detail
+│   │   │   ├── users.$id.tsx      # User detail
+│   │   │   └── settings.tsx       # Server settings + invite tokens
+│   │   └── settings.tsx           # Account settings page
+│   ├── components/
+│   │   ├── admin/                 # Admin table components
+│   │   │   ├── RoomTable.tsx
+│   │   │   └── UserTable.tsx
+│   │   ├── auth/                  # Auth UI (OAuth, Passkey buttons)
+│   │   ├── dashboard/             # Room cards, create room dialog
+│   │   ├── meeting/               # Video tiles, controls, device picker
+│   │   │   ├── ControlsBar.tsx
+│   │   │   ├── DeviceSelector.tsx
+│   │   │   ├── ParticipantGrid.tsx
+│   │   │   ├── ChatPanel.tsx
+│   │   │   └── SpotlightView.tsx
+│   │   ├── ui/                    # shadcn/ui component library
+│   │   └── ThemeToggle.tsx        # Light/dark mode switcher
+│   └── lib/
+│       ├── api.ts                 # authFetch wrapper
+│       └── auth.store.ts          # Zustand auth store (tokens, user)
+├── scripts/
+│   └── embed.mjs                  # SSR pre-render + copy to server/frontend/
+├── public/                        # Static assets
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+## Authentication Flow
+
+Auth state is managed by a Zustand store in `src/lib/auth.store.ts`:
+
+1. **Login** - User submits credentials to `POST /api/auth/login`
+2. **Token Storage** - Access and refresh tokens saved to `localStorage`
+3. **Automatic Injection** - `authFetch` wraps every API call, adding the `Authorization: Bearer` header
+4. **Auto-Refresh** - When a request returns 401, `authFetch` attempts to refresh the token using the refresh token
+5. **Logout** - Clears tokens and redirects to the login page
+
+### authFetch
+
+The `authFetch` function in `src/lib/api.ts` is a drop-in replacement for `fetch` that:
+
+- Attaches the JWT access token to every request
+- Catches 401 responses and attempts a token refresh
+- Logs out the user if the refresh fails
+
+## Meeting Page
+
+The meeting room at `/m/$meetId` handles:
+
+- **LiveKit connection** - Connects to the media server with the token from the join API
+- **Track rendering** - Subscribes to audio/video tracks from other participants
+- **Device selection** - Switch camera, microphone, or speaker mid-call without leaving the room
+- **Admin controls** - Room creator sees kick, mute, and video-off buttons
+- **Chat** - In-room text chat via `ChatPanel`
+- **Spotlight view** - Focus a single participant
+
+## Admin Panel
+
+The admin panel at `/admin` provides:
+
+- **Room management** - table view with drill-down to room detail pages
+- **User management** - table view with drill-down to individual user accounts and role editing
+- **Server settings** - configure instance-wide options, access controls, and invite links
+- **Invite tokens** - generate and revoke invite links to control who can join
+
+## Dark Mode
+
+A `ThemeToggle` component lets users switch between light and dark themes from anywhere in the app. The preference is persisted to `localStorage` and applied on load.
+
+## Build
+
+### Development
+
+```bash
+cd apps/web
+bun run dev      # Starts Vite dev server with HMR at localhost:3000
+```
+
+The dev server proxies `/api` and `/livekit` requests to the Go server at `localhost:8090`.
+
+### Production (standalone web bundle)
+
+```bash
+cd apps/web
+bun run build    # Outputs static client assets to dist/client/ and SSR server to dist/server/
+```
+
+### Production (embedded in Go binary)
+
+```bash
+cd apps/web
+bun run build:embed
+```
+
+This runs `scripts/embed.mjs` which:
+
+1. Runs `bun run build` to produce `dist/client/` and `dist/server/`
+2. Starts the SSR server locally
+3. Fetches `/` to capture the pre-rendered HTML shell
+4. Copies `dist/client/` into `server/frontend/`
+5. Writes the rendered HTML as `server/frontend/index.html`
+
+### Type Checking
+
+```bash
+bun run check    # Runs tsc --noEmit
+```
+
+---
+
+## See also
+
+- [Web Design System](https://github.com/bedrud-ir/bedrud/tree/main/apps/web/AGENTS.md) - UI component patterns, color tokens, and styling rules

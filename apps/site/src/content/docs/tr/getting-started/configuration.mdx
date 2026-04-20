@@ -1,0 +1,233 @@
+---
+title: Yapılandırma
+description: Bedrud'u ihtiyaçlarınıza göre yapılandırın
+order: 4
+---
+
+Bedrud, hem ana sunucu hem de gömülü LiveKit medya sunucusu için YAML yapılandırma dosyaları kullanır.
+
+**Ayrıca bkz.:** [Hızlı Başlangıç](/tr/docs/getting-started/quickstart) | [Kurulum](/tr/docs/getting-started/installation) | [Dağıtım Kılavuzu](/tr/docs/guides/deployment) | [Docker Kılavuzu](/tr/docs/guides/docker)
+
+## Minimum Üretim Yapılandırması
+
+Varsayılan yapılandırma geliştirme için çalışır. Üretim için `/etc/bedrud/config.yaml` dosyasındaki şu değerleri değiştirin:
+
+```yaml
+auth:
+  jwtSecret: "change-to-random-string-32-chars"
+  sessionSecret: "change-to-another-random-string"
+```
+
+Değişikliklerden sonra yeniden başlatın:
+
+```bash
+sudo systemctl restart bedrud livekit
+```
+
+Aşağıda tam referans.
+
+---
+
+## Sunucu Yapılandırması
+
+**Konum:** `server/config.yaml` (geliştirme) veya `/etc/bedrud/config.yaml` (üretim)
+
+### Tam Referans
+
+```yaml
+server:
+  port: 8090                    # HTTP bağlantı noktası
+  host: "localhost"             # Bağlanma adresi
+
+database:
+  type: "sqlite"                # Veritabanı türü: sqlite veya postgres
+  path: "data.db"               # SQLite veritabanı dosya yolu
+
+logger:
+  level: "debug"                # Günlük seviyesi: debug, info, warn, error
+  outputPath: ""                # Günlük dosya yolu (boş = stdout)
+
+livekit:
+  host: "http://localhost:8090/livekit"  # Harici LiveKit URL'si
+  internalHost: "http://127.0.0.1:7880"  # Dahili LiveKit URL'si
+  apiKey: "devkey"              # LiveKit API anahtarı
+  apiSecret: "devsecret"        # LiveKit API gizli anahtarı
+
+auth:
+  jwtSecret: "your-jwt-secret"           # JWT jetonlarını imzalamak için gizli anahtar
+  tokenDuration: 24                       # Jeton geçerlilik süresi (saat)
+  sessionSecret: "your-session-secret"    # Oturum çerezleri için gizli anahtar
+  frontendURL: "http://localhost:8090"    # Önyüz URL'si (OAuth yönlendirmeleri için)
+
+  # OAuth sağlayıcıları (isteğe bağlı)
+  google:
+    clientId: ""
+    clientSecret: ""
+  github:
+    clientId: ""
+    clientSecret: ""
+  twitter:
+    clientKey: ""
+    clientSecret: ""
+
+cors:
+  allowedOrigins: "http://localhost:8090,http://localhost:3000"  # Virgülle ayrılmış
+  allowedHeaders: "Origin, Content-Type, Accept, Authorization"
+  allowedMethods: "GET, POST, PUT, DELETE, OPTIONS"
+  allowCredentials: true
+```
+
+### Temel Ayarlar
+
+#### Veritabanı
+
+Varsayılan olarak Bedrud, yapılandırılan `path` konumundaki bir dosyayla **SQLite** kullanır. Daha yüksek eşzamanlılık gerektiren üretim için, bunun yerine bir bağlantı dizesi sağlayarak PostgreSQL'e geçin. PostgreSQL kullanırken `path` alanı bir dosya yolu değil, bağlantı dizesi tutar:
+
+```yaml
+database:
+  type: "postgres"
+  path: "postgres://user:password@localhost:5432/bedrud?sslmode=disable"
+```
+
+#### Kimlik Doğrulama
+
+`jwtSecret`, erişim ve yenileme jetonlarını imzalamak için kullanılır. Üretimde bunu varsayılandan değiştirin.
+
+**OAuth sağlayıcıları** isteğe bağlıdır. Yapılandırmazsanız, sosyal giriş düğmeleri arayüzde görünmez. Her sağlayıcı, ilgili hizmetle bir OAuth uygulaması kaydetmeyi ve istemci kimliği ile gizli anahtarı sağlamayı gerektirir.
+
+#### CORS
+
+`allowedOrigins` dizesi (virgülle ayrılmış), önyüzünüzün sunulduğu URL'yi içermelidir. Geliştirmede bu `http://localhost:3000`'dir. Üretimde alan adınıza ayarlayın (örn. `https://meet.example.com`).
+
+---
+
+## LiveKit Yapılandırması
+
+**Konum:** `server/config/livekit.yaml` (geliştirme) veya `/etc/bedrud/livekit.yaml` (üretim)
+
+```yaml
+port: 7880                      # LiveKit HTTP/WebSocket bağlantı noktası
+
+rtc:
+  port_range_start: 50000       # UDP bağlantı noktası aralığı başlangıcı
+  port_range_end: 60000         # UDP bağlantı noktası aralığı sonu
+  use_external_ip: true         # RTC için harici IP kullan
+
+turn:
+  enabled: true
+  domain: "localhost"
+  tls_port: 5349
+  udp_port: 3478
+
+keys:
+  devkey: "devsecret"           # Sunucu yapılandırmasıyla eşleşmeli
+
+logging:
+  level: info
+
+room:
+  auto_create: true              # Katılımcılar katıldığında odaları otomatik oluştur
+  empty_timeout: 60              # Boş odayı silmeden önceki saniye
+  departure_timeout: 60          # Tüm katılımcılar ayrıldıktan sonra odayı aktif tutma süresi (saniye)
+  max_participants: 20           # Oda başına maksimum katılımcı (0 = sınırsız)
+  enable_remote_unmute: true     # Katılımcıların sunucu tarafı ses açmasına izin ver
+```
+
+<Callout type="warning">
+    `livekit.yaml` dosyasındaki `keys`, sunucunun `config.yaml` dosyasındaki `livekit.apiKey` ve `livekit.apiSecret` ile eşleşmelidir.
+</Callout>
+
+### RTC Bağlantı Noktası Aralığı
+
+LiveKit, medya akışları için UDP bağlantı noktalarını kullanır. Varsayılan `50000-60000` aralığı çoğu kurulum için çalışır. Bir güvenlik duvarı arkasında çalışıyorsanız, bu bağlantı noktalarının açık olduğundan emin olun.
+
+Mimari ve sorun giderme için bkz. [WebRTC Bağlantısı](/tr/docs/architecture/webrtc-connectivity).
+
+### TURN Sunucusu
+
+Gömülü TURN sunucusu, kısıtlayıcı NAT'ler veya kurumsal güvenlik duvarları arkasındaki istemciler için medyayı aktarır. Varsayılan olarak 3478 (UDP) ve 5349 (TLS) bağlantı noktalarında etkindir.
+
+TURN son çare aktarıcıdır - çoğu istemci (~%80) doğrudan UDP ile bağlanır ve hiç kullanmaz. TURN etkinleştirildiğinde, sunucu tüm aktarılan medya bant genişliğini taşır.
+
+**TLS gereksinimi:** TURN/TLS (5349 bağlantı noktası) geçerli bir TLS sertifikası gerektirir. Üretim için `turn.tls_port: 443` ayarlayın ve `cert_file`/`key_file` dosyalarını sertifikanıza yönlendirin veya önüne `external_tls: true` ile bir Katman 4 yük dengeleyici yerleştirin.
+
+Mimari, yapılandırma detayları, bant genişliği hesaplamaları ve sorun giderme için bkz. [TURN Sunucusu Kılavuzu](/tr/docs/architecture/turn-server).
+
+### Oda Ayarları
+
+`room:` bölümü toplantı odası davranışını kontrol eder:
+
+- **`auto_create`** - Katılımcılar katıldığında odaları otomatik oluştur (varsayılan: `true`)
+- **`empty_timeout`** - Hiç katılımcı katılmamış bir odayı silmeden önceki saniye (varsayılan: `60`)
+- **`departure_timeout`** - Tüm katılımcılar ayrıldıktan sonra odayı aktif tutma süresi, saniye (varsayılan: `60`)
+- **`max_participants`** - Oda başına maksimum katılımcı. Sınır olmaması için `0` ayarlayın (varsayılan: `20`)
+- **`enable_remote_unmute`** - Katılımcıların sunucu tarafı sesini kapatma/açmasına izin ver (varsayılan: `true`)
+
+**Kapasite için ayarlama:**
+- Küçük ekip toplantıları: `max_participants: 10-20`
+- Büyük web seminerleri: `max_participants: 100` (veya sınırsız için `0`)
+- Kaynak kısıtlı sunucular: CPU/bellek kullanımını azaltmak için `max_participants`'ı düşürün
+
+---
+
+## Ortam Değişkenleri
+
+Yapılandırma değerleri ortam değişkenleri ile geçersiz kılınabilir. Adlandırma, bölüm başına bir önek kuralı izler:
+
+Docker dağıtımları için bkz. [Docker Kılavuzu](/tr/docs/guides/docker).
+
+```bash
+export SERVER_PORT=8090
+export DB_PATH=/var/lib/bedrud/bedrud.db
+export JWT_SECRET=production-secret
+export LIVEKIT_HOST=http://localhost:8090/livekit
+export LIVEKIT_API_KEY=prodkey
+export LIVEKIT_API_SECRET=prodsecret
+```
+
+### Tam Ortam Değişkeni Referansı
+
+| Ortam Değişkeni | YAML Yolu | Açıklama |
+|---------|-----------|-------------|
+| `SERVER_PORT` | `server.port` | HTTP dinleme bağlantı noktası |
+| `SERVER_ENABLE_TLS` | `server.enableTLS` | HTTPS'yi etkinleştir (`true`/`false`) |
+| `SERVER_CERT_FILE` | `server.certFile` | TLS sertifikasının yolu |
+| `SERVER_KEY_FILE` | `server.keyFile` | TLS özel anahtarının yolu |
+| `SERVER_DOMAIN` | `server.domain` | Alan adı |
+| `SERVER_EMAIL` | `server.email` | Let's Encrypt için e-posta |
+| `SERVER_USE_ACME` | `server.useACME` | Otomatik Let's Encrypt'i etkinleştir (`true`/`false`) |
+| `SERVER_TRUSTED_PROXIES` | `server.trustedProxies` | Virgülle ayrılmış güvenilir vekil IP'leri |
+| `SERVER_PROXY_HEADER` | `server.proxyHeader` | İstemci IP'sinin okunacağı başlık (örn. `X-Forwarded-For`) |
+| `DB_HOST` | `database.host` | Veritabanı sunucusu (PostgreSQL) |
+| `DB_PORT` | `database.port` | Veritabanı bağlantı noktası |
+| `DB_USER` | `database.user` | Veritabanı kullanıcısı |
+| `DB_PASSWORD` | `database.password` | Veritabanı parolası |
+| `DB_NAME` | `database.dbname` | Veritabanı adı |
+| `DB_TYPE` | `database.type` | `sqlite` veya `postgres` |
+| `DB_PATH` | `database.path` | SQLite dosya yolu veya PostgreSQL bağlantı dizesi |
+| `LIVEKIT_HOST` | `livekit.host` | Harici LiveKit URL'si |
+| `LIVEKIT_INTERNAL_HOST` | `livekit.internalHost` | Dahili LiveKit URL'si |
+| `LIVEKIT_API_KEY` | `livekit.apiKey` | LiveKit API anahtarı |
+| `LIVEKIT_API_SECRET` | `livekit.apiSecret` | LiveKit API gizli anahtarı |
+| `JWT_SECRET` | `auth.jwtSecret` | JWT jetonlarını imzalamak için gizli anahtar |
+| `AUTH_FRONTEND_URL` | `auth.frontendURL` | OAuth yönlendirmeleri için önyüz URL'si |
+| `CORS_ALLOWED_ORIGINS` | `cors.allowedOrigins` | Virgülle ayrılmış izin verilen kaynaklar |
+| `CORS_ALLOWED_HEADERS` | `cors.allowedHeaders` | İzin verilen istek başlıkları |
+| `CORS_ALLOWED_METHODS` | `cors.allowedMethods` | İzin verilen HTTP yöntemleri |
+| `CORS_ALLOW_CREDENTIALS` | `cors.allowCredentials` | Kimlik bilgilerine izin ver (`true`/`false`) |
+| `CORS_EXPOSE_HEADERS` | `cors.exposeHeaders` | Tarayıcıya sunulan başlıklar |
+| `CORS_MAX_AGE` | `cors.maxAge` | Ön uçuş önbellek süresi, saniye |
+
+---
+
+## Üretim Kontrol Listesi
+
+- [ ] `jwtSecret` ve `sessionSecret` değerlerini güçlü rastgele değerlerle değiştirin
+- [ ] `logger.level` değerini `info` veya `warn` olarak ayarlayın
+- [ ] TLS yapılandırın (kurucu veya ters vekil sunucu ile)
+- [ ] `cors.allowedOrigins` değerini üretim alan adınıza ayarlayın
+- [ ] Gerekirse OAuth sağlayıcılarını yapılandırın
+- [ ] Güvenlik duvarınızda LiveKit RTC bağlantı noktası aralığını açın
+- [ ] `/var/log/bedrud/` için günlük döndürme ayarlayın
+
+Tam üretim kurulumu için bkz. [Dağıtım Kılavuzu](/tr/docs/guides/deployment).

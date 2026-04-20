@@ -1,0 +1,64 @@
+---
+title: Database & Models
+description: Data models and database schema
+order: 17
+---
+
+Bedrud 使用 **GORM** 作为 ORM，同时支持 SQLite 和 PostgreSQL。
+
+## 支持的数据库
+- **SQLite：** 默认使用，便于开发和小型部署。数据库存储在文件中（通常为 `bedrud.db`）。
+- **PostgreSQL：** 推荐用于用户量较大的生产环境。
+
+你可以在 `config.yaml` 文件的 `database:` 部分配置数据库类型和连接详情。
+
+## 核心模型
+
+模型位于 `internal/models/`。以下是最重要的几个：
+
+### User（`user.go`）
+
+存储账户信息，包括凭据和角色。
+
+### Room（`room.go`）
+表示一个会议会话。它使用 GORM 的 **Embedded Structs** 来组织设置。
+`RoomSettings` 字段（如 `allow_chat`、`allow_video`）不使用单独的表或 JSON 字段，而是直接存储在 `rooms` 表中，带有 `settings_` 前缀（如 `settings_allow_chat`）。这在 Go 中提供了干净的模型，同时保持了扁平、高效的数据库结构。
+
+### Passkey（`passkey.go`）
+
+存储用于无密码登录的 FIDO2/WebAuthn 公钥。
+
+### 自定义类型：`StringArray`
+
+标准 SQL 数据库处理数组的方式不同（PostgreSQL 有原生数组，SQLite 没有）。为了保持兼容性，Bedrud 在 `internal/models/user.go` 中定义了 `StringArray` 类型。
+
+- 它实现了 `sql.Scanner` 和 `driver.Valuer` 接口。
+- 在 **PostgreSQL** 中，它使用原生的 `text[]` 类型。
+- 在 **SQLite** 中，它将数组序列化为字符串（如 `{admin,user}`）进行存储。
+
+### 外键管理
+
+GORM 的 `AutoMigrate` 不处理复合主键（如 `room_participants`）。
+
+在 `internal/database/migrations.go` 中，Bedrud 手动执行 `ALTER TABLE` 语句，确保外键约束（如 `ON DELETE CASCADE`）在生产环境（PostgreSQL）中正确应用。
+
+## Repository 模式
+
+后端使用 **Repository 模式** 进行数据库访问。Handler 不直接调用 GORM--它们通过 repository 进行操作。
+
+示例：
+```go
+// In handler:
+user, err := h.userRepo.GetByEmail(email)
+
+// In repository:
+func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+    var user models.User
+    err := r.db.Where("email = ?", email).First(&user).Error
+    return &user, err
+}
+```
+
+## 自动迁移
+
+服务器启动时，会自动运行"AutoMigrate"。这会根据 `internal/models` 中的 Go 结构体创建或更新数据库表。简单的 schema 更改无需手动执行 `CREATE TABLE` 语句。

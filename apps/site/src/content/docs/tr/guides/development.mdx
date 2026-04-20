@@ -1,0 +1,306 @@
+---
+title: Geliştirme İş Akışı
+description: Geliştirme ortamını kurun
+order: 27
+---
+
+Bu rehber, Bedrud projesine katkıda bulunmak için günlük geliştirme iş akışını açıklar.
+
+## Depo Yapısı
+
+```
+bedrud/
+├── server/          # Go arka ucu
+├── apps/
+│   ├── web/         # React ön ucu (TanStack Start)
+│   ├── android/     # Android uygulaması
+│   ├── ios/         # iOS uygulaması
+│   └── desktop/     # Masaüstü uygulaması (Rust + Slint)
+├── agents/          # Python bot aracıları
+├── packages/        # Paylaşılan TypeScript türleri
+├── tools/cli/       # Dağıtım CLI'si
+├── docs/            # Belgelendirme (MkDocs)
+├── Cargo.toml       # Rust çalışma alanı kökü
+├── Makefile         # Derleme orkestrasyonu
+└── Dockerfile       # Konteyner derlemesi
+```
+
+## Ön Koşullar
+
+| Araç                     | Gerekli Yer             |
+|--------------------------|-------------------------|
+| Go 1.24+                 | Sunucu                  |
+| Bun                      | Web ön ucu              |
+| LiveKit Sunucusu         | Yerel medya sunucusu    |
+| Android Studio + JDK 17  | Android uygulaması      |
+| Xcode                    | iOS uygulaması          |
+| Rust (stable)            | Masaüstü uygulaması     |
+| Python 3.10+             | Bot aracıları           |
+| FFmpeg                   | Radyo ve video aracıları |
+
+## İlk Kurulum
+
+```bash
+git clone https://github.com/bedrud-ir/bedrud.git
+cd bedrud
+make init
+```
+
+## Tam Yığın Geliştirme
+
+Tüm yığını yerel olarak çalıştırmak için:
+
+```bash
+make dev
+```
+
+Bu, LiveKit, Go sunucusu ve React geliştirme sunucusunu eşzamanlı başlatır. Tüm süreçleri durdurmak için `Ctrl+C` tuşlarına basın.
+
+### Servisleri Ayrı Ayrı Çalıştırma
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="web-frontend">Web Ön Ucu</TabsTrigger>
+    <TabsTrigger value="go-server">Go Sunucusu</TabsTrigger>
+    <TabsTrigger value="livekit">LiveKit</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="web-frontend">
+    ```bash
+    make dev-web
+    ```
+    `http://localhost:3000` adresinde hot module replacement ile çalışır.
+  </TabsContent>
+
+  <TabsContent value="go-server">
+    ```bash
+    make dev-server
+    ```
+    `http://localhost:8090` adresinde çalışır. Go kodu değişikliklerinden sonra manuel olarak yeniden başlatın.
+  </TabsContent>
+
+  <TabsContent value="livekit">
+    ```bash
+    make dev-livekit
+    ```
+    `http://localhost:7880` adresinde geliştirme kimlik bilgileriyle çalışır.
+  </TabsContent>
+</Tabs>
+
+## Sunucu Geliştirme
+
+Go sunucusunun giriş noktası `server/cmd/server/main.go` dosyasıdır.
+
+### API Uç Noktası Ekleme
+
+1. **İşleyiciyi tanımlayın** `server/internal/handlers/` dizininde
+2. **Repository metotları ekleyin** yeni veritabanı sorguları gerekiyorsa `server/internal/repository/` dizininde
+3. **Rotayı kaydedin** sunucu kurulumunda (genellikle `main.go` veya bir rota dosyasında)
+4. **Middleware ekleyin** uç nokta kimlik doğrulama veya yönetici kontrolü gerektiriyorsa
+
+### Veritabanı Değişiklikleri
+
+`server/internal/models/` dizinindeki GORM model struct'larını ekleyin veya değiştirin. GORM başlangıçta otomatik migrate eder.
+
+### Swagger Belgeleri
+
+API belgelendirme ek açıklamaları swaggo formatını kullanır. Değişikliklerden sonra yeniden oluşturun:
+
+```bash
+cd server
+swag init -g cmd/server/main.go
+```
+
+> Tam dizin yapısı ve katmanlı tasarım için [Sunucu Mimarisi](/tr/docs/architecture/server) sayfasına bakın.
+
+## Web Ön Ucu Geliştirme
+
+Ön uç `apps/web/` dizinindedir ve React 19 ile TanStack Start kullanır.
+
+### Sayfa Ekleme
+
+[TanStack Router dosya tabanlı yönlendirme kuralını](https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing) izleyerek `src/routes/` altında yeni bir dosya oluşturun (ör. `src/routes/settings.tsx`). `createFileRoute` ile oluşturulmuş bir `Route` dışa aktarın.
+
+### API İstemci Fonksiyonu Ekleme
+
+1. Fonksiyonu `src/lib/api.ts` dosyasında `authFetch` kullanarak ekleyin
+2. TypeScript türlerini satır içi veya paylaşılan bir tür dosyasında tanımlayın
+3. Fonksiyonu rota bileşeninizden kullanın, genellikle bir TanStack Query `useQuery` hook'u aracılığıyla
+
+### Tip Kontrolü
+
+```bash
+cd apps/web
+bun run check    # Biome lint + TypeScript tip kontrolü çalıştırır
+```
+
+> Tam ön uç yapısı ve örüntüleri için [Web Ön Ucu Mimarisi](/tr/docs/architecture/web) sayfasına bakın.
+
+## Android Geliştirme
+
+```bash
+make dev-android    # Android Studio'da açar
+```
+
+### Temel Örüntüler
+
+- Tüm ekranlar Composable fonksiyonlardır
+- Bağımlılıklar `InstanceManager` üzerinden `koinInject()` ile sağlanır
+- Null olabilen `StateFlow` değerleri için `collectAsState().value ?: return` kullanın
+- Navigasyon `MainActivity.kt` dosyasında yönetilir
+
+### Derleme
+
+```bash
+make build-android-debug    # Debug APK
+make build-android          # Release APK (keystore gerektirir)
+make release-android        # Derler + cihaza kurar
+```
+
+> Ayrıntılı mobil uygulama mimarisi için [Android Uygulama Mimarisi](/tr/docs/architecture/android) sayfasına bakın.
+
+## iOS Geliştirme
+
+```bash
+make dev-ios    # Xcode'da açar
+```
+
+### Temel Örüntüler
+
+- Görünümler SwiftUI struct'larıdır
+- Bağımlılıklar `InstanceManager` üzerinden `@EnvironmentObject` ile sağlanır
+- Null olabilen yayınlanmış özellikler için optional binding kullanın
+- Navigasyon SwiftUI'nin yerel navigasyon yığınını kullanır
+
+### Proje Oluşturma
+
+`project.yml` dosyasını değiştirirseniz, Xcode projesini yeniden oluşturun:
+
+```bash
+cd apps/ios
+xcodegen generate
+```
+
+### Derleme
+
+```bash
+make build-ios          # Release arşivi
+make build-ios-sim      # Simülatör derlemesi
+make export-ios         # IPA dışa aktarma
+```
+
+> Ayrıntılı mobil uygulama mimarisi için [iOS Uygulama Mimarisi](/tr/docs/architecture/ios) sayfasına bakın.
+
+## Masaüstü Geliştirme
+
+Masaüstü uygulaması `apps/desktop/` dizinindedir ve çalışma alanında bir Rust crate'idir.
+
+### Ön Koşullar (Linux)
+
+```bash
+sudo apt-get install -y \
+  libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+  libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
+  libdbus-1-dev libsecret-1-dev \
+  libasound2-dev
+```
+
+Windows, C++ iş yükü (MSVC) ile Visual Studio Build Tools gerektirir.
+
+### Çalıştırma
+
+```bash
+make dev-desktop    # cargo run -p bedrud-desktop
+```
+
+### Derleme
+
+```bash
+make build-desktop           # Geçerli platform için optimize edilmiş ikili dosya
+```
+
+### Temel Örüntüler
+
+- Tüm UI `apps/desktop/ui/` altındaki `.slint` dosyalarında tanımlanır; derleme zamanında `build.rs` tarafından Rust'a derlenir
+- `apps/desktop/src/ui/bridge.rs`, Slint geri çağrılarının Rust mantığına bağlandığı tek yerdir - iş mantığını `.slint` dosyalarının dışında tutun
+- Arka plan görevlerinde UI'ı güncellemesi gereken `Weak<AppWindow>` kullanın
+
+> Ayrıntılı masaüstü uygulama mimarisi için [Masaüstü Uygulama Mimarisi](/tr/docs/architecture/desktop) sayfasına bakın.
+
+## Bot Aracı Geliştirme
+
+Aracılar `agents/` dizinindedir, her aracı için bir alt dizin bulunur.
+
+```bash
+cd agents/music_agent
+pip install -r requirements.txt
+python agent.py "http://localhost:8090/m/test-room"
+```
+
+Tüm aracılar, kimlik doğrulaması yapmak için çalışan bir Bedrud sunucusuna ihtiyaç duyar.
+
+## CI/CD
+
+GitHub Actions, `main` dalına her push ve her pull request'te çalışır:
+
+| İş      | Kontrol ettiği şey                       |
+|---------|------------------------------------------|
+| Server  | `go vet`, derleme, testler               |
+| Web     | Tip kontrolü, derleme                    |
+| Android | Lint, birim testleri, debug APK          |
+| iOS     | Derleme + test (simülatör, kapsama dahil) |
+| Desktop | `cargo build`, `cargo test`              |
+
+Sürüm derlemeleri sürüm etiketleri (`v*`) tarafından tetiklenir.
+
+## Kod Stili
+
+- **Go:** Standart `gofmt` biçimlendirmesi
+- **TypeScript/React:** Biome (`apps/web/biome.json` dosyasında yapılandırılır)
+- **Kotlin:** Android Studio varsayılan biçimlendirmesi
+- **Swift:** Xcode varsayılan biçimlendirmesi
+
+## Test
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="server">Sunucu</TabsTrigger>
+    <TabsTrigger value="web">Web</TabsTrigger>
+    <TabsTrigger value="android">Android</TabsTrigger>
+    <TabsTrigger value="ios">iOS</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="server">
+    ```bash
+    cd server
+    go test ./...
+    ```
+  </TabsContent>
+
+  <TabsContent value="web">
+    ```bash
+    cd apps/web
+    bun run check
+    ```
+  </TabsContent>
+
+  <TabsContent value="android">
+    ```bash
+    cd apps/android
+    ./gradlew test
+    ```
+  </TabsContent>
+
+  <TabsContent value="ios">
+    ```bash
+    make build-ios-sim   # Derler ve testleri çalıştırır
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## Ayrıca bakın
+
+- [Makefile Referansı](/tr/docs/guides/makefile) - tüm derleme ve geliştirme komutları
+- [Mimari Genel Bakış](/tr/docs/architecture/overview) - bileşenler nasıl bir araya gelir

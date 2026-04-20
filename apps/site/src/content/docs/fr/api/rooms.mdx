@@ -1,0 +1,298 @@
+---
+title: API des salles
+description: Points de terminaison de gestion des salles
+order: 24
+---
+
+Les points de terminaison de gestion des salles sont sous `/api/room/`. Tous les points de terminaison nécessitent une authentification.
+
+## Vue d'ensemble
+
+| Point de terminaison | Méthode | Description |
+|---------------------|---------|-------------|
+| `/api/room/create` | POST | Créer une nouvelle salle |
+| `/api/room/join` | POST | Rejoindre une salle et obtenir un token LiveKit |
+| `/api/room/list` | GET | Lister les salles disponibles |
+| `/api/room/:roomId/kick/:identity` | POST | Expulser un participant (admin) |
+| `/api/room/:roomId/mute/:identity` | POST | Couper le micro d'un participant (admin) |
+| `/api/room/:roomId/video/:identity/off` | POST | Désactiver la vidéo d'un participant (admin) |
+
+---
+
+## Points de terminaison
+
+### Créer une salle
+
+Créer une nouvelle salle de réunion. L'utilisateur authentifié devient l'administrateur de la salle.
+
+```
+POST /api/room/create
+```
+
+**En-têtes :** `Authorization: Bearer <accessToken>`
+
+**Corps de la requête :**
+
+```json
+{
+  "name": "team-standup",
+  "isPublic": true,
+  "mode": "standard",
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  }
+}
+```
+
+> **Note :** Le champ `name` est **optionnel**. S'il est omis ou vide, le serveur générera
+> automatiquement un nom aléatoire compatible URL au format `xxx-xxxx-xxx` (ex. `bkf-qmzl-rja`).
+
+**Règles de nom des salles :**
+
+Les noms de salles apparaissent dans l'URL sous la forme `https://bedrud.xyz/m/NAME`, ils doivent donc être compatibles URL :
+
+| Règle | Description |
+|------|-------------|
+| **Caractères autorisés** | Lettres minuscules (`a-z`), chiffres (`0-9`) et tirets (`-`) |
+| **Longueur minimale** | 3 caractères |
+| **Longueur maximale** | 63 caractères |
+| **Pas de caractères spéciaux** | `#`, `@`, `_`, `.`, `/`, `\`, `<`, `>`, `&`, `%`, `+`, `=`, `;`, `:`, `'`, `"`, `?`, `!`, espaces, etc. **ne sont pas autorisés** |
+| **Pas de tirets en début/fin** | `-room` et `room-` sont invalides |
+| **Pas de tirets consécutifs** | `room--name` est invalide |
+| **Minuscules uniquement** | Les lettres majuscules sont rejetées ; la saisie est automatiquement mise en minuscules |
+| **Unique** | Chaque nom de salle doit être unique |
+
+**Réponse (200) :**
+
+```json
+{
+  "id": "uuid",
+  "name": "team-standup",
+  "createdBy": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 0,
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
+}
+```
+
+### Champs
+
+| Champ | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `name` | string | Non | Nom de salle compatible URL (généré automatiquement si omis) |
+| `isPublic` | boolean | Non | Si la salle apparaît dans les listes publiques |
+| `mode` | string | Non | Mode de salle (ex. `"standard"`) |
+| `maxParticipants` | number | Non | Nombre maximum de participants |
+| `settings.allowChat` | boolean | Non | Si le chat texte est activé |
+| `settings.allowVideo` | boolean | Non | Si la vidéo est activée |
+| `settings.allowAudio` | boolean | Non | Si l'audio est activé |
+| `settings.requireApproval` | boolean | Non | Si les participants ont besoin de l'approbation de l'admin |
+| `settings.e2ee` | boolean | Non | Si le chiffrement de bout en bout est activé |
+
+---
+
+### Rejoindre une salle
+
+Rejoindre une salle existante et recevoir un token LiveKit pour la connexion média.
+
+```
+POST /api/room/join
+```
+
+**En-têtes :** `Authorization: Bearer <accessToken>`
+
+**Corps de la requête :**
+
+```json
+{
+  "roomName": "team-standup"
+}
+```
+
+**Réponse (200) :**
+
+```json
+{
+  "id": "uuid",
+  "name": "team-standup",
+  "token": "eyJ...",
+  "createdBy": "user-uuid",
+  "adminId": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 20,
+  "expiresAt": "2026-02-16T12:00:00Z",
+  "settings": { ... },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
+}
+```
+
+Le `token` est un token d'accès LiveKit signé. Utilisez-le pour vous connecter au serveur LiveKit via WebSocket :
+
+```javascript
+import { Room } from 'livekit-client';
+
+const room = new Room();
+await room.connect(livekitUrl, token);
+```
+
+---
+
+### Lister les salles
+
+Obtenir une liste des salles créées par l'utilisateur.
+
+```
+GET /api/room/list
+```
+
+**En-têtes :** `Authorization: Bearer <accessToken>`
+
+**Réponse (200) :**
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "team-standup",
+    "createdBy": "user-uuid",
+    "isActive": true,
+    "maxParticipants": 20,
+    "expiresAt": "2026-02-16T12:00:00Z",
+    "settings": { ... },
+    "mode": "standard",
+    "relationship": "creator"
+  }
+]
+```
+
+---
+
+### Expulser un participant
+
+Retirer un participant de la salle. Seul l'administrateur de la salle peut le faire.
+
+```
+POST /api/room/:roomId/kick/:identity
+```
+
+**En-têtes :** `Authorization: Bearer <accessToken>`
+
+**Réponse (200) :**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+### Couper le micro d'un participant
+
+Couper le micro d'un participant. Seul l'administrateur de la salle peut le faire.
+
+```
+POST /api/room/:roomId/mute/:identity
+```
+
+**En-têtes :** `Authorization: Bearer <accessToken>`
+
+**Réponse (200) :**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+### Désactiver la vidéo d'un participant
+
+Éteindre la caméra d'un participant. Seul l'administrateur de la salle peut le faire.
+
+```
+POST /api/room/:roomId/video/:identity/off
+```
+
+**En-têtes :** `Authorization: Bearer <accessToken>`
+
+**Réponse (200) :**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+## Contrôles d'administrateur
+
+Les actions d'administrateur de salle (expulsion, coupure micro, coupure vidéo) ne sont disponibles que pour l'utilisateur qui a créé la salle (`adminId`). Tenter ces actions en tant que non-admin renvoie une erreur 403.
+
+### Matrice des autorisations
+
+| Action | Admin de salle | Super Admin | Utilisateur régulier | Invité |
+|--------|----------------|-------------|---------------------|--------|
+| Créer une salle | Oui | Oui | Oui | Non |
+| Rejoindre une salle | Oui | Oui | Oui | Oui |
+| Lister les salles | Oui | Oui | Oui | Oui |
+| Expulser | Oui | Oui | Non | Non |
+| Couper le micro | Oui | Oui | Non | Non |
+| Couper la vidéo | Oui | Oui | Non | Non |
+
+## Réponses d'erreur
+
+Toutes les erreurs suivent un format cohérent :
+
+```json
+{
+  "error": "human-readable error message"
+}
+```
+
+### Erreurs de création de salle
+
+| Statut | Message d'erreur | Description |
+|--------|------------------|-------------|
+| 400 | `"Invalid request body"` | JSON malformé |
+| 400 | `"room name must contain only lowercase letters, numbers, and hyphens"` | Le nom contient des caractères spéciaux (`#`, `@`, `_`, etc.) |
+| 400 | `"room name must be at least 3 characters"` | Nom trop court |
+| 400 | `"room name must be at most 63 characters"` | Nom trop long |
+| 409 | `"a room with this name already exists"` | Nom en double |
+| 500 | `"Failed to create media room"` | Erreur du serveur LiveKit |
+| 500 | `"Failed to create room"` | Erreur de base de données |
+
+### Erreurs générales
+
+| Statut | Signification |
+|--------|--------------|
+| 400 | Mauvaise requête (données manquantes/invalides) |
+| 401 | Non authentifié |
+| 403 | Non autorisé (non-admin tentant une action d'admin) |
+| 404 | Salle non trouvée |
+| 409 | Conflit (ressource en double) |
+| 500 | Erreur interne du serveur |
+
+---
+
+## Voir aussi
+
+- [Vue d'ensemble de l'architecture](/fr/docs/architecture/overview) - modèle de données et flux de connexion aux réunions
+- [Gestionnaires d'API](/fr/docs/backend/api-handlers) - comment les points de terminaison de salle sont implémentés

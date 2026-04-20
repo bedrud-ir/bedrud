@@ -1,0 +1,95 @@
+---
+title: API-Handler
+description: Implementierung der REST-API-Endpunkte
+order: 19
+---
+
+Bedrud verwendet das **Fiber**-Webframework (Express-ähnliche API für Go).
+
+## Routing-Logik
+
+Die Routen sind in `internal/server/server.go` definiert. Wir gruppieren Routen, um Middleware oder Präfixe einfach anzuwenden.
+
+### Hauptgruppen:
+
+- **`/api/auth`**: Öffentliche und geschützte Routen für die Authentifizierung.
+- **`/api/room`**: Geschützte Routen für die Raumverwaltung.
+- **`/api/admin`**: Routen, die auf Benutzer mit der Rolle `superadmin` beschränkt sind.
+- **`/livekit`**: Eine spezielle Proxy-Gruppe, die Anfragen an den eingebetteten LiveKit-Audio/Video-Server weiterleitet.
+
+## Spezialisierte Handler-Logik
+
+### Raumverwaltung (`internal/handlers/room.go`)
+Der `RoomHandler` übersetzt zwischen Bedruds Raum-Metadaten und LiveKits Medien-Engine.
+
+#### 1. Raumerstellung
+Wenn ein Raum über `POST /api/room/create` erstellt wird:
+
+- **Normalisierung:** Raumnamen werden getrimmt und in Kleinbuchstaben umgewandelt.
+- **Automatische Generierung:** Wenn kein Name angegeben wird, generiert Bedrud einen zufälligen, URL-sicheren Namen (z. B. `fancy-blue-whale`).
+- **Synchronisierte Erstellung:** Das Backend ruft zuerst die interne LiveKit-API auf, um die Mediensitzung zu erstellen, und speichert dann die Metadaten in der lokalen Datenbank.
+
+#### 2. Beitreten und Tokens
+Wenn ein Benutzer über `POST /api/room/join` beitritt:
+
+- **Zugriffskontrolle:** Das Backend prüft, ob der Raum existiert und ob der Benutzer berechtigt ist.
+- **Token-Generierung:** Ein signiertes JWT (Join Token) wird generiert mit:
+  - `Identity`: Die Benutzer-ID aus Bedrud.
+  - `Name`: Der Anzeigename des Benutzers.
+  - `Grants`: Spezifische Berechtigungen wie `CanJoin`, `CanPublish`, `CanSubscribe`.
+- **Client-Handshake:** Das Frontend erhält sowohl die lokalen Raum-Metadaten als auch das LiveKit-Token, um die WebRTC-Verbindung aufzubauen.
+
+## Admin- & Benutzerverwaltung (`internal/handlers/users.go`)
+Routen unter `/api/admin` werden streng durch die Middleware `RequireAccess("superadmin")` geschützt.
+
+### 1. Benutzerverwaltung
+Der `UsersHandler` ermöglicht Administratoren:
+
+- **Alle Benutzer auflisten:** Abrufen eines vollständigen Verzeichnisses registrierter Benutzer inklusive ihres Auth-Providers und letzter Anmelde-Metadaten.
+- **Status aktualisieren:** Kontozugriff sofort aktivieren oder deaktivieren. Die Deaktivierung eines Benutzers blockiert ihn sofort an der Anmeldung oder der Aktualisierung seiner Tokens.
+
+### 2. Raumübersicht
+Admin-Routen ermöglichen das Auflisten aller aktiven und historischen Räume auf der gesamten Plattform, unabhängig davon, wer sie erstellt hat. Dies dient der Plattform-Moderation.
+
+## Anfrage-Lebenszyklus
+
+1.  **Anfrage geht ein**: Fiber empfängt die HTTP-Anfrage.
+2.  **Middleware**:
+
+    - `recover`: Verhindert, dass der Server bei einem Fehler abstürzt.
+    - `cors`: Verwaltet Cross-Origin Resource Sharing.
+    - `Protected`: (Optional) Prüft auf ein gültiges JWT im `Authorization`-Header.
+3.  **Handler**: Die Funktion in `internal/handlers` wird aufgerufen.
+
+    - Sie verarbeitet den JSON-Body (falls vorhanden) mit `c.BodyParser`.
+    - Sie ruft den notwendigen Service oder das Repository auf.
+    - Sie gibt eine JSON-Antwort mit `c.JSON` zurück.
+
+## Beispiel: Raum-Erstellungs-Handler
+
+```go
+func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
+    var input struct {
+        Name string `json:"name"`
+    }
+    // 1. Parse Input
+    if err := c.BodyParser(&input); err != nil {
+        return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+    }
+
+    // 2. Business Logic (via Repository)
+    room := &models.Room{Name: input.Name}
+    if err := h.roomRepo.Create(room); err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to create room"})
+    }
+
+    // 3. Response
+    return c.Status(201).JSON(room)
+}
+```
+
+## Statische Dateien (Frontend)
+
+Das Web-Frontend ist zur Build-Zeit **eingebettet** in das Go-Binary. Fiber stellt die React-Dateien aus dem Verzeichnis `frontend/` über `filesystem.New` bereit.
+
+Jede Route, die nicht mit `/api` beginnt, wird zur `index.html` der React-App weitergeleitet. Dies ermöglicht clientseitiges Routing ohne 404-Fehler beim Seitenrefresh.

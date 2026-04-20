@@ -1,0 +1,102 @@
+---
+import Base from "./Base.astro";
+import { LanguageSwitcher } from "~/components/landing/language-switcher";
+import { Sidebar } from "~/components/docs/sidebar";
+import { ThemeToggle } from "~/components/landing/theme-toggle";
+import { Toc } from "~/components/docs/toc";
+import { DocsMobileSidebar } from "~/components/docs/docs-mobile-sidebar";
+import { Search } from "~/components/docs/search";
+import { isValidLocale, type Locale, t } from "../i18n/utils";
+
+interface Props {
+  lang: string;
+  title?: string;
+  description?: string;
+  currentSlug?: string;
+  image?: string;
+  article?: {
+    publishedTime?: string;
+    modifiedTime?: string;
+    authors?: string[];
+    tags?: string[];
+  };
+  headLinks?: { rel: string; href: string }[];
+  jsonLd?: Record<string, unknown>[];
+}
+
+const {
+  lang: rawLang = "en",
+  title,
+  description,
+  currentSlug = "",
+  image,
+  article,
+  headLinks = [],
+  jsonLd,
+} = Astro.props;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+const year = new Date().getFullYear();
+---
+
+<Base lang={lang} title={title} description={description} image={image} article={article} headLinks={headLinks} jsonLd={jsonLd}>
+  <div class="min-h-screen bg-background">
+    <header class="fixed inset-x-0 top-0 z-40 border-b bg-background/80 backdrop-blur-sm">
+      <div class="mx-auto flex h-16 items-center gap-4 px-4 sm:px-6 lg:max-w-7xl xl:max-w-[100rem] lg:px-8">
+        <DocsMobileSidebar client:idle lang={lang} currentSlug={currentSlug} />
+        <div class="flex items-center gap-3">
+          <a href={`/${lang}`} class="gap-2 text-sm">
+            <span class="font-semibold">Bedrud</span>
+          </a>
+          <span class="text-sm text-muted-foreground">{t(lang, "nav.docs")}</span>
+        </div>
+        <div class="ms-auto flex items-center gap-3 pe-1">
+          <Search client:idle lang={lang}
+            placeholder={t(lang, "docs.searchPlaceholder")}
+            buttonText={t(lang, "docs.searchButton")}
+            noResultsText={t(lang, "docs.noResults")}
+            loadingText={t(lang, "docs.loading")}
+            clearSearchLabel={t(lang, "docs.clearSearch")}
+            searchResultsLabel={t(lang, "docs.searchDocs")}
+            searchDocsLabel={t(lang, "docs.searchDocs")}
+            errorText={t(lang, "docs.searchError")}
+          />
+          <ThemeToggle client:load lang={lang} />
+          <LanguageSwitcher client:load lang={lang} />
+        </div>
+      </div>
+    </header>
+
+    <div class="pt-16">
+      <div class="mx-auto max-w-7xl xl:max-w-[100rem]">
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr] lg:gap-8 xl:grid-cols-[260px_1fr_240px]">
+          <div class="hidden lg:block lg:sticky lg:top-16 lg:self-start">
+            <Sidebar client:idle lang={lang} currentSlug={currentSlug} />
+          </div>
+          <div>
+            <main id="main-content" class="min-h-screen flex-1 px-4 sm:px-6 lg:px-8 py-10 lg:py-16 max-w-4xl xl:max-w-5xl">
+              <slot />
+            </main>
+          </div>
+          <div class="hidden xl:block xl:col-span-1 xl:sticky xl:top-16 xl:self-start">
+            <Toc client:idle lang={lang} />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="border-t">
+      <div class="mx-auto flex max-w-7xl items-center gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <p class="text-sm text-muted-foreground">
+          &copy; {year} bedrud-ir · Apache 2.0
+        </p>
+        <div class="flex gap-4 text-sm text-muted-foreground">
+          <a href={`/${lang}/privacy`} class="hover:text-foreground">{t(lang, "footer.privacy")}</a>
+          <span>·</span>
+          <a href={`/${lang}/terms`} class="hover:text-foreground">{t(lang, "footer.terms")}</a>
+          <span>·</span>
+          <a href={`/${lang}/contact`} class="hover:text-foreground">{t(lang, "footer.contact")}</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</Base>

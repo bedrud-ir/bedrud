@@ -1,0 +1,197 @@
+---
+title: واجهة برمجة مفاتيح المرور
+description: تكامل FIDO2/WebAuthn
+order: 26
+---
+
+تتيح نقاط نهاية مفاتيح المرور FIDO2/WebAuthn للمستخدمين التسجيل والمصادقة باستخدام القياسات الحيوية أو مفاتيح الأمان.
+
+## نظرة عامة
+
+تستخدم تدفقات مفاتيح المرور بروتوكول تحدٍّ-استجابة بمرحلتين لكل تدفق:
+
+| التدفق | المرحلة ١ (البدء) | المرحلة ٢ (الإنهاء) |
+|------|-----------------|-------------------|
+| التسجيل | `POST /api/auth/passkey/register/begin` | `POST /api/auth/passkey/register/finish` |
+| تسجيل الدخول | `POST /api/auth/passkey/login/begin` | `POST /api/auth/passkey/login/finish` |
+
+---
+
+## تدفق التسجيل
+
+يجب على المستخدمين تسجيل الدخول لتسجيل مفتاح مرور (يُربط بحسابهم الحالي).
+
+### الخطوة ١: بدء التسجيل
+
+```
+POST /api/auth/passkey/register/begin
+```
+
+**الرؤوس:** `Authorization: Bearer <accessToken>`
+
+**الاستجابة (200):**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rp": {
+      "name": "Bedrud",
+      "id": "meet.example.com"
+    },
+    "user": {
+      "id": "base64url-encoded-user-id",
+      "name": "user@example.com",
+      "displayName": "John Doe"
+    },
+    "pubKeyCredParams": [
+      { "type": "public-key", "alg": -7 },
+      { "type": "public-key", "alg": -257 }
+    ],
+    "authenticatorSelection": {
+      "userVerification": "preferred"
+    }
+  }
+}
+```
+
+مرر هذا إلى واجهة WebAuthn في المتصفح:
+
+```javascript
+const credential = await navigator.credentials.create({
+  publicKey: response.publicKey
+});
+```
+
+### الخطوة ٢: إنهاء التسجيل
+
+```
+POST /api/auth/passkey/register/finish
+```
+
+**الرؤوس:** `Authorization: Bearer <accessToken>`
+
+**نص الطلب:** استجابة بيانات الاعتماد من المتصفح، بترميز base64url:
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "attestationObject": "base64url-attestation",
+    "clientDataJSON": "base64url-client-data"
+  },
+  "type": "public-key"
+}
+```
+
+**الاستجابة (200):**
+
+```json
+{
+  "message": "passkey registered"
+}
+```
+
+---
+
+## تدفق تسجيل الدخول
+
+### الخطوة ١: بدء تسجيل الدخول
+
+```
+POST /api/auth/passkey/login/begin
+```
+
+لا تتطلب مصادقة.
+
+**الاستجابة (200):**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rpId": "meet.example.com",
+    "userVerification": "preferred"
+  }
+}
+```
+
+مرر هذا إلى واجهة WebAuthn في المتصفح:
+
+```javascript
+const assertion = await navigator.credentials.get({
+  publicKey: response.publicKey
+});
+```
+
+### الخطوة ٢: إنهاء تسجيل الدخول
+
+```
+POST /api/auth/passkey/login/finish
+```
+
+**نص الطلب:** استجابة التأكيد من المتصفح:
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "authenticatorData": "base64url-auth-data",
+    "clientDataJSON": "base64url-client-data",
+    "signature": "base64url-signature"
+  },
+  "type": "public-key"
+}
+```
+
+**الاستجابة (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
+```
+
+---
+
+## الأمان
+
+| الإجراء | الوصف |
+|---------|-------------|
+| تحدٍّ/استجابة | تحديات عشوائية يُنشئها الخادم وتُخزَّن في الجلسة |
+| التحقق من الأصل | التحقق الصارم من الأصل ومعرف جهة الاعتماد |
+| التحقق من العداد | الحماية من بيانات الاعتماد المستنسخة |
+| النقل الآمن | مُصمَّم لـ HTTPS مع ترميز base64url الآمن للروابط |
+
+## تفاصيل التنفيذ
+
+- **الخلفية:** يستخدم `go-passkeys/go-passkeys` للتحقق من WebAuthn بلغة Go بحتة
+- **تخزين الجلسات:** تُخزَّن التحديات في جلسات Gorilla (عبر `gothic.Store`)
+- **قاعدة البيانات:** تُخزَّن بيانات اعتماد مفاتيح المرور في نموذج `Passkey` (معرف بيانات الاعتماد، المفتاح العام، العداد)
+- **الواجهة (الويب):** واجهة `navigator.credentials` مع أدوات مساعدة base64url في `src/lib/auth.ts`
+- **أندرويد:** واجهة Credentials API لدعم مفاتيح المرور الأصلية
+- **iOS:** ASAuthorizationController لدعم مفاتيح المرور
+
+## كيفية الاختبار
+
+١. سجّل الدخول بحساب موجود
+٢. انقر على زر تسجيل مفتاح المرور (أيقونة البصمة في الشريط العلوي/لوحة التحكم)
+٣. أكمل مطالبة القياسات الحيوية
+٤. سجّل الخروج
+٥. انقر "تسجيل الدخول بمفتاح المرور" في صفحة تسجيل الدخول
+٦. أكمل مطالبة القياسات الحيوية للمصادقة
+
+---
+
+## انظر أيضًا
+
+- [تدفق المصادقة](/ar/docs/backend/authentication) - شرح مراسم تسجيل/تسجيل الدخول بمفاتيح المرور
+- [واجهة برمجة المصادقة](/ar/docs/api/authentication) - جميع نقاط نهاية المصادقة

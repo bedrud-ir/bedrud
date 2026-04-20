@@ -1,0 +1,271 @@
+---
+title: Authentication API
+description: Auth endpoints and methods
+order: 23
+---
+
+所有认证 endpoint 均位于 `/api/auth/` 下。
+
+## 概述
+
+Bedrud 支持多种认证方式：
+
+| 方式 | Endpoint | 描述 |
+|--------|----------|-------------|
+| 邮箱/密码 | `POST /api/auth/login` | 传统登录 |
+| 注册 | `POST /api/auth/register` | 创建账户 |
+| 访客 | `POST /api/auth/guest-login` | 临时访问 |
+| OAuth | `GET /api/auth/:provider/login` | 社交登录 |
+| Passkeys | `POST /api/auth/passkey/*` | FIDO2/WebAuthn |
+| Token 刷新 | `POST /api/auth/refresh` | 续期访问令牌 |
+
+## Token 格式
+
+认证成功后返回一对 JWT token：
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+- **Access Token** - 短期有效，用于 `Authorization` header
+- **Refresh Token** - 长期有效，用于获取新的 access token
+
+### 使用 Token
+
+在所有需要认证的请求中携带 access token：
+
+```
+Authorization: Bearer <accessToken>
+```
+
+---
+
+## Endpoints
+
+### 注册
+
+创建新用户账户。
+
+```
+POST /api/auth/register
+```
+
+**请求体：**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "name": "John Doe"
+}
+```
+
+**响应 (200)：**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### 登录
+
+使用邮箱和密码进行认证。
+
+```
+POST /api/auth/login
+```
+
+**请求体：**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**响应 (200)：**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### 访客登录
+
+以访客身份加入，无需创建账户。访客拥有有限的权限。
+
+```
+POST /api/auth/guest-login
+```
+
+**请求体：**
+
+```json
+{
+  "name": "Guest User"
+}
+```
+
+**响应 (200)：**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "name": "Guest User",
+    "role": "guest"
+  }
+}
+```
+
+---
+
+### 获取当前用户
+
+获取已认证用户的个人信息。
+
+```
+GET /api/auth/me
+```
+
+**Headers：** `Authorization: Bearer <accessToken>`
+
+**响应 (200)：**
+
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "avatar": "https://...",
+  "role": "user",
+  "provider": "email"
+}
+```
+
+---
+
+### 刷新 Token
+
+使用 refresh token 换取新的 access token。
+
+```
+POST /api/auth/refresh
+```
+
+**请求体：**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**响应 (200)：**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ..."
+}
+```
+
+---
+
+### 登出
+
+使当前 refresh token 失效。
+
+```
+POST /api/auth/logout
+```
+
+**Headers：** `Authorization: Bearer <accessToken>`
+
+**请求体：**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**响应 (200)：**
+
+```json
+{
+  "message": "logged out"
+}
+```
+
+---
+
+### OAuth 登录
+
+通过社交提供商启动 OAuth 流程。
+
+```
+GET /api/auth/:provider/login
+```
+
+**支持的提供商：**
+
+| 提供商 | 路径 |
+|----------|------|
+| Google | `/api/auth/google/login` |
+| GitHub | `/api/auth/github/login` |
+| Twitter | `/api/auth/twitter/login` |
+
+服务器会将用户重定向到提供商的授权页面。用户授权后，提供商会回调到指定 URL，服务器随后返回 JWT token。
+
+---
+
+## 错误响应
+
+所有认证 endpoint 以以下格式返回错误：
+
+```json
+{
+  "error": "invalid credentials"
+}
+```
+
+| 状态码 | 含义 |
+|--------|---------|
+| 400 | 请求错误（缺少字段、验证失败） |
+| 401 | 凭据无效或 token 已过期 |
+| 409 | 邮箱已被注册 |
+| 500 | 服务器内部错误 |
+
+---
+
+## 另请参阅
+
+- [认证流程](/zh/docs/backend/authentication) - JWT、OAuth 和 passkeys 的内部工作原理
+- [Passkeys API](/zh/docs/api/passkeys) - FIDO2/WebAuthn endpoint 参考

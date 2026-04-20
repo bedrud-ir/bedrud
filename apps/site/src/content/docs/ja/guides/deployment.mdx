@@ -1,0 +1,217 @@
+---
+title: デプロイガイド
+description: Bedrud を本番環境にデプロイする
+order: 28
+---
+
+本番サーバーに Bedrud をデプロイする方法について説明します。
+
+## デプロイ方法
+
+| 方法 | 適しているケース |
+|--------|----------|
+| [パッケージマネージャー (apt/AUR)](#package-manager) | 対応 Linux ディストリビューションでのマネージドインストール |
+| [自動化 CLI](#automated-cli-deployment) | クイックリモートセットアップ |
+| [手動インストール](#manual-installation) | 設定を完全に制御したい場合 |
+| [Docker](#docker-deployment) | コンテナ環境 |
+| [アプライアンスモード](/ja/docs/guides/appliance) | シングルバイナリのオールインワンセットアップ |
+
+---
+
+## パッケージマネージャー
+
+Debian/Ubuntu または Arch Linux でネイティブパッケージマネージャーを使用して Bedrud をインストールします。`apt upgrade` や AUR による自動更新を行いたい永続的なサーバーデプロイにおすすめの方法です。
+
+apt GPG キーとリポジトリの追加を含む詳しい手順は、[パッケージインストールガイド](/ja/docs/guides/packages)を参照してください。
+
+```bash
+# Ubuntu / Debian
+sudo apt install bedrud
+
+# Arch Linux (AUR)
+yay -S bedrud-bin
+```
+
+インストール後、インタラクティブインストーラーを実行して TLS、systemd サービス、データベースを設定します：
+
+```bash
+sudo bedrud install
+```
+
+---
+
+## 自動化 CLI デプロイ
+
+最も速いデプロイ方法です。ローカルマシンから実行します：
+
+**前提条件：** Python 3.10+、[uv](https://github.com/astral-sh/uv)、およびターゲットサーバーへの SSH アクセス。
+
+```bash
+cd tools/cli
+uv run python bedrud.py --auto-config \
+  --ip <server-ip> \
+  --user root \
+  --auth-key ~/.ssh/id_rsa \
+  --domain meet.example.com \
+  --acme-email admin@example.com
+```
+
+以下の処理が行われます：
+
+1. バックエンドバイナリをローカルでビルド
+2. rsync で圧縮・アップロード
+3. 競合する Web サーバーをクリア
+4. ファイアウォールを設定
+5. サーバーにサービスをインストール・起動
+
+### CLI オプション
+
+| フラグ | 説明 |
+|------|-------------|
+| `--ip` | サーバーの IP アドレス |
+| `--user` | SSH ユーザー（デフォルト：root） |
+| `--auth-key` | SSH 秘密鍵のパス |
+| `--domain` | Let's Encrypt 用のドメイン名 |
+| `--acme-email` | Let's Encrypt 用のメールアドレス |
+| `--uninstall` | サーバーから Bedrud を削除 |
+
+---
+
+## 手動インストール
+
+### 1. バイナリのビルド
+
+```bash
+make build-dist
+```
+
+`dist/bedrud_linux_amd64.tar.xz` が生成されます。
+
+### 2. サーバーにアップロード
+
+```bash
+scp dist/bedrud_linux_amd64.tar.xz root@server:/tmp/
+ssh root@server "cd /tmp && tar xf bedrud_linux_amd64.tar.xz"
+```
+
+### 3. インストール
+
+```bash
+ssh root@server
+sudo /tmp/bedrud install --tls --domain meet.example.com --email admin@example.com
+```
+
+すべてのインストールシナリオについては、[インストールガイド](/ja/docs/getting-started/installation)を参照してください。
+
+### 4. 管理者ユーザーの作成
+
+<CreateAdmin />
+
+---
+
+## Docker デプロイ
+
+Docker でビルド・実行します：
+
+```bash
+docker build -t bedrud .
+docker run -d --name bedrud -p 8090:8090 -p 7880:7880 -v bedrud-data:/var/lib/bedrud bedrud
+```
+
+ビルド済みイメージも利用可能です：
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+```
+
+ボリューム、設定、Docker Compose を含む詳細は、[Docker ガイド](/ja/docs/guides/docker)を参照してください。
+
+---
+
+## 本番アーキテクチャ
+
+```mermaid
+flowchart TB
+    NET[Internet] --> TRAEFIK["Traefik (443)<br/>TLS termination, reverse proxy"]
+    TRAEFIK --> BEDRUD["Bedrud (8090)<br/>API + Web UI"]
+    TRAEFIK --> LIVEKIT["LiveKit (7880)<br/>WebRTC media"]
+    BEDRUD --> DB["SQLite<br/>(or PostgreSQL)"]
+```
+
+WebRTC 接続のため、ファイアウォールで以下のポートも開放してください：
+
+| ポート | プロトコル | 用途 |
+|------|----------|---------|
+| 3478 | UDP | TURN/UDP + STUN |
+| 5349 | TCP | TURN/TLS（または 443 を使用） |
+| 7881 | TCP | ICE/TCP フォールバック |
+| 50000-60000 | UDP | RTC メディアストリーム |
+
+接続スタックの詳細は、[WebRTC 接続性](/ja/docs/architecture/webrtc-connectivity)を参照してください。
+
+<SystemdServices />
+
+### サービスの管理
+
+```bash
+# ステータス確認
+systemctl status bedrud livekit
+
+# 再起動
+systemctl restart bedrud
+
+# ログの表示
+journalctl -u bedrud -f
+tail -f /var/log/bedrud/bedrud.log
+```
+
+---
+
+## ファイルの場所（本番環境）
+
+| パス | 内容 |
+|------|---------|
+| `/usr/local/bin/bedrud` | バイナリ |
+| `/etc/bedrud/config.yaml` | サーバー設定 |
+| `/etc/bedrud/livekit.yaml` | LiveKit 設定 |
+| `/var/lib/bedrud/bedrud.db` | SQLite データベース |
+| `/var/log/bedrud/bedrud.log` | アプリケーションログ |
+
+---
+
+## CI/CD
+
+### リリースパイプライン
+
+`release.yml` ワークフローはバージョンタグ（`v*`）でトリガーされ、以下を生成します：
+
+| 成果物 | 説明 |
+|---|---|
+| `bedrud_linux_amd64.tar.xz` / `bedrud_linux_arm64.tar.xz` | サーバーバイナリ（Linux x86_64 / ARM64） |
+| `bedrud_amd64.deb` / `bedrud_arm64.deb` | Debian/Ubuntu パッケージ（サーバー） |
+| Docker イメージ (`ghcr.io/bedrud-ir/bedrud`) | GHCR にプッシュされるマルチアーキテクチャコンテナイメージ |
+| `bedrud-desktop-linux-x86_64.AppImage` | デスクトップ - 汎用 Linux AppImage |
+| `bedrud-desktop-linux-x86_64.deb` | デスクトップ - Debian/Ubuntu パッケージ |
+| `bedrud-desktop-linux-x86_64.tar.xz` | デスクトップ - Linux ポータブル tarball |
+| `bedrud-desktop-windows-x86_64-setup.exe` / `-arm64-setup.exe` | デスクトップ - Windows NSIS インストーラー |
+| `bedrud-desktop-windows-x86_64.zip` / `-arm64.zip` | デスクトップ - Windows ポータブル |
+| `bedrud-desktop-macos-x86_64.tar.gz` / `-arm64.tar.gz` | デスクトップ - macOS ポータブル（未署名） |
+| Android APK（デバッグ + リリース、アーキテクチャ別） | Android クライアントビルド |
+| iOS IPA（オプション、署名が必要） | iOS クライアントアーカイブ |
+
+すべての成果物は GitHub リリースに添付されます。
+
+### ナイトリービルド
+
+`dev-nightly.yml` ワークフローが定期的に開発ビルドを生成します。
+
+### CI チェック
+
+`main` へのプッシュおよびすべてのプルリクエストで以下が実行されます：
+
+| チェック | プラットフォーム |
+|-------|----------|
+| `go vet` + ビルド + テスト | ubuntu-latest (Go 1.24) |
+| 型チェック + ビルド | ubuntu-latest (Bun) |
+| リント + ユニットテスト | ubuntu-latest (JDK 17) |
+| ビルド + テスト | macos-15 (Xcode) |

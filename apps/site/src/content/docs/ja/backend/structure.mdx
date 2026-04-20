@@ -1,0 +1,129 @@
+---
+title: コード構造
+description: バックエンドのコード構成
+order: 16
+---
+
+`server/`ディレクトリとその内容のマップです。
+
+## プロジェクトツリー
+
+`server/`ディレクトリにはGoバックエンドと埋め込みLiveKitメディアサーバーが含まれます。`apps/`ディレクトリにはクライアントアプリケーションが含まれます。
+
+```text
+bedrud/
+├── apps/                # Client Applications
+│   ├── web/             # React Frontend (TanStack Start)
+│   ├── android/         # Native Android Application
+│   └── ios/             # Native iOS Application
+├── server/              # Go Backend (The "Appliance")
+│   ├── cmd/             # CLI Entry points (run, install)
+│   ├── internal/        # Private application code
+│   │   ├── auth/        # JWT, Passkeys, OAuth logic
+│   │   ├── handlers/    # HTTP Controllers
+│   │   ├── models/      # Database Schemas
+│   │   ├── repository/  # GORM Data Access Layer
+│   │   └── livekit/     # Media Server Management
+│   ├── frontend/        # (Generated) Compiled web assets
+│   ├── config.yaml      # Configuration template
+│   └── Makefile         # Build & Deploy automation
+└── docs/                # System Documentation (MkDocs)
+```
+
+## ディレクトリマップ
+
+### `/cmd/bedrud`
+- **`main.go`**: アプリケーションのエントリポイントです。`run`、`install`、`livekit`などのCLIコマンドを処理します。
+
+### `/config`
+- **`config.go`**: `Config`構造体を定義し、`config.yaml`または環境変数から設定を読み込みます。
+- **`livekit.yaml`**: 埋め込みLiveKitサーバーのデフォルト設定。
+
+### `/internal`
+
+- **`/auth`**: JWT生成、OAuthプロバイダー、パスキー（WebAuthn）の登録・ログインのロジックを含みます。
+- **`/database`**: SQLiteまたはPostgreSQLへの接続を管理し、マイグレーションを実行します。
+- **`/handlers`**: Fiber HTTPハンドラ。各APIエンドポイントのロジックがここにあります（例: `auth_handler.go`、`room_handler.go`）。
+- **`/models`**: GORMデータベースモデル。データベースのテーブルを定義するファイルです。
+- **`/repository`**: 「データアクセス層」。ハンドラはDBクエリを直接記述する代わりにリポジトリを呼び出し、ハンドラのロジックをクリーンに保ちます。
+- **`/livekit`**: LiveKit Go SDKとの統合。ルームの作成を管理し、参加者用の「Join Token」を生成します。
+- **`/middleware`**: 認証チェック、ロギング、CORS用のカスタムFiberミドルウェア。
+- **`/server`**: すべてを結びつけるグルーコード。データベースとリポジトリを初期化し、Fiberサーバーを起動します。
+- **`/install`**: `bedrud install`コマンドのロジック。Linux上でsystemdとTLSの設定を自動化します。
+- **`/scheduler`**: バックグラウンドタスク（もしあれば）。
+- **`/utils`**: 小さなヘルパー関数（例: パスワードハッシュ化、ランダム文字列生成）。
+
+### `/migrations`
+
+- データベーススキーマ更新用のSQLまたはGoファイルを含みます。
+
+### `/docs`（server内）
+
+- Swagger/OpenAPIドキュメントファイルを含みます（`swag`で生成）。
+
+## 技術的詳細
+
+### 1. バイナリ埋め込み（「トリック」）
+
+Bedrudは`//go:embed`ディレクティブを使用してファイルをコンパイル済みバイナリにバンドルします。
+
+- **フロントエンド:** Reactの`dist/client/`フォルダ（プリレンダリングされた`index.html`を含む）が`server/ui.go`に埋め込まれます。静的ファイルはFiberの`filesystem`ミドルウェアを使用してメモリから直接配信されます。
+- **LiveKitサーバー:** プリコンパイル済みの`livekit-server`実行可能ファイルが`internal/livekit/bin/`に埋め込まれます。実行時に、Bedrudはこれを`/tmp/bedrud-livekit-server`に展開し、バックグラウンドプロセスとして起動します（`internal/livekit/server.go`）。
+
+### 2. LiveKitリバースプロキシ
+
+複数のポート（シグナリング、APIなど）を開くことを避けるため、BedrudはすべてのLiveKitシグナリングトラフィックをメインのHTTP(S)ポート経由でルーティングします。
+
+- `/livekit`で始まるリクエストは`internal/server/server.go`でインターセプトされます。
+- **リバースプロキシ**（`httputil.NewSingleHostReverseProxy`を使用）がこれらのリクエストを内部LiveKitインスタンス（通常は`127.0.0.1:7880`で実行）に転送します。
+- プロキシは転送前に`/livekit`プレフィックスを削除し、LiveKitがルートアプリケーションであるかのように機能できるようにします。
+
+### 3. ミドルウェアコンテキストとLocals
+バックエンドはFiberの`.Locals`を使用してミドルウェアとハンドラ間でデータを渡します。
+- **認証ミドルウェア (`internal/middleware/auth.go`):** JWTを検証し、`Claims`オブジェクトを`c.Locals("user")`に保存します。
+- **ハンドラ:** 以下のように現在のユーザーのIDと権限にアクセスできます:
+  ```go
+  claims := c.Locals("user").(*auth.Claims)
+  userID := claims.UserID
+  ```
+
+### 4. 設定の上書き
+
+Bedrudは`config.yaml`ファイルを使用しますが、ほぼすべての設定は**環境変数**で上書きできます。これはDockerやCI/CD環境で重要です。
+
+| 変数 | 説明 |
+|----------|-------------|
+| `SERVER_PORT` | バックエンドがリッスンするポート（デフォルト: `8090`）。 |
+| `SERVER_ENABLE_TLS` | HTTPSを有効にするブール値（`true/false`）。 |
+| `SERVER_DOMAIN` | 本番環境のドメイン（ACMEとパスキーRP IDに使用）。 |
+| `DB_TYPE` | `sqlite`または`postgres`。 |
+| `DB_PATH` | `.db`ファイルへのパス（SQLite使用時）。 |
+| `LIVEKIT_HOST` | LiveKitの公開URL（例: `https://meet.example.com/livekit`）。 |
+| `LIVEKIT_API_KEY` | LiveKit認証用のキー。 |
+| `JWT_SECRET` | Access Tokenの署名に使用される秘密鍵。 |
+
+## コーディング規約とパターン
+
+バックエンドは以下のパターンに従っています:
+
+### 1. リポジトリパターン
+ハンドラはデータベースに直接アクセスすべきではありません。リポジトリを使用してください。これにより、コードのテストが容易になり、APIハンドラを変更せずにデータベースロジックを変更できるようになります。
+
+### 2. 標準化されたエラーハンドリング
+APIハンドラは明確なエラーメッセージを返す必要があります。
+- バリデーションエラーには`c.Status(fiber.StatusBadRequest).JSON(...)`を使用します。
+- 認証エラーには`c.Status(fiber.StatusUnauthorized).JSON(...)`を使用します。
+- データベースやサーバーエラーには`c.Status(fiber.StatusInternalServerError).JSON(...)`を使用します。
+
+### 3. 構造化ロギング
+バックエンドは**Zerolog**を使用してログを出力します。
+- `log.Info()`: 重要なイベント（例: サーバー起動）。
+- `log.Error()`: エラー。
+- `log.Debug()`: 詳細な開発情報。
+
+コアロジックでの`fmt.Println`によるロギングは避けてください。
+
+### 4. 命名規則
+- **ファイル:** snake_case（例: `user_handler.go`）。
+- **構造体/関数:** PascalCase（例: `GetUserByEmail`）。
+- **変数:** camelCase（例: `hashedPassword`）。

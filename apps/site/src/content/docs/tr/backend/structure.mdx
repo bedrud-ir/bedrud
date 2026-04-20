@@ -1,0 +1,129 @@
+---
+title: Kod Yapısı
+description: Arka uç kod organizasyonu
+order: 16
+---
+
+`server/` dizini ve içeriğinin haritası.
+
+## Proje Yol Haritası ve Ağacı
+
+`server/` dizini Go arka ucunu ve gömülü LiveKit medya sunucusunu içerir. `apps/` dizini ise istemci uygulamalarını barındırır.
+
+```text
+bedrud/
+├── apps/                # İstemci Uygulamaları
+│   ├── web/             # React Ön Ucu (TanStack Start)
+│   ├── android/         # Yerel Android Uygulaması
+│   └── ios/             # Yerel iOS Uygulaması
+├── server/              # Go Arka Ucu ("Cihaz")
+│   ├── cmd/             # CLI Giriş noktaları (run, install)
+│   ├── internal/        # Özel uygulama kodu
+│   │   ├── auth/        # JWT, Passkey, OAuth mantığı
+│   │   ├── handlers/    # HTTP Denetleyicileri
+│   │   ├── models/      # Veritabanı Şemaları
+│   │   ├── repository/  # GORM Veri Erişim Katmanı
+│   │   └── livekit/     # Medya Sunucusu Yönetimi
+│   ├── frontend/        # (Üretilen) Derlenmiş web dosyaları
+│   ├── config.yaml      # Yapılandırma şablonu
+│   └── Makefile         # Derleme ve Dağıtım otomasyonu
+└── docs/                # Sistem Dokümantasyonu (MkDocs)
+```
+
+## Dizin Haritası
+
+### `/cmd/bedrud`
+- **`main.go`**: Uygulamanın giriş noktası. `run`, `install` ve `livekit` gibi CLI komutlarını işler.
+
+### `/config`
+- **`config.go`**: `Config` yapısını tanımlar ve `config.yaml` veya Ortam Değişkenlerinden ayarları yükler.
+- **`livekit.yaml`**: Gömülü LiveKit sunucusu için varsayılan yapılandırma.
+
+### `/internal`
+
+- **`/auth`**: JWT üretimi, OAuth sağlayıcıları ve Passkey (WebAuthn) kaydı/girişi mantığını içerir.
+- **`/database`**: SQLite veya PostgreSQL bağlantısını yönetir ve göçleri (migration) çalıştırır.
+- **`/handlers`**: Fiber HTTP işleyicileri. Her API uç noktasının mantığını burada bulabilirsiniz (ör. `auth_handler.go`, `room_handler.go`).
+- **`/models`**: GORM veritabanı modelleri. Bu dosyalar veritabanınızdaki tabloları tanımlar.
+- **`/repository`**: "Veri Erişim Katmanı". İşleyiciler, doğrudan veritabanı sorgusu yazmak yerine depoları çağırır; böylece işleyici mantığı temiz kalır.
+- **`/livekit`**: LiveKit Go SDK ile entegrasyon. Oda oluşturmayı yönetir ve katılımcılar için "Katılım Jetonları" üretir.
+- **`/middleware`**: Kimlik doğrulama kontrolleri, günlükleme ve CORS için özel Fiber ara katmanı.
+- **`/server`**: Her şeyi bir araya getiren yapıştırıcı kod. Veritabanını, depoları başlatır ve Fiber sunucusunu çalıştırır.
+- **`/install`**: Linux üzerinde systemd ve TLS kurulumunu otomatikleştiren `bedrud install` komutunun mantığı.
+- **`/scheduler`**: Arka plan görevleri (varsa).
+- **`/utils`**: Küçük yardımcı fonksiyonlar (ör. parola hashleme, rastgele dizeler).
+
+### `/migrations`
+
+- Veritabanı şema güncellemeleri için SQL veya Go dosyalarını içerir.
+
+### `/docs` (server içinde)
+
+- `swag` tarafından üretilen Swagger/OpenAPI dokümantasyon dosyalarını içerir.
+
+## Teknik Derinlemesine İnceleme
+
+### 1. İkili Dosya Gömme ("Hile")
+
+Bedrud, `//go:embed` yönergesini kullanarak dosyaları derlenmiş ikili dosyaya paketler.
+
+- **Ön Uç:** React `dist/client/` klasörü (ve ön renderlı bir `index.html`) `server/ui.go` dosyasına gömülür. Statik dosyalar Fiber'ın `filesystem` ara katmanı kullanılarak doğrudan bellekten sunulur.
+- **LiveKit Sunucusu:** Önceden derlenmiş `livekit-server` çalıştırılabilir dosyası `internal/livekit/bin/` içine gömülür. Çalışma zamanında Bedrud bunu `/tmp/bedrud-livekit-server` konumuna çıkarır ve arka plan süreci olarak başlatır (`internal/livekit/server.go`).
+
+### 2. LiveKit Ters Vekil
+
+Birden fazla port (sinyalleşme, API vb.) açmaktan kaçınmak için Bedrud, tüm LiveKit sinyalleşme trafiğini ana HTTP(S) portu üzerinden yönlendirir.
+
+- `/livekit` ile başlayan her istek `internal/server/server.go` dosyasında yakalanır.
+- Bir **Ters Vekil** (`httputil.NewSingleHostReverseProxy` kullanılarak), bu istekleri dahili LiveKit örneğine (genellikle `127.0.0.1:7880` üzerinde çalışan) iletir.
+- Vekil, iletimden önce `/livekit` önekini kaldırır; böylece LiveKit kök uygulama gibi çalışabilir.
+
+### 3. Ara Katman Bağlamı ve Yerel Değişkenler
+Arka uç, ara katman ile işleyiciler arasında veri geçirmek için Fiber'ın `.Locals` özelliğini kullanır.
+- **Kimlik Doğrulama Ara Katmanı (`internal/middleware/auth.go`):** JWT'yi doğrular ve `Claims` nesnesini `c.Locals("user")` içinde saklar.
+- **İşleyiciler:** Geçerli kullanıcının kimliğini ve izinlerine şu şekilde erişebilir:
+  ```go
+  claims := c.Locals("user").(*auth.Claims)
+  userID := claims.UserID
+  ```
+
+### 4. Yapılandırma Geçersiz Kılmaları
+
+Bedrud bir `config.yaml` dosyası kullansa da, neredeyse her ayar **Ortam Değişkenleri** kullanılarak geçersiz kılınabilir. Bu, Docker ve CI/CD ortamları için gereklidir.
+
+| Değişken | Açıklama |
+|----------|----------|
+| `SERVER_PORT` | Arka ucun dinlediği port (varsayılan: `8090`). |
+| `SERVER_ENABLE_TLS` | HTTPS'yi etkinleştirmek için boolean (`true/false`). |
+| `SERVER_DOMAIN` | Üretim alan adınız (ACME ve Passkey RP ID için kullanılır). |
+| `DB_TYPE` | `sqlite` veya `postgres`. |
+| `DB_PATH` | `.db` dosyasının yolu (SQLite kullanılıyorsa). |
+| `LIVEKIT_HOST` | LiveKit için genel URL (ör. `https://meet.example.com/livekit`). |
+| `LIVEKIT_API_KEY` | LiveKit kimlik doğrulama anahtarı. |
+| `JWT_SECRET` | Erişim Jetonlarını imzalamak için kullanılan gizli anahtar. |
+
+## Kodlama Standartları ve Örüntüleri
+
+Arka uç şu örüntüleri izler:
+
+### 1. Depo Örüntüsü (Repository Pattern)
+İşleyiciler doğrudan veritabanıyla konuşmamalıdır. Bir Depo kullanın. Bu, kodun test edilmesini kolaylaştırır ve API işleyicilerine dokunmadan veritabanı mantığı değişikliklerine olanak tanır.
+
+### 2. Standartlaştırılmış Hata İşleme
+API işleyicileri net hata mesajları döndürmelidir.
+- Doğrulama hataları için `c.Status(fiber.StatusBadRequest).JSON(...)` kullanın.
+- Kimlik doğrulama hataları için `c.Status(fiber.StatusUnauthorized).JSON(...)` kullanın.
+- Veritabanı veya sunucu hataları için `c.Status(fiber.StatusInternalServerError).JSON(...)` kullanın.
+
+### 3. Yapılandırılmış Günlükleme
+Arka uç günlükleme için **Zerolog** kullanır.
+- `log.Info()`: Önemli olaylar için (ör. sunucu başlatıldı).
+- `log.Error()`: Hatalar için.
+- `log.Debug()`: Ayrıntılı geliştirme bilgisi için.
+
+Çekirdek mantıkta günlükleme için `fmt.Println` kullanmaktan kaçının.
+
+### 4. İsimlendirme Kuralları
+- **Dosyalar:** snake_case (ör. `user_handler.go`).
+- **Yapılar/Fonksiyonlar:** PascalCase (ör. `GetUserByEmail`).
+- **Değişkenler:** camelCase (ör. `hashedPassword`).

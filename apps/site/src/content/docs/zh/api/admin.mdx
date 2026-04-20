@@ -1,0 +1,147 @@
+---
+title: Admin API
+description: Administrative operations
+order: 25
+---
+
+管理员 endpoint 位于 `/api/admin/` 下。这些 endpoint 需要 **Super Admin** 角色。
+
+## 概述
+
+| Endpoint | 方法 | 描述 |
+|----------|--------|-------------|
+| `/api/admin/users` | GET | 列出所有用户 |
+| `/api/admin/users/:id/status` | PUT | 激活或停用用户 |
+
+---
+
+## Endpoints
+
+### 列出所有用户
+
+获取所有已注册用户的列表。
+
+```
+GET /api/admin/users
+```
+
+**Headers：** `Authorization: Bearer <accessToken>`
+
+**所需角色：** Super Admin
+
+**响应 (200)：**
+
+```json
+{
+  "users": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "avatar": "https://...",
+      "role": "user",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": "uuid-2",
+      "email": "admin@example.com",
+      "name": "Admin User",
+      "role": "admin",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-10T08:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### 更新用户状态
+
+激活或停用用户账户。被停用的用户无法登录。
+
+```
+PUT /api/admin/users/:id/status
+```
+
+**Headers：** `Authorization: Bearer <accessToken>`
+
+**所需角色：** Super Admin
+
+**URL 参数：**
+
+| 参数 | 描述 |
+|-----------|-------------|
+| `id` | 用户 UUID |
+
+**请求体：**
+
+```json
+{
+  "isActive": false
+}
+```
+
+**响应 (200)：**
+
+```json
+{
+  "message": "user status updated",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "isActive": false
+  }
+}
+```
+
+---
+
+## 用户角色
+
+| 角色 | 描述 | 权限 |
+|------|-------------|------------|
+| `guest` | 临时用户 | 仅能加入房间 |
+| `user` | 普通用户 | 创建/加入房间，管理个人资料 |
+| `admin` | 超级管理员 | 所有用户权限 + 管理用户、查看所有房间 |
+
+### 创建管理员
+
+管理员通过 CLI 创建：
+
+```bash
+# Create a user
+bedrud user create --email "admin@example.com" --password "securepassword" --name "Admin"
+
+# Promote to admin
+bedrud user promote --email "admin@example.com"
+```
+
+没有用于提升用户权限的 API endpoint - 这是出于安全考虑的刻意设计。
+
+---
+
+## 错误响应
+
+```json
+{
+  "error": "forbidden"
+}
+```
+
+| 状态码 | 含义 |
+|--------|---------|
+| 401 | 未认证 |
+| 403 | 非 Super Admin |
+| 404 | 用户未找到 |
+| 500 | 服务器内部错误 |
+
+---
+
+## 另请参阅
+
+- [API 处理与路由](/zh/docs/backend/api-handlers) - 管理员路由的实现方式
+- [Rooms API](/zh/docs/api/rooms) - 房间管理 endpoint

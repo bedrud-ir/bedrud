@@ -1,0 +1,90 @@
+---
+title: Kimlik Doğrulama
+description: Kimlik doğrulama uygulama detayları
+order: 18
+---
+
+Bedrud birden fazla kimlik doğrulama yöntemini destekler.
+
+## JWT (JSON Web Tokens)
+Bedrud oturum yönetimi için JWT kullanır. Giriş sırasında sunucu iki jeton döndürür:
+
+1.  **Erişim Jetonu (Access Token):** Kısa ömürlü (ör. 1 saat). Korumalı API uç noktalarına erişmek için kullanılır.
+2.  **Yenileme Jetonu (Refresh Token):** Uzun ömürlü (ör. 30 gün). Tekrar giriş yapmadan yeni bir Erişim Jetonu almak için kullanılır.
+
+Arka uç bu jetonları `internal/middleware/auth.go` dosyasında doğrular.
+
+## Jeton Yönetimi ve Güvenlik
+
+### 1. Jeton Çifti Stratejisi (Rotasyon)
+Bedrud güvenli bir jeton rotasyonu stratejisi kullanır. Bir kullanıcı kimlik doğrulaması yaptığında şunları alır:
+
+- **Erişim Jetonu:** HS256 ile imzalanmış olup kullanıcı kimliği, adı ve izinlerini içerir. Kısa bir süre için geçerlidir (`tokenDuration` ile yapılandırılır).
+- **Yenileme Jetonu:** Ayrı, uzun ömürlü bir jeton.
+
+**Rotasyon:** Erişim Jetonu sona erdiğinde, istemci Yenileme Jetonunu `/api/auth/refresh` uç noktasına gönderir. Sunucu daha sonra **yepyeni bir jeton çifti** yayınlar ve veritabanında saklanan yenileme jetonunu günceller. Bu, bir jeton çalınmış olsa bile fırsat penceresini sınırlar.
+
+### 2. Jeton İptali (Kara Liste)
+Güvenli oturum kapatmayı desteklemek için Bedrud bir **Jeton Kara Listesi** uygular.
+
+- Bir kullanıcı oturumu kapattığında, geçerli Yenileme Jetonu `blocked_refresh_tokens` tablosuna eklenir.
+- Herhangi bir oturumu yenilemeden önce sunucu bu tabloyu denetler. Bir jeton engellenmişse, istek hemen reddedilir.
+- Bir arka plan görevi (Zamanlayıcı), engellenen bu jetonları doğal olarak sona erdikten sonra temizlemek üzere tasarlanmıştır.
+
+### 3. JWT Claims Yapısı
+Jetonlar, arka ucun ve ön ucun veritabanı sorgusu yapmadan hızlı kararlar almasını sağlayan meta veriler taşır:
+```json
+{
+  "userId": "uuid-string",
+  "email": "user@example.com",
+  "name": "Display Name",
+  "accesses": ["user", "admin"],
+  "exp": 123456789,
+  "iat": 123456780
+}
+```
+
+## Kimlik Doğrulama Yöntemleri
+
+### 1. Yerel E-posta ve Parola
+
+- Parolalar **bcrypt** ile hashlenir - asla düz metin olarak saklanmaz.
+- Kayıt olduğunuzda, veritabanında yeni bir Kullanıcı kaydı oluşturulur.
+
+### 2. Sosyal Giriş (OAuth2)
+Bedrud, şu sağlayıcıları desteklemek için `Goth` kütüphanesini kullanır:
+
+- **Google**
+- **GitHub**
+- **Twitter**
+
+Bunları, `config.yaml` dosyanızdaki `auth:` bölümüne İstemci Kimliğinizi ve API Gizli Anahtarınızı girerek etkinleştirebilirsiniz.
+
+### 3. Passkey'ler (WebAuthn/FIDO2)
+Bedrud, FIDO2 standardı (WebAuthn) aracılığıyla parolasız kimlik doğrulamayı destekler.
+
+- **Kayıt Seremonisi:**
+  1.  **Başlangıç:** Sunucu kriptografik olarak güvenli bir **Challenge** üretir ve kullanıcının oturumunda saklar.
+  2.  **Bitiş:** İstemcinin kimlik doğrulayıcısı (ör. TouchID, YubiKey) challenge'ı imzalar. Sunucu kanıtı (attestation) doğrular, **Açık Anahtarı** çıkarır ve `passkeys` tablosuna kaydeder.
+- **Kimlik Doğrulama Seremonisi:**
+  1.  **Başlangıç:** Sunucu yeni bir challenge yayınlar.
+  2.  **Bitiş:** İstemci, özel anahtarıyla challenge'ı imzalar. Sunucu veritabanından Açık Anahtarı getirir, imzayı doğrular ve **İmza Sayacını** (Sign Counter) denetler.
+- **Güvenlik:** `Counter` alanının eşleştirilmesi **Tekrar Oynatma Saldırılarını** (Replay Attacks) engeller. Kimlik doğrulayıcının sayısı saklanan sayıdan yüksek değilse, giriş reddedilir.
+
+### 4. Misafir Girişi
+Kullanıcıların yalnızca bir adla anında bir toplantıya katılmasına olanak tanır. Sunucu `guest` rolüyle geçici bir kullanıcı kaydı oluşturur.
+
+## Birlikte Çalışabilirlik ve CORS
+Bedrud, birden fazla kökenden erişilebilir olacak şekilde tasarlanmıştır; bu, geliştirme (React geliştirme sunucusu) ve üretim (farklı alt alan adları) için kritik öneme sahiptir.
+
+- **CORS Politikası:** `config.yaml` içinde tanımlanır. OAuth ve Passkey seremonileri sırasında kullanılan oturum çerezleri için gerekli olan `AllowCredentials: true`'yu destekler.
+- **İzin Verilen Kökenler:** Varsayılan olarak sunucunun kendi alan adına ve `localhost:3000`'e (React geliştirme sunucusu portu) izin verir.
+
+## Kullanıcı Rolleri (Erişim Kontrolü)
+Her kullanıcının bir "erişim" (rol) listesi vardır.
+
+- `user`: Standart kullanıcı. Oda katılabilir ve oluşturabilir.
+- `guest`: Geçici kullanıcı. Odalara katılabilir.
+- `superadmin`: `/admin` paneli üzerinden tüm kullanıcıları ve odaları yönetebilir.
+
+`middleware.RequireAccess("superadmin")` koruması, yönetici rotalarını güvence altına alır.

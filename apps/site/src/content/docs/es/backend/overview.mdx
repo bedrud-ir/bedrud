@@ -1,0 +1,49 @@
+---
+title: Documentación del Backend
+description: Resumen de la arquitectura del sistema backend de Bedrud
+order: 15
+---
+
+## Introducción
+El backend de Bedrud es una plataforma de reuniones en un solo binario escrita en **Go 1.24+**. Todas las dependencias - servidor de medios, frontend web, servidor TURN - están integradas en un solo ejecutable.
+
+### Tecnologías Principales
+- **Framework Principal:** [Fiber v2](https://gofiber.io/) (enrutador sin asignación de memoria, API estilo Express).
+- **Capa de Base de Datos:** [GORM](https://gorm.io/) con soporte para **SQLite** (estándar) y **PostgreSQL** (producción).
+- **Motor de Medios:** [LiveKit](https://livekit.io/) (integrado como binario hermano).
+- **Sistema de Autenticación:** Autenticación multicapa compatible con JWT, OAuth2 (Google/GitHub/Twitter) y Passkeys FIDO2 sin contraseña.
+- **Recursos Estáticos Integrados:** Utiliza el paquete `embed` de Go 1.16+ para empaquetar el frontend de React (recursos del cliente pre-renderizados con SSR).
+- **Despliegue:** Instalador automático integrado para Debian/Ubuntu con orquestación mediante systemd y soporte para ACME (Let's Encrypt).
+
+## ¿Por qué esta arquitectura?
+Las plataformas WebRTC normalmente ejecutan servicios separados para señalización, TURN, servicio web y gestión de base de datos. Bedrud consolida todos estos en un solo binario al:
+
+1.  **Extraer** el binario del servidor de medios en tiempo de ejecución.
+2.  **Proxyar** el tráfico de medios a través del puerto HTTP(S) principal.
+3.  **Automatizar** la configuración a nivel de sistema operativo (SSL, systemd) desde el propio binario.
+
+## Arquitectura General
+El backend sigue una arquitectura por capas estándar:
+
+1.  **Capa de Servidor (`internal/server`):** Configura la app de Fiber, rutas y middleware.
+2.  **Capa de Handlers (`internal/handlers`):** Gestiona las solicitudes y respuestas HTTP.
+3.  **Capa de Repositorio (`internal/repository`):** Maneja las consultas a la base de datos mediante GORM.
+4.  **Capa de Modelos (`internal/models`):** Define las tablas de la base de datos y las estructuras de Go.
+5.  **Capa de Servicio/Lógica:** Integrada en los handlers y repositorios por simplicidad, con paquetes especializados como `internal/auth` e `internal/livekit`.
+
+## Punto de Entrada Principal
+La aplicación se inicia en `server/cmd/bedrud/main.go`. Tiene tres modos principales:
+
+- `run`: Inicia el servidor de reuniones completo.
+- `livekit`: Inicia únicamente el servidor de medios integrado.
+- `install`: Configura automáticamente el servidor en sistemas Debian/Ubuntu.
+
+## Secciones de la Documentación
+- [**Estructura del Código**](/es/docs/backend/structure): ¿Dónde se encuentra todo?
+- [**Base de Datos y Modelos**](/es/docs/backend/database): ¿Cómo se almacenan los datos?
+- [**Autenticación**](/es/docs/backend/authentication): ¿Cómo inician sesión los usuarios?
+- [**API Handlers**](/es/docs/backend/api-handlers): ¿Cómo se procesan las solicitudes?
+- [**Integración con LiveKit**](/es/docs/backend/livekit): ¿Cómo funciona el servidor de video?
+- [**Conectividad WebRTC**](/es/docs/architecture/webrtc-connectivity): ¿Cómo establecen los clientes las conexiones de medios? (STUN/ICE/TURN/SFU)
+- [**Servidor TURN**](/es/docs/architecture/turn-server): Arquitectura del relay TURN, configuración y solución de problemas
+- [**Instalación y Despliegue**](/es/docs/backend/deployment): ¿Cómo funciona el instalador automático?

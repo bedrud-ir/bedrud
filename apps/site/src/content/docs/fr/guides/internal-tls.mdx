@@ -1,0 +1,73 @@
+---
+title: TLS interne
+description: Certificats auto-signés pour réseaux internes
+order: 30
+---
+
+Pour les réseaux isolés - pas de domaine public, pas d'accès internet sortant, connectivité restreinte.
+
+Les navigateurs nécessitent un HTTPS de confiance pour la caméra/micro via WebRTC. Les certificats auto-signés fonctionnent mais affichent des avertissements. Pour une configuration propre, générez une autorité de certification privée et distribuez-la aux clients.
+
+## Générer une autorité de certification privée et un certificat de serveur
+
+```bash
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=Bedrud Internal CA"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=<votre-adresse-ip-ou-nom-d'hôte>"
+openssl x509 -req -days 365 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+sudo ./bedrud install --tls --cert server.crt --key server.key --ip VOTRE_ADRESSE_IP_SERVEUR
+```
+
+## Ajouter l'AC aux magasins de confiance des clients
+
+Distribuez `ca.crt` à toutes les machines clientes :
+
+### Windows
+
+```powershell
+certmgr.msc  # Clic droit sur ca.crt → Installer le certificat → AC racines de confiance
+```
+
+### macOS
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt
+```
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
+sudo update-ca-certificates
+```
+
+### Linux (Arch/Fedora)
+
+```bash
+sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
+sudo update-ca-trust
+```
+
+Redémarrez les navigateurs, puis ouvrez `https://VOTRE_ADRESSE_IP_SERVEUR` (remplacez par l'adresse IP réelle du serveur, par ex. `192.168.1.100`). Après redémarrage, le certificat sera de confiance et l'accès à la caméra/microphone fonctionnera sans avertissements.
+
+## Dépannage
+
+| Problème | Solution |
+|---------|----------|
+| Le navigateur avertit toujours que le certificat n'est pas de confiance | Videz le cache du navigateur, redémarrez le navigateur après l'installation de l'AC |
+| Caméra/micro bloqués | Vérifiez que l'AC est dans les AC racines de confiance, pas intermédiaire |
+| Certificat expiré | Régénérez avec une valeur `-days` plus longue |
+| Inadéquation CN | Assurez-vous que le CN du certificat de serveur correspond à l'IP ou au nom d'hôte dans l'URL |
+
+---
+
+## Voir aussi
+- [Guide d'installation](/fr/docs/getting-started/installation) - méthodes d'installation
+- [Référence de configuration](/fr/docs/getting-started/configuration) - options de configuration complètes

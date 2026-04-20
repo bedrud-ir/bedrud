@@ -1,0 +1,166 @@
+---
+title: Android-App
+description: Native Android-Anwendung
+order: 9
+---
+
+Die Bedrud Android-App ist mit Jetpack Compose und Kotlin erstellt und bietet ein natives Video-Meeting-Erlebnis mit Picture-in-Picture, Deep Linking und Multi-Instance-Unterstützung.
+
+## Technologie-Stack
+
+| Technologie | Version | Zweck |
+|------------|---------|-------|
+| Kotlin | 2.1.0 | Sprache |
+| Jetpack Compose | Material 3 | UI-Toolkit |
+| Koin | 4.0.0 | Dependency Injection |
+| Retrofit + OkHttp | Aktuell | HTTP-Client |
+| LiveKit Android SDK | 2.23.3 | WebRTC-Medien |
+| Credentials API | Aktuell | Passkey-Unterstützung |
+| Encrypted SharedPreferences | Aktuell | Sichere Speicherung |
+| Coil | Aktuell | Bildladen |
+
+**Ziel:** Min SDK 28, Target SDK 35, JDK 17
+
+## Verzeichnisstruktur
+
+```
+apps/android/app/src/main/java/com/bedrud/app/
+├── BedrudApplication.kt           # Application class (Koin init)
+├── MainActivity.kt                # Single-activity entry point
+├── core/
+│   ├── api/                       # Retrofit API client
+│   │   ├── ApiClient.kt           # Base HTTP client with auth interceptor
+│   │   ├── AuthApi.kt             # Auth endpoint definitions
+│   │   └── RoomApi.kt             # Room endpoint definitions
+│   ├── auth/
+│   │   └── AuthManager.kt         # Token management, login/logout
+│   ├── call/
+│   │   ├── CallService.kt         # Foreground service for calls
+│   │   └── CallConnectionService.kt  # Android ConnectionService
+│   ├── deeplink/
+│   │   └── DeepLinkHandler.kt     # Handle bedrud.com deep links
+│   ├── di/
+│   │   └── AppModule.kt           # Koin module definitions
+│   ├── instance/
+│   │   ├── InstanceManager.kt     # Central multi-instance orchestrator
+│   │   ├── InstanceStore.kt       # Persistent instance storage
+│   │   └── InstanceDeps.kt        # Per-instance dependency container
+│   ├── livekit/
+│   │   └── RoomManager.kt         # LiveKit room connection manager
+│   └── pip/
+│       └── PipManager.kt          # Picture-in-Picture controller
+├── models/
+│   ├── User.kt                    # User data model
+│   ├── Room.kt                    # Room data model
+│   ├── Instance.kt                # Server instance model
+│   └── ApiResponse.kt             # API response wrappers
+└── ui/
+    ├── screens/
+    │   ├── auth/
+    │   │   ├── LoginScreen.kt     # Email/password + passkey login
+    │   │   └── RegisterScreen.kt  # Account registration
+    │   ├── dashboard/
+    │   │   └── DashboardScreen.kt # Room list and management
+    │   ├── meeting/
+    │   │   └── MeetingScreen.kt   # Video call interface
+    │   ├── instance/
+    │   │   ├── AddInstanceScreen.kt    # Add server instance
+    │   │   └── InstanceSwitcher.kt     # Switch between instances
+    │   ├── profile/
+    │   │   └── ProfileScreen.kt   # User profile
+    │   └── settings/
+    │       └── SettingsScreen.kt  # App settings
+    ├── components/                 # Reusable Compose components
+    └── theme/                      # Material 3 theme definition
+```
+
+## Multi-Instance-Architektur
+
+Die Android-App unterstützt die gleichzeitige Verbindung zu mehreren Bedrud-Servern.
+
+```mermaid
+flowchart TB
+    subgraph IM ["InstanceManager (Koin singleton)"]
+        IS["InstanceStore<br/>Persists list to SharedPreferences"]
+        AI["Active Instance (StateFlow)"]
+        INST["instances: List Instance"]
+    end
+
+    subgraph DEPS ["InstanceDeps"]
+        AM["AuthManager"]
+        AC["ApiClient"]
+        AA["AuthApi"]
+        RA["RoomApi"]
+        PM["PasskeyManager"]
+        RM["RoomManager"]
+    end
+
+    AI --> DEPS
+```
+
+### Schlüsselmuster
+
+Alle instanzspezifischen Abhängigkeiten werden als `StateFlow<T?>` auf `InstanceManager` bereitgestellt. Composables sammeln diese:
+
+```kotlin
+val authManager = instanceManager.authManager.collectAsState().value ?: return
+val roomApi = instanceManager.roomApi.collectAsState().value ?: return
+```
+
+Das `?: return`-Muster stellt sicher, dass das Composable nicht rendert, bis die Instanz vollständig initialisiert ist.
+
+### Navigationsablauf
+
+```mermaid
+flowchart LR
+    A["No instances"] --> B[AddInstanceScreen]
+    C["Has instances, not logged in"] --> D[LoginScreen]
+    E["Has instances, logged in"] --> F[DashboardScreen]
+```
+
+Der Instanzwechsler erscheint als `ModalBottomSheet`, der aus der Dashboard-Toolbar aufgerufen wird.
+
+## Funktionen
+
+### Deep Linking
+
+Die App verarbeitet URLs, die folgenden Mustern entsprechen:
+
+- `https://bedrud.com/m/*` - Direkter Raumbeitritt
+- `https://bedrud.com/c/*` - Raumbeitritt per Code
+
+Konfiguriert über Intent-Filter in `AndroidManifest.xml`.
+
+### Anrufverwaltung
+
+- **CallService** - Vordergrunddienst, der die Verbindung während Anrufen aufrechterhält
+- **CallConnectionService** - Integriert sich in das Telefonie-Framework von Android für eine ordnungsgemäße Anruf-Benutzeroberfläche
+- Erforderliche Berechtigungen: `MANAGE_OWN_CALLS`, `FOREGROUND_SERVICE_PHONE_CALL`, `FOREGROUND_SERVICE_CAMERA`, `FOREGROUND_SERVICE_MICROPHONE`
+
+### Picture-in-Picture
+
+Der Meeting-Bildschirm unterstützt den PiP-Modus, sodass Benutzer den Video-Feed sehen können, während sie andere Apps nutzen.
+
+### Passkeys
+
+Verwendet die Credentials API von Android für die FIDO2/WebAuthn-Passkey-Registrierung und -Anmeldung.
+
+## Build
+
+```bash
+# Debug APK
+make build-android-debug
+
+# Release APK (requires keystore.properties)
+make build-android
+
+# Build + install on connected device
+make release-android
+
+# Open in Android Studio
+make dev-android
+```
+
+### Release-Signierung
+
+Release-Builds erfordern eine `keystore.properties`-Datei im Android-Projektverzeichnis mit Ihrer Signaturkonfiguration.

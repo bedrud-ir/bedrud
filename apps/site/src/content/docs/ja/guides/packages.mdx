@@ -1,0 +1,390 @@
+---
+title: パッケージインストール
+description: パッケージマネージャーからインストール
+order: 32
+---
+
+Bedrud の**サーバー**および**デスクトップクライアント**のすべてのパッケージマネージャーおよびバイナリインストール方法について説明します。
+
+---
+
+## サーバーインストール
+
+### apt リポジトリ（Ubuntu / Debian）
+
+Debian 系システムに Bedrud サーバーをインストールする最も簡単な方法は、GitHub Pages でホストされているセルフホスト型 apt リポジトリを使用することです。
+
+**1. リポジトリと GPG キーを追加：**
+
+```bash
+curl -fsSL https://bedrud-ir.github.io/bedrud/bedrud.gpg.key \
+  | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/bedrud.gpg
+
+echo "deb https://bedrud-ir.github.io/bedrud stable main" \
+  | sudo tee /etc/apt/sources.list.d/bedrud.list
+```
+
+**2. インストール：**
+
+```bash
+sudo apt update && sudo apt install bedrud
+```
+
+パッケージはバイナリを `/usr/local/bin/bedrud` にインストールし、systemd サービスを登録します。インストール後、インタラクティブインストーラーを実行します：
+
+```bash
+sudo bedrud install
+```
+
+すべての設定オプションについては、[インストールガイド](/ja/docs/getting-started/installation)を参照してください。
+
+---
+
+### AUR（Arch Linux）
+
+```bash
+yay -S bedrud-bin
+```
+
+インストール後、以下を実行します：
+
+```bash
+sudo bedrud install
+```
+
+---
+
+### DNF / RPM リポジトリ（Fedora / RHEL / openSUSE）
+
+**1. リポジトリを追加：**
+
+```bash
+sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key \
+  -o /etc/pki/rpm-gpg/RPM-GPG-KEY-bedrud
+
+sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.repo \
+  -o /etc/yum.repos.d/bedrud.repo
+```
+
+**2. インストール：**
+
+```bash
+sudo dnf install bedrud
+```
+
+---
+
+### 直接 .deb ダウンロード
+
+[最新の GitHub リリース](https://github.com/bedrud-ir/bedrud/releases/latest)から `.deb` パッケージを直接ダウンロードします：
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="x86-64">x86_64 (amd64)</TabsTrigger>
+    <TabsTrigger value="arm64">ARM64</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="x86-64">
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_amd64.deb
+    sudo dpkg -i bedrud_amd64.deb
+    sudo apt-get install -f   # resolve any missing dependencies
+    ```
+  </TabsContent>
+
+  <TabsContent value="arm64">
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_arm64.deb
+    sudo dpkg -i bedrud_arm64.deb
+    sudo apt-get install -f
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### 直接 .rpm ダウンロード
+
+[最新の GitHub リリース](https://github.com/bedrud-ir/bedrud/releases/latest)から `.rpm` パッケージをダウンロードします：
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="x86-64">x86_64</TabsTrigger>
+    <TabsTrigger value="aarch64">aarch64</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="x86-64">
+    ```bash
+    sudo dnf install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-*.x86_64.rpm
+    ```
+  </TabsContent>
+
+  <TabsContent value="aarch64">
+    ```bash
+    sudo dnf install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-*.aarch64.rpm
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### 手動バイナリダウンロード
+
+圧縮済み tarball をダウンロードし、`$PATH` 上の任意の場所に展開します：
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="linux-x86-64">Linux x86_64</TabsTrigger>
+    <TabsTrigger value="linux-arm64">Linux ARM64</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="linux-x86-64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz \
+      | tar xJ
+    sudo mv bedrud /usr/local/bin/
+    ```
+  </TabsContent>
+
+  <TabsContent value="linux-arm64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_arm64.tar.xz \
+      | tar xJ
+    sudo mv bedrud /usr/local/bin/
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### Docker
+
+GitHub Container Registry からビルド済みイメージをプルします：
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+ボリュームマウントとリバースプロキシの設定を含む詳細は、[Docker ガイド](/ja/docs/guides/docker)を参照してください。
+
+---
+
+## デスクトップクライアントインストール
+
+### Linux
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="apt">Ubuntu/Debian (apt)</TabsTrigger>
+    <TabsTrigger value="aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="dnf">Fedora / RHEL (DNF)</TabsTrigger>
+    <TabsTrigger value="snap">Snap（任意のディストリビューション）</TabsTrigger>
+    <TabsTrigger value="flatpak">Flatpak（任意のディストリビューション）</TabsTrigger>
+    <TabsTrigger value="appimage">AppImage（任意のディストリビューション）</TabsTrigger>
+    <TabsTrigger value="tarball">ポータブル tar.xz</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="apt">
+    まず apt リポジトリを追加します（上記の[サーバー - apt リポジトリ](#apt-リポジトリubuntudebian)を参照）、その後：
+
+    ```bash
+    sudo apt install bedrud-desktop
+    ```
+
+    パッケージは `.desktop` ランチャーをインストールし、アプリケーションメニューに登録します。
+  </TabsContent>
+
+  <TabsContent value="aur">
+    ```bash
+    yay -S bedrud-desktop-bin
+    ```
+  </TabsContent>
+
+  <TabsContent value="dnf">
+    まず DNF リポジトリを追加します（上記の[サーバー - DNF リポジトリ](#dnf-rpm-リポジトリfedorarhelopensuse)を参照）、その後：
+
+    ```bash
+    sudo dnf install bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="snap">
+    ```bash
+    sudo snap install bedrud-desktop
+    ```
+
+    Snap は Snap デーモン（snapd）をサポートするすべての Linux ディストリビューションで利用可能です。
+  </TabsContent>
+
+  <TabsContent value="flatpak">
+    Flatpak バンドルからインストールします：
+
+    ```bash
+    flatpak install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.flatpak
+    flatpak run ir.bedrud.Desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="appimage">
+    AppImage は自己完結型で、インストールなしで任意の Linux ディストリビューションで動作します。
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
+    chmod +x bedrud-desktop-linux-x86_64.AppImage
+    ./bedrud-desktop-linux-x86_64.AppImage
+    ```
+
+    <Callout type="tip">
+      AppImage をアプリケーションランチャーに統合するには、[AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) のようなツールを使用してください。
+    </Callout>
+  </TabsContent>
+
+  <TabsContent value="tarball">
+    任意のディレクトリで展開して実行します：
+
+    ```bash
+    tar xf bedrud-desktop-linux-x86_64.tar.xz
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### macOS
+
+Intel と Apple Silicon の両方に対応するビルド済みポータブル tarball が利用可能です。アプリは**未署名**です - 展開後に**システム設定 → プライバシーとセキュリティ**で許可が必要な場合があります。
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="arm64">Apple Silicon (arm64)</TabsTrigger>
+    <TabsTrigger value="x86-64">Intel (x86_64)</TabsTrigger>
+    <TabsTrigger value="homebrew">Homebrew Tap</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="arm64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz \
+      | tar xz
+      # Allow the binary if macOS blocks it:
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="x86-64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz \
+      | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="homebrew">
+    ```bash
+    brew tap bedrud-ir/bedrud
+    brew install bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="info">
+  macOS リリースは CI で `MACOS_CERTIFICATE` が設定されている場合に**コード署名および公証**されます（[シークレットリファレンス](#シークレットリファレンス)を参照）。これらのシークレットがない場合、バイナリは未署名です - 上記の `xattr` の回避策を使用するか、Finder で右クリック → 開くを行ってください。
+</Callout>
+
+<Callout type="warning">
+  未署名 macOS Gatekeeper 警告：上記の `xattr` コマンドを実行するか、**システム設定 → プライバシーとセキュリティ**を開き、最初のブロックされた起動試行後に**とにかく開く**をクリックしてください。
+</Callout>
+
+---
+
+### Windows
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="nsis">NSIS インストーラー（推奨）</TabsTrigger>
+    <TabsTrigger value="zip">ポータブル .zip</TabsTrigger>
+    <TabsTrigger value="chocolatey">Chocolatey</TabsTrigger>
+    <TabsTrigger value="winget">WinGet</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="nsis">
+    [最新リリース](https://github.com/bedrud-ir/bedrud/releases/latest)からインストーラーをダウンロードして実行します：
+
+    | アーキテクチャ | ファイル |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64-setup.exe` |
+    | ARM64 | `bedrud-desktop-windows-arm64-setup.exe` |
+
+    インストーラーはスタートメニューとプログラムの追加と削除にアプリを登録します。
+  </TabsContent>
+
+  <TabsContent value="zip">
+    インストール不要 - 展開して実行します：
+
+    | アーキテクチャ | ファイル |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64.zip` |
+    | ARM64 | `bedrud-desktop-windows-arm64.zip` |
+  </TabsContent>
+
+  <TabsContent value="chocolatey">
+    ```powershell
+    choco install bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="winget">
+    ```powershell
+    winget install Bedrud.BedrudDesktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## まとめテーブル
+
+| プラットフォーム | サーバー | デスクトップクライアント |
+|---|---|---|
+| Ubuntu / Debian (apt) | `apt install bedrud` | `apt install bedrud-desktop` |
+| Fedora / RHEL (dnf) | `dnf install bedrud` | `dnf install bedrud-desktop` |
+| Arch Linux (AUR) | `yay -S bedrud-bin` | `yay -S bedrud-desktop-bin` |
+| Linux 全般 | AppImage / `tar.xz` バイナリ | AppImage / Flatpak / Snap / `tar.xz` |
+| macOS | `tar.xz` バイナリ | Homebrew tap / ポータブル `tar.gz` |
+| Windows | - | WinGet / Chocolatey / NSIS インストーラー / ポータブル `.zip` |
+| Docker | `ghcr.io/bedrud-ir/bedrud` | - |
+
+---
+
+## シークレットリファレンス
+
+以下の GitHub Actions シークレットは、オプションの配布チャンネルを有効にします：
+
+| シークレット | チャンネル | 説明 |
+|---|---|---|
+| `AUR_SSH_PRIVATE_KEY` | AUR | `aur.archlinux.org` プッシュ用 SSH キー |
+| `APT_GPG_PRIVATE_KEY` | apt リポジトリ | `Release` ファイル署名用 GPG キー |
+| `APT_GPG_KEY_ID` | apt リポジトリ | 上記のキー ID |
+| `RPM_GPG_PRIVATE_KEY` | DNF リポジトリ | RPM パッケージ署名用 GPG キー |
+| `SNAPCRAFT_STORE_CREDENTIALS` | Snap Store | `snapcraft export-login` からのログイン情報 |
+| `CHOCOLATEY_API_KEY` | Chocolatey | chocolatey.org からの API キー |
+| `HOMEBREW_TAP_TOKEN` | Homebrew tap | `bedrud-ir/homebrew-bedrud` への書き込み権限を持つ GitHub PAT |
+| `WINGET_GITHUB_TOKEN` | WinGet | `microsoft/winget-pkgs` への PR 提出用 GitHub PAT |
+| `MACOS_CERTIFICATE` | macOS 署名 | Base64 エンコードされた Developer ID `.p12` 証明書 |
+| `MACOS_CERTIFICATE_PWD` | macOS 署名 | `.p12` ファイルのパスワード |
+| `MACOS_TEAM_ID` | macOS 署名 / 公証 | Apple Developer チーム ID |
+| `MACOS_APPLE_ID` | macOS 公証 | Apple ID メールアドレス |
+| `MACOS_APP_PWD` | macOS 公証 | notarytool 用のアプリ固有パスワード |
+| `IOS_P12_BASE64` | iOS IPA | iOS 配布証明書 |
+| `TELEGRAM_BOT_TOKEN` | Telegram | リリース通知用ボットトークン |
+| `TELEGRAM_CHAT_ID` | Telegram | 対象チャンネル/グループ ID |
+
+すべてのシークレットはオプションです - 未設定の場合、そのチャンネルのジョブは自動的にスキップされます。

@@ -1,0 +1,155 @@
+---
+title: Web Frontend
+description: React web application architecture
+order: 8
+---
+
+Bedrud Web 前端是一个基于 TanStack Start、TailwindCSS v4 和 shadcn/ui 构建的 React 应用。在生产环境中，服务端渲染预生成 HTML 外壳。Go 二进制文件将此外壳与静态客户端资源一同嵌入。
+
+## 技术栈
+
+| 技术 | 用途 |
+|-----------|---------|
+| React 19 | UI 框架 |
+| TanStack Start | SSR 框架和基于文件的路由 |
+| TanStack Router | 客户端路由 |
+| TanStack Query | 服务端状态和数据获取 |
+| TailwindCSS 4 | 实用优先的样式 |
+| shadcn/ui + Radix UI | 可访问的组件原语 |
+| Zustand | 客户端认证状态 |
+| Vite 7 | 构建工具和开发服务器 |
+| LiveKit React SDK | WebRTC 媒体处理 |
+| Zod | 模式验证 |
+| Lucide React | 图标库 |
+| Bun | 包管理器 |
+
+## 目录结构
+
+```
+apps/web/
+├── src/
+│   ├── routes/                    # TanStack Router file-based routes
+│   │   ├── index.tsx              # Home / landing page
+│   │   ├── __root.tsx             # Root layout
+│   │   ├── auth/
+│   │   │   ├── login.tsx          # Sign-in page
+│   │   │   └── register.tsx       # Sign-up page
+│   │   ├── dashboard/             # User dashboard
+│   │   ├── m.$meetId.tsx          # Meeting room page
+│   │   ├── admin/                 # Admin panel
+│   │   │   ├── index.tsx          # Overview
+│   │   │   ├── rooms.$id.tsx      # Room detail
+│   │   │   ├── users.$id.tsx      # User detail
+│   │   │   └── settings.tsx       # Server settings + invite tokens
+│   │   └── settings.tsx           # Account settings page
+│   ├── components/
+│   │   ├── admin/                 # Admin table components
+│   │   │   ├── RoomTable.tsx
+│   │   │   └── UserTable.tsx
+│   │   ├── auth/                  # Auth UI (OAuth, Passkey buttons)
+│   │   ├── dashboard/             # Room cards, create room dialog
+│   │   ├── meeting/               # Video tiles, controls, device picker
+│   │   │   ├── ControlsBar.tsx
+│   │   │   ├── DeviceSelector.tsx
+│   │   │   ├── ParticipantGrid.tsx
+│   │   │   ├── ChatPanel.tsx
+│   │   │   └── SpotlightView.tsx
+│   │   ├── ui/                    # shadcn/ui component library
+│   │   └── ThemeToggle.tsx        # Light/dark mode switcher
+│   └── lib/
+│       ├── api.ts                 # authFetch wrapper
+│       └── auth.store.ts          # Zustand auth store (tokens, user)
+├── scripts/
+│   └── embed.mjs                  # SSR pre-render + copy to server/frontend/
+├── public/                        # Static assets
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+## 认证流程
+
+认证状态由 `src/lib/auth.store.ts` 中的 Zustand store 管理：
+
+1. **登录** - 用户提交凭证到 `POST /api/auth/login`
+2. **令牌存储** - 访问令牌和刷新令牌保存到 `localStorage`
+3. **自动注入** - `authFetch` 封装每个 API 调用，添加 `Authorization: Bearer` 请求头
+4. **自动刷新** - 当请求返回 401 时，`authFetch` 尝试使用刷新令牌刷新访问令牌
+5. **登出** - 清除令牌并重定向到登录页
+
+### authFetch
+
+`src/lib/api.ts` 中的 `authFetch` 函数是 `fetch` 的直接替代品，它：
+
+- 将 JWT 访问令牌附加到每个请求
+- 捕获 401 响应并尝试刷新令牌
+- 如果刷新失败则登出用户
+
+## 会议页面
+
+`/m/$meetId` 的会议室处理：
+
+- **LiveKit 连接** - 使用加入 API 获取的令牌连接到媒体服务器
+- **轨道渲染** - 订阅其他参与者的音视频轨道
+- **设备选择** - 通话中切换摄像头、麦克风或扬声器，无需离开房间
+- **管理员控制** - 房间创建者可以看到踢出、静音和关闭视频的按钮
+- **聊天** - 通过 `ChatPanel` 进行房间内文字聊天
+- **焦点视图** - 聚焦单个参与者
+
+## 管理后台
+
+`/admin` 的管理后台提供：
+
+- **房间管理** - 表格视图，可深入查看房间详情页
+- **用户管理** - 表格视图，可深入查看个人用户账户和角色编辑
+- **服务器设置** - 配置实例范围的选项、访问控制和邀请链接
+- **邀请令牌** - 生成和撤销邀请链接以控制谁能加入
+
+## 深色模式
+
+`ThemeToggle` 组件允许用户在应用的任何位置切换亮色和深色主题。偏好设置持久化到 `localStorage`，并在加载时应用。
+
+## 构建
+
+### 开发
+
+```bash
+cd apps/web
+bun run dev      # Starts Vite dev server with HMR at localhost:3000
+```
+
+开发服务器将 `/api` 和 `/livekit` 请求代理到 `localhost:8090` 的 Go 服务器。
+
+### 生产环境（独立 Web 包）
+
+```bash
+cd apps/web
+bun run build    # Outputs static client assets to dist/client/ and SSR server to dist/server/
+```
+
+### 生产环境（嵌入 Go 二进制）
+
+```bash
+cd apps/web
+bun run build:embed
+```
+
+这会运行 `scripts/embed.mjs`，它会：
+
+1. 运行 `bun run build` 生成 `dist/client/` 和 `dist/server/`
+2. 在本地启动 SSR 服务器
+3. 获取 `/` 以捕获预渲染的 HTML 外壳
+4. 将 `dist/client/` 复制到 `server/frontend/`
+5. 将渲染后的 HTML 写入 `server/frontend/index.html`
+
+### 类型检查
+
+```bash
+bun run check    # Runs tsc --noEmit
+```
+
+---
+
+## 另请参阅
+
+- [Web 设计系统](https://github.com/bedrud-ir/bedrud/tree/main/apps/web/AGENTS.md) - UI 组件模式、颜色令牌和样式规则

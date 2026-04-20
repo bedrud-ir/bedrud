@@ -1,0 +1,41 @@
+---
+title: "Introducing Bedrud: Self-Hosted Video Meetings in One Command"
+description: "We're launching Bedrud - a single-binary, open-source video meeting platform that runs on any $5 VPS with 512MB RAM."
+date: "2026-02-15"
+author: "Bedrud Team"
+tags: ["announcement", "launch"]
+---
+
+Video meetings shouldn't require a DevOps team to set up. We built Bedrud because we were tired of choosing between expensive per-seat pricing and self-hosted solutions that need 8+ Docker containers.
+
+## One Binary. One Command.
+
+```bash
+curl -fsSL https://get.bedrud.org | bash
+```
+
+That's it. Sixty seconds later, Bedrud is running on your server. No Docker Compose, no Kubernetes, no config files. A single binary that handles WebRTC media, signaling, and the web UI.
+
+## Built for Developers
+
+- **WebRTC media server** with adaptive bitrate and sub-second latency
+- **REST API** for programmatic room management
+- **Bot SDK** (Go) for building meeting automation
+- **Native apps** for Web (React), Android (Kotlin), and iOS (Swift)
+
+## Why Now?
+
+The video meeting market is broken. You either pay per seat to a cloud vendor, or you spend a weekend configuring Jitsi's 8-container Docker setup. There's no middle ground.
+
+Bedrud is that middle ground. Open source (Apache 2.0), single binary, runs on hardware you already have.
+
+## What's Next
+
+We're just getting started. Here's what's on the roadmap:
+
+- **Recording** - Meeting recording to your server storage
+- **Transcription** - Real-time transcription via bot agents
+- **LDAP/AD** - Enterprise directory integration
+- **Broadcast mode** - One-to-many streaming for webinars
+
+Try it today and let us know what you think on [GitHub](https://github.com/bedrud-ir/bedrud) or [Discord](https://discord.gg/bedrud).

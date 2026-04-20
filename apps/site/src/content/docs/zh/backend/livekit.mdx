@@ -1,0 +1,97 @@
+---
+title: LiveKit Integration
+description: WebRTC media server integration
+order: 20
+---
+
+Bedrud 使用 **LiveKit** 处理实时视频和音频通信。LiveKit 提供 SFU（选择性转发单元）媒体服务器，Bedrud 负责认证、房间管理和管控功能。
+
+## 内嵌模式 vs 外部模式
+
+Bedrud 支持两种 LiveKit 部署模式：
+
+1.  **内嵌模式（默认）：** 后端在内部启动并管理 LiveKit 服务器进程。无需额外基础设施--后端处理 LiveKit 进程的完整生命周期。
+2.  **外部模式：** Bedrud 连接到独立的 LiveKit 服务器或集群。适用于水平扩缩容或使用托管的 LiveKit Cloud 实例。
+
+### 配置外部模式
+
+要使用外部 LiveKit 服务器，请在 `config.yaml` 中设置以下配置项：
+
+```yaml
+livekit:
+  host: "livekit.example.com:7880"
+  api_key: "your-api-key"
+  api_secret: "your-api-secret"
+  embedded: false
+```
+
+当 `embedded` 为 `false` 时，Bedrud 将跳过启动内嵌的 LiveKit 二进制文件。API 密钥和密钥必须与外部服务器的凭据匹配。
+
+有关 LiveKit 集群的设置和配置，请参阅 [LiveKit 文档](https://docs.livekit.io)。
+
+## 工作原理
+
+### 1. 房间创建
+
+当用户在 Bedrud 中创建房间时，服务器不会立即创建 LiveKit 房间。LiveKit 房间在第一个参与者加入时按需创建。
+
+### 2. 加入令牌
+
+当用户加入会议时：
+
+1.  前端向 `/api/room/join` 发送请求。
+2.  后端验证用户是否有权加入该房间。
+3.  后端使用其 API Key 和 Secret 生成签名的 JWT（加入令牌）。
+4.  令牌包含：
+
+    - 房间名称。
+    - 用户的身份标识（显示名称）。
+    - 权限--例如用户是否可以发布音频或共享屏幕。
+5.  前端接收此令牌并直接连接到 LiveKit 媒体端口（默认 `7880`）。
+
+### 3. 房间控制（管理员）
+
+后端使用 LiveKit Go SDK 执行管理操作：
+
+- **踢出：** 断开参与者的连接。
+- **静音：** 强制静音参与者的麦克风。
+- **权限：** 实时更改参与者的可操作权限。
+
+## 网络架构
+
+- **API 端口（8090/443）：** 处理 HTTP 请求和用于通话建立的 WebSocket 信令。
+- **媒体端口（7880）：** 使用 WebRTC 协议处理视频和音频数据。当 UDP 被阻止时，ICE/TCP 回退使用端口 7881。
+- **TURN 端口（3478 UDP / 5349 TLS）：** 为受限 NAT 或防火墙后的客户端中继媒体。参见 [TURN 服务器指南](/zh/docs/architecture/turn-server)。
+
+有关防火墙和端口要求，请参阅 [WebRTC 连接](/zh/docs/architecture/webrtc-connectivity)。
+
+## 错误处理
+
+### LiveKit 无法连接
+
+如果 LiveKit 服务器不可达，令牌生成仍可能成功（令牌使用 API 密钥和密钥在本地创建）。但客户端将无法连接到媒体服务器。症状：
+
+- 客户端收到有效的加入令牌，但 WebRTC 连接超时。
+- LiveKit SDK 发出 `Reconnecting` 事件或连接错误。
+
+**排查：** 验证 LiveKit 服务器是否正在运行（`systemctl status livekit`），以及 `config.yaml` 中的主机/端口是否正确。
+
+### 内嵌 LiveKit 进程崩溃
+
+在内嵌模式下，如果 LiveKit 子进程崩溃：
+
+- Bedrud API 服务器继续运行（可以列出房间，用户可以登录）。
+- 活跃的会议将失去媒体连接。
+- 新的加入请求会生成令牌，但客户端无法连接。
+
+**排查：** 检查 `/var/log/bedrud/bedrud.log` 日志或运行 `journalctl -u livekit -f` 查看崩溃详情。
+
+### 令牌过期
+
+LiveKit 加入令牌的有效期较短。如果客户端在收到令牌和连接之间等待时间过长，令牌将过期。客户端必须通过 `/api/room/join` 请求新令牌。
+
+## 另请参阅
+
+- [TURN 服务器指南](/zh/docs/architecture/turn-server) - TURN 架构、配置、TLS 和故障排除
+- [WebRTC 连接](/zh/docs/architecture/webrtc-connectivity) - 完整的 STUN/ICE/TURN/SFU 连接栈
+- [架构概览](/zh/docs/architecture/overview) - 完整的系统架构

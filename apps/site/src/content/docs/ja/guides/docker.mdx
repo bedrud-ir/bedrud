@@ -1,0 +1,157 @@
+---
+title: Docker ガイド
+description: Docker で Bedrud を実行する
+order: 29
+---
+
+Bedrud はコンテナでのビルドと実行のためのマルチステージ Dockerfile を提供しています。
+
+## クイックスタート
+
+```bash
+# ビルド
+docker build -t bedrud .
+
+# 実行
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  bedrud
+```
+
+## Dockerfile の概要
+
+Dockerfile は3つのステージを使用して最終イメージサイズを最小化しています：
+
+### ステージ 1：フロントエンドビルド
+
+```dockerfile
+FROM node:22-alpine AS frontend
+RUN npm install -g bun
+WORKDIR /build/apps/web
+COPY apps/web/package.json apps/web/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY apps/web/ ./
+RUN bun run build:embed
+```
+
+Bun をインストールし、React アプリを SSR で事前レンダリングして、アセットを `server/frontend/` にコピーします。
+
+### ステージ 2：サーバービルド
+
+```dockerfile
+FROM golang:1.24-alpine AS backend
+RUN apk add --no-cache gcc musl-dev
+WORKDIR /build/server
+COPY server/go.mod server/go.sum ./
+RUN go mod download
+COPY server/ ./
+COPY --from=frontend /build/server/frontend ./frontend/
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /bedrud ./cmd/bedrud/main.go
+# CGO is required for SQLite (uses C bindings)
+```
+
+フロントエンドを組み込んだ Go バイナリをコンパイルします。CGO は SQLite サポートのために有効化されています。
+
+### ステージ 3：ランタイム
+
+```dockerfile
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=backend /bedrud /usr/local/bin/bedrud
+EXPOSE 8090 7880
+ENTRYPOINT ["bedrud"]
+CMD ["run"]
+```
+
+バイナリ、CA 証明書、タイムゾーンデータのみを含む最小限の Alpine イメージです。
+
+## ポート
+
+| ポート | サービス | プロトコル |
+|------|---------|----------|
+| 8090 | API + Web UI | HTTP |
+| 7880 | LiveKit | WebSocket + HTTP |
+| 50000-60000 | RTC メディア | UDP |
+
+LiveKit メディアストリームのため、RTC UDP ポート範囲（デフォルト：50000-60000）も公開する必要がある場合があります。
+
+## ボリューム
+
+永続データ用のボリュームをマウントします：
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v bedrud-data:/var/lib/bedrud \
+  bedrud
+```
+
+## 設定
+
+カスタム設定ファイルを渡します：
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v /path/to/config.yaml:/etc/bedrud/config.yaml \
+  -v bedrud-data:/var/lib/bedrud \
+  bedrud run --config /etc/bedrud/config.yaml
+```
+
+または環境変数を使用します：
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -e JWT_SECRET=my-production-secret \
+  -e LIVEKIT_API_KEY=prodkey \
+  -e LIVEKIT_API_SECRET=prodsecret \
+  bedrud
+```
+
+## ビルド済みイメージ
+
+Docker イメージはすべてのリリースで GitHub Container Registry に公開されます：
+
+```bash
+# 最新リリース
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+
+# 特定バージョン
+docker pull ghcr.io/bedrud-ir/bedrud:v1.0.0
+```
+
+## Docker Compose の例
+
+```yaml
+services:
+  bedrud:
+    image: ghcr.io/bedrud-ir/bedrud:latest
+    ports:
+      - "8090:8090"
+      - "7880:7880"
+    volumes:
+      - bedrud-data:/var/lib/bedrud
+      - ./config.yaml:/etc/bedrud/config.yaml
+    environment:
+      - JWT_SECRET=change-me
+    restart: unless-stopped
+
+volumes:
+  bedrud-data:
+```
+
+---
+
+## 関連項目
+
+- [設定リファレンス](/ja/docs/getting-started/configuration) - 設定オプションと環境変数の詳細
+- [デプロイガイド](/ja/docs/guides/deployment) - Docker による本番デプロイ

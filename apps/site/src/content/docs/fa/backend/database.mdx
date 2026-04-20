@@ -1,0 +1,68 @@
+---
+title: دیتابیس و مدل‌ها
+description: مدل‌های داده و schema دیتابیس
+order: 17
+---
+
+Bedrud از **GORM** به عنوان ORM استفاده می‌کند و هم SQLite و هم PostgreSQL را پشتیبانی می‌کند.
+
+## دیتابیس‌های پشتیبانی‌شده
+
+- **SQLite:** به‌طور پیش‌فرض برای توسعه آسان و نصب‌های کوچک استفاده می‌شود. دیتابیس در یک فایل ذخیره می‌شود (معمولاً `bedrud.db`).
+- **PostgreSQL:** برای محیط‌های تولید با کاربران زیاد توصیه می‌شود.
+
+نوع دیتابیس و جزئیات اتصال را در `config.yaml` زیر بخش `database:` پیکربندی کنید.
+
+## مدل‌های اصلی
+
+مدل‌ها در `internal/models/` قرار دارند. مهم‌ترین آن‌ها:
+
+### User (`user.go`)
+
+اطلاعات حساب شامل credentials و نقش‌ها را ذخیره می‌کند.
+
+### Room (`room.go`)
+
+یک جلسه جلسه را نشان می‌دهد. از **Embedded Struct**های GORM برای سازماندهی تنظیمات استفاده می‌کند.
+
+به‌جای یک جدول جداگانه یا blob JSON، فیلدهای `RoomSettings` (مثل `allow_chat`، `allow_video`) مستقیماً در جدول `rooms` با پیشوند `settings_` ذخیره می‌شوند (مثلاً `settings_allow_chat`). این یک مدل تمیز در Go فراهم می‌کند و همزمان ساختار دیتابیس flat و کارآمد را حفظ می‌کند.
+
+### Passkey (`passkey.go`)
+
+کلیدهای عمومی FIDO2/WebAuthn را برای ورود بدون رمز عبور ذخیره می‌کند.
+
+### نوع سفارشی: `StringArray`
+
+دیتابیس‌های SQL استاندارد آرایه‌ها را متفاوت مدیریت می‌کنند (PostgreSQL آرایه بومی دارد، SQLite ندارد). برای حفظ سازگاری، Bedrud نوع `StringArray` را در `internal/models/user.go` تعریف کرده است.
+
+- `sql.Scanner` و `driver.Valuer` را پیاده‌سازی می‌کند.
+- در **PostgreSQL** از نوع بومی `text[]` استفاده می‌کند.
+- در **SQLite** آرایه را به string سریالایز می‌کند (مثلاً `{admin,user}`) برای ذخیره‌سازی.
+
+### مدیریت Foreign Key
+
+`AutoMigrate` در GORM کلیدهای اصلی ترکیبی (مثل `room_participants`) را مدیریت نمی‌کند.
+
+در `internal/database/migrations.go`، Bedrud با اجرای دستی `ALTER TABLE` مطمئن می‌شود که محدودیت‌های foreign key (مثل `ON DELETE CASCADE`) به‌درستی در تولید (PostgreSQL) اعمال شده‌اند.
+
+## الگوی Repository
+
+backend از **الگوی Repository** برای دسترسی به دیتابیس استفاده می‌کند. Handlerها مستقیماً با GORM صحبت نمی‌کنند — از یک repository استفاده می‌کنند.
+
+مثال:
+
+```go
+// در handler:
+user, err := h.userRepo.GetByEmail(email)
+
+// در repository:
+func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+    var user models.User
+    err := r.db.Where("email = ?", email).First(&user).Error
+    return &user, err
+}
+```
+
+## Migration خودکار
+
+هنگام شروع سرور، `AutoMigrate` به‌طور خودکار اجرا می‌شود. این کار جداول دیتابیس را بر اساس ساختارهای Go در `internal/models` ایجاد یا به‌روزرسانی می‌کند. برای تغییرات ساده schema نیازی به `CREATE TABLE` دستی نیست.

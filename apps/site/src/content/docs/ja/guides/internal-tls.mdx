@@ -1,0 +1,73 @@
+---
+title: 内部 TLS
+description: 内部ネットワーク向けの自己署名証明書
+order: 30
+---
+
+分離されたネットワーク向け - パブリックドメインなし、外部インターネット接続なし、接続制限あり。
+
+ブラウザは WebRTC 経由のカメラ/マイクに信頼済み HTTPS を要求します。自己署名証明書でも動作しますが警告が表示されます。警告なしでクリーンに設定するには、プライベート CA を生成しクライアントに配布します。
+
+## プライベート CA とサーバー証明書の生成
+
+```bash
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=Bedrud Internal CA"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=<your-server-ip-or-hostname>"
+openssl x509 -req -days 365 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+sudo ./bedrud install --tls --cert server.crt --key server.key --ip YOUR_SERVER_IP
+```
+
+## クライアントトラストストアへの CA 追加
+
+`ca.crt` をすべてのクライアントマシンに配布します：
+
+### Windows
+
+```powershell
+certmgr.msc  # Right-click ca.crt → Install Certificate → Trusted Root CAs
+```
+
+### macOS
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt
+```
+
+### Linux（Debian/Ubuntu）
+
+```bash
+sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
+sudo update-ca-certificates
+```
+
+### Linux（Arch/Fedora）
+
+```bash
+sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
+sudo update-ca-trust
+```
+
+ブラウザを再起動してから `https://YOUR_SERVER_IP`（サーバーの実際の IP アドレスに置き換えてください。例：`192.168.1.100`）を開きます。再起動後、証明書が信頼済みとなり、カメラ/マイクへのアクセスが警告なしで動作します。
+
+## トラブルシューティング
+
+| 問題 | 解決策 |
+|---------|-----|
+| ブラウザがまだ証明書を信頼できないと警告する | ブラウザキャッシュをクリアし、CA インストール後にブラウザを再起動 |
+| カメラ/マイクがブロックされる | CA が中間 CA ではなく信頼済みルート CA にあることを確認 |
+| 証明書の有効期限切れ | より長い `-days` 値で再生成 |
+| CN の不一致 | サーバー証明書の CN が URL の IP またはホスト名と一致していることを確認 |
+
+---
+
+## 関連項目
+- [インストールガイド](/ja/docs/getting-started/installation) - インストール方法
+- [設定リファレンス](/ja/docs/getting-started/configuration) - 設定オプションの詳細

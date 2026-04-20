@@ -1,0 +1,217 @@
+---
+title: Deployment Guide
+description: Deploy Bedrud to production
+order: 28
+---
+
+本指南介绍如何将 Bedrud 部署到生产服务器。
+
+## 部署方式
+
+| 方式 | 适用场景 |
+|--------|----------|
+| [包管理器 (apt/AUR)](#package-manager) | 在支持的 Linux 发行版上进行托管安装 |
+| [自动化 CLI](#automated-cli-deployment) | 快速远程部署 |
+| [手动安装](#manual-installation) | 完全控制配置 |
+| [Docker](#docker-deployment) | 容器化环境 |
+| [一体机模式](/zh/docs/guides/appliance) | 单文件一体化部署 |
+
+---
+
+## 包管理器
+
+在 Debian/Ubuntu 或 Arch Linux 上使用原生包管理器安装 Bedrud。这是持久化服务器部署的推荐方式，可通过 `apt upgrade` 或 AUR 获取自动更新。
+
+完整说明请参阅[包安装指南](/zh/docs/guides/packages)，包括添加 apt GPG 密钥和仓库。
+
+```bash
+# Ubuntu / Debian
+sudo apt install bedrud
+
+# Arch Linux (AUR)
+yay -S bedrud-bin
+```
+
+安装后，运行交互式安装程序来配置 TLS、systemd 服务和数据库：
+
+```bash
+sudo bedrud install
+```
+
+---
+
+## 自动化 CLI 部署
+
+最快的部署方式。从本地机器运行：
+
+**前提条件：** Python 3.10+、[uv](https://github.com/astral-sh/uv)，以及对目标服务器的 SSH 访问权限。
+
+```bash
+cd tools/cli
+uv run python bedrud.py --auto-config \
+  --ip <server-ip> \
+  --user root \
+  --auth-key ~/.ssh/id_rsa \
+  --domain meet.example.com \
+  --acme-email admin@example.com
+```
+
+此命令将：
+
+1. 在本地构建后端二进制文件
+2. 通过 rsync 压缩并上传
+3. 清除冲突的 Web 服务器
+4. 配置防火墙
+5. 在服务器上安装并启动服务
+
+### CLI 选项
+
+| 参数 | 说明 |
+|------|-------------|
+| `--ip` | 服务器 IP 地址 |
+| `--user` | SSH 用户（默认：root） |
+| `--auth-key` | SSH 私钥路径 |
+| `--domain` | Let's Encrypt 域名 |
+| `--acme-email` | Let's Encrypt 邮箱 |
+| `--uninstall` | 从服务器上移除 Bedrud |
+
+---
+
+## 手动安装
+
+### 1. 构建二进制文件
+
+```bash
+make build-dist
+```
+
+这将生成 `dist/bedrud_linux_amd64.tar.xz`。
+
+### 2. 上传到服务器
+
+```bash
+scp dist/bedrud_linux_amd64.tar.xz root@server:/tmp/
+ssh root@server "cd /tmp && tar xf bedrud_linux_amd64.tar.xz"
+```
+
+### 3. 安装
+
+```bash
+ssh root@server
+sudo /tmp/bedrud install --tls --domain meet.example.com --email admin@example.com
+```
+
+所有安装场景请参阅[安装指南](/zh/docs/getting-started/installation)。
+
+### 4. 创建管理员用户
+
+<CreateAdmin />
+
+---
+
+## Docker 部署
+
+使用 Docker 构建和运行：
+
+```bash
+docker build -t bedrud .
+docker run -d --name bedrud -p 8090:8090 -p 7880:7880 -v bedrud-data:/var/lib/bedrud bedrud
+```
+
+也提供预构建镜像：
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+```
+
+完整详情（包括卷挂载、配置和 Docker Compose）请参阅 [Docker 指南](/zh/docs/guides/docker)。
+
+---
+
+## 生产环境架构
+
+```mermaid
+flowchart TB
+    NET[Internet] --> TRAEFIK["Traefik (443)<br/>TLS termination, reverse proxy"]
+    TRAEFIK --> BEDRUD["Bedrud (8090)<br/>API + Web UI"]
+    TRAEFIK --> LIVEKIT["LiveKit (7880)<br/>WebRTC media"]
+    BEDRUD --> DB["SQLite<br/>(or PostgreSQL)"]
+```
+
+对于 WebRTC 连接，还需要在防火墙上开放以下端口：
+
+| 端口 | 协议 | 用途 |
+|------|----------|---------|
+| 3478 | UDP | TURN/UDP + STUN |
+| 5349 | TCP | TURN/TLS（或使用 443） |
+| 7881 | TCP | ICE/TCP 回退 |
+| 50000-60000 | UDP | RTC 媒体流 |
+
+完整连接栈请参阅 [WebRTC 连接](/zh/docs/architecture/webrtc-connectivity)。
+
+<SystemdServices />
+
+### 服务管理
+
+```bash
+# 查看状态
+systemctl status bedrud livekit
+
+# 重启
+systemctl restart bedrud
+
+# 查看日志
+journalctl -u bedrud -f
+tail -f /var/log/bedrud/bedrud.log
+```
+
+---
+
+## 文件位置（生产环境）
+
+| 路径 | 内容 |
+|------|---------|
+| `/usr/local/bin/bedrud` | 二进制文件 |
+| `/etc/bedrud/config.yaml` | 服务器配置 |
+| `/etc/bedrud/livekit.yaml` | LiveKit 配置 |
+| `/var/lib/bedrud/bedrud.db` | SQLite 数据库 |
+| `/var/log/bedrud/bedrud.log` | 应用日志 |
+
+---
+
+## CI/CD
+
+### 发布流水线
+
+`release.yml` 工作流在版本标签（`v*`）上触发，生成：
+
+| 构件 | 说明 |
+|---|---|
+| `bedrud_linux_amd64.tar.xz` / `bedrud_linux_arm64.tar.xz` | 服务器二进制文件（Linux x86_64 / ARM64） |
+| `bedrud_amd64.deb` / `bedrud_arm64.deb` | Debian/Ubuntu 软件包（服务器） |
+| Docker 镜像（`ghcr.io/bedrud-ir/bedrud`） | 推送到 GHCR 的多架构容器镜像 |
+| `bedrud-desktop-linux-x86_64.AppImage` | 桌面端 - 通用 Linux AppImage |
+| `bedrud-desktop-linux-x86_64.deb` | 桌面端 - Debian/Ubuntu 软件包 |
+| `bedrud-desktop-linux-x86_64.tar.xz` | 桌面端 - Linux 便携 tar 包 |
+| `bedrud-desktop-windows-x86_64-setup.exe` / `-arm64-setup.exe` | 桌面端 - Windows NSIS 安装程序 |
+| `bedrud-desktop-windows-x86_64.zip` / `-arm64.zip` | 桌面端 - Windows 便携版 |
+| `bedrud-desktop-macos-x86_64.tar.gz` / `-arm64.tar.gz` | 桌面端 - macOS 便携版（未签名） |
+| Android APK（debug + release，按架构） | Android 客户端构建 |
+| iOS IPA（可选，需要签名） | iOS 客户端归档 |
+
+所有构件都会附加到 GitHub release 中。
+
+### 每夜构建
+
+`dev-nightly.yml` 工作流按计划生成开发构建。
+
+### CI 检查
+
+每次推送到 `main` 以及每个 PR 都会运行：
+
+| 检查项 | 平台 |
+|-------|----------|
+| `go vet` + 构建 + 测试 | ubuntu-latest（Go 1.24） |
+| 类型检查 + 构建 | ubuntu-latest（Bun） |
+| Lint + 单元测试 | ubuntu-latest（JDK 17） |
+| 构建 + 测试 | macos-15（Xcode） |

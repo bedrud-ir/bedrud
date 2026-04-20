@@ -1,0 +1,73 @@
+---
+title: Dahili TLS
+description: Dahili ağlar için otomatik imzalı sertifikalar
+order: 30
+---
+
+Yalıtılmış ağlar için - genel alan adı yok, giden internet yok, kısıtlı bağlantı.
+
+Tarayıcılar WebRTC aracılığıyla kamera/mikrofon için güvenilir HTTPS gerektirir. Otomatik imzalı sertifikalar çalışır ancak uyarılar gösterir. Temiz bir kurulum için özel bir CA oluşturun ve istemcilere dağıtın.
+
+## Özel CA ve Sunucu Sertifikası Oluşturma
+
+```bash
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=Bedrud Internal CA"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=<your-server-ip-or-hostname>"
+openssl x509 -req -days 365 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+sudo ./bedrud install --tls --cert server.crt --key server.key --ip YOUR_SERVER_IP
+```
+
+## CA'yı İstemci Güven Depolarına Ekleme
+
+`ca.crt` dosyasını tüm istemci makinelere dağıtın:
+
+### Windows
+
+```powershell
+certmgr.msc  # ca.crt dosyasına sağ tıklayın → Sertifika Yükle → Güvenilir Kök CA'lar
+```
+
+### macOS
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt
+```
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
+sudo update-ca-certificates
+```
+
+### Linux (Arch/Fedora)
+
+```bash
+sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
+sudo update-ca-trust
+```
+
+Tarayıcıları yeniden başlatın, ardından `https://YOUR_SERVER_IP` adresini açın (sunucunun gerçek IP adresiyle değiştirin, örn. `192.168.1.100`). Yeniden başlattıktan sonra sertifika güvenilir olacak ve kamera/mikrofon erişimi uyarılar olmadan çalışacaktır.
+
+## Sorun Giderme
+
+| Sorun                                      | Çözüm                                                        |
+|--------------------------------------------|---------------------------------------------------------------|
+| Tarayıcı hâlâ sertifika güvenilir değil uyarısı veriyor | Tarayıcı önbelleğini temizleyin, CA kurulumundan sonra tarayıcıyı yeniden başlatın |
+| Kamera/mikrofon engellendi                 | CA'nın ara sertifika değil, Güvenilir Kök CA'lar içinde olduğunu doğrulayın |
+| Sertifikanın süresi dolmuş                 | Daha uzun `-days` değeriyle yeniden oluşturun                 |
+| CN uyuşmazlığı                             | Sunucu sertifikası CN'sinin URL'deki IP veya ana bilgisayar adıyla eşleştiğinden emin olun |
+
+---
+
+## Ayrıca bakın
+- [Kurulum Rehberi](/tr/docs/getting-started/installation) - kurulum yöntemleri
+- [Yapılandırma Referansı](/tr/docs/getting-started/configuration) - tam yapılandırma seçenekleri

@@ -1,0 +1,292 @@
+---
+title: CLI リファレンス
+description: コマンドラインインターフェースのドキュメント
+order: 5
+---
+
+`bedrud` コマンドラインインターフェースの完全なリファレンス。
+
+## 概要
+
+```bash
+# サブコマンド形式
+bedrud <command> [flags]
+
+# フラグ形式
+bedrud --livekit --config <path>
+bedrud --run --config <path>
+```
+
+## コマンド
+
+### `run` / `server`
+
+Bedrud 会議サーバーを API、組み込み Web フロントエンド、組み込み LiveKit（設定されている場合）とともに起動します。
+
+```bash
+bedrud run    [--config <path>]
+bedrud server [--config <path>]
+```
+
+| フラグ       | デフォルト                                  | 説明                     |
+|------------|------------------------------------------|---------------------------------|
+| `--config` | `$CONFIG_PATH` 環境変数 → `"config.yaml"` | Bedrud YAML 設定ファイルのパス |
+
+**動作:**
+- 指定パスまたはデフォルトから設定を読み込み
+- 内部モード設定時は組み込み LiveKit を起動
+- SQLite/PostgreSQL データベースを初期化しマイグレーションを実行
+- すべての API ルートを持つ Fiber HTTP サーバーを作成
+- 組み込み React フロントエンドを提供
+- ACME（Let's Encrypt）、自己署名 TLS、手動 TLS、またはプレーン HTTP に対応
+- SIGTERM/SIGINT でグレースフルシャットダウン
+
+**実装:** `server/internal/server/server.go`
+
+---
+
+### `--livekit`
+
+組み込み LiveKit メディアサーバーのみを起動します。Go embed からバイナリを一時ディレクトリに展開します。
+
+```bash
+bedrud --livekit --config <path>
+```
+
+| フラグ       | デフォルト    | 説明                      |
+|------------|------------|----------------------------------|
+| `--config` | （必須） | LiveKit YAML 設定ファイルのパス |
+
+**使用元:** `bedrud install` で作成される systemd `livekit.service`
+
+**実装:** `server/internal/livekit/server.go`
+
+---
+
+### `--run`
+
+`bedrud run` のエイリアス。同じ `--config` フラグの動作。systemd `bedrud.service` で使用されます。
+
+```bash
+bedrud --run --config <path>
+```
+
+---
+
+### `install`
+
+Debian/Linux システムに Bedrud をインストールします。systemd サービス、設定ファイル、ディレクトリ、TLS 証明書を作成します。
+
+```bash
+bedrud install [flags]
+```
+
+| フラグ                 | デフォルト                         | 説明                                                              |
+|----------------------|---------------------------------|--------------------------------------------------------------------------|
+| `--tls`              | `false`                         | HTTPS を有効化（`--self-signed` と同じ）                                   |
+| `--self-signed`      | `false`                         | 自己署名 TLS 証明書を生成                                     |
+| `--no-tls`           | `false`                         | TLS を完全に無効化（プレーン HTTP）。`--tls` と `--self-signed` を上書き |
+| `--ip`               | 自動検出                   | 自動検出されたサーバー IP アドレスを上書き                                 |
+| `--domain`           | `""`                            | Let's Encrypt または自己署名証明書用ドメイン名                        |
+| `--email`            | `""`                            | Let's Encrypt 登録用メールアドレス                                     |
+| `--port`             | `"443"` (TLS) / `"8090"` (HTTP) | リッスンポートを変更                                                  |
+| `--cert`             | `""`                            | 既存の PEM 証明書ファイルのパス                                    |
+| `--key`              | `""`                            | 既存の PEM 秘密鍵ファイルのパス                                    |
+| `--lk-port`          | `"7880"`                        | LiveKit API/WebSocket ポートを変更                                      |
+| `--lk-tcp-port`      | `"7881"`                        | LiveKit RTC TCP ポートを変更                                            |
+| `--lk-udp-port`      | `"7882"`                        | LiveKit RTC UDP ポートを変更                                            |
+| `--fresh`            | `false`                         | インストール前に既存のインストールを削除                           |
+| `--behind-proxy`     | `false`                         | CDN/リバースプロキシの背後（Cloudflare、nginx）                   |
+| `--external-livekit` | `""`                            | 完全に外部の LiveKit サーバーの URL（別マシン）                 |
+| `--livekit-domain`   | `""`                            | ローカル LiveKit サーバー用の別ドメイン（CDN をバイパス）                  |
+
+**処理内容:**
+1. `--fresh` の場合、以前のインストールを停止して削除
+2. 非インタラクティブでフラグ未指定の場合、IP、ドメイン、メール、TLS モードを入力として求める
+3. ディレクトリを作成: `/etc/bedrud`、`/var/lib/bedrud`、`/var/lib/bedrud/certs`、`/var/log/bedrud`
+4. バイナリを `/usr/local/bin/bedrud` にコピー
+5. Bedrud サーバー設定を `/etc/bedrud/config.yaml` に生成
+6. LiveKit メディアサーバー設定を `/etc/bedrud/livekit.yaml` に生成
+7. 自己署名証明書を `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` に生成（TLS 有効でカスタム証明書未指定時）
+8. systemd `livekit.service` を作成（外部 LiveKit 使用時を除く）
+9. systemd `bedrud.service` を作成
+10. `systemctl daemon-reload` を実行し、両サービスを有効化して起動
+11. アクセス URL を表示
+
+**TLS オプション:**
+- `--domain` + `--email` → ACME（Let's Encrypt）
+- `--self-signed` または `--tls` → 自己署名証明書
+- `--cert` + `--key` → カスタム証明書
+- `--no-tls` → プレーン HTTP のみ
+
+**LiveKit トポロジー:**
+- デフォルト（組み込み）: LiveKit はローカルで実行され、Bedrud の `/livekit` 経由でプロキシ
+- `--livekit-domain`: LiveKit はローカルで実行されるが、クライアントは独自ドメインで直接接続
+- `--external-livekit`: ローカル LiveKit なし。リモートサーバーに接続
+
+**実装:** `server/internal/install/debian.go`
+
+**関連ドキュメント:** [インストールガイド](/ja/docs/getting-started/installation) • [デプロイメントガイド](/ja/docs/guides/deployment) • [バックエンドデプロイメントロジック](/ja/docs/backend/deployment)
+
+---
+
+### `uninstall`
+
+システムから Bedrud を削除します。
+
+```bash
+bedrud uninstall
+```
+
+**削除内容:**
+- systemd サービスを停止して無効化: `bedrud`、`livekit`
+- `/etc/systemd/system/` から systemd ユニットファイルを削除
+- バイナリを削除: `/usr/local/bin/bedrud`、`/tmp/bedrud`、`/tmp/bedrud-livekit-server`
+- ディレクトリを削除: `/etc/bedrud`、`/var/lib/bedrud`、`/var/log/bedrud`
+
+**実装:** `server/internal/install/debian.go`
+
+**関連ドキュメント:** [インストールガイド - アンインストール](/ja/docs/getting-started/installation#uninstallation)
+
+---
+
+### `user`
+
+Bedrud データベースのユーザーを管理します。
+
+```bash
+bedrud user <subcommand> [--config <path>] <flags>
+```
+
+| グローバルフラグ | デフォルト                   | 説明                                     |
+|-------------|---------------------------|-------------------------------------------------|
+| `--config`  | `/etc/bedrud/config.yaml` | Bedrud 設定ファイルのパス（データベースの場所特定用） |
+
+#### `create`
+
+ローカル認証（bcrypt ハッシュパスワード）で新しいユーザーを作成します。
+
+```bash
+bedrud user create --email <email> --password <password> --name <name>
+```
+
+**必須フラグ:**
+- `--email`: ユーザーのメールアドレス
+- `--password`: ユーザーのパスワード。保存前に bcrypt でハッシュ化
+- `--name`: ユーザーの表示名
+
+**アクセスレベル:** `user`（superadmin ではない）。管理者権限を付与するには `promote` を使用。
+
+#### `delete`
+
+メールアドレスでユーザーを削除します。
+
+```bash
+bedrud user delete --email <email>
+```
+
+#### `promote`
+
+ユーザーに `superadmin` アクセスを付与します。
+
+```bash
+bedrud user promote --email <email>
+```
+
+#### `demote`
+
+ユーザーから `superadmin` アクセスを削除します（`user` レベルに戻る）。
+
+```bash
+bedrud user demote --email <email>
+```
+
+**実装:** `server/internal/usercli/usercli.go`
+
+---
+
+### `help`
+
+すべてのコマンドとフラグを含む使用方法メッセージを表示します。
+
+```bash
+bedrud help
+```
+
+引数なしでも同じ出力が表示されます。`printUsage()` の出力を表示します。
+
+---
+
+## 使用例
+
+### 基本的な開発サーバーの起動
+
+```bash
+# カレントディレクトリのデフォルト config.yaml で実行
+bedrud run
+
+# カスタム設定で実行
+bedrud run --config /path/to/config.yaml
+
+# 環境変数経由（フォールバック）
+export CONFIG_PATH=/etc/bedrud/config.yaml
+bedrud run
+```
+
+### インタラクティブインストール（入力プロンプト付き）
+
+```bash
+bedrud install
+```
+
+### Let's Encrypt による非インタラクティブインストール
+
+```bash
+bedrud install --domain example.com --email admin@example.com
+```
+
+### カスタムポートでの自己署名 TLS
+
+```bash
+bedrud install --self-signed --port 8443 --lk-port 7880 --lk-tcp-port 7881 --lk-udp-port 7882
+```
+
+### CDN 背後 + LiveKit 別ドメイン
+
+```bash
+bedrud install --domain bedrud.example.com --email admin@example.com --livekit-domain lk.example.com --behind-proxy
+```
+
+### クリーン再インストール
+
+```bash
+bedrud install --fresh --domain example.com --email admin@example.com
+```
+
+### ユーザー管理
+
+```bash
+# 最初の管理者ユーザーを作成
+bedrud user create --email admin@example.com --password secret123 --name "Admin User"
+
+# superadmin アクセスを付与
+bedrud user promote --email admin@example.com
+
+# 一般ユーザーを作成
+bedrud user create --email user@example.com --password pass456 --name "Regular User"
+
+# ユーザーを削除
+bedrud user delete --email user@example.com
+
+# 管理者アクセスを削除
+bedrud user demote --email admin@example.com
+```
+
+---
+
+## 関連ドキュメント
+
+- [インストールガイド](/ja/docs/getting-started/installation) - 詳細な `bedrud install` の手順、TLS トポロジー、インストール後のステップ
+- [設定リファレンス](/ja/docs/getting-started/configuration) - サーバーと LiveKit の設定ファイル構造
+- [バックエンドデプロイメントロジック](/ja/docs/backend/deployment) - `install` と `uninstall` の内部動作
+- [デプロイメントガイド](/ja/docs/guides/deployment) - systemd サービスを含む完全なデプロイメントオプション

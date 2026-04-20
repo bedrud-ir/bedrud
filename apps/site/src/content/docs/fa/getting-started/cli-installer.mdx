@@ -1,0 +1,343 @@
+---
+title: نصب‌کننده CLI
+description: نصب با یک دستور برای Bedrud در همه پلتفرم‌ها
+order: 2
+---
+
+نصب با یک دستور برای همه پلتفرم‌ها. بدون نیاز به `sudo` — در دایرکتوری خانه شما نصب می‌شود.
+
+برای تنظیم سرور پس از نصب، به [شروع سریع](/fa/docs/getting-started/quickstart) ببینید. برای مدیران بسته، Docker و سایر روش‌ها، به [نصب سرور](/fa/docs/getting-started/installation) مراجعه کنید.
+
+---
+
+## چه کاری انجام می‌دهد
+
+۱. سیستم‌عامل، معماری پردازنده و گونه‌های پلتفرم (Alpine، Rosetta 2، AVX2) را تشخیص می‌دهد
+۲. باینری صحیح را از [انتشارات GitHub](https://github.com/bedrud-ir/bedrud/releases) دانلود می‌کند
+۳. در `~/bin` نصب می‌کند (قابل تنظیم از طریق `--install-dir`)
+۴. دایرکتوری نصب را از طریق تنظیمات shell به `PATH` اضافه می‌کند
+۵. `bedrud completions` را برای تکمیل خودکار زبانه shell اجرا می‌کند
+۶. مراحل بعدی را چاپ می‌کند
+
+---
+
+## پیش‌نیازها
+
+| پلتفرم | وابستگی‌ها |
+|----------|-------------|
+| macOS / Linux | `curl` + حداقل یکی از `unzip` یا `tar` |
+| Windows | PowerShell 5.1+ (در Windows 10/11 از پیش نصب شده است) |
+
+---
+
+## نصب سریع
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="bash">macOS / Linux</TabsTrigger>
+    <TabsTrigger value="powershell">Windows</TabsTrigger>
+  </TabsList>
+  <TabsContent value="bash">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    shell را دوباره بارگذاری کنید، سپس تأیید کنید:
+
+    ```bash
+    source ~/.bashrc  # یا ~/.zshrc
+    bedrud --version
+    ```
+  </TabsContent>
+  <TabsContent value="powershell">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    bedrud --version
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## پرچم‌ها و گزینه‌ها
+
+### نصب‌کننده Bash
+
+```
+Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+```
+
+| پرچم | پیش‌فرض | توضیحات |
+|------|---------|-------------|
+| `--install-dir <dir>` | `~/bin` | محل قرارگیری باینری |
+| `--version <ver>` | `latest` | ثابت نگه داشتن در یک نسخه (مثلاً `v1.2.0`) |
+| `--skip-shell` | خاموش | تغییر فایل‌های RC shell یا PATH انجام نشود |
+| `--debug` | خاموش | نصب build debug/profile (نمادها، profiling) |
+| `-h`, `--help` | — | نمایش نحوه استفاده و خروج |
+
+**مثال‌ها:**
+
+```bash
+# پیش‌فرض
+curl -fsSL https://get.bedrud.org | bash
+
+# ثابت نگه داشتن نسخه
+curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# نصب سیستم‌واید
+curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+
+# CI / اتوماسیون — رد کردن تنظیمات shell
+curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+```
+
+### نصب‌کننده PowerShell
+
+```
+Usage: irm https://get.bedrud.org/install.ps1 | iex
+```
+
+برای ارسال پارامترها، ابتدا در فایل ذخیره کنید:
+
+```powershell
+irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+.\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
+```
+
+| پارامتر | پیش‌فرض | توضیحات |
+|-----------|---------|-------------|
+| `-InstallDir <path>` | `$HOME\bin` | محل قرارگیری `bedrud.exe` |
+| `-Version <ver>` | `latest` | نصب یک نسخه انتشار خاص |
+| `-SkipPath` | `$false` | اضافه نکردن دایرکتوری نصب به PATH کاربر |
+| `-DebugBuild` | `$false` | نصب build debug/profile |
+
+---
+
+## متغیرهای محیطی
+
+| متغیر | پیش‌فرض | پلتفرم‌ها | توضیحات |
+|----------|---------|-----------|-------------|
+| `BEDRUD_INSTALL` | `~/bin` | فقط Bash | جایگزینی دایرکتوری نصب (مشابه `--install-dir`) |
+| `BEDRUD_REPO` | `bedrud-ir/bedrud` | هر دو | جایگزینی مخزن GitHub (برای forks یا mirrorها) |
+
+```bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+```
+
+```powershell
+$env:BEDRUD_REPO = "myorg/bedrud-fork"
+irm https://get.bedrud.org/install.ps1 | iex
+```
+
+---
+
+## پشتیبانی از پلتفرم
+
+| هدف | سیستم‌عامل | معماری | یادداشت |
+|--------|-----|-------------|-------|
+| `darwin-x64` | macOS | Intel (x86_64) | استاندارد |
+| `darwin-aarch64` | macOS | Apple Silicon (M1/M2/M3/M4) | Rosetta 2 به صورت خودکار تشخیص داده می‌شود |
+| `linux-x64` | Linux | x86_64 (glibc) | استاندارد |
+| `linux-x64-musl` | Linux | x86_64 (Alpine) | musl libc |
+| `linux-aarch64` | Linux | ARM64 (glibc) | استاندارد |
+| `linux-aarch64-musl` | Linux | ARM64 (Alpine) | musl libc |
+| `windows-x64` | Windows | x86_64 | استاندارد |
+| `windows-aarch64` | Windows | ARM64 | استاندارد |
+
+گونه‌های baseline (بدون AVX2) برای `darwin-x64`، `linux-x64`، و `linux-x64-musl` وجود دارند — به صورت خودکار در پردازنده‌های قدیمی (پیش از Intel/AMD 2013) انتخاب می‌شوند. هر هدف می‌تواند `--debug` ضمیمه شود.
+
+<details>
+<summary>منطق تشخیص سیستم‌عامل و معماری</summary>
+
+```
+uname -s → "Darwin"  → darwin
+           "Linux"   → linux
+           "MINGW*"  → هدایت به اسکریپت PowerShell
+           "MSYS*"   → هدایت به اسکریپت PowerShell
+
+uname -m → "x86_64" | "amd64"  → x64
+           "aarch64" | "arm64"  → aarch64
+```
+
+</details>
+
+---
+
+## تشخیص موارد خاص
+
+### Alpine Linux (musl)
+
+**تشخیص:** `/etc/alpine-release` وجود دارد.
+**اثر:** پسوند `-musl` به هدف اضافه می‌شود. باینری Linux استاندارد در musl شکست می‌خورد.
+
+### Rosetta 2 (macOS Intel روی Apple Silicon)
+
+**تشخیص:** `sysctl -n sysctl.proc_translated` مقدار `1` برمی‌گرداند.
+**اثر:** `darwin-x64` را به `darwin-aarch64` برای عملکرد بومی ARM تغییر می‌دهد.
+
+### Baseline AVX2 (پردازنده‌های x86_64 قدیمی)
+
+**تشخیص:** `grep avx2 /proc/cpuinfo` تطابق پیدا نمی‌کند (Linux)، یا `sysctl -a` فاقد `AVX2` است (macOS).
+**اثر:** پسوند `-baseline` اضافه می‌شود. پردازنده‌های پیش از ۲۰۱۳ بدون این `SIGILL` می‌دهند.
+
+### ترتیب اعمال گونه
+
+```
+هدف پایه → Alpine musl → Rosetta 2 (AVX2 را رد می‌کند) → Baseline AVX2 → Debug profile
+```
+
+Rosetta 2 قبل از بررسی AVX2 اجرا می‌شود. اگر تشخیص داده شود، هدف به ARM تغییر می‌کند و AVX2 هرگز بررسی نمی‌شود.
+
+---
+
+## جریان نصب
+
+۱. **بررسی Windows** — MINGW/MSYS/CYGWIN تشخیص داده شد؟ دستور PowerShell را چاپ کنید، خارج شوید
+۲. **بررسی وابستگی** — نیاز به `curl` + (`unzip` یا `tar`)
+۳. **تجزیه آرگومان** — حداکثر ۴ پرچم
+۴. **تشخیص پلتفرم** — سیستم‌عامل + معماری از طریق `uname`
+۵. **تشخیص گونه** — Alpine، Rosetta 2، AVX2، debug
+۶. **دانلود** — ابتدا `.zip` را امتحان می‌کند (اگر `unzip` موجود باشد)، سپس `.tar.xz` (اگر `tar` موجود باشد)
+۷. **استخراج و نصب** — دایرکتوری موقت، استخراج، `mv → $INSTALL_DIR/bedrud`، `chmod +x`
+۸. **تأیید** — اجرای `bedrud --version`
+۹. **بررسی PATH** — قبلاً در PATH است؟ رد شود. `--skip-shell`؟ دستور دستی چاپ شود. در غیر این صورت → تغییر فایل RC
+۱۰. **تکمیل‌ها** — اجرای `bedrud completions`
+۱۱. **تمام** — چاپ موفقیت + دستورالعمل‌های بارگذاری مجدد
+
+فرمت URL دانلود: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.zip`
+
+---
+
+## تنظیمات PATH و Shell
+
+وقتی `--skip-shell` تنظیم نشده باشد، نصب‌کننده دایرکتوری نصب را به PATH شما اضافه می‌کند.
+
+| Shell | فایل RC |
+|-------|---------|
+| fish | `~/.config/fish/config.fish` |
+| zsh | `$ZDOTDIR/.zshrc` (پیش‌فرض `~/.zshrc`) |
+| bash (macOS) | `~/.bash_profile`، سپس `~/.bashrc` |
+| bash (Linux) | `~/.bashrc`، سپس `~/.bash_profile` |
+
+**آنچه اضافه می‌شود:**
+
+```bash
+# bedrud
+export PATH="$HOME/bin:$PATH"  # bedrud
+```
+
+علامت `# bedrud` از ورودی‌های تکراری جلوگیری می‌کند — ایمن برای اجرای مجدد.
+
+**Windows:** از `[Environment]::SetEnvironmentVariable("PATH", ..., "User")` در سطح رجیستری استفاده می‌کند. فایل RC لازم نیست.
+
+**بارگذاری مجدد shell پس از نصب:**
+
+```bash
+source ~/.bashrc    # bash
+source ~/.zshrc     # zsh
+source ~/.config/fish/config.fish  # fish
+```
+
+---
+
+## نصب آفلاین / Air-Gapped
+
+### دانلود و انتقال
+
+```bash
+curl -fsSL -o bedrud.zip \
+  https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux-x64.zip
+scp bedrud.zip airgapped-server:/tmp/
+# روی هدف:
+unzip -o /tmp/bedrud.zip -d /tmp/bedrud-extracted
+mv /tmp/bedrud-extracted/bedrud ~/bin/
+chmod +x ~/bin/bedrud
+```
+
+### Mirror خودمیزبانی شده
+
+```bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+```
+
+### باینری مستقیم
+
+از [انتشارات](https://github.com/bedrud-ir/bedrud/releases) دانلود کنید، استخراج کنید، به یک دایرکتوری در `PATH` خود منتقل کنید.
+
+---
+
+## حذف نصب
+
+```bash
+rm ~/bin/bedrud
+# حذف خط PATH از فایل RC (جستجو برای "# bedrud"):
+#   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
+```
+
+برای نصب‌های سرور systemd:
+
+```bash
+sudo bedrud uninstall
+```
+
+Windows:
+
+```powershell
+Remove-Item "$env:USERPROFILE\bin\bedrud.exe"
+# حذف از PATH از طریق System Properties → Environment Variables
+```
+
+---
+
+## عیب‌یابی
+
+### `command not found: bedrud`
+
+```bash
+source ~/.bashrc    # بارگذاری مجدد shell
+echo $PATH | tr ':' '\n' | grep "$HOME/bin"  # بررسی PATH
+```
+
+اگر وجود ندارد:
+
+```bash
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### `unzip is required`
+
+```bash
+sudo apt install unzip      # Debian / Ubuntu
+sudo dnf install unzip      # Fedora / RHEL
+apk add unzip               # Alpine
+```
+
+### `Failed to download bedrud`
+
+۱. اتصال اینترنت را بررسی کنید
+۲. تأیید کنید که هدف در [انتشارات](https://github.com/bedrud-ir/bedrud/releases) وجود دارد
+۳. یک نسخه خاص را امتحان کنید: `--version v1.0.0`
+۴. ممکن است پلتفرم شما باینری از پیش ساخته شده نداشته باشد
+
+### Alpine: `not found` یا `no such file`
+
+اجرای build glibc روی musl. نصب‌کننده به صورت خودکار Alpine را تشخیص می‌دهد — اگر تشخیص نداد، بررسی کنید که URL دانلود شامل `-musl` باشد.
+
+### macOS: اجرای x64 تحت Rosetta (کند)
+
+اجبار به ARM بومی:
+
+```bash
+arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+```
+
+### Windows: "running scripts is disabled"
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+irm https://get.bedrud.org/install.ps1 | iex
+```

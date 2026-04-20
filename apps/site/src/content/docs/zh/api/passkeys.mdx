@@ -1,0 +1,197 @@
+---
+title: Passkeys API
+description: FIDO2/WebAuthn integration
+order: 26
+---
+
+FIDO2/WebAuthn passkey endpoint 允许用户使用生物识别或安全密钥进行注册和认证。
+
+## 概述
+
+Passkey 流程使用挑战-响应协议，每个流程分为两个阶段：
+
+| 流程 | 阶段一（开始） | 阶段二（完成） |
+|------|-----------------|-------------------|
+| 注册 | `POST /api/auth/passkey/register/begin` | `POST /api/auth/passkey/register/finish` |
+| 登录 | `POST /api/auth/passkey/login/begin` | `POST /api/auth/passkey/login/finish` |
+
+---
+
+## 注册流程
+
+用户必须先登录才能注册 passkey（它会关联到现有账户）。
+
+### 步骤 1：开始注册
+
+```
+POST /api/auth/passkey/register/begin
+```
+
+**Headers：** `Authorization: Bearer <accessToken>`
+
+**响应 (200)：**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rp": {
+      "name": "Bedrud",
+      "id": "meet.example.com"
+    },
+    "user": {
+      "id": "base64url-encoded-user-id",
+      "name": "user@example.com",
+      "displayName": "John Doe"
+    },
+    "pubKeyCredParams": [
+      { "type": "public-key", "alg": -7 },
+      { "type": "public-key", "alg": -257 }
+    ],
+    "authenticatorSelection": {
+      "userVerification": "preferred"
+    }
+  }
+}
+```
+
+将此响应传递给浏览器的 WebAuthn API：
+
+```javascript
+const credential = await navigator.credentials.create({
+  publicKey: response.publicKey
+});
+```
+
+### 步骤 2：完成注册
+
+```
+POST /api/auth/passkey/register/finish
+```
+
+**Headers：** `Authorization: Bearer <accessToken>`
+
+**请求体：** 来自浏览器的凭证响应，base64url 编码：
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "attestationObject": "base64url-attestation",
+    "clientDataJSON": "base64url-client-data"
+  },
+  "type": "public-key"
+}
+```
+
+**响应 (200)：**
+
+```json
+{
+  "message": "passkey registered"
+}
+```
+
+---
+
+## 登录流程
+
+### 步骤 1：开始登录
+
+```
+POST /api/auth/passkey/login/begin
+```
+
+无需认证。
+
+**响应 (200)：**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rpId": "meet.example.com",
+    "userVerification": "preferred"
+  }
+}
+```
+
+将此响应传递给浏览器的 WebAuthn API：
+
+```javascript
+const assertion = await navigator.credentials.get({
+  publicKey: response.publicKey
+});
+```
+
+### 步骤 2：完成登录
+
+```
+POST /api/auth/passkey/login/finish
+```
+
+**请求体：** 来自浏览器的断言响应：
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "authenticatorData": "base64url-auth-data",
+    "clientDataJSON": "base64url-client-data",
+    "signature": "base64url-signature"
+  },
+  "type": "public-key"
+}
+```
+
+**响应 (200)：**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
+```
+
+---
+
+## 安全措施
+
+| 措施 | 描述 |
+|---------|-------------|
+| 挑战/响应 | 服务器生成的随机挑战存储在会话中 |
+| Origin 验证 | 严格的 Origin 和 Relying Party ID 验证 |
+| 计数器验证 | 防止克隆的认证器 |
+| 安全传输 | 设计用于 HTTPS，使用 URL 安全的 base64 编码 |
+
+## 实现细节
+
+- **后端：** 使用 `go-passkeys/go-passkeys` 进行纯 Go 的 WebAuthn 验证
+- **会话存储：** 挑战存储在 Gorilla sessions 中（通过 `gothic.Store`）
+- **数据库：** Passkey 凭证存储在 `Passkey` 模型中（凭证 ID、公钥、计数器）
+- **前端 (Web)：** `navigator.credentials` API，base64url 辅助函数位于 `src/lib/auth.ts`
+- **Android：** Credentials API 提供原生 passkey 支持
+- **iOS：** ASAuthorizationController 提供 passkey 支持
+
+## 如何测试
+
+1. 使用现有账户登录
+2. 点击 passkey 注册按钮（header/仪表板中的指纹图标）
+3. 完成生物识别提示
+4. 登出
+5. 在登录页面点击 "Sign in with Passkey"
+6. 完成生物识别提示以完成认证
+
+---
+
+## 另请参阅
+
+- [认证流程](/zh/docs/backend/authentication) - passkey 注册/登录流程详解
+- [认证 API](/zh/docs/api/authentication) - 所有认证 endpoint

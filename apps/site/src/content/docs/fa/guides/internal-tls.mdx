@@ -1,0 +1,73 @@
+---
+title: TLS داخلی
+description: self-signed certificates برای شبکه‌های داخلی
+order: 30
+---
+
+برای شبکه‌های ایزوله - بدون دامنه عمومی، بدون اینترنت خروجی، اتصال محدود.
+
+مرورگرها برای دوربین/میکروفون از طریق WebRTC به HTTPS مورد اعتماد نیاز دارند. self-signed certificates کار می‌کنند اما هشدار نشان می‌دهند. برای یک تنظیمات تمیز، یک CA خصوصی تولید کنید و آن را به کلاینت‌ها توزیع کنید.
+
+## تولید CA خصوصی و گواهی سرور
+
+```bash
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=Bedrud Internal CA"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=<your-server-ip-or-hostname>"
+openssl x509 -req -days 365 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+sudo ./bedrud install --tls --cert server.crt --key server.key --ip YOUR_SERVER_IP
+```
+
+## افزودن CA به ذخیره‌های اعتماد کلاینت
+
+`ca.crt` را به تمام ماشین‌های کلاینت توزیع کنید:
+
+### Windows
+
+```powershell
+certmgr.msc  # راست‌کلیک ca.crt → نصب گواهی → CAهای ریشه مورد اعتماد
+```
+
+### macOS
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt
+```
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
+sudo update-ca-certificates
+```
+
+### Linux (Arch/Fedora)
+
+```bash
+sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
+sudo update-ca-trust
+```
+
+مرورگرها را restart کنید، سپس `https://YOUR_SERVER_IP` را باز کنید (با آدرس IP واقعی سرور جایگزین کنید، مثلاً `192.168.1.100`). پس از restart، گواهی مورد اعتماد خواهد بود و دسترسی به دوربین/میکروفون بدون هشدار کار خواهد کرد.
+
+## عیب‌یابی
+
+| مشکل | رفع |
+|---------|-----|
+| مرورگر همچنان هشدار گواهی نامعتبر می‌دهد | کش مرورگر را پاک کنید، پس از نصب CA مرورگر را restart کنید |
+| دوربین/میکروفون مسدود شده | تأیید کنید CA در CAهای ریشه مورد اعتماد است، نه واسطه |
+| گواهی منقضی شده | با مقدار `-days` طولانی‌تر دوباره تولید کنید |
+| ناهماهنگی CN | اطمینان حاصل کنید CN گواهی سرور با IP یا نام میزبان در URL مطابقت دارد |
+
+---
+
+## مشاهده همچنین
+- [راهنمای نصب](/fa/docs/getting-started/installation) - روش‌های نصب
+- [مرجع پیکربندی](/fa/docs/getting-started/configuration) - گزینه‌های کامل پیکربندی
