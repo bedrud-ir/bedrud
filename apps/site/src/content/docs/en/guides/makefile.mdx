@@ -17,22 +17,26 @@ make help       # Show all available targets
 
 | Target | Description |
 |--------|-------------|
-| `make init` | Install all dependencies (web + server) |
-| `make dev` | Run LiveKit + server + web concurrently |
+| `make init` | Install all dependencies (LiveKit + config + bun + Go) |
+| `make dev` | Run LiveKit + server (hot reload) + web concurrently |
 | `make dev-web` | Run frontend dev server only |
-| `make dev-server` | Run backend server only |
+| `make dev-server` | Run backend server + LiveKit |
+| `make dev-server-hot` | Run backend with Air hot reload |
+| `make dev-api` | Run backend only, no LiveKit |
 | `make dev-livekit` | Run local LiveKit server |
+| `make dev-site` | Run Astro site dev server |
 | `make dev-ios` | Open iOS project in Xcode |
 | `make dev-android` | Open Android project in Android Studio |
 
 ### `make init`
 
-Installs dependencies for both the web frontend and Go server:
+Full setup for a new development environment:
 
-```bash
-cd apps/web && bun install
-cd server && go mod tidy && go mod download
-```
+1. Downloads LiveKit server binary to `~/.local/bin/` (if not in PATH)
+2. Creates `server/config.yaml` from `config.local.yaml` template (if missing)
+3. Creates LiveKit embed placeholder at `server/internal/livekit/bin/livekit-server`
+4. Installs `air` for Go hot reload (if not present)
+5. Installs dependencies: `apps/web` (bun), `apps/site` (bun), `server` (go mod)
 
 ### `make dev`
 
@@ -50,13 +54,15 @@ Starts all three development services concurrently. Press `Ctrl+C` to stop all:
 | `make build-front` | Build frontend only |
 | `make build-back` | Build backend only |
 | `make build-dist` | Build production linux/amd64 tarball |
+| `make build-site` | Build Astro site (SSG) |
 
 ### `make build`
 
 Full production build:
 
-1. Runs `bun run build:embed` - SSR pre-renders the React app and copies assets to `server/frontend/`
-2. Builds the Go binary with the embedded frontend
+1. Runs `bun run build` in `apps/web` — builds the React app
+2. Copies `apps/web/dist/client/*` → `server/frontend/`
+3. Builds the Go binary with the embedded frontend
 
 Output: `server/dist/bedrud`
 
@@ -67,6 +73,40 @@ Creates a compressed, production-ready distribution:
 1. Runs `make build`
 2. Cross-compiles for `linux/amd64` with stripped debug symbols
 3. Creates `dist/bedrud_linux_amd64.tar.xz`
+
+## Desktop Targets
+
+| Target | Description |
+|--------|-------------|
+| `make dev-desktop` | Build and run desktop app (debug) |
+| `make build-desktop` | Build optimized release binary |
+
+## Local Single Binary
+
+| Target | Description |
+|--------|-------------|
+| `make local-build` | Build frontend + backend into one binary |
+| `make local-run` | Build + run locally (SQLite, embedded LiveKit) |
+
+### `make local-run`
+
+Builds and starts the single binary with local config:
+
+```bash
+CONFIG_PATH=server/config.local.yaml server/dist/bedrud run
+```
+
+Open `http://localhost:8090` when ready.
+
+## API Docs
+
+| Target | Description |
+|--------|-------------|
+| `make swagger-gen` | Regenerate Swagger docs from annotations |
+| `make swagger-open` | Open Swagger UI in browser |
+| `make scalar-open` | Open Scalar UI in browser |
+
+Requires `swag` CLI (`go install github.com/swaggo/swag/cmd/swag@latest`). Server must be running for `swagger-open` and `scalar-open`.
 
 ## Android Targets
 
@@ -109,6 +149,12 @@ make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.c
 
 This runs the Python CLI at `tools/cli/bedrud.py` with the provided arguments.
 
+## Test
+
+| Target | Description |
+|--------|-------------|
+| `make test-back` | Run backend tests (`go test -v -count=1 ./...`) |
+
 ## Clean Targets
 
 | Target | Description |
@@ -120,19 +166,23 @@ This runs the Python CLI at `tools/cli/bedrud.py` with the provided arguments.
 
 Removes:
 
-- `dist/` - distribution tarballs
-- `server/dist/` - compiled server binary
-- `apps/web/dist/` - React build output
-- `server/frontend/` contents - embedded frontend assets
-- `apps/android/app/build/` - Android build outputs
-- `apps/ios/build/` - iOS build outputs
+- `dist/` — distribution tarballs
+- `server/dist/` — compiled server binary
+- `apps/web/dist/` — React build output
+- `server/frontend/` contents — embedded frontend assets
+- `apps/android/app/build/` — Android build outputs
+- `apps/ios/build/` — iOS build outputs
+- `apps/site/dist/` — Astro site build output
+- `target/` — Rust/Cargo build output
 
 ### `make full-clean`
 
 Everything `clean` does, plus:
 
 - `apps/web/node_modules/`
+- `apps/site/node_modules/`
 - `apps/android/.gradle/`
+- `apps/android/build/`
 - Go module cache (`go clean -modcache`)
 
 Run `make init` afterwards to reinstall dependencies.

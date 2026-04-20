@@ -4,7 +4,7 @@ description: Build-Automatisierungsbefehle
 order: 31
 ---
 
-Das root-`Makefile` ist das zentrale Build-Orchestrierungstool für das Bedrud-Monorepo. Es bietet Befehle für Entwicklung, Building und Bereitstellung auf allen Plattformen.
+Das Root-`Makefile` ist das zentrale Build-Orchestrierungstool für das Bedrud-Monorepo. Es bietet Befehle für Entwicklung, Building und Bereitstellung auf allen Plattformen.
 
 ## Verwendung
 
@@ -17,22 +17,26 @@ make help       # Show all available targets
 
 | Target | Beschreibung |
 |--------|-------------|
-| `make init` | Alle Abhängigkeiten installieren (Web + Server) |
-| `make dev` | LiveKit + Server + Web gleichzeitig ausführen |
+| `make init` | Alle Abhängigkeiten installieren (LiveKit + Config + bun + Go) |
+| `make dev` | LiveKit + Server (Hot Reload) + Web gleichzeitig ausführen |
 | `make dev-web` | Nur den Frontend-Dev-Server ausführen |
-| `make dev-server` | Nur den Backend-Server ausführen |
+| `make dev-server` | Backend-Server + LiveKit ausführen |
+| `make dev-server-hot` | Backend mit Air Hot Reload ausführen |
+| `make dev-api` | Nur Backend ausführen, kein LiveKit |
 | `make dev-livekit` | Lokalen LiveKit-Server ausführen |
+| `make dev-site` | Astro-Site-Dev-Server ausführen |
 | `make dev-ios` | iOS-Projekt in Xcode öffnen |
 | `make dev-android` | Android-Projekt in Android Studio öffnen |
 
 ### `make init`
 
-Installiert Abhängigkeiten für sowohl das Web-Frontend als auch den Go-Server:
+Vollständige Einrichtung einer neuen Entwicklungsumgebung:
 
-```bash
-cd apps/web && bun install
-cd server && go mod tidy && go mod download
-```
+1. Lädt den LiveKit-Server-Binary nach `~/.local/bin/` herunter (falls nicht im PATH)
+2. Erstellt `server/config.yaml` aus der Vorlage `config.local.yaml` (falls fehlend)
+3. Erstellt LiveKit-Embed-Placeholder unter `server/internal/livekit/bin/livekit-server`
+4. Installiert `air` für Go Hot Reload (falls nicht vorhanden)
+5. Installiert Abhängigkeiten: `apps/web` (bun), `apps/site` (bun), `server` (go mod)
 
 ### `make dev`
 
@@ -50,13 +54,15 @@ Startet alle drei Entwicklungsdienste gleichzeitig. Drücken Sie `Ctrl+C`, um al
 | `make build-front` | Nur Frontend erstellen |
 | `make build-back` | Nur Backend erstellen |
 | `make build-dist` | Produktions-Tarball für linux/amd64 erstellen |
+| `make build-site` | Astro-Site erstellen (SSG) |
 
 ### `make build`
 
 Vollständiger Produktions-Build:
 
-1. Führt `bun run build:embed` aus - SSR-prerendert die React-App und kopiert Assets nach `server/frontend/`
-2. Erstellt das Go-Binary mit dem eingebetteten Frontend
+1. Führt `bun run build` in `apps/web` aus — erstellt die React-App
+2. Kopiert `apps/web/dist/client/*` → `server/frontend/`
+3. Erstellt das Go-Binary mit dem eingebetteten Frontend
 
 Ausgabe: `server/dist/bedrud`
 
@@ -67,6 +73,40 @@ Erstellt ein komprimiertes, produktionsbereites Distributionspaket:
 1. Führt `make build` aus
 2. Cross-Kompilierung für `linux/amd64` mit entfernten Debug-Symbolen
 3. Erstellt `dist/bedrud_linux_amd64.tar.xz`
+
+## Desktop-Targets
+
+| Target | Beschreibung |
+|--------|-------------|
+| `make dev-desktop` | Desktop-App erstellen und ausführen (Debug) |
+| `make build-desktop` | Optimiertes Release-Binary erstellen |
+
+## Lokales Einzel-Binary
+
+| Target | Beschreibung |
+|--------|-------------|
+| `make local-build` | Frontend + Backend in ein Binary erstellen |
+| `make local-run` | Erstellen + lokal ausführen (SQLite, eingebettetes LiveKit) |
+
+### `make local-run`
+
+Erstellt und startet das Einzel-Binary mit lokaler Konfiguration:
+
+```bash
+CONFIG_PATH=server/config.local.yaml server/dist/bedrud run
+```
+
+`http://localhost:8090` öffnen, wenn bereit.
+
+## API-Dokumentation
+
+| Target | Beschreibung |
+|--------|-------------|
+| `make swagger-gen` | Swagger-Docs aus Annotationen neu generieren |
+| `make swagger-open` | Swagger UI im Browser öffnen |
+| `make scalar-open` | Scalar UI im Browser öffnen |
+
+Erfordert `swag` CLI (`go install github.com/swaggo/swag/cmd/swag@latest`). Server muss für `swagger-open` und `scalar-open` laufen.
 
 ## Android-Targets
 
@@ -109,6 +149,12 @@ make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.c
 
 Dies führt das Python-CLI unter `tools/cli/bedrud.py` mit den angegebenen Argumenten aus.
 
+## Tests
+
+| Target | Beschreibung |
+|--------|-------------|
+| `make test-back` | Backend-Tests ausführen (`go test -v -count=1 ./...`) |
+
 ## Bereinigungs-Targets
 
 | Target | Beschreibung |
@@ -120,19 +166,23 @@ Dies führt das Python-CLI unter `tools/cli/bedrud.py` mit den angegebenen Argum
 
 Entfernt:
 
-- `dist/` - Distributions-Tarballs
-- `server/dist/` - Kompiliertes Server-Binary
-- `apps/web/dist/` - React-Build-Ausgabe
-- `server/frontend/`-Inhalte - Eingebettete Frontend-Assets
-- `apps/android/app/build/` - Android-Build-Ausgaben
-- `apps/ios/build/` - iOS-Build-Ausgaben
+- `dist/` — Distributions-Tarballs
+- `server/dist/` — Kompiliertes Server-Binary
+- `apps/web/dist/` — React-Build-Ausgabe
+- `server/frontend/`-Inhalte — Eingebettete Frontend-Assets
+- `apps/android/app/build/` — Android-Build-Ausgaben
+- `apps/ios/build/` — iOS-Build-Ausgaben
+- `apps/site/dist/` — Astro-Site-Build-Ausgabe
+- `target/` — Rust/Cargo-Build-Ausgabe
 
 ### `make full-clean`
 
 Alles was `clean` tut, plus:
 
 - `apps/web/node_modules/`
+- `apps/site/node_modules/`
 - `apps/android/.gradle/`
+- `apps/android/build/`
 - Go-Modul-Cache (`go clean -modcache`)
 
-Führen Sie danach `make init` aus, um die Abhängigkeiten erneut zu installieren.
+Danach `make init` ausführen, um die Abhängigkeiten erneut zu installieren.

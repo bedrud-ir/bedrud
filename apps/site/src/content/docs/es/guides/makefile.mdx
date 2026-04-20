@@ -17,22 +17,26 @@ make help       # Mostrar todos los targets disponibles
 
 | Target | Descripción |
 |--------|-------------|
-| `make init` | Instalar todas las dependencias (web + servidor) |
-| `make dev` | Ejecutar LiveKit + servidor + web simultáneamente |
+| `make init` | Instalar todas las dependencias (LiveKit + config + bun + Go) |
+| `make dev` | Ejecutar LiveKit + servidor (hot reload) + web simultáneamente |
 | `make dev-web` | Ejecutar solo el servidor de desarrollo del frontend |
-| `make dev-server` | Ejecutar solo el servidor backend |
+| `make dev-server` | Ejecutar servidor backend + LiveKit |
+| `make dev-server-hot` | Ejecutar backend con Air hot reload |
+| `make dev-api` | Ejecutar solo el backend, sin LiveKit |
 | `make dev-livekit` | Ejecutar el servidor local de LiveKit |
+| `make dev-site` | Ejecutar el servidor de desarrollo del sitio Astro |
 | `make dev-ios` | Abrir el proyecto de iOS en Xcode |
 | `make dev-android` | Abrir el proyecto de Android en Android Studio |
 
 ### `make init`
 
-Instala las dependencias tanto del frontend web como del servidor Go:
+Configuración completa de un nuevo entorno de desarrollo:
 
-```bash
-cd apps/web && bun install
-cd server && go mod tidy && go mod download
-```
+1. Descarga el binario del servidor LiveKit a `~/.local/bin/` (si no está en PATH)
+2. Crea `server/config.yaml` desde la plantilla `config.local.yaml` (si no existe)
+3. Crea el placeholder de LiveKit embed en `server/internal/livekit/bin/livekit-server`
+4. Instala `air` para hot reload de Go (si no está instalado)
+5. Instala dependencias: `apps/web` (bun), `apps/site` (bun), `server` (go mod)
 
 ### `make dev`
 
@@ -50,13 +54,15 @@ Inicia los tres servicios de desarrollo simultáneamente. Presiona `Ctrl+C` para
 | `make build-front` | Compilar solo el frontend |
 | `make build-back` | Compilar solo el backend |
 | `make build-dist` | Compilar tarball de producción para linux/amd64 |
+| `make build-site` | Compilar sitio Astro (SSG) |
 
 ### `make build`
 
 Compilación completa de producción:
 
-1. Ejecuta `bun run build:embed` - pre-renderiza con SSR la aplicación React y copia los assets a `server/frontend/`
-2. Compila el binario de Go con el frontend embebido
+1. Ejecuta `bun run build` en `apps/web` — compila la aplicación React
+2. Copia `apps/web/dist/client/*` → `server/frontend/`
+3. Compila el binario de Go con el frontend embebido
 
 Resultado: `server/dist/bedrud`
 
@@ -67,6 +73,40 @@ Crea una distribución comprimida lista para producción:
 1. Ejecuta `make build`
 2. Compila cruzadamente para `linux/amd64` con símbolos de depuración eliminados
 3. Crea `dist/bedrud_linux_amd64.tar.xz`
+
+## Targets de escritorio
+
+| Target | Descripción |
+|--------|-------------|
+| `make dev-desktop` | Compilar y ejecutar la aplicación de escritorio (debug) |
+| `make build-desktop` | Compilar binario de release optimizado |
+
+## Binario local único
+
+| Target | Descripción |
+|--------|-------------|
+| `make local-build` | Compilar frontend + backend en un solo binario |
+| `make local-run` | Compilar + ejecutar localmente (SQLite, LiveKit embebido) |
+
+### `make local-run`
+
+Compila e inicia el binario único con configuración local:
+
+```bash
+CONFIG_PATH=server/config.local.yaml server/dist/bedrud run
+```
+
+Abre `http://localhost:8090` cuando esté listo.
+
+## Documentación de API
+
+| Target | Descripción |
+|--------|-------------|
+| `make swagger-gen` | Regenerar documentación Swagger desde anotaciones |
+| `make swagger-open` | Abrir Swagger UI en el navegador |
+| `make scalar-open` | Abrir Scalar UI en el navegador |
+
+Requiere el CLI `swag` (`go install github.com/swaggo/swag/cmd/swag@latest`). El servidor debe estar en ejecución para `swagger-open` y `scalar-open`.
 
 ## Targets de Android
 
@@ -109,6 +149,12 @@ make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.c
 
 Esto ejecuta la CLI de Python en `tools/cli/bedrud.py` con los argumentos proporcionados.
 
+## Pruebas
+
+| Target | Descripción |
+|--------|-------------|
+| `make test-back` | Ejecutar tests del backend (`go test -v -count=1 ./...`) |
+
 ## Targets de limpieza
 
 | Target | Descripción |
@@ -120,19 +166,23 @@ Esto ejecuta la CLI de Python en `tools/cli/bedrud.py` con los argumentos propor
 
 Elimina:
 
-- `dist/` - tarballs de distribución
-- `server/dist/` - binario compilado del servidor
-- `apps/web/dist/` - resultado de compilación de React
-- Contenido de `server/frontend/` - assets del frontend embebido
-- `apps/android/app/build/` - resultados de compilación de Android
-- `apps/ios/build/` - resultados de compilación de iOS
+- `dist/` — tarballs de distribución
+- `server/dist/` — binario compilado del servidor
+- `apps/web/dist/` — resultado de compilación de React
+- Contenido de `server/frontend/` — assets del frontend embebido
+- `apps/android/app/build/` — resultados de compilación de Android
+- `apps/ios/build/` — resultados de compilación de iOS
+- `apps/site/dist/` — resultado de compilación del sitio Astro
+- `target/` — resultado de compilación de Rust/Cargo
 
 ### `make full-clean`
 
 Todo lo que hace `clean`, además de:
 
 - `apps/web/node_modules/`
+- `apps/site/node_modules/`
 - `apps/android/.gradle/`
+- `apps/android/build/`
 - Caché de módulos de Go (`go clean -modcache`)
 
 Ejecuta `make init` después para reinstalar las dependencias.

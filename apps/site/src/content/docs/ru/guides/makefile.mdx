@@ -4,7 +4,7 @@ description: Команды автоматизации сборки
 order: 31
 ---
 
-Корневой `Makefile` - центральный инструмент оркестрации сборки монорепозитория Bedrud. Он предоставляет команды для разработки, сборки и развёртывания на всех платформах.
+Корневой `Makefile` — центральный инструмент оркестрации сборки монорепозитория Bedrud. Он предоставляет команды для разработки, сборки и развёртывания на всех платформах.
 
 ## Использование
 
@@ -17,26 +17,30 @@ make help       # Показать все доступные цели
 
 | Цель | Описание |
 |--------|-------------|
-| `make init` | Установить все зависимости (web + server) |
-| `make dev` | Запустить LiveKit + сервер + web параллельно |
+| `make init` | Установить все зависимости (LiveKit + конфиг + bun + Go) |
+| `make dev` | Запустить LiveKit + сервер (hot reload) + web параллельно |
 | `make dev-web` | Запустить только dev-сервер фронтенда |
-| `make dev-server` | Запустить только backend-сервер |
+| `make dev-server` | Запустить backend-сервер + LiveKit |
+| `make dev-server-hot` | Запустить backend с Air hot reload |
+| `make dev-api` | Запустить только backend, без LiveKit |
 | `make dev-livekit` | Запустить локальный сервер LiveKit |
+| `make dev-site` | Запустить dev-сервер Astro-сайта |
 | `make dev-ios` | Открыть iOS-проект в Xcode |
 | `make dev-android` | Открыть Android-проект в Android Studio |
 
 ### `make init`
 
-Устанавливает зависимости для веб-фронтенда и Go-сервера:
+Полная настройка нового окружения разработки:
 
-```bash
-cd apps/web && bun install
-cd server && go mod tidy && go mod download
-```
+1. Загружает бинарник LiveKit-сервера в `~/.local/bin/` (если нет в PATH)
+2. Создаёт `server/config.yaml` из шаблона `config.local.yaml` (если отсутствует)
+3. Создаёт заглушку LiveKit в `server/internal/livekit/bin/livekit-server`
+4. Устанавливает `air` для Go hot reload (если не установлен)
+5. Устанавливает зависимости: `apps/web` (bun), `apps/site` (bun), `server` (go mod)
 
 ### `make dev`
 
-Запускает все три dev-сервиса параллельно. Нажмите `Ctrl+C`, чтобы остановить все:
+Запускает три dev-сервиса параллельно. Нажмите `Ctrl+C`, чтобы остановить все:
 
 - **LiveKit** на `localhost:7880`
 - **Сервер** на `localhost:8090`
@@ -50,13 +54,15 @@ cd server && go mod tidy && go mod download
 | `make build-front` | Собрать только фронтенд |
 | `make build-back` | Собрать только backend |
 | `make build-dist` | Собрать продакшен-тарболл linux/amd64 |
+| `make build-site` | Собрать Astro-сайт (SSG) |
 
 ### `make build`
 
 Полная продакшен-сборка:
 
-1. Запускает `bun run build:embed` - SSR пререндеринг React-приложения и копирование ассетов в `server/frontend/`
-2. Собирает Go-бинарник с встроенным фронтендом
+1. Запускает `bun run build` в `apps/web` — собирает React-приложение
+2. Копирует `apps/web/dist/client/*` → `server/frontend/`
+3. Собирает Go-бинарник с встроенным фронтендом
 
 Результат: `server/dist/bedrud`
 
@@ -67,6 +73,40 @@ cd server && go mod tidy && go mod download
 1. Запускает `make build`
 2. Кросс-компилирует для `linux/amd64` с обрезанными отладочными символами
 3. Создаёт `dist/bedrud_linux_amd64.tar.xz`
+
+## Цели Desktop
+
+| Цель | Описание |
+|--------|-------------|
+| `make dev-desktop` | Собрать и запустить десктоп-приложение (debug) |
+| `make build-desktop` | Собрать оптимизированный release-бинарник |
+
+## Локальный одиночный бинарник
+
+| Цель | Описание |
+|--------|-------------|
+| `make local-build` | Собрать фронтенд + backend в один бинарник |
+| `make local-run` | Собрать + запустить локально (SQLite, встроенный LiveKit) |
+
+### `make local-run`
+
+Собирает и запускает одиночный бинарник с локальным конфигом:
+
+```bash
+CONFIG_PATH=server/config.local.yaml server/dist/bedrud run
+```
+
+Откройте `http://localhost:8090` после запуска.
+
+## Документация API
+
+| Цель | Описание |
+|--------|-------------|
+| `make swagger-gen` | Регенерировать Swagger-документацию из аннотаций |
+| `make swagger-open` | Открыть Swagger UI в браузере |
+| `make scalar-open` | Открыть Scalar UI в браузере |
+
+Требуется `swag` CLI (`go install github.com/swaggo/swag/cmd/swag@latest`). Сервер должен быть запущен для `swagger-open` и `scalar-open`.
 
 ## Цели Android
 
@@ -109,6 +149,12 @@ make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.c
 
 Запускает Python CLI из `tools/cli/bedrud.py` с переданными аргументами.
 
+## Тестирование
+
+| Цель | Описание |
+|--------|-------------|
+| `make test-back` | Запустить тесты backend (`go test -v -count=1 ./...`) |
+
 ## Цели очистки
 
 | Цель | Описание |
@@ -120,19 +166,23 @@ make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.c
 
 Удаляет:
 
-- `dist/` - дистрибутивные тарболлы
-- `server/dist/` - скомпилированный серверный бинарник
-- `apps/web/dist/` - вывод сборки React
-- Содержимое `server/frontend/` - встроенные ассеты фронтенда
-- `apps/android/app/build/` - вывод сборки Android
-- `apps/ios/build/` - вывод сборки iOS
+- `dist/` — дистрибутивные тарболлы
+- `server/dist/` — скомпилированный серверный бинарник
+- `apps/web/dist/` — вывод сборки React
+- Содержимое `server/frontend/` — встроенные ассеты фронтенда
+- `apps/android/app/build/` — вывод сборки Android
+- `apps/ios/build/` — вывод сборки iOS
+- `apps/site/dist/` — вывод сборки Astro-сайта
+- `target/` — вывод сборки Rust/Cargo
 
 ### `make full-clean`
 
 Всё, что делает `clean`, плюс:
 
 - `apps/web/node_modules/`
+- `apps/site/node_modules/`
 - `apps/android/.gradle/`
+- `apps/android/build/`
 - Кэш Go-модулей (`go clean -modcache`)
 
 После этого выполните `make init` для переустановки зависимостей.

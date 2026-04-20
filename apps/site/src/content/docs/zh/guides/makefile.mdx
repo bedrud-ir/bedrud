@@ -17,22 +17,26 @@ make help       # Show all available targets
 
 | 目标 | 说明 |
 |--------|-------------|
-| `make init` | 安装所有依赖（Web + 服务器） |
-| `make dev` | 同时运行 LiveKit + 服务器 + Web |
+| `make init` | 安装所有依赖（LiveKit + 配置 + bun + Go） |
+| `make dev` | 同时运行 LiveKit + 服务器（热重载） + Web |
 | `make dev-web` | 仅运行前端开发服务器 |
-| `make dev-server` | 仅运行后端服务器 |
+| `make dev-server` | 运行后端服务器 + LiveKit |
+| `make dev-server-hot` | 使用 Air 热重载运行后端 |
+| `make dev-api` | 仅运行后端，不启动 LiveKit |
 | `make dev-livekit` | 运行本地 LiveKit 服务器 |
+| `make dev-site` | 运行 Astro 站点开发服务器 |
 | `make dev-ios` | 在 Xcode 中打开 iOS 项目 |
 | `make dev-android` | 在 Android Studio 中打开 Android 项目 |
 
 ### `make init`
 
-安装 Web 前端和 Go 服务器的依赖：
+全新开发环境的完整设置：
 
-```bash
-cd apps/web && bun install
-cd server && go mod tidy && go mod download
-```
+1. 下载 LiveKit 服务器二进制文件到 `~/.local/bin/`（如果不在 PATH 中）
+2. 从 `config.local.yaml` 模板创建 `server/config.yaml`（如果不存在）
+3. 在 `server/internal/livekit/bin/livekit-server` 创建 LiveKit 嵌入占位符
+4. 安装 `air` 用于 Go 热重载（如果未安装）
+5. 安装依赖：`apps/web`（bun）、`apps/site`（bun）、`server`（go mod）
 
 ### `make dev`
 
@@ -50,13 +54,15 @@ cd server && go mod tidy && go mod download
 | `make build-front` | 仅构建前端 |
 | `make build-back` | 仅构建后端 |
 | `make build-dist` | 构建生产版 linux/amd64 tar 包 |
+| `make build-site` | 构建 Astro 站点（SSG） |
 
 ### `make build`
 
 完整的生产构建：
 
-1. 运行 `bun run build:embed` - SSR 预渲染 React 应用并将资源复制到 `server/frontend/`
-2. 构建嵌入前端的 Go 二进制文件
+1. 在 `apps/web` 中运行 `bun run build` — 构建 React 应用
+2. 将 `apps/web/dist/client/*` 复制到 `server/frontend/`
+3. 构建嵌入了前端的 Go 二进制文件
 
 输出：`server/dist/bedrud`
 
@@ -67,6 +73,40 @@ cd server && go mod tidy && go mod download
 1. 运行 `make build`
 2. 交叉编译 `linux/amd64`，去除调试符号
 3. 创建 `dist/bedrud_linux_amd64.tar.xz`
+
+## 桌面端目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make dev-desktop` | 构建并运行桌面应用（debug） |
+| `make build-desktop` | 构建优化后的 release 二进制文件 |
+
+## 本地单二进制文件
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make local-build` | 将前端 + 后端构建为一个二进制文件 |
+| `make local-run` | 构建 + 本地运行（SQLite，嵌入 LiveKit） |
+
+### `make local-run`
+
+使用本地配置构建并启动单二进制文件：
+
+```bash
+CONFIG_PATH=server/config.local.yaml server/dist/bedrud run
+```
+
+启动后打开 `http://localhost:8090`。
+
+## API 文档
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make swagger-gen` | 从注释重新生成 Swagger 文档 |
+| `make swagger-open` | 在浏览器中打开 Swagger UI |
+| `make scalar-open` | 在浏览器中打开 Scalar UI |
+
+需要 `swag` CLI（`go install github.com/swaggo/swag/cmd/swag@latest`）。使用 `swagger-open` 和 `scalar-open` 需先启动服务器。
 
 ## Android 目标
 
@@ -107,7 +147,13 @@ cd server && go mod tidy && go mod download
 make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
 ```
 
-这将使用提供的参数运行 `tools/cli/bedrud.py` Python CLI。
+使用提供的参数运行 `tools/cli/bedrud.py` Python CLI。
+
+## 测试
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make test-back` | 运行后端测试（`go test -v -count=1 ./...`） |
 
 ## 清理目标
 
@@ -120,19 +166,23 @@ make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.c
 
 删除：
 
-- `dist/` - 分发包
-- `server/dist/` - 编译后的服务器二进制文件
-- `apps/web/dist/` - React 构建输出
-- `server/frontend/` 内容 - 嵌入的前端资源
-- `apps/android/app/build/` - Android 构建输出
-- `apps/ios/build/` - iOS 构建输出
+- `dist/` — 分发包
+- `server/dist/` — 编译后的服务器二进制文件
+- `apps/web/dist/` — React 构建输出
+- `server/frontend/` 内容 — 嵌入的前端资源
+- `apps/android/app/build/` — Android 构建输出
+- `apps/ios/build/` — iOS 构建输出
+- `apps/site/dist/` — Astro 站点构建输出
+- `target/` — Rust/Cargo 构建输出
 
 ### `make full-clean`
 
 执行 `clean` 的所有操作，另外还包括：
 
 - `apps/web/node_modules/`
+- `apps/site/node_modules/`
 - `apps/android/.gradle/`
+- `apps/android/build/`
 - Go 模块缓存（`go clean -modcache`）
 
 之后运行 `make init` 以重新安装依赖。

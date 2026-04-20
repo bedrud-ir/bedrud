@@ -4,7 +4,7 @@ description: دستورات اتوماسیون ساخت
 order: 31
 ---
 
-Makefile روت `Makefile` ابزار مرکزی ارکستراسیون ساخت برای monorepo Bedrud است. دستوراتی برای توسعه، ساخت و استقرار در تمام پلتفرم‌ها فراهم می‌کند.
+Makefile ریشه `Makefile` ابزار مرکزی ارکستراسیون ساخت برای monorepo Bedrud است. دستوراتی برای توسعه، ساخت و استقرار در تمام پلتفرم‌ها فراهم می‌کند.
 
 ## استفاده
 
@@ -17,26 +17,30 @@ make help       # نمایش همه اهداف موجود
 
 | هدف | توضیحات |
 |--------|-------------|
-| `make init` | نصب تمام وابستگی‌ها (وب + سرور) |
-| `make dev` | اجرای LiveKit + سرور + وب به طور همزمان |
+| `make init` | نصب تمام وابستگی‌ها (LiveKit + پیکربندی + bun + Go) |
+| `make dev` | اجرای LiveKit + سرور (بارگذاری مجدد خودکار) + وب به طور همزمان |
 | `make dev-web` | اجرای فقط سرور توسعه فرانت‌اند |
-| `make dev-server` | اجرای فقط سرور بک‌اند |
+| `make dev-server` | اجرای سرور بک‌اند + LiveKit |
+| `make dev-server-hot` | اجرای بک‌اند با Air (بارگذاری مجدد خودکار) |
+| `make dev-api` | اجرای فقط بک‌اند، بدون LiveKit |
 | `make dev-livekit` | اجرای سرور LiveKit محلی |
+| `make dev-site` | اجرای سرور توسعه سایت Astro |
 | `make dev-ios` | باز کردن پروژه iOS در Xcode |
 | `make dev-android` | باز کردن پروژه Android در Android Studio |
 
 ### `make init`
 
-وابستگی‌ها را برای هر دو فرانت‌اند وب و سرور Go نصب می‌کند:
+راه‌اندازی کامل محیط توسعه جدید:
 
-```bash
-cd apps/web && bun install
-cd server && go mod tidy && go mod download
-```
+1. دانلود باینری سرور LiveKit به `~/.local/bin/` (اگر در PATH نیست)
+2. ایجاد `server/config.yaml` از قالب `config.local.yaml` (اگر وجود ندارد)
+3. ایجاد placeholder جایگذاری LiveKit در `server/internal/livekit/bin/livekit-server`
+4. نصب `air` برای بارگذاری مجدد خودکار Go (اگر نصب نیست)
+5. نصب وابستگی‌ها: `apps/web` (bun)، `apps/site` (bun)، `server` (go mod)
 
 ### `make dev`
 
-همه سه سرویس توسعه را به طور همزمان شروع می‌کند. برای توقف همه `Ctrl+C` را فشار دهید:
+هر سه سرویس توسعه را به طور همزمان شروع می‌کند. برای توقف همه `Ctrl+C` را فشار دهید:
 
 - **LiveKit** در `localhost:7880`
 - **سرور** در `localhost:8090`
@@ -50,13 +54,15 @@ cd server && go mod tidy && go mod download
 | `make build-front` | ساخت فقط فرانت‌اند |
 | `make build-back` | ساخت فقط بک‌اند |
 | `make build-dist` | ساخت tarball تولید linux/amd64 |
+| `make build-site` | ساخت سایت Astro (SSG) |
 
 ### `make build`
 
 ساخت تولید کامل:
 
-۱. اجرای `bun run build:embed` - برنامه React را از پیش رندر SSR می‌کند و دارایی‌ها را به `server/frontend/` کپی می‌کند
-۲. ساخت باینری Go با فرانت‌اند جاسازی‌شده
+۱. اجرای `bun run build` در `apps/web` — ساخت برنامه React
+۲. کپی `apps/web/dist/client/*` → `server/frontend/`
+۳. ساخت باینری Go با فرانت‌اند جاسازی‌شده
 
 خروجی: `server/dist/bedrud`
 
@@ -67,6 +73,40 @@ cd server && go mod tidy && go mod download
 ۱. اجرای `make build`
 ۲. کامپایل متقابل برای `linux/amd64` با نمادهای اشکال‌زدایی حذف شده
 ۳. ایجاد `dist/bedrud_linux_amd64.tar.xz`
+
+## اهداف دسکتاپ
+
+| هدف | توضیحات |
+|--------|-------------|
+| `make dev-desktop` | ساخت و اجرای برنامه دسکتاپ (debug) |
+| `make build-desktop` | ساخت باینری release بهینه‌شده |
+
+## باینری محلی واحد
+
+| هدف | توضیحات |
+|--------|-------------|
+| `make local-build` | ساخت فرانت‌اند + بک‌اند در یک باینری |
+| `make local-run` | ساخت + اجرای محلی (SQLite، LiveKit جاسازی‌شده) |
+
+### `make local-run`
+
+ساخت و شروع باینری واحد با پیکربندی محلی:
+
+```bash
+CONFIG_PATH=server/config.local.yaml server/dist/bedrud run
+```
+
+پس از آماده شدن `http://localhost:8090` را باز کنید.
+
+## مستندات API
+
+| هدف | توضیحات |
+|--------|-------------|
+| `make swagger-gen` | بازتولید مستندات Swagger از حاشیه‌نویسی‌ها |
+| `make swagger-open` | باز کردن Swagger UI در مرورگر |
+| `make scalar-open` | باز کردن Scalar UI در مرورگر |
+
+به CLI `swag` نیاز دارد (`go install github.com/swaggo/swag/cmd/swag@latest`). سرور باید در حال اجرا باشد برای `swagger-open` و `scalar-open`.
 
 ## اهداف Android
 
@@ -107,7 +147,13 @@ cd server && go mod tidy && go mod download
 make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
 ```
 
-این کار CLI Python در `tools/cli/bedrud.py` را با آرگومان‌های ارائه‌شده اجرا می‌کند.
+CLI Python در `tools/cli/bedrud.py` را با آرگومان‌های ارائه‌شده اجرا می‌کند.
+
+## تست
+
+| هدف | توضیحات |
+|--------|-------------|
+| `make test-back` | اجرای تست‌های بک‌اند (`go test -v -count=1 ./...`) |
 
 ## اهداف پاکسازی
 
@@ -120,19 +166,23 @@ make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.c
 
 حذف می‌کند:
 
-- `dist/` - tarball‌های توزیع
-- `server/dist/` - باینری سرور کامپایل‌شده
-- `apps/web/dist/` - خروجی ساخت React
-- محتویات `server/frontend/` - دارایی‌های فرانت‌اند جاسازی‌شده
-- `apps/android/app/build/` - خروجی‌های ساخت Android
-- `apps/ios/build/` - خروجی‌های ساخت iOS
+- `dist/` — tarball‌های توزیع
+- `server/dist/` — باینری سرور کامپایل‌شده
+- `apps/web/dist/` — خروجی ساخت React
+- محتویات `server/frontend/` — دارایی‌های فرانت‌اند جاسازی‌شده
+- `apps/android/app/build/` — خروجی‌های ساخت Android
+- `apps/ios/build/` — خروجی‌های ساخت iOS
+- `apps/site/dist/` — خروجی ساخت سایت Astro
+- `target/` — خروجی ساخت Rust/Cargo
 
 ### `make full-clean`
 
 همه چیز که `clean` انجام می‌دهد، به علاوه:
 
 - `apps/web/node_modules/`
+- `apps/site/node_modules/`
 - `apps/android/.gradle/`
+- `apps/android/build/`
 - کش ماژول Go (`go clean -modcache`)
 
 پس از آن `make init` را اجرا کنید تا وابستگی‌ها دوباره نصب شوند.
