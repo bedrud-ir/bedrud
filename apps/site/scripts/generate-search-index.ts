@@ -8,19 +8,29 @@ const LOCALES = ["en", "de", "fr", "es", "zh", "ja", "tr", "fa", "ar", "ru"];
 function extractTextFromMDX(content: string): string {
   let text = content;
 
+  const stripHtmlTagsFully = (input: string): string => {
+    let previous: string;
+    let current = input;
+    do {
+      previous = current;
+      current = current.replace(/<[^>]+>/g, "");
+    } while (current !== previous);
+    return current;
+  };
+
   text = text.replace(/^---[\s\S]*?---/m, "");
 
-  text = text
-    .replace(/#{1,6}\s+/g, "")
-    .replace(/`{1,3}[\s\S]*?`{1,3}/g, "")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/_([^_]+)_/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\n+/g, " ")
-    .trim();
+  text = stripHtmlTagsFully(
+    text
+      .replace(/#{1,6}\s+/g, "")
+      .replace(/`{1,3}[\s\S]*?`{1,3}/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/_([^_]+)_/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\n+/g, " ")
+  ).trim();
 
   return text;
 }
