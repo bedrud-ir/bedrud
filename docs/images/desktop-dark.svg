@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" width="960" height="600" role="img" aria-labelledby="svg-title">
+<title id="svg-title">Bedrud desktop meeting interface – dark theme</title>
+<desc>A mockup of Bedrud video meeting app on desktop, showing a 4-person meeting grid with participant avatars, room controls, and navigation.</desc>
+  <style>
+    @keyframes pulse-border{0%,100%{opacity:.2}50%{opacity:.6}}
+    @keyframes blink-dot{0%,100%{opacity:.5}50%{opacity:1}}
+    .glow-border{animation:pulse-border 2s ease-in-out infinite}
+    .blink-dot{animation:blink-dot 3s ease-in-out infinite}
+    .sans{font-family:system-ui,sans-serif}
+    .mono{font-family:ui-monospace,SFMono-Regular,monospace}
+    .icon-muted{fill:none;stroke:#64748B;stroke-width:1.2}
+    .icon-active{fill:none;stroke:#E2E8F0;stroke-width:1.5}
+  </style>
+
+<!-- Window chrome -->
+<rect width="960" height="600" fill="#0F0F0F"/>
+<rect width="960" height="32" fill="#1A1A1A"/>
+<circle cx="22" cy="16" r="6" fill="#EF4444"/>
+<circle cx="42" cy="16" r="6" fill="#F59E0B"/>
+<circle cx="62" cy="16" r="6" fill="#22C55E"/>
+<text x="480" y="16" text-anchor="middle" fill="#64748B" class="sans" font-size="13" dy="0.35em">Bedrud</text>
+
+<!-- Toolbar -->
+<rect y="32" width="960" height="48" fill="#242424"/>
+<line x1="0" y1="32" x2="960" y2="32" stroke="#333"/>
+<line x1="0" y1="80" x2="960" y2="80" stroke="#333"/>
+<g transform="translate(26,50) scale(0.5)">
+  <path d="M15.75 19.5L8.25 12L15.75 4.5" fill="none" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<text x="48" y="56" fill="#E2E8F0" class="mono" font-size="14" dy="0.35em">standup</text>
+<rect x="112" y="46" width="22" height="20" rx="10" fill="#6366F1" fill-opacity="0.1"/>
+<text x="123" y="56" text-anchor="middle" fill="#6366F1" class="sans" font-size="11" font-weight="600" dy="0.35em">4</text>
+<text x="874" y="56" text-anchor="end" fill="#64748B" class="mono" font-size="12" dy="0.35em">32:15</text>
+<circle cx="900" cy="56" r="14" fill="#6366F1"/>
+<text x="900" y="56" text-anchor="middle" fill="#fff" class="sans" font-size="10" font-weight="600" dy="0.35em">YU</text>
+
+<!-- Meeting grid -->
+<rect x="24" y="88" width="448" height="220" rx="12" fill="#242424"/>
+<rect x="21" y="85" width="454" height="226" rx="14" fill="none" stroke="#6366F1" stroke-width="3" opacity=".4" class="glow-border"/>
+<circle cx="248" cy="186" r="32" fill="#6366F1"/>
+<text x="248" y="186" text-anchor="middle" fill="#fff" class="sans" font-size="18" font-weight="600" dy="0.35em">AB</text>
+<rect x="32" y="282" width="80" height="20" rx="4" fill="#0F0F0F" opacity=".75"/>
+  <text x="40" y="292" fill="#E2E8F0" class="sans" font-size="12" dy="0.35em">Alice B.</text>
+  <circle cx="460" cy="100" r="4" fill="#22C55E" class="blink-dot"/>
+
+<!-- Participant tiles -->
+<rect x="488" y="88" width="448" height="220" rx="12" fill="#242424" stroke="#333"/>
+<circle cx="712" cy="186" r="32" fill="#6366F1"/>
+<text x="712" y="186" text-anchor="middle" fill="#fff" class="sans" font-size="18" font-weight="600" dy="0.35em">CD</text>
+<rect x="496" y="282" width="72" height="20" rx="4" fill="#0F0F0F" opacity=".75"/>
+<text x="504" y="292" fill="#E2E8F0" class="sans" font-size="12" dy="0.35em">Chris D.</text>
+<rect x="24" y="324" width="448" height="220" rx="12" fill="#242424" stroke="#333"/>
+<circle cx="248" cy="422" r="32" fill="#6366F1"/>
+<text x="248" y="422" text-anchor="middle" fill="#fff" class="sans" font-size="18" font-weight="600" dy="0.35em">EF</text>
+<rect x="32" y="518" width="60" height="20" rx="4" fill="#0F0F0F" opacity=".75"/>
+<text x="40" y="528" fill="#E2E8F0" class="sans" font-size="12" dy="0.35em">Eve F.</text>
+<rect x="450" y="516" width="22" height="22" rx="4" fill="#0F0F0F" opacity=".75"/>
+<g transform="translate(455.24,521.24) scale(0.48)">
+  <path d="M12 18.75C15.3137 18.75 18 16.0637 18 12.75V11.25M12 18.75C8.68629 18.75 6 16.0637 6 12.75V11.25M12 18.75V22.5M8.25 22.5H15.75M12 15.75C10.3431 15.75 9 14.4069 9 12.75V4.5C9 2.84315 10.3431 1.5 12 1.5C13.6569 1.5 15 2.84315 15 4.5V12.75C15 14.4069 13.6569 15.75 12 15.75Z" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="2" y1="2" x2="22" y2="22" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+</g>
+<rect x="488" y="324" width="448" height="220" rx="12" fill="#242424" stroke="#333"/>
+<circle cx="712" cy="422" r="32" fill="#6366F1"/>
+<text x="712" y="422" text-anchor="middle" fill="#fff" class="sans" font-size="18" font-weight="600" dy="0.35em">YU</text>
+<rect x="496" y="518" width="48" height="20" rx="4" fill="#0F0F0F" opacity=".75"/>
+<text x="504" y="528" fill="#E2E8F0" class="sans" font-size="12" dy="0.35em">You</text>
+
+<!-- Controls bar -->
+<rect x="310" y="554" width="340" height="36" rx="18" fill="#242424" fill-opacity=".92" stroke="#333"/>
+<g transform="translate(330.04,565.04) scale(0.58)">
+  <path d="M12 18.75C15.3137 18.75 18 16.0637 18 12.75V11.25M12 18.75C8.68629 18.75 6 16.0637 6 12.75V11.25M12 18.75V22.5M8.25 22.5H15.75M12 15.75C10.3431 15.75 9 14.4069 9 12.75V4.5C9 2.84315 10.3431 1.5 12 1.5C13.6569 1.5 15 2.84315 15 4.5V12.75C15 14.4069 13.6569 15.75 12 15.75Z" fill="none" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g transform="translate(384.04,565.04) scale(0.58)">
+  <path d="M15.75 10.5L20.4697 5.78033C20.9421 5.30786 21.75 5.64248 21.75 6.31066V17.6893C21.75 18.3575 20.9421 18.6921 20.4697 18.2197L15.75 13.5M4.5 18.75H13.5C14.7426 18.75 15.75 17.7426 15.75 16.5V7.5C15.75 6.25736 14.7426 5.25 13.5 5.25H4.5C3.25736 5.25 2.25 6.25736 2.25 7.5V16.5C2.25 17.7426 3.25736 18.75 4.5 18.75Z" fill="none" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g transform="translate(438.04,565.04) scale(0.58)">
+  <path d="M3 16.5V18.75C3 19.9926 4.00736 21 5.25 21H18.75C19.9926 21 21 19.9926 21 18.75V16.5M7.5 7.5L12 3M12 3L16.5 7.5M12 3V16.5" fill="none" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g transform="translate(492.04,565.04) scale(0.58)">
+  <path d="M8.625 9.75C8.625 9.95711 8.45711 10.125 8.25 10.125C8.04289 10.125 7.875 9.95711 7.875 9.75C7.875 9.54289 8.04289 9.375 8.25 9.375C8.45711 9.375 8.625 9.54289 8.625 9.75ZM8.625 9.75H8.25M12.375 9.75C12.375 9.95711 12.2071 10.125 12 10.125C11.7929 10.125 11.625 9.95711 11.625 9.75C11.625 9.54289 11.7929 9.375 12 9.375C12.2071 9.375 12.375 9.54289 12.375 9.75ZM12.375 9.75H12M16.125 9.75C16.125 9.95711 15.9571 10.125 15.75 10.125C15.5429 10.125 15.375 9.95711 15.375 9.75C15.375 9.54289 15.5429 9.375 15.75 9.375C15.9571 9.375 16.125 9.54289 16.125 9.75ZM16.125 9.75H15.75M2.25 12.7593C2.25 14.3604 3.37341 15.754 4.95746 15.987C6.04357 16.1467 7.14151 16.27 8.25 16.3556V21L12.4335 16.8165C12.6402 16.6098 12.9193 16.4923 13.2116 16.485C15.1872 16.4361 17.1331 16.2678 19.0425 15.9871C20.6266 15.7542 21.75 14.3606 21.75 12.7595V6.74056C21.75 5.13946 20.6266 3.74583 19.0425 3.51293C16.744 3.17501 14.3926 3 12.0003 3C9.60776 3 7.25612 3.17504 4.95747 3.51302C3.37342 3.74593 2.25 5.13956 2.25 6.74064V12.7593Z" fill="none" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g transform="translate(546.04,565.04) scale(0.58)">
+  <path d="M18 18.72C18.24 18.74 18.5 18.75 18.75 18.75C19.8 18.75 20.81 18.57 21.74 18.24C21.75 18.16 21.75 18.08 21.75 18C21.75 16.34 20.41 15 18.75 15C18.12 15 17.54 15.19 17.06 15.52M18 18.72C18 18.73 18 18.74 18 18.75C18 18.98 17.99 19.2 17.96 19.42C16.21 20.42 14.17 21 12 21C9.83 21 7.79 20.42 6.04 19.42C6.01 19.2 6 18.98 6 18.75C6 18.74 6 18.73 6 18.72M18 18.72C17.99 17.54 17.65 16.45 17.06 15.52M17.06 15.52C15.99 13.86 14.13 12.75 12 12.75C9.87 12.75 8.01 13.85 6.94 15.52M6.94 15.52C6.46 15.19 5.88 15 5.25 15C3.59 15 2.25 16.34 2.25 18C2.25 18.08 2.25 18.16 2.26 18.24C3.2 18.57 4.2 18.75 5.25 18.75C5.5 18.75 5.75 18.74 6 18.72M6.94 15.52C6.35 16.45 6.01 17.54 6 18.72M15 6.75C15 8.41 13.66 9.75 12 9.75C10.34 9.75 9 8.41 9 6.75C9 5.09 10.34 3.75 12 3.75C13.66 3.75 15 5.09 15 6.75ZM21 9.75C21 10.99 19.99 12 18.75 12C17.51 12 16.5 10.99 16.5 9.75C16.5 8.51 17.51 7.5 18.75 7.5C19.99 7.5 21 8.51 21 9.75ZM7.5 9.75C7.5 10.99 6.49 12 5.25 12C4.01 12 3 10.99 3 9.75C3 8.51 4.01 7.5 5.25 7.5C6.49 7.5 7.5 8.51 7.5 9.75Z" fill="none" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<rect x="580" y="561" width="38" height="22" rx="7" fill="#EF4444"/>
+<g transform="translate(592.4,565.4) scale(0.55)">
+  <path d="M15.75 3.75L18 6M18 6L20.25 8.25M18 6L20.25 3.75M18 6L15.75 8.25M17.25 21.75C8.96573 21.75 2.25 15.0343 2.25 6.75V4.5C2.25 3.25736 3.25736 2.25 4.5 2.25H5.87163C6.38785 2.25 6.83783 2.60133 6.96304 3.10215L8.06883 7.52533C8.17861 7.96445 8.01453 8.4266 7.65242 8.69818L6.3588 9.6684C5.98336 9.94998 5.81734 10.437 5.97876 10.8777C7.19015 14.1846 9.81539 16.8098 13.1223 18.0212C13.563 18.1827 14.05 18.0166 14.3316 17.6412L15.3018 16.3476C15.5734 15.9855 16.0355 15.8214 16.4747 15.9312L20.8979 17.037C21.3987 17.1622 21.75 17.6121 21.75 18.1284V19.5C21.75 20.7426 20.7426 21.75 19.5 21.75H17.25Z" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>

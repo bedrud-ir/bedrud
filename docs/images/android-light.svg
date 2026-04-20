@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 800" width="380" height="800" role="img" aria-labelledby="svg-title">
+  <title id="svg-title">Bedrud Android meeting interface – light theme</title>
+  <desc>Android meeting screen: MeetingHeaderHUD, 2×2 participant grid, bottom FAB controls. No bottom nav during meeting.</desc>
+  <style>
+    @keyframes pulse-border{0%,100%{opacity:.2}50%{opacity:.6}}
+    @keyframes blink-dot{0%,100%{opacity:.5}50%{opacity:1}}
+    .glow-border{animation:pulse-border 2s ease-in-out infinite}
+    .blink-dot{animation:blink-dot 3s ease-in-out infinite}
+    .sans{font-family:system-ui,sans-serif}
+    .mono{font-family:ui-monospace,SFMono-Regular,monospace}
+  </style>
+
+  <!-- Phone frame -->
+  <rect x="4" y="4" width="372" height="792" rx="32" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+
+  <!-- ===== STATUS BAR ===== -->
+  <text x="28" y="28" fill="#020817" class="sans" font-size="12" font-weight="500" dy="0.35em">9:41</text>
+  <circle cx="310" cy="24" r="2" fill="#020817"/>
+  <circle cx="318" cy="24" r="2" fill="#020817"/>
+  <circle cx="326" cy="24" r="2" fill="#020817"/>
+  <circle cx="334" cy="24" r="2" fill="#94A3B8"/>
+  <rect x="344" y="18" width="18" height="10" rx="2" fill="none" stroke="#020817" stroke-width="1"/>
+  <rect x="346" y="20" width="12" height="6" rx="1" fill="#22C55E"/>
+  <rect x="362" y="21" width="2" height="4" rx="1" fill="#020817"/>
+
+  <!-- ===== HEADER HUD ===== -->
+  <rect x="4" y="44" width="372" height="40" fill="#FFFFFF"/>
+
+  <!-- LIVE badge -->
+  <rect x="20" y="52" width="32" height="20" rx="4" fill="#EF4444"/>
+  <text x="36" y="62" text-anchor="middle" fill="#fff" class="sans" font-size="9" font-weight="700" dy="0.35em">LIVE</text>
+
+  <!-- Room name -->
+  <text x="62" y="62" fill="#020817" class="mono" font-size="14" font-weight="500" dy="0.35em">standup</text>
+
+  <!-- People count -->
+  <text x="190" y="62" fill="#64748B" class="sans" font-size="12" dy="0.35em">👥 4</text>
+
+  <!-- Clock -->
+  <text x="320" y="62" fill="#64748B" class="mono" font-size="11" dy="0.35em">14:32</text>
+
+  <!-- Connection dot -->
+  <circle cx="354" cy="62" r="4" fill="#22C55E" class="blink-dot"/>
+
+  <!-- ===== 2×2 VIDEO GRID ===== -->
+  <!-- Tile 1: top-left -->
+  <rect x="12" y="92" width="172" height="232" rx="12" fill="#F8FAFC"/>
+  <rect x="9" y="89" width="178" height="238" rx="14" fill="none" stroke="#6366F1" stroke-width="3" opacity=".4" class="glow-border"/>
+  <circle cx="98" cy="192" r="30" fill="#6366F1"/>
+  <text x="98" y="192" text-anchor="middle" fill="#fff" class="sans" font-size="16" font-weight="600" dy="0.35em">AB</text>
+  <rect x="18" y="300" width="64" height="16" rx="4" fill="#fff" opacity=".85"/>
+  <text x="24" y="308" fill="#020817" class="sans" font-size="9" dy="0.35em">Alice B.</text>
+  <!-- Mic off indicator (Heroicons microphone + slash) -->
+  <g transform="translate(148,295) scale(0.38)">
+    <path d="M12 18.75C15.3137 18.75 18 16.0637 18 12.75V11.25M12 18.75C8.68629 18.75 6 16.0637 6 12.75V11.25M12 18.75V22.5M8.25 22.5H15.75M12 15.75C10.3431 15.75 9 14.4069 9 12.75V4.5C9 2.84315 10.3431 1.5 12 1.5C13.6569 1.5 15 2.84315 15 4.5V12.75C15 14.4069 13.6569 15.75 12 15.75Z" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="2" y1="2" x2="22" y2="22" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Tile 2: top-right -->
+  <rect x="196" y="92" width="172" height="232" rx="12" fill="#F8FAFC"/>
+  <circle cx="282" cy="192" r="30" fill="#8B5CF6"/>
+  <text x="282" y="192" text-anchor="middle" fill="#fff" class="sans" font-size="16" font-weight="600" dy="0.35em">CD</text>
+  <rect x="202" y="300" width="62" height="16" rx="4" fill="#fff" opacity=".85"/>
+  <text x="208" y="308" fill="#020817" class="sans" font-size="9" dy="0.35em">Carl D.</text>
+  <circle cx="358" cy="104" r="4" fill="#22C55E" class="blink-dot"/>
+
+  <!-- Tile 3: bottom-left -->
+  <rect x="12" y="332" width="172" height="232" rx="12" fill="#F8FAFC"/>
+  <circle cx="98" cy="432" r="30" fill="#EC4899"/>
+  <text x="98" y="432" text-anchor="middle" fill="#fff" class="sans" font-size="16" font-weight="600" dy="0.35em">EF</text>
+  <rect x="18" y="540" width="60" height="16" rx="4" fill="#fff" opacity=".85"/>
+  <text x="24" y="548" fill="#020817" class="sans" font-size="9" dy="0.35em">Eve F.</text>
+
+  <!-- Tile 4: bottom-right (self) -->
+  <rect x="196" y="332" width="172" height="232" rx="12" fill="#F8FAFC"/>
+  <circle cx="282" cy="432" r="30" fill="#F59E0B"/>
+  <text x="282" y="432" text-anchor="middle" fill="#fff" class="sans" font-size="16" font-weight="600" dy="0.35em">YU</text>
+  <rect x="202" y="540" width="34" height="16" rx="4" fill="#fff" opacity=".85"/>
+  <text x="208" y="548" fill="#020817" class="sans" font-size="9" dy="0.35em">You</text>
+
+  <!-- ===== CONTROL ROW ===== -->
+  <rect x="4" y="594" width="372" height="64" fill="#FFFFFF"/>
+  <line x1="4" y1="594" x2="376" y2="594" stroke="#E2E8F0" stroke-width="1"/>
+
+  <!-- 1. Mic (Heroicons solid microphone) -->
+  <circle cx="34" cy="624" r="20" fill="#E8DEF8"/>
+  <g transform="translate(26,616) scale(0.667)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M8.25 4.5C8.25 2.42893 9.92893 0.75 12 0.75C14.0711 0.75 15.75 2.42893 15.75 4.5V12.75C15.75 14.8211 14.0711 16.5 12 16.5C9.92893 16.5 8.25 14.8211 8.25 12.75V4.5Z" fill="#334155"/>
+    <path d="M6 10.5C6.41421 10.5 6.75 10.8358 6.75 11.25V12.75C6.75 15.6495 9.1005 18 12 18C14.8995 18 17.25 15.6495 17.25 12.75V11.25C17.25 10.8358 17.5858 10.5 18 10.5C18.4142 10.5 18.75 10.8358 18.75 11.25V12.75C18.75 16.2244 16.125 19.0857 12.75 19.4588V21.75H15.75C16.1642 21.75 16.5 22.0858 16.5 22.5C16.5 22.9142 16.1642 23.25 15.75 23.25H8.25C7.83579 23.25 7.5 22.9142 7.5 22.5C7.5 22.0858 7.83579 21.75 8.25 21.75H11.25V19.4588C7.87504 19.0857 5.25 16.2244 5.25 12.75V11.25C5.25 10.8358 5.58579 10.5 6 10.5Z" fill="#334155"/>
+  </g>
+
+  <!-- 2. Camera (Heroicons solid video-camera) -->
+  <circle cx="84" cy="624" r="20" fill="#E8DEF8"/>
+  <g transform="translate(76,616) scale(0.667)">
+    <path d="M4.5 4.5C2.84315 4.5 1.5 5.84315 1.5 7.5V16.5C1.5 18.1569 2.84315 19.5 4.5 19.5H12.75C14.4069 19.5 15.75 18.1569 15.75 16.5V7.5C15.75 5.84315 14.4069 4.5 12.75 4.5H4.5Z" fill="#334155"/>
+    <path d="M19.9393 18.75L17.25 16.0606V7.93931L19.9393 5.24996C20.8843 4.30501 22.5 4.97427 22.5 6.31063V17.6893C22.5 19.0257 20.8843 19.6949 19.9393 18.75Z" fill="#334155"/>
+  </g>
+
+  <!-- 3. Switch Camera (MDI camera-flip) -->
+  <circle cx="134" cy="624" r="20" fill="#E8DEF8"/>
+  <g transform="translate(126,616) scale(0.667)">
+    <path d="M20 5H17L15 3H9L7 5H4C2.9 5 2 5.9 2 7V19C2 20.11 2.9 21 4 21H20C21.11 21 22 20.11 22 19V7C22 5.9 21.11 5 20 5M5 12H7.1C7.65 9.29 10.29 7.55 13 8.1C13.76 8.25 14.43 8.59 15 9L13.56 10.45C13.11 10.17 12.58 10 12 10C10.74 10 9.6 10.8 9.18 12H11L8 15L5 12M16.91 14C16.36 16.71 13.72 18.45 11 17.9C10.25 17.74 9.58 17.41 9 17L10.44 15.55C10.9 15.83 11.43 16 12 16C13.27 16 14.41 15.2 14.83 14H13L16 11L19 14H16.91Z" fill="#334155"/>
+  </g>
+
+  <!-- 4. Screen Share (Heroicons solid arrow-up-tray) -->
+  <circle cx="184" cy="624" r="20" fill="#E8DEF8"/>
+  <g transform="translate(176,616) scale(0.667)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M11.4697 2.46967C11.7626 2.17678 12.2374 2.17678 12.5303 2.46967L17.0303 6.96967C17.3232 7.26256 17.3232 7.73744 17.0303 8.03033C16.7374 8.32322 16.2626 8.32322 15.9697 8.03033L12.75 4.81066L12.75 16.5C12.75 16.9142 12.4142 17.25 12 17.25C11.5858 17.25 11.25 16.9142 11.25 16.5L11.25 4.81066L8.03033 8.03033C7.73744 8.32322 7.26256 8.32322 6.96967 8.03033C6.67678 7.73744 6.67678 7.26256 6.96967 6.96967L11.4697 2.46967ZM3 15.75C3.41421 15.75 3.75 16.0858 3.75 16.5V18.75C3.75 19.5784 4.42157 20.25 5.25 20.25H18.75C19.5784 20.25 20.25 19.5784 20.25 18.75V16.5C20.25 16.0858 20.5858 15.75 21 15.75C21.4142 15.75 21.75 16.0858 21.75 16.5V18.75C21.75 20.4069 20.4069 21.75 18.75 21.75H5.25C3.59315 21.75 2.25 20.4069 2.25 18.75V16.5C2.25 16.0858 2.58579 15.75 3 15.75Z" fill="#334155"/>
+  </g>
+
+  <!-- 5. Chat (Heroicons solid chat-bubble-left-ellipsis) -->
+  <circle cx="234" cy="624" r="20" fill="#E8DEF8"/>
+  <g transform="translate(226,616) scale(0.667)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M12.0003 2.25C9.57113 2.25 7.18302 2.42773 4.84836 2.771C2.87004 3.06188 1.5 4.79455 1.5 6.74064V12.7593C1.5 14.7054 2.87004 16.4381 4.84836 16.729C5.72491 16.8579 6.60901 16.9634 7.5 17.045V21C7.5 21.3033 7.68273 21.5768 7.96299 21.6929C8.24324 21.809 8.56583 21.7448 8.78033 21.5303L12.9638 17.3468C13.0318 17.2788 13.1266 17.2374 13.2302 17.2348C15.2361 17.1851 17.2123 17.0142 19.1516 16.7291C21.1299 16.4382 22.5 14.7056 22.5 12.7595V6.74056C22.5 4.79445 21.1299 3.06177 19.1516 2.77091C16.8171 2.4277 14.4292 2.25 12.0003 2.25ZM8.25 8.625C7.62868 8.625 7.125 9.12868 7.125 9.75C7.125 10.3713 7.62868 10.875 8.25 10.875C8.87132 10.875 9.375 10.3713 9.375 9.75C9.375 9.12868 8.87132 8.625 8.25 8.625ZM10.875 9.75C10.875 9.12868 11.3787 8.625 12 8.625C12.6213 8.625 13.125 9.12868 13.125 9.75C13.125 10.3713 12.6213 10.875 12 10.875C11.3787 10.875 10.875 10.3713 10.875 9.75ZM15.75 8.625C15.1287 8.625 14.625 9.12868 14.625 9.75C14.625 10.3713 15.1287 10.875 15.75 10.875C16.3713 10.875 16.875 10.3713 16.875 9.75C16.875 9.12868 16.3713 8.625 15.75 8.625Z" fill="#334155"/>
+  </g>
+  <!-- Unread badge -->
+  <rect x="248" y="608" width="14" height="12" rx="6" fill="#EF4444"/>
+  <text x="255" y="614" text-anchor="middle" fill="#fff" class="sans" font-size="7" font-weight="700" dy="0.35em">3</text>
+
+  <!-- 6. People (Heroicons solid user-group) -->
+  <circle cx="284" cy="624" r="20" fill="#E8DEF8"/>
+  <g transform="translate(276,616) scale(0.667)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M8.25 6.75C8.25 4.67893 9.92893 3 12 3C14.0711 3 15.75 4.67893 15.75 6.75C15.75 8.82107 14.0711 10.5 12 10.5C9.92893 10.5 8.25 8.82107 8.25 6.75Z" fill="#334155"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M15.75 9.75C15.75 8.09315 17.0931 6.75 18.75 6.75C20.4069 6.75 21.75 8.09315 21.75 9.75C21.75 11.4069 20.4069 12.75 18.75 12.75C17.0931 12.75 15.75 11.4069 15.75 9.75Z" fill="#334155"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M2.25 9.75C2.25 8.09315 3.59315 6.75 5.25 6.75C6.90685 6.75 8.25 8.09315 8.25 9.75C8.25 11.4069 6.90685 12.75 5.25 12.75C3.59315 12.75 2.25 11.4069 2.25 9.75Z" fill="#334155"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M6.30986 15.1175C7.50783 13.2444 9.60835 12 12 12C14.3919 12 16.4927 13.2447 17.6906 15.1182C18.5187 16.4134 18.877 17.9752 18.709 19.4979C18.6827 19.7359 18.5444 19.947 18.3368 20.0662C16.4694 21.1376 14.3051 21.75 12 21.75C9.69492 21.75 7.53059 21.1376 5.66325 20.0662C5.45559 19.947 5.3173 19.7359 5.29103 19.4979C5.12293 17.9749 5.48141 16.4129 6.30986 15.1175Z" fill="#334155"/>
+    <path d="M5.08228 14.2537C5.07024 14.2722 5.05827 14.2907 5.04638 14.3093C4.08091 15.8189 3.63908 17.6167 3.77471 19.389C3.16667 19.2967 2.5767 19.1481 2.01043 18.9487L1.89547 18.9082C1.68576 18.8343 1.53923 18.6439 1.52159 18.4222L1.51192 18.3007C1.50402 18.2014 1.5 18.1011 1.5 18C1.5 15.9851 3.08905 14.3414 5.08228 14.2537Z" fill="#334155"/>
+    <path d="M20.2256 19.389C20.3612 17.617 19.9196 15.8196 18.9545 14.3102C18.9424 14.2913 18.9303 14.2725 18.9181 14.2537C20.9111 14.3416 22.5 15.9853 22.5 18C22.5 18.1011 22.496 18.2014 22.4881 18.3007L22.4784 18.4222C22.4608 18.6439 22.3142 18.8343 22.1045 18.9082L21.9896 18.9487C21.4234 19.1481 20.8336 19.2966 20.2256 19.389Z" fill="#334155"/>
+  </g>
+
+  <!-- 7. Leave (Heroicons solid phone-x-mark, white fill on red) -->
+  <circle cx="342" cy="624" r="24" fill="#EF4444"/>
+  <g transform="translate(333,615) scale(0.75)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M15.2197 3.21967C15.5126 2.92678 15.9874 2.92678 16.2803 3.21967L18 4.93934L19.7197 3.21967C20.0126 2.92678 20.4874 2.92678 20.7803 3.21967C21.0732 3.51256 21.0732 3.98744 20.7803 4.28033L19.0607 6L20.7803 7.71967C21.0732 8.01256 21.0732 8.48744 20.7803 8.78033C20.4874 9.07322 20.0126 9.07322 19.7197 8.78033L18 7.06066L16.2803 8.78033C15.9874 9.07322 15.5126 9.07322 15.2197 8.78033C14.9268 8.48744 14.9268 8.48756 15.2197 7.71967L16.9393 6L15.2197 4.28033C14.9268 3.98744 14.9268 3.51256 15.2197 3.21967Z" fill="#fff"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 4.5C1.5 2.84315 2.84315 1.5 4.5 1.5H5.87163C6.732 1.5 7.48197 2.08556 7.69064 2.92025L8.79644 7.34343C8.97941 8.0753 8.70594 8.84555 8.10242 9.29818L6.8088 10.2684C6.67447 10.3691 6.64527 10.5167 6.683 10.6197C7.81851 13.7195 10.2805 16.1815 13.3803 17.317C13.4833 17.3547 13.6309 17.3255 13.7316 17.1912L14.7018 15.8976C15.1545 15.2941 15.9247 15.0206 16.6566 15.2036L21.0798 16.3094C21.9144 16.518 22.5 17.268 22.5 18.1284V19.5C22.5 21.1569 21.1569 22.5 19.5 22.5H17.25C8.55151 22.5 1.5 15.4485 1.5 6.75V4.5Z" fill="#fff"/>
+  </g>
+
+  <!-- Safe area -->
+  <rect x="4" y="658" width="372" height="74" fill="#FFFFFF"/>
+
+  <!-- Gesture bar -->
+  <rect x="140" y="770" width="100" height="4" rx="2" fill="#64748B" opacity=".4"/>
+</svg>
