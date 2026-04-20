@@ -233,6 +233,9 @@ jobs:
         working-directory: apps/site
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
