@@ -6,4 +6,4 @@ interface Props {
 const { data } = Astro.props;
 ---
 
-<script type="application/ld+json" set:html={JSON.stringify(data)} />
+<script is:inline type="application/ld+json" set:html={JSON.stringify(data)} />
