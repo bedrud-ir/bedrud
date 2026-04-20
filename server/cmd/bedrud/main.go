@@ -10,16 +10,20 @@ import (
 	"os"
 )
 
+var version = "dev"
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(1)
 	}
 
-	// Support flags like --livekit and --run as requested
 	for i := 1; i < len(os.Args); i++ {
 		arg := os.Args[i]
 		switch arg {
+		case "--version", "-v":
+			fmt.Println("bedrud " + version)
+			return
 		case "--livekit":
 			lkCmd := flag.NewFlagSet("livekit", flag.ExitOnError)
 			configPath := lkCmd.String("config", "", "Path to LiveKit config file")
@@ -154,6 +158,9 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "version":
+		fmt.Println("bedrud " + version)
+
 	case "help":
 		printUsage()
 
@@ -170,6 +177,7 @@ func printUsage() {
 	fmt.Println("  bedrud <command> [arguments]")
 	fmt.Println("  bedrud --livekit --config <path>")
 	fmt.Println("  bedrud --run --config <path>")
+	fmt.Println("  bedrud --version")
 	fmt.Println("\nCommands:")
 	fmt.Println("  run       Start the meeting server")
 	fmt.Println("  livekit   Start the embedded LiveKit server")
@@ -186,5 +194,6 @@ func printUsage() {
 	fmt.Println("            delete  --email <email>")
 	fmt.Println("            promote --email <email>  Grant superadmin access")
 	fmt.Println("            demote  --email <email>  Remove superadmin access")
+	fmt.Println("  version   Print version")
 	fmt.Println("  help      Show this help message")
 }

@@ -96,7 +96,7 @@ try {
     $BedrudExe = Join-Path $InstallDirFull $BinaryName
     if (Test-Path $BedrudExe) {
         $InstalledVersion = & $BedrudExe --version 2>$null
-        if ($LASTEXITCODE -eq 0 -or $InstalledVersion) {
+        if ($LASTEXITCODE -eq 0 -and $InstalledVersion) {
             Write-Host "Version: $InstalledVersion" -ForegroundColor Green
         }
     }
@@ -113,11 +113,6 @@ try {
     } else {
         Write-Host "Skipping PATH config (-SkipPath)" -ForegroundColor Yellow
     }
-
-    # ── Completions ──────────────────────────────────────────────
-    try {
-        & $BedrudExe completions 2>$null | Out-Null
-    } catch {}
 
     # ── Done ─────────────────────────────────────────────────────
     Write-Host ""

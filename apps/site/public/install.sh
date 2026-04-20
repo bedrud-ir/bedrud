@@ -149,8 +149,10 @@ chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
 info "Installed bedrud to ${INSTALL_DIR}/${BINARY_NAME}"
 
 # ── Verify ──────────────────────────────────────────────────────
-INSTALLED_VERSION="$("${INSTALL_DIR}/${BINARY_NAME}" --version 2>/dev/null || echo "unknown")"
-info "Version: ${INSTALLED_VERSION}"
+INSTALLED_VERSION="$("${INSTALL_DIR}/${BINARY_NAME}" --version 2>/dev/null)"
+if [[ -n "$INSTALLED_VERSION" ]]; then
+  info "Version: ${INSTALLED_VERSION}"
+fi
 
 # ── PATH check ──────────────────────────────────────────────────
 in_path() {
@@ -253,9 +255,6 @@ else
     fi
   fi
 fi
-
-# ── Completions ─────────────────────────────────────────────────
-"${INSTALL_DIR}/${BINARY_NAME}" completions 2>/dev/null || true
 
 # ── Done ────────────────────────────────────────────────────────
 printf "\n${GREEN}${BOLD}bedrud installed!${RESET}\n\n"

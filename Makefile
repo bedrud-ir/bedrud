@@ -4,6 +4,9 @@ GREEN  := \033[0;32m
 RED    := \033[0;31m
 RESET  := \033[0m
 
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS := -ldflags "-X main.version=$(VERSION)" -s -w
+
 # Show available targets
 help:
 	@echo "Usage: make <target>"
@@ -159,7 +162,7 @@ build-front:
 
 # Build backend
 build-back:
-	cd server && go build -o dist/bedrud ./cmd/bedrud/main.go
+	cd server && go build $(LDFLAGS) -o dist/bedrud ./cmd/bedrud/main.go
 
 # Build both frontend and backend
 build: build-front
@@ -173,7 +176,7 @@ build: build-front
 # Build a production-ready compressed distribution
 build-dist: build
 	@mkdir -p dist
-	@cd server && GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../dist/bedrud ./cmd/bedrud/main.go && \
+	@cd server && GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../dist/bedrud ./cmd/bedrud/main.go && \
 		tar -cJf ../dist/bedrud_linux_amd64.tar.xz -C ../dist bedrud && \
 		rm ../dist/bedrud && \
 		printf "$(GREEN)✅ Distribution ready: dist/bedrud_linux_amd64.tar.xz$(RESET)\n" || \
@@ -282,7 +285,7 @@ local-build: build-front
 	find server/frontend -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
 	mkdir -p server/frontend
 	cp -r apps/web/dist/client/* server/frontend/
-	@cd server && go build -o dist/bedrud ./cmd/bedrud/main.go && \
+	@cd server && go build $(LDFLAGS) -o dist/bedrud ./cmd/bedrud/main.go && \
 		printf "$(GREEN)✅ Single binary ready: server/dist/bedrud$(RESET)\n" || \
 		( printf "$(RED)❌ Local build failed$(RESET)\n"; exit 1 )
 	@echo "   Run with: CONFIG_PATH=server/config.local.yaml server/dist/bedrud run"
