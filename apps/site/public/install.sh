@@ -4,7 +4,11 @@ set -euo pipefail
 
 BINARY_NAME="bedrud"
 REPO="${BEDRUD_REPO:-bedrud-ir/bedrud}"
-INSTALL_DIR="${BEDRUD_INSTALL:-$HOME/bin}"
+if [[ "$(id -u)" -eq 0 ]]; then
+  INSTALL_DIR="${BEDRUD_INSTALL:-/usr/local/bin}"
+else
+  INSTALL_DIR="${BEDRUD_INSTALL:-$HOME/.local/bin}"
+fi
 VERSION="latest"
 SKIP_SHELL=false
 
@@ -48,7 +52,7 @@ ${BOLD}bedrud installer${RESET}
 Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 
 Options:
-  --install-dir <dir>   Install directory (default: ~/bin)
+  --install-dir <dir>   Install directory (default: ~/.local/bin, /usr/local/bin if root)
   --version <ver>       Install specific version (default: latest)
   --skip-shell          Skip shell RC / PATH modification
   -h, --help            Show this help
@@ -156,10 +160,7 @@ fi
 
 # ── PATH check ──────────────────────────────────────────────────
 in_path() {
-  echo "$PATH" | tr ':' '\n' | while read -r p; do
-    [[ "$p" == "$INSTALL_DIR" ]] && return 0
-  done
-  return 1
+  [[ ":$PATH:" == *":${INSTALL_DIR}:"* ]]
 }
 
 READY=false
