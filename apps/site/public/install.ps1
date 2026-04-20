@@ -114,11 +114,18 @@ try {
         Write-Host "Skipping PATH config (-SkipPath)" -ForegroundColor Yellow
     }
 
+    # ── Verify immediately available ───────────────────────────
+    $Ready = $null -ne (Get-Command bedrud -ErrorAction SilentlyContinue)
+
     # ── Done ─────────────────────────────────────────────────────
     Write-Host ""
     Write-Host "bedrud installed!" -ForegroundColor Green -BackgroundColor Black
     Write-Host ""
-    Write-Host "  Open a new terminal, then:"
+    if ($Ready) {
+        Write-Host "  Get started:"
+    } else {
+        Write-Host "  Open a new terminal, then:"
+    }
     Write-Host ""
     Write-Host "    bedrud run"
     Write-Host ""

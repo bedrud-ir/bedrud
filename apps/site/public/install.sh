@@ -162,8 +162,10 @@ in_path() {
   return 1
 }
 
+READY=false
 if in_path; then
   info "Already in PATH"
+  READY=true
 else
   if [[ "$SKIP_SHELL" == true ]]; then
     info "Skipping shell config (--skip-shell)"
@@ -258,11 +260,20 @@ fi
 
 # ── Done ────────────────────────────────────────────────────────
 printf "\n${GREEN}${BOLD}bedrud installed!${RESET}\n\n"
-echo "  Restart your shell or run:"
-echo ""
-echo "    source ~/.${SHELL_NAME}rc"
-echo ""
-echo "  Then:"
-echo ""
-echo "    bedrud run"
-echo ""
+if $READY; then
+  echo "  Get started:"
+  echo ""
+  echo "    bedrud run"
+  echo ""
+else
+  case "$SHELL_NAME" in
+    fish) echo "  Restart fish or run:"; echo "    exec fish" ;;
+    zsh)  echo "  Restart your shell or run:"; echo "    source ~/.zshrc" ;;
+    *)    echo "  Restart your shell or run:"; echo "    source ~/.bashrc" ;;
+  esac
+  echo ""
+  echo "  Then:"
+  echo ""
+  echo "    bedrud run"
+  echo ""
+fi
