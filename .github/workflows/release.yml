@@ -105,7 +105,8 @@ jobs:
           CC: ${{ matrix.cc }}
         run: |
           EXT=$([[ "${{ matrix.goos }}" == "windows" ]] && echo ".exe" || echo "")
-          go build -ldflags="-s -w" -o "../dist/bedrud${EXT}" ./cmd/bedrud/main.go
+          VERSION="${{ github.ref_name }}"
+          go build -ldflags="-s -w -X main.version=${VERSION}" -o "../dist/bedrud${EXT}" ./cmd/bedrud/main.go
 
       - name: Package binary (Linux)
         if: matrix.goos == 'linux'
