@@ -29,7 +29,7 @@ function extractTextFromMDX(content: string): string {
       .replace(/\*([^*]+)\*/g, "$1")
       .replace(/_([^_]+)_/g, "$1")
       .replace(/`([^`]+)`/g, "$1")
-      .replace(/\n+/g, " ")
+      .replace(/\n+/g, " "),
   ).trim();
 
   return text;
