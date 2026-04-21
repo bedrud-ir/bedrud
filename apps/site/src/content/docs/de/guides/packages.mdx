@@ -30,7 +30,7 @@ echo "deb https://bedrud-ir.github.io/bedrud stable main" \
 sudo apt update && sudo apt install bedrud
 ```
 
-Das Paket installiert das Binary nach `/usr/local/bin/bedrud` und registriert einen systemd-Dienst. Führen Sie nach der Installation das interaktive Installationsprogramm aus:
+Das Paket installiert das Binary nach `/usr/local/bin/bedrud` und registriert einen Init-Service (systemd/OpenRC/SysV automatisch erkannt). Führen Sie nach der Installation das interaktive Installationsprogramm aus:
 
 ```bash
 sudo bedrud install

@@ -57,7 +57,7 @@ bedrud --livekit --config <path>
 |------|----------|--------------|
 | `--config` | (erforderlich) | Pfad zur LiveKit-YAML-Konfigurationsdatei |
 
-**Verwendet von:** systemd `livekit.service`, erstellt von `bedrud install`
+**Verwendet von:** Init-Service `livekit`, erstellt von `bedrud install`
 
 **Implementierung:** `server/internal/livekit/server.go`
 
@@ -65,7 +65,7 @@ bedrud --livekit --config <path>
 
 ### `--run`
 
-Alias für `bedrud run` mit gleichem `--config`-Flag-Verhalten. Verwendet von systemd `bedrud.service`.
+Alias für `bedrud run` mit gleichem `--config`-Flag-Verhalten. Verwendet von Init-Service `bedrud`.
 
 ```bash
 bedrud --run --config <path>
@@ -75,7 +75,7 @@ bedrud --run --config <path>
 
 ### `install`
 
-Installiert Bedrud auf einem Debian/Linux-System. Erstellt systemd-Dienste, Konfigurationsdateien, Verzeichnisse und TLS-Zertifikate.
+Installiert Bedrud auf einem Debian/Linux-System. Erstellt Init-Services (systemd, OpenRC oder SysV init — automatisch erkannt), Konfigurationsdateien, Verzeichnisse und TLS-Zertifikate.
 
 ```bash
 bedrud install [flags]
@@ -108,9 +108,9 @@ bedrud install [flags]
 5. Generiert Bedrud-Serverkonfiguration unter `/etc/bedrud/config.yaml`
 6. Generiert LiveKit-Medienserver-Konfiguration unter `/etc/bedrud/livekit.yaml`
 7. Generiert selbstsignierte Zertifikate unter `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` (wenn TLS aktiviert und keine benutzerdefinierten Zertifikate)
-8. Erstellt systemd `livekit.service` (außer bei externem LiveKit)
-9. Erstellt systemd `bedrud.service`
-10. Führt `systemctl daemon-reload` aus, aktiviert und startet beide Dienste
+8. Erstellt LiveKit-Init-Service (außer bei externem LiveKit)
+9. Erstellt Bedrud-Init-Service
+10. Aktiviert und startet Services über das erkannte Init-System
 11. Gibt Zugangs-URLs aus
 
 **TLS-Optionen:**
@@ -139,8 +139,8 @@ bedrud uninstall
 ```
 
 **Entfernt:**
-- Stoppt und deaktiviert systemd-Dienste: `bedrud`, `livekit`
-- Entfernt systemd-Unit-Dateien aus `/etc/systemd/system/`
+- Stoppt und deaktiviert Services über alle Init-Systeme: `bedrud`, `livekit`
+- Entfernt Service-Dateien für systemd, OpenRC und SysV init
 - Entfernt Binärdatei: `/usr/local/bin/bedrud`, `/tmp/bedrud`, `/tmp/bedrud-livekit-server`
 - Entfernt Verzeichnisse: `/etc/bedrud`, `/var/lib/bedrud`, `/var/log/bedrud`
 
@@ -289,4 +289,4 @@ bedrud user demote --email admin@example.com
 - [Installationsanleitung](/de/docs/getting-started/installation) - Detaillierte `bedrud install`-Anleitung, TLS-Topologien, Schritte nach der Installation
 - [Konfigurationsreferenz](/de/docs/getting-started/configuration) - Server- und LiveKit-Konfigurationsdateistruktur
 - [Backend-Deployment-Logik](/de/docs/backend/deployment) - Wie `install` und `uninstall` intern funktionieren
-- [Deployment-Leitfaden](/de/docs/guides/deployment) - Vollständige Deployment-Optionen inklusive systemd-Dienste
+- [Deployment-Leitfaden](/de/docs/guides/deployment) - Vollständige Deployment-Optionen inklusive Init-System-Services
