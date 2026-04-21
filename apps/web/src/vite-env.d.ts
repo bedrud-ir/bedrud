@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare module '@livekit/components-styles/components'
+
 // View Transitions API — not yet in all TypeScript lib.dom.d.ts versions
 interface ViewTransition {
   ready: Promise<void>

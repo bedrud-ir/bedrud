@@ -72,7 +72,7 @@ function CopyButton({
       ta.style.opacity = "0";
       document.body.appendChild(ta);
       ta.select();
-      // @ts-expect-error deprecated but needed fallback
+      // @ts-ignore deprecated but needed fallback
       document.execCommand("copy");
       document.body.removeChild(ta);
     }
