@@ -173,9 +173,38 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 # ── Download ────────────────────────────────────────────────────
 mkdir -p "$INSTALL_DIR"
 
-ARCHIVE="${TMP_DIR}/bedrud.tar.xz"
+EXISTING_BIN="$(command -v bedrud 2>/dev/null || true)"
+EXISTING_AT_TARGET=""
+if [[ -z "$EXISTING_BIN" && -x "${INSTALL_DIR}/${BINARY_NAME}" ]]; then
+  EXISTING_AT_TARGET="${INSTALL_DIR}/${BINARY_NAME}"
+fi
 
-info "Downloading bedrud..."
+if [[ -n "$EXISTING_BIN" ]]; then
+  warn "bedrud already installed at ${EXISTING_BIN}"
+  if [[ -t 0 && -t 1 ]]; then
+    ask_yn "Reinstall / overwrite?" "Y" DO_OVERWRITE
+    if [[ "$DO_OVERWRITE" != true ]]; then
+      info "Keeping existing binary. Skipping download."
+      SKIP_DOWNLOAD=true
+    fi
+  fi
+elif [[ -n "$EXISTING_AT_TARGET" ]]; then
+  warn "bedrud binary found at ${EXISTING_AT_TARGET} (not in PATH)"
+  if [[ -t 0 && -t 1 ]]; then
+    ask_yn "Overwrite existing binary?" "Y" DO_OVERWRITE
+    if [[ "$DO_OVERWRITE" != true ]]; then
+      info "Keeping existing binary. Skipping download."
+      SKIP_DOWNLOAD=true
+    fi
+  fi
+fi
+
+SKIP_DOWNLOAD="${SKIP_DOWNLOAD:-false}"
+
+if [[ "$SKIP_DOWNLOAD" != true ]]; then
+  ARCHIVE="${TMP_DIR}/bedrud.tar.xz"
+
+  info "Downloading bedrud..."
 curl --fail --location --progress-bar --output "$ARCHIVE" "${RELEASE_URL}/bedrud_${TARGET}.tar.xz" \
   || error "Failed to download bedrud for ${TARGET}. Check https://github.com/${REPO}/releases for available builds."
 
@@ -195,10 +224,12 @@ mv "$BINARY_PATH" "${INSTALL_DIR}/${BINARY_NAME}"
 chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
 
 info "Installed bedrud to ${INSTALL_DIR}/${BINARY_NAME}"
+fi
 
-INSTALLED_VERSION="$("${INSTALL_DIR}/${BINARY_NAME}" --version 2>/dev/null)"
-if [[ -n "$INSTALLED_VERSION" ]]; then
-  info "Version: ${INSTALLED_VERSION}"
+if [[ -x "${INSTALL_DIR}/${BINARY_NAME}" ]]; then
+  info "Binary ready"
+else
+  error "Binary not found or not executable at ${INSTALL_DIR}/${BINARY_NAME}"
 fi
 
 # ── PATH check ──────────────────────────────────────────────────
