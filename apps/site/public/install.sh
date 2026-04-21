@@ -74,6 +74,17 @@ ask_yn() {
   esac
 }
 
+ask_pg_details() {
+  warn "Ensure Postgres is not publicly accessible (bind to 127.0.0.1 or private network)."
+  echo ""
+  ask "Postgres host" "127.0.0.1" PG_HOST
+  ask "Postgres port" "5432" PG_PORT
+  ask "Postgres user" "bedrud" PG_USER
+  ask "Postgres database" "bedrud" PG_DBNAME
+  ask "Postgres password" "" PG_PASS_RAW
+  PG_PASS="$PG_PASS_RAW"
+}
+
 # ── Windows guard ────────────────────────────────────────────────
 case "$(uname -s 2>/dev/null)" in
   MINGW*|MSYS*|CYGWIN*|Windows_NT)
@@ -449,8 +460,12 @@ if [[ "$CAN_SETUP" == true ]]; then
   PG_HOST="" PG_PORT="" PG_USER="" PG_PASS="" PG_DBNAME=""
   PG_DOCKER_CREATED=false
 
-  ask_yn "Database type: SQLite (default) or Postgres?" "Y" USE_SQLITE
-  if [[ "$USE_SQLITE" != true ]]; then
+  printf "\n${BOLD}Database type:${RESET}\n"
+  printf "  1) SQLite     (default, no setup)\n"
+  printf "  2) Postgres   (production, scalable)\n"
+  ask "Choose [1-2]" "1" DB_CHOICE
+
+  if [[ "$DB_CHOICE" == "2" || "$DB_CHOICE" == "postgres" || "$DB_CHOICE" == "p" ]]; then
     DB_TYPE="postgres"
     if [[ "$HAS_DOCKER" == true ]]; then
       ask_yn "Run Postgres in Docker? (recommended — auto-configured, isolated)" "Y" USE_DOCKER_PG
@@ -463,27 +478,10 @@ if [[ "$CAN_SETUP" == true ]]; then
         PG_PASS="$(head -c 24 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 24)"
         info "Docker Postgres will be bound to 127.0.0.1 only (not accessible from outside)"
       else
-        warn "Ensure your Postgres host is NOT publicly accessible."
-        warn "Bind to 127.0.0.1 or use a private network."
-        echo ""
-        ask "Postgres host" "127.0.0.1" PG_HOST
-        ask "Postgres port" "5432" PG_PORT
-        ask "Postgres user" "bedrud" PG_USER
-        ask "Postgres database" "bedrud" PG_DBNAME
-        ask "Postgres password" "" PG_PASS_RAW
-        PG_PASS="$PG_PASS_RAW"
+        ask_pg_details
       fi
     else
-      warn "Docker not found. Provide external Postgres details."
-      warn "Ensure your Postgres host is NOT publicly accessible."
-      warn "Bind to 127.0.0.1 or use a private network."
-      echo ""
-      ask "Postgres host" "127.0.0.1" PG_HOST
-      ask "Postgres port" "5432" PG_PORT
-      ask "Postgres user" "bedrud" PG_USER
-      ask "Postgres database" "bedrud" PG_DBNAME
-      ask "Postgres password" "" PG_PASS_RAW
-      PG_PASS="$PG_PASS_RAW"
+      ask_pg_details
     fi
   fi
 
@@ -660,18 +658,16 @@ CONF
   # ── Phase 6: Create admin user ─────────────────────────────────
   step "Creating admin user"
 
-  if ! "${INSTALL_DIR}/${BINARY_NAME}" user create \
+  if ! "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" create \
     --email "$ADMIN_EMAIL" \
     --password "$ADMIN_PASS" \
-    --name "$ADMIN_NAME" \
-    --config "$CONFIG_FILE"; then
+    --name "$ADMIN_NAME"; then
     error "Failed to create admin user"
   fi
   info "Admin user created"
 
-  if ! "${INSTALL_DIR}/${BINARY_NAME}" user promote \
-    --email "$ADMIN_EMAIL" \
-    --config "$CONFIG_FILE"; then
+  if ! "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" promote \
+    --email "$ADMIN_EMAIL"; then
     error "Failed to promote admin user"
   fi
   info "Admin promoted to superadmin"
