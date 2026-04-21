@@ -91,12 +91,12 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.7")
 
     // Kotlin
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     // LiveKit
     implementation("io.livekit:livekit-android:2.24.1")
-    implementation("io.livekit:livekit-android-compose-components:2.2.1")
+    implementation("io.livekit:livekit-android-compose-components:2.3.0")
 
     // Retrofit + OkHttp
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
@@ -105,7 +105,7 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:5.3.2")
 
     // Koin
-    val koinVersion = "4.2.0"
+    val koinVersion = "4.2.1"
     implementation("io.insert-koin:koin-android:$koinVersion")
     implementation("io.insert-koin:koin-androidx-compose:$koinVersion")
 
@@ -113,8 +113,8 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0")
 
     // Credential Manager (Passkeys)
-    implementation("androidx.credentials:credentials:1.6.0-rc02")
-    implementation("androidx.credentials:credentials-play-services-auth:1.6.0-rc02")
+    implementation("androidx.credentials:credentials:1.6.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
     implementation("com.google.android.gms:play-services-fido:21.2.0")
 
     // Coil for image loading
