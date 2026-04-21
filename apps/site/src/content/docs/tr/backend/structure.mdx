@@ -49,7 +49,7 @@ bedrud/
 - **`/livekit`**: LiveKit Go SDK ile entegrasyon. Oda oluşturmayı yönetir ve katılımcılar için "Katılım Jetonları" üretir.
 - **`/middleware`**: Kimlik doğrulama kontrolleri, günlükleme ve CORS için özel Fiber ara katmanı.
 - **`/server`**: Her şeyi bir araya getiren yapıştırıcı kod. Veritabanını, depoları başlatır ve Fiber sunucusunu çalıştırır.
-- **`/install`**: Linux üzerinde systemd ve TLS kurulumunu otomatikleştiren `bedrud install` komutunun mantığı.
+- **`/install`**: Linux üzerinde init servisi (systemd/OpenRC/SysV) ve TLS kurulumunu otomatikleştiren `bedrud install` komutunun mantığı.
 - **`/scheduler`**: Arka plan görevleri (varsa).
 - **`/utils`**: Küçük yardımcı fonksiyonlar (ör. parola hashleme, rastgele dizeler).
 

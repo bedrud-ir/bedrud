@@ -15,7 +15,7 @@ Bedrud, video toplantıları için kendi kendine yeten bir "aygıt" olarak çal�
 | Gömülü ön uç                   | React arayüzü derlenip Go ikili dosyasına SSR ile ön render edilir |
 | SQLite depolama                | Veritabanı sunucusu gerekmez                                     |
 | Yerleşik TLS                   | Otomatik imzalı sertifikalar veya Let's Encrypt                  |
-| Yerleşik yükleyici             | systemd, dizinler ve yapılandırmaları ayarlar                    |
+| Yerleşik yükleyici             | init servisleri (systemd/OpenRC/SysV), dizinler ve yapılandırmaları ayarlar                    |
 
 ## İkili Dosyayı Çalıştırma
 
@@ -52,7 +52,7 @@ sudo ./bedrud install --ip 1.2.3.4
 
 ### Servis Mimarisi
 
-Kurulumdan sonra iki systemd servisi çalışır:
+Kurulumdan sonra iki init servisi (systemd, OpenRC veya SysV init) çalışır:
 
 ```mermaid
 flowchart LR
@@ -102,7 +102,7 @@ sudo ./bedrud uninstall
 
 Bu işlem şunları tamamen kaldırır:
 
-- systemd servis dosyaları
+- Init servis dosyaları (systemd/OpenRC/SysV)
 - `/usr/local/bin/` konumundaki ikili dosya
 - `/etc/bedrud/` dizinindeki yapılandırmalar
 - `/var/lib/bedrud/` dizinindeki veriler

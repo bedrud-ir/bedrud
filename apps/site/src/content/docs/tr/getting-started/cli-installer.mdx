@@ -12,7 +12,7 @@ Kurulum sonrası sunucu kurulumu için bkz. [Hızlı Başlangıç](/tr/docs/gett
 
 ## Ne Yapar
 
-1. İşletim sistemini, CPU mimarisini ve platform varyantlarını (Rosetta 2) algılar
+1. İşletim sistemini, CPU mimarisini, platform varyantlarını (Rosetta 2) ve init sistemini (systemd/OpenRC/SysV) algılar
 2. [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases) adresinden doğru ikili dosyayı indirir
 3. `~/bin` dizinine kurulum yapar (`--install-dir` ile özelleştirilebilir)
 4. Kabuk yapılandırması ile kurulum dizinini `PATH`'e ekler
@@ -171,6 +171,20 @@ uname -m → "x86_64" | "amd64"  → amd64
 
 ---
 
+## İnit Sistemi Desteği
+
+Yükleyici, init sistemini otomatik olarak algılar ve sunucu kurulumu için uygun servis dosyalarını oluşturur:
+
+| Init System | Algılama | Servis Dosyaları | Yönetim |
+|-------------|----------|-------------------|---------|
+| systemd | `/run/systemd/system` mevcut | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | `/sbin/openrc` mevcut | `/etc/init.d/*` (OpenRC formatı) | `rc-service`, `rc-update` |
+| SysV init | `service` komutu mevcut | `/etc/init.d/*` (LSB formatı) | `service`, `update-rc.d` |
+
+Desteklenen: Ubuntu, Debian, Devuan, Alpine, WSL1 ve çoğu Linux konteyneri.
+
+---
+
 ## Kurulum Akışı
 
 1. **Windows kontrolü** — MINGW/MSYS/CYGWIN algılandı mı? PowerShell komutunu yazdır, çık
@@ -255,7 +269,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-systemd sunucu kurulumları için:
+systemd, OpenRC, SysV init sunucu kurulumları için:
 
 ```bash
 sudo bedrud uninstall
