@@ -1,0 +1,197 @@
+---
+title: API Passkeys
+description: Интеграция FIDO2/WebAuthn
+order: 26
+---
+
+Эндпоинты FIDO2/WebAuthn passkey позволяют пользователям регистрироваться и аутентифицироваться с помощью биометрии или ключей безопасности.
+
+## Обзор
+
+Процессы Passkey используют протокол challenge-response, каждый с двумя фазами:
+
+| Поток | Фаза 1 (Начало) | Фаза 2 (Завершение) |
+|------|-----------------|-------------------|
+| Регистрация | `POST /api/auth/passkey/register/begin` | `POST /api/auth/passkey/register/finish` |
+| Вход | `POST /api/auth/passkey/login/begin` | `POST /api/auth/passkey/login/finish` |
+
+---
+
+## Поток регистрации
+
+Пользователи должны быть авторизованы для регистрации passkey (он привязывается к существующему аккаунту).
+
+### Шаг 1: Начало регистрации
+
+```
+POST /api/auth/passkey/register/begin
+```
+
+**Заголовки:** `Authorization: Bearer <accessToken>`
+
+**Ответ (200):**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rp": {
+      "name": "Bedrud",
+      "id": "meet.example.com"
+    },
+    "user": {
+      "id": "base64url-encoded-user-id",
+      "name": "user@example.com",
+      "displayName": "John Doe"
+    },
+    "pubKeyCredParams": [
+      { "type": "public-key", "alg": -7 },
+      { "type": "public-key", "alg": -257 }
+    ],
+    "authenticatorSelection": {
+      "userVerification": "preferred"
+    }
+  }
+}
+```
+
+Передайте это в WebAuthn API браузера:
+
+```javascript
+const credential = await navigator.credentials.create({
+  publicKey: response.publicKey
+});
+```
+
+### Шаг 2: Завершение регистрации
+
+```
+POST /api/auth/passkey/register/finish
+```
+
+**Заголовки:** `Authorization: Bearer <accessToken>`
+
+**Тело запроса:** Ответ credential от браузера, закодированный в base64url:
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "attestationObject": "base64url-attestation",
+    "clientDataJSON": "base64url-client-data"
+  },
+  "type": "public-key"
+}
+```
+
+**Ответ (200):**
+
+```json
+{
+  "message": "passkey registered"
+}
+```
+
+---
+
+## Поток входа
+
+### Шаг 1: Начало входа
+
+```
+POST /api/auth/passkey/login/begin
+```
+
+Аутентификация не требуется.
+
+**Ответ (200):**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rpId": "meet.example.com",
+    "userVerification": "preferred"
+  }
+}
+```
+
+Передайте это в WebAuthn API браузера:
+
+```javascript
+const assertion = await navigator.credentials.get({
+  publicKey: response.publicKey
+});
+```
+
+### Шаг 2: Завершение входа
+
+```
+POST /api/auth/passkey/login/finish
+```
+
+**Тело запроса:** Ответ assertion от браузера:
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "authenticatorData": "base64url-auth-data",
+    "clientDataJSON": "base64url-client-data",
+    "signature": "base64url-signature"
+  },
+  "type": "public-key"
+}
+```
+
+**Ответ (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
+```
+
+---
+
+## Безопасность
+
+| Мера | Описание |
+|---------|-------------|
+| Challenge/Response | Серверные случайные challenge, хранящиеся в сессии |
+| Проверка источника | Строгая валидация origin и Relying Party ID |
+| Валидация счётчика | Защита от клонированных аутентификаторов |
+| Безопасный транспорт | Разработано для HTTPS с URL-безопасной кодировкой base64 |
+
+## Детали реализации
+
+- **Бэкенд:** Использует `go-passkeys/go-passkeys` для верификации WebAuthn на чистом Go
+- **Хранение сессий:** Challenge хранятся в сессиях Gorilla (через `gothic.Store`)
+- **База данных:** Учётные данные Passkey хранятся в модели `Passkey` (credential ID, публичный ключ, счётчик)
+- **Фронтенд (Web):** API `navigator.credentials` с base64url-хелперами в `src/lib/auth.ts`
+- **Android:** Credentials API для нативной поддержки passkey
+- **iOS:** ASAuthorizationController для поддержки passkey
+
+## Как тестировать
+
+1. Войдите с существующим аккаунтом
+2. Нажмите кнопку регистрации passkey (иконка отпечатка пальца в шапке/дашборде)
+3. Пройдите биометрический запрос
+4. Выйдите из аккаунта
+5. Нажмите «Войти с Passkey» на странице входа
+6. Пройдите биометрический запрос для аутентификации
+
+---
+
+## См. также
+
+- [Поток аутентификации](/ru/docs/backend/authentication) - описание церемоний регистрации/входа passkey
+- [API аутентификации](/ru/docs/api/authentication) - все эндпоинты аутентификации

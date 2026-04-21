@@ -1,0 +1,390 @@
+---
+title: نصب بسته
+description: نصب از مدیران بسته
+order: 32
+---
+
+این راهنما تمام روش‌های نصب package manager و باینری در دسترس برای Bedrud را پوشش می‌دهد - هم **سرور** و هم **کلاینت دسکتاپ**.
+
+---
+
+## نصب سرور
+
+### مخزن apt (Ubuntu / Debian)
+
+آسان‌ترین راه نصب سرور Bedrud در سیستم‌های مبتنی بر Debian از طریق مخزن apt خود‌میزبانی شده در GitHub Pages است.
+
+**۱. افزودن مخزن و کلید GPG:**
+
+```bash
+curl -fsSL https://bedrud-ir.github.io/bedrud/bedrud.gpg.key \
+  | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/bedrud.gpg
+
+echo "deb https://bedrud-ir.github.io/bedrud stable main" \
+  | sudo tee /etc/apt/sources.list.d/bedrud.list
+```
+
+**۲. نصب:**
+
+```bash
+sudo apt update && sudo apt install bedrud
+```
+
+بسته باینری را در `/usr/local/bin/bedrud` نصب می‌کند و یک سرویس systemd ثبت می‌کند. پس از نصب، نصب‌کننده تعاملی را اجرا کنید:
+
+```bash
+sudo bedrud install
+```
+
+به [راهنمای نصب](/fa/docs/getting-started/installation) برای تمام گزینه‌های پیکربندی ببینید.
+
+---
+
+### AUR (Arch Linux)
+
+```bash
+yay -S bedrud-bin
+```
+
+پس از نصب، اجرا کنید:
+
+```bash
+sudo bedrud install
+```
+
+---
+
+### DNF / مخزن RPM (Fedora / RHEL / openSUSE)
+
+**۱. افزودن مخزن:**
+
+```bash
+sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key \
+  -o /etc/pki/rpm-gpg/RPM-GPG-KEY-bedrud
+
+sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.repo \
+  -o /etc/yum.repos.d/bedrud.repo
+```
+
+**۲. نصب:**
+
+```bash
+sudo dnf install bedrud
+```
+
+---
+
+### دانلود مستقیم .deb
+
+بسته `.deb` را مستقیماً از [آخرین انتشار GitHub](https://github.com/bedrud-ir/bedrud/releases/latest) دانلود کنید:
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="x86-64">x86_64 (amd64)</TabsTrigger>
+    <TabsTrigger value="arm64">ARM64</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="x86-64">
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_amd64.deb
+    sudo dpkg -i bedrud_amd64.deb
+    sudo apt-get install -f   # رفع وابستگی‌های گم‌شده
+    ```
+  </TabsContent>
+
+  <TabsContent value="arm64">
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_arm64.deb
+    sudo dpkg -i bedrud_arm64.deb
+    sudo apt-get install -f
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### دانلود مستقیم .rpm
+
+بسته `.rpm` را از [آخرین انتشار GitHub](https://github.com/bedrud-ir/bedrud/releases/latest) دانلود کنید:
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="x86-64">x86_64</TabsTrigger>
+    <TabsTrigger value="aarch64">aarch64</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="x86-64">
+    ```bash
+    sudo dnf install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_*.x86_64.rpm
+    ```
+  </TabsContent>
+
+  <TabsContent value="aarch64">
+    ```bash
+    sudo dnf install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_*.aarch64.rpm
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### دانلود باینری دستی
+
+tarball فشرده‌شده را دانلود کنید و آن را در هر جایی از `$PATH` خود استخراج کنید:
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="linux-x86-64">Linux x86_64</TabsTrigger>
+    <TabsTrigger value="linux-arm64">Linux ARM64</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="linux-x86-64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz \
+      | tar xJ
+    sudo mv bedrud /usr/local/bin/
+    ```
+  </TabsContent>
+
+  <TabsContent value="linux-arm64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_arm64.tar.xz \
+      | tar xJ
+    sudo mv bedrud /usr/local/bin/
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### Docker
+
+تصویر از پیش ساخته‌شده را از GitHub Container Registry بکشید:
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+به [راهنمای Docker](/fa/docs/guides/docker) برای جزئیات کامل شامل سوار کردن حجم و تنظیم reverse proxy ببینید.
+
+---
+
+## نصب کلاینت دسکتاپ
+
+### Linux
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="apt">Ubuntu/Debian (apt)</TabsTrigger>
+    <TabsTrigger value="aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="dnf">Fedora / RHEL (DNF)</TabsTrigger>
+    <TabsTrigger value="snap">Snap (هر توزیع)</TabsTrigger>
+    <TabsTrigger value="flatpak">Flatpak (هر توزیع)</TabsTrigger>
+    <TabsTrigger value="appimage">AppImage (هر توزیع)</TabsTrigger>
+    <TabsTrigger value="tarball">tar.xz قابل حمل</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="apt">
+    ابتدا مخزن apt را اضافه کنید (به بالا [سرور - مخزن apt](#apt-repository-ubuntu-debian) ببینید)، سپس:
+
+    ```bash
+    sudo apt install bedrud-desktop
+    ```
+
+    بسته یک راه‌انداز `.desktop` نصب می‌کند و برنامه را در منوی برنامه شما ثبت می‌کند.
+  </TabsContent>
+
+  <TabsContent value="aur">
+    ```bash
+    yay -S bedrud-desktop-bin
+    ```
+  </TabsContent>
+
+  <TabsContent value="dnf">
+    ابتدا مخزن DNF را اضافه کنید (به بالا [سرور - مخزن DNF](#dnf-rpm-repository-fedora-rhel-opensuse) ببینید)، سپس:
+
+    ```bash
+    sudo dnf install bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="snap">
+    ```bash
+    sudo snap install bedrud-desktop
+    ```
+
+    Snap در هر توزیع Linux که از daemon Snap (snapd) پشتیبانی می‌کند، در دسترس است.
+  </TabsContent>
+
+  <TabsContent value="flatpak">
+    نصب از بسته Flatpak:
+
+    ```bash
+    flatpak install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.flatpak
+    flatpak run ir.bedrud.Desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="appimage">
+    AppImage خودحاوی است و در هر توزیع Linux بدون نصب کار می‌کند.
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
+    chmod +x bedrud-desktop-linux-x86_64.AppImage
+    ./bedrud-desktop-linux-x86_64.AppImage
+    ```
+
+    <Callout type="tip">
+      برای یکپارچه‌سازی AppImage در راه‌انداز خود، از ابزاری مانند [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) استفاده کنید.
+    </Callout>
+  </TabsContent>
+
+  <TabsContent value="tarball">
+    استخراج و اجرا از هر دایرکتوری:
+
+    ```bash
+    tar xf bedrud-desktop-linux-x86_64.tar.xz
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### macOS
+
+tarball‌های قابل حمل از پیش ساخته‌شده برای هر دو Intel و Apple Silicon موجود هستند. برنامه **امضانشده** نیست - پس از استخراج ممکن است نیاز باشد آن را در **System Settings → Privacy & Security** مجاز کنید.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="arm64">Apple Silicon (arm64)</TabsTrigger>
+    <TabsTrigger value="x86-64">Intel (x86_64)</TabsTrigger>
+    <TabsTrigger value="homebrew">Tap Homebrew</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="arm64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz \
+      | tar xz
+    # اجازه دادن به باینری اگر macOS آن را مسدود کند:
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="x86-64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz \
+      | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="homebrew">
+    ```bash
+    brew tap bedrud-ir/bedrud
+    brew install bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="info">
+  انتشارهای macOS **امضاشده و تأییدشده با کد** هستند زمانی که `MACOS_CERTIFICATE` در CI پیکربندی شده است (به [مرجع اسرار](#secrets-reference) ببینید). بدون آن اسرار، باینری امضانشده نیست - از راه‌حل `xattr` بالا یا راست‌کلیک → باز در Finder استفاده کنید.
+</Callout>
+
+<Callout type="warning">
+  هشدار Gatekeeper macOS امضانشده: یا دستور `xattr` بالا را اجرا کنید، یا **System Settings → Privacy & Security** را باز کنید و پس از اولین تلاش راه‌اندازی مسدود شده، **Open Anyway** را کلیک کنید.
+</Callout>
+
+---
+
+### Windows
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="nsis">نصب‌کننده NSIS (توصیه‌شده)</TabsTrigger>
+    <TabsTrigger value="zip">.zip قابل حمل</TabsTrigger>
+    <TabsTrigger value="chocolatey">Chocolatey</TabsTrigger>
+    <TabsTrigger value="winget">WinGet</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="nsis">
+    نصب‌کننده را از [آخرین انتشار](https://github.com/bedrud-ir/bedrud/releases/latest) دانلود و اجرا کنید:
+
+    | معماری | فایل |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64-setup.exe` |
+    | ARM64 | `bedrud-desktop-windows-arm64-setup.exe` |
+
+    نصب‌کننده برنامه را در منوی Start و Add/Remove Programs ثبت می‌کند.
+  </TabsContent>
+
+  <TabsContent value="zip">
+    نیازی به نصب نیست - استخراج و اجرا:
+
+    | معماری | فایل |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64.zip` |
+    | ARM64 | `bedrud-desktop-windows-arm64.zip` |
+  </TabsContent>
+
+  <TabsContent value="chocolatey">
+    ```powershell
+    choco install bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="winget">
+    ```powershell
+    winget install Bedrud.BedrudDesktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## جدول خلاصه
+
+| پلتفرم | سرور | کلاینت دسکتاپ |
+|---|---|---|
+| Ubuntu / Debian (apt) | `apt install bedrud` | `apt install bedrud-desktop` |
+| Fedora / RHEL (dnf) | `dnf install bedrud` | `dnf install bedrud-desktop` |
+| Arch Linux (AUR) | `yay -S bedrud-bin` | `yay -S bedrud-desktop-bin` |
+| هر Linux | باینری AppImage / `tar.xz` | AppImage / Flatpak / Snap / `tar.xz` |
+| macOS | باینری `tar.xz` | tap Homebrew / `tar.gz` قابل حمل |
+| Windows | - | WinGet / Chocolatey / نصب‌کننده NSIS / `.zip` قابل حمل |
+| Docker | `ghcr.io/bedrud-ir/bedrud` | - |
+
+---
+
+## مرجع اسرار
+
+این اسرار GitHub Actions کانال‌های توزیع اختیاری را باز می‌کنند:
+
+| مخفی | کانال | توضیحات |
+|---|---|---|
+| `AUR_SSH_PRIVATE_KEY` | AUR | کلید SSH برای push `aur.archlinux.org` |
+| `APT_GPG_PRIVATE_KEY` | مخزن apt | کلید GPG برای امضای فایل `Release` |
+| `APT_GPG_KEY_ID` | مخزن apt | شناسه کلید بالا |
+| `RPM_GPG_PRIVATE_KEY` | مخزن DNF | کلید GPG برای امضای بسته‌های RPM |
+| `SNAPCRAFT_STORE_CREDENTIALS` | فروشگاه Snap | ورود از `snapcraft export-login` |
+| `CHOCOLATEY_API_KEY` | Chocolatey | کلید API از chocolatey.org |
+| `HOMEBREW_TAP_TOKEN` | tap Homebrew | GitHub PAT با دسترسی نوشتن به `bedrud-ir/homebrew-bedrud` |
+| `WINGET_GITHUB_TOKEN` | WinGet | GitHub PAT برای ارسال PR به `microsoft/winget-pkgs` |
+| `MACOS_CERTIFICATE` | امضای macOS | گواهی `.p12` شناسه توسعه‌دهنده کدگذاری شده Base64 |
+| `MACOS_CERTIFICATE_PWD` | امضای macOS | رمز عبور برای فایل `.p12` |
+| `MACOS_TEAM_ID` | امضای macOS / تأیید | شناسه تیم Apple Developer |
+| `MACOS_APPLE_ID` | تأیید macOS | آدرس ایمیل Apple ID |
+| `MACOS_APP_PWD` | تأیید macOS | رمز عبور اختصاصی برنامه برای notarytool |
+| `IOS_P12_BASE64` | IPA iOS | گواهی توزیع iOS |
+| `TELEGRAM_BOT_TOKEN` | Telegram | توکن ربات برای اعلان‌های انتشار |
+| `TELEGRAM_CHAT_ID` | Telegram | شناسه کانال/گروه هدف |
+
+همه اسرار اختیاری هستند - اگر غایب باشند، کار آن کانال به طور خاموش رد می‌شود.

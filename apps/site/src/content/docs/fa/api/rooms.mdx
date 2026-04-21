@@ -1,0 +1,297 @@
+---
+title: API اتاق‌ها
+description: نقاط پایانی مدیریت اتاق‌ها
+order: 24
+---
+
+نقاط پایانی مدیریت اتاق‌ها تحت `/api/room/` هستند. تمام نقاط پایانی نیاز به احراز هویت دارند.
+
+## نمای کلی
+
+| نقطه پایانی | روش | توضیحات |
+|----------|--------|-------------|
+| `/api/room/create` | POST | ایجاد یک اتاق جدید |
+| `/api/room/join` | POST | پیوستن به یک اتاق و دریافت توکن LiveKit |
+| `/api/room/list` | GET | لیست اتاق‌های موجود |
+| `/api/room/:roomId/kick/:identity` | POST | اخراج یک شرکت‌کننده (مدیر) |
+| `/api/room/:roomId/mute/:identity` | POST | سکوت کردن یک شرکت‌کننده (مدیر) |
+| `/api/room/:roomId/video/:identity/off` | POST | غیرفعال کردن ویدیو شرکت‌کننده (مدیر) |
+
+---
+
+## نقاط پایانی
+
+### ایجاد اتاق
+
+ایجاد یک اتاق جلسه جدید. کاربر احراز هویت شده به مدیر اتاق تبدیل می‌شود.
+
+```
+POST /api/room/create
+```
+
+**هدرها:** `Authorization: Bearer <accessToken>`
+
+**بدنه درخواست:**
+
+```json
+{
+  "name": "team-standup",
+  "isPublic": true,
+  "mode": "standard",
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  }
+}
+```
+
+> **توجه:** فیلد `name` **اختیاری** است. اگر حذف شود یا خالی باشد، سرور یک نام تصادفی امن برای URL به صورت خودکار با فرمت `xxx-xxxx-xxx` (مثلاً `bkf-qmzl-rja`) تولید می‌کند.
+
+**قوانین نام اتاق:**
+
+نام‌های اتاق در URL به صورت `https://bedrud.xyz/m/NAME` نمایش داده می‌شوند، بنابراین باید امن برای URL باشند:
+
+| قانون | توضیحات |
+|------|-------------|
+| **کاراکترهای مجاز** | حروف کوچک (`a-z`)، اعداد (`0-9`)، و خط تیره (`-`) |
+| **حداقل طول** | ۳ کاراکتر |
+| **حداکثر طول** | ۶۳ کاراکتر |
+| **بدون کاراکترهای خاص** | `#`، `@`، `_`، `.`، `/`، `\`، `<`، `>`، `&`، `%`، `+`، `=`، `;`، `:`، `'`، `"`، `?`، `!`، فاصله و غیره **مجاز نیستند** |
+| **بدون خط تیره در ابتدا و انتها** | `-room` و `room-` نامعتبر هستند |
+| **بدون خط تیره متوالی** | `room--name` نامعتبر است |
+| **فقط حروف کوچک** | حروف بزرگ رد می‌شوند؛ ورودی به صورت خودکار کوچک می‌شود |
+| **منحصر به فرد** | هر نام اتاق باید منحصر به فرد باشد |
+
+**پاسخ (200):**
+
+```json
+{
+  "id": "uuid",
+  "name": "team-standup",
+  "createdBy": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 0,
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
+}
+```
+
+### فیلدها
+
+| فیلد | نوع | ضروری | توضیحات |
+|-------|------|----------|-------------|
+| `name` | string | خیر | نام اتاق امن برای URL (در صورت حذف به صورت خودکار تولید می‌شود) |
+| `isPublic` | boolean | خیر | اینکه آیا اتاق در لیست‌های عمومی نمایش داده شود |
+| `mode` | string | خیر | حالت اتاق (مثلاً `"standard"`) |
+| `maxParticipants` | number | خیر | حداکثر تعداد شرکت‌کنندگان |
+| `settings.allowChat` | boolean | خیر | اینکه آیا چت متنی فعال است |
+| `settings.allowVideo` | boolean | خیر | اینکه آیا ویدیو فعال است |
+| `settings.allowAudio` | boolean | خیر | اینکه آیا صدا فعال است |
+| `settings.requireApproval` | boolean | خیر | اینکه آیا شرکت‌کنندگان نیاز به تأیید مدیر دارند |
+| `settings.e2ee` | boolean | خیر | اینکه آیا رمزنگاری سرتاسری فعال است |
+
+---
+
+### پیوستن به اتاق
+
+پیوستن به یک اتاق موجود و دریافت توکن LiveKit برای اتصال رسانه.
+
+```
+POST /api/room/join
+```
+
+**هدرها:** `Authorization: Bearer <accessToken>`
+
+**بدنه درخواست:**
+
+```json
+{
+  "roomName": "team-standup"
+}
+```
+
+**پاسخ (200):**
+
+```json
+{
+  "id": "uuid",
+  "name": "team-standup",
+  "token": "eyJ...",
+  "createdBy": "user-uuid",
+  "adminId": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 20,
+  "expiresAt": "2026-02-16T12:00:00Z",
+  "settings": { ... },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
+}
+```
+
+`token` یک توکن دسترسی امضاشده LiveKit است. برای اتصال به سرور LiveKit از طریق WebSocket از آن استفاده کنید:
+
+```javascript
+import { Room } from 'livekit-client';
+
+const room = new Room();
+await room.connect(livekitUrl, token);
+```
+
+---
+
+### لیست اتاق‌ها
+
+دریافت لیست اتاق‌هایی که کاربر ایجاد کرده است.
+
+```
+GET /api/room/list
+```
+
+**هدرها:** `Authorization: Bearer <accessToken>`
+
+**پاسخ (200):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "team-standup",
+    "createdBy": "user-uuid",
+    "isActive": true,
+    "maxParticipants": 20,
+    "expiresAt": "2026-02-16T12:00:00Z",
+    "settings": { ... },
+    "mode": "standard",
+    "relationship": "creator"
+  }
+]
+```
+
+---
+
+### اخراج شرکت‌کننده
+
+حذف یک شرکت‌کننده از اتاق. فقط مدیر اتاق می‌تواند این کار را انجام دهد.
+
+```
+POST /api/room/:roomId/kick/:identity
+```
+
+**هدرها:** `Authorization: Bearer <accessToken>`
+
+**پاسخ (200):**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+### سکوت کردن شرکت‌کننده
+
+سکوت کردن میکروفون یک شرکت‌کننده. فقط مدیر اتاق می‌تواند این کار را انجام دهد.
+
+```
+POST /api/room/:roomId/mute/:identity
+```
+
+**هدرها:** `Authorization: Bearer <accessToken>`
+
+**پاسخ (200):**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+### غیرفعال کردن ویدیو شرکت‌کننده
+
+خاموش کردن دوربین یک شرکت‌کننده. فقط مدیر اتاق می‌تواند این کار را انجام دهد.
+
+```
+POST /api/room/:roomId/video/:identity/off
+```
+
+**هدرها:** `Authorization: Bearer <accessToken>`
+
+**پاسخ (200):**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+## کنترل‌های مدیر
+
+عملکردهای مدیر اتاق (اخراج، سکوت، خاموش کردن ویدیو) فقط برای کاربری در دسترس هستند که اتاق را ایجاد کرده است (`adminId`). تلاش برای انجام این عملکردها به عنوان غیرمدیر خطای 403 برمی‌گرداند.
+
+### ماتریس مجوزها
+
+| عملکرد | مدیر اتاق | مدیر ارشد | کاربر عادی | مهمان |
+|--------|-----------|-------------|-------------|-------|
+| ایجاد اتاق | بله | بله | بله | خیر |
+| پیوستن به اتاق | بله | بله | بله | بله |
+| لیست اتاق‌ها | بله | بله | بله | بله |
+| اخراج | بله | بله | خیر | خیر |
+| سکوت | بله | بله | خیر | خیر |
+| خاموش کردن ویدیو | بله | بله | خیر | خیر |
+
+## پاسخ‌های خطا
+
+تمام خطاها از فرمت ثابت پیروی می‌کنند:
+
+```json
+{
+  "error": "human-readable error message"
+}
+```
+
+### خطاهای ایجاد اتاق
+
+| وضعیت | پیام خطا | توضیحات |
+|--------|---------------|-------------|
+| 400 | `"Invalid request body"` | JSON malformed |
+| 400 | `"room name must contain only lowercase letters, numbers, and hyphens"` | نام شامل کاراکترهای خاص است (`#`، `@`، `_` و غیره) |
+| 400 | `"room name must be at least 3 characters"` | نام خیلی کوتاه است |
+| 400 | `"room name must be at most 63 characters"` | نام خیلی طولانی است |
+| 409 | `"a room with this name already exists"` | نام تکراری است |
+| 500 | `"Failed to create media room"` | خطای سرور LiveKit |
+| 500 | `"Failed to create room"` | خطای دیتابیس |
+
+### خطاهای عمومی
+
+| وضعیت | معنی |
+|--------|---------|
+| 400 | درخواست نامعتبر (داده‌های گم‌شده/نامعتبر) |
+| 401 | احراز هویت نشده |
+| 403 | مجاز نیست (غیرمدیر در تلاش برای انجام عملکرد مدیر) |
+| 404 | اتاق یافت نشد |
+| 409 | تضاد (منبع تکراری) |
+| 500 | خطای داخلی سرور |
+
+---
+
+## مشاهده همچنین
+
+- [نمای کلی معماری](/fa/docs/architecture/overview) - مدل داده و جریان اتصال جلسه
+- [مدیریت‌کننده‌های API](/fa/docs/backend/api-handlers) - نحوه پیاده‌سازی نقاط پایانی اتاق

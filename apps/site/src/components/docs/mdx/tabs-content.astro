@@ -1,0 +1,11 @@
+---
+interface Props {
+	value?: string;
+}
+
+const { value } = Astro.props;
+---
+
+<div role="tabpanel" data-tab-content={value}>
+	<slot />
+</div>

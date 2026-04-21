@@ -1,0 +1,309 @@
+---
+title: CLI インストーラー
+description: すべてのプラットフォーム向け Bedrud ワンコマンドインストール
+order: 2
+---
+
+すべてのプラットフォーム向けワンコマンドインストール。`sudo` 不要 — ホームディレクトリ配下にインストールされます。
+
+インストール後のサーバーセットアップについては [クイックスタート](/ja/docs/getting-started/quickstart) を参照。パッケージマネージャー、Docker、その他の方法については [サーバーインストール](/ja/docs/getting-started/installation) を参照。
+
+---
+
+## インストーラーの動作
+
+1. OS、CPU アーキテクチャ、プラットフォームバリアント（Rosetta 2）を検出
+2. [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) から正しいバイナリをダウンロード
+3. `~/bin` にインストール（`--install-dir` でカスタマイズ可能）
+4. シェル設定を通じてインストールディレクトリを `PATH` に追加
+5. `bedrud completions` を実行してシェルのタブ補完を設定
+6. 次のステップを表示
+
+---
+
+## 必要なもの
+
+| プラットフォーム | 依存関係 |
+|----------|-------------|
+| macOS / Linux | `curl` + `tar` |
+| Windows | PowerShell 5.1+（Windows 10/11 に同梱） |
+
+---
+
+## クイックインストール
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="bash">macOS / Linux</TabsTrigger>
+    <TabsTrigger value="powershell">Windows</TabsTrigger>
+  </TabsList>
+  <TabsContent value="bash">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    シェルを再読み込みして、確認します:
+
+    ```bash
+    source ~/.bashrc  # または ~/.zshrc
+    bedrud --version
+    ```
+  </TabsContent>
+  <TabsContent value="powershell">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    bedrud --version
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## フラグとオプション
+
+### Bash インストーラー
+
+```
+Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+```
+
+| フラグ | デフォルト | 説明 |
+|------|---------|-------------|
+| `--install-dir <dir>` | `~/bin` | バイナリの配置先 |
+| `--version <ver>` | `latest` | リリースを固定（例: `v1.2.0`） |
+| `--skip-shell` | オフ | シェル RC ファイルや PATH を変更しない |
+| `-h`, `--help` | — | 使い方を表示して終了 |
+
+**例:**
+
+```bash
+# デフォルト
+curl -fsSL https://get.bedrud.org | bash
+
+# バージョン固定
+curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# システム全体にインストール
+curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+
+# CI / 自動化 — シェル設定をスキップ
+curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+```
+
+### PowerShell インストーラー
+
+```
+Usage: irm https://get.bedrud.org/install.ps1 | iex
+```
+
+パラメータを渡すには、まずファイルに保存します:
+
+```powershell
+irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+.\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
+```
+
+| パラメータ | デフォルト | 説明 |
+|-----------|---------|-------------|
+| `-InstallDir <path>` | `$HOME\bin` | `bedrud.exe` の配置先 |
+| `-Version <ver>` | `latest` | 特定のリリースバージョンをインストール |
+| `-SkipPath` | `$false` | インストールディレクトリをユーザー PATH に追加しない |
+
+---
+
+## 環境変数
+
+| 変数 | デフォルト | プラットフォーム | 説明 |
+|----------|---------|-----------|-------------|
+| `BEDRUD_INSTALL` | `~/bin` | Bash のみ | インストールディレクトリを上書き（`--install-dir` と同等） |
+| `BEDRUD_REPO` | `bedrud-ir/bedrud` | 両方 | GitHub リポジトリを上書き（フォークやミラー用） |
+
+```bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+```
+
+```powershell
+$env:BEDRUD_REPO = "myorg/bedrud-fork"
+irm https://get.bedrud.org/install.ps1 | iex
+```
+
+---
+
+## プラットフォームサポート
+
+| ターゲット | OS | アーキテクチャ | 備考 |
+|--------|-----|-------------|-------|
+| `darwin_amd64` | macOS | Intel (x86_64) | 標準 |
+| `darwin_arm64` | macOS | Apple Silicon (M1/M2/M3/M4) | Rosetta 2 自動検出 |
+| `linux_amd64` | Linux | x86_64 | 標準 |
+| `linux_arm64` | Linux | ARM64 | 標準 |
+| `freebsd_amd64` | FreeBSD | x86_64 | 標準 |
+| `windows_amd64` | Windows | x86_64 | 標準 |
+| `windows_arm64` | Windows | ARM64 | 標準 |
+
+<details>
+<summary>OS とアーキテクチャの検出ロジック</summary>
+
+```
+uname -s → "Darwin"  → darwin
+           "Linux"   → linux
+           "FreeBSD" → freebsd
+           "MINGW*"  → PowerShell スクリプトにリダイレクト
+           "MSYS*"   → PowerShell スクリプトにリダイレクト
+
+uname -m → "x86_64" | "amd64"  → amd64
+           "aarch64" | "arm64"  → arm64
+```
+
+</details>
+
+---
+
+## エッジケースの検出
+
+### Rosetta 2（Apple Silicon 上の macOS Intel）
+
+**検出:** `sysctl -n sysctl.proc_translated` が `1` を返します。
+**影響:** ネイティブ ARM パフォーマンスのため `darwin_amd64` → `darwin_arm64` に切り替えます。
+
+---
+
+## インストールフロー
+
+1. **Windows チェック** — MINGW/MSYS/CYGWIN を検出? PowerShell コマンドを表示して終了
+2. **依存関係チェック** — `curl` + `tar` が必要
+3. **引数のパース** — 最大 3 フラグ
+4. **プラットフォーム検出** — `uname` による OS + アーキテクチャ
+5. **バリアント検出** — Rosetta 2
+6. **ダウンロード** — `bedrud_{TARGET}.tar.xz` をダウンロード
+7. **展開とインストール** — 一時ディレクトリ、展開、`mv → $INSTALL_DIR/bedrud`、`chmod +x`
+8. **検証** — `bedrud --version` を実行
+9. **PATH チェック** — 既に PATH にある? スキップ。`--skip-shell`? 手動コマンドを表示。それ以外 → RC ファイルを変更
+10. **補完** — `bedrud completions` を実行
+11. **完了** — 成功メッセージ + 再読み込み手順を表示
+
+ダウンロード URL の形式: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+---
+
+## PATH とシェル設定
+
+`--skip-shell` が指定されていない場合、インストーラーはインストールディレクトリを PATH に追加します。
+
+| シェル | RC ファイル |
+|-------|---------|
+| fish | `~/.config/fish/config.fish` |
+| zsh | `$ZDOTDIR/.zshrc`（デフォルト `~/.zshrc`） |
+| bash (macOS) | `~/.bash_profile`、次に `~/.bashrc` |
+| bash (Linux) | `~/.bashrc`、次に `~/.bash_profile` |
+
+**追加される内容:**
+
+```bash
+# bedrud
+export PATH="$HOME/bin:$PATH"  # bedrud
+```
+
+`# bedrud` コメントマーカーにより重複エントリが防止されるため、再実行しても安全です。
+
+**Windows:** レジストリレベルで `[Environment]::SetEnvironmentVariable("PATH", ..., "User")` を使用します。RC ファイルは不要です。
+
+**インストール後にシェルを再読み込み:**
+
+```bash
+source ~/.bashrc    # bash
+source ~/.zshrc     # zsh
+source ~/.config/fish/config.fish  # fish
+```
+
+---
+
+## オフライン / エアギャップインストール
+
+### ダウンロードと転送
+
+```bash
+curl -fsSL -o bedrud.tar.xz \
+  https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+scp bedrud.tar.xz airgapped-server:/tmp/
+# ターゲットマシンで:
+tar -xf /tmp/bedrud.tar.xz -C /tmp/bedrud-extracted
+mv /tmp/bedrud-extracted/bedrud ~/bin/
+chmod +x ~/bin/bedrud
+```
+
+### セルフホストミラー
+
+```bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+```
+
+### 直接バイナリ
+
+[Releases](https://github.com/bedrud-ir/bedrud/releases) からダウンロードし、展開して `PATH` 内のディレクトリに移動します。
+
+---
+
+## アンインストール
+
+```bash
+rm ~/bin/bedrud
+# シェル RC から PATH 行を削除（"# bedrud" を検索）:
+#   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
+```
+
+systemd サーバーインストールの場合:
+
+```bash
+sudo bedrud uninstall
+```
+
+Windows の場合:
+
+```powershell
+Remove-Item "$env:USERPROFILE\bin\bedrud.exe"
+# システムのプロパティ → 環境変数から PATH を削除
+```
+
+---
+
+## トラブルシューティング
+
+### `command not found: bedrud`
+
+```bash
+source ~/.bashrc    # シェルを再読み込み
+echo $PATH | tr ':' '\n' | grep "$HOME/bin"  # PATH を確認
+```
+
+見つからない場合:
+
+```bash
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### `Failed to download bedrud`
+
+1. インターネット接続を確認
+2. [Releases](https://github.com/bedrud-ir/bedrud/releases) でターゲットが存在するか確認
+3. 特定のバージョンを試す: `--version v1.0.0`
+4. お使いのプラットフォームにはまだビルド済みバイナリが存在しない可能性があります
+
+### macOS: Rosetta 下で x64 を実行している（遅い）
+
+ネイティブ ARM を強制:
+
+```bash
+arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+```
+
+### Windows: "running scripts is disabled"
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+irm https://get.bedrud.org/install.ps1 | iex
+```

@@ -1,0 +1,197 @@
+---
+title: Passkeys-API
+description: FIDO2/WebAuthn-Integration
+order: 26
+---
+
+FIDO2/WebAuthn-Passkey-Endpunkte ermöglichen es Benutzern, sich mit Biometrie oder Sicherheitsschlüsseln zu registrieren und zu authentifizieren.
+
+## Übersicht
+
+Passkey-Abläufe verwenden ein Challenge-Response-Protokoll mit jeweils zwei Phasen:
+
+| Ablauf | Phase 1 (Beginn) | Phase 2 (Abschluss) |
+|------|-----------------|-------------------|
+| Registrierung | `POST /api/auth/passkey/register/begin` | `POST /api/auth/passkey/register/finish` |
+| Anmeldung | `POST /api/auth/passkey/login/begin` | `POST /api/auth/passkey/login/finish` |
+
+---
+
+## Registrierungs-Ablauf
+
+Benutzer müssen angemeldet sein, um einen Passkey zu registrieren (er wird mit ihrem bestehenden Konto verknüpft).
+
+### Schritt 1: Registrierung beginnen
+
+```
+POST /api/auth/passkey/register/begin
+```
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Antwort (200):**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rp": {
+      "name": "Bedrud",
+      "id": "meet.example.com"
+    },
+    "user": {
+      "id": "base64url-encoded-user-id",
+      "name": "user@example.com",
+      "displayName": "John Doe"
+    },
+    "pubKeyCredParams": [
+      { "type": "public-key", "alg": -7 },
+      { "type": "public-key", "alg": -257 }
+    ],
+    "authenticatorSelection": {
+      "userVerification": "preferred"
+    }
+  }
+}
+```
+
+Übergeben Sie dies an die WebAuthn-API des Browsers:
+
+```javascript
+const credential = await navigator.credentials.create({
+  publicKey: response.publicKey
+});
+```
+
+### Schritt 2: Registrierung abschließen
+
+```
+POST /api/auth/passkey/register/finish
+```
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Anfrage-Body:** Die Credential-Antwort des Browsers, base64url-kodiert:
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "attestationObject": "base64url-attestation",
+    "clientDataJSON": "base64url-client-data"
+  },
+  "type": "public-key"
+}
+```
+
+**Antwort (200):**
+
+```json
+{
+  "message": "passkey registered"
+}
+```
+
+---
+
+## Anmelde-Ablauf
+
+### Schritt 1: Anmeldung beginnen
+
+```
+POST /api/auth/passkey/login/begin
+```
+
+Keine Authentifizierung erforderlich.
+
+**Antwort (200):**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rpId": "meet.example.com",
+    "userVerification": "preferred"
+  }
+}
+```
+
+Übergeben Sie dies an die WebAuthn-API des Browsers:
+
+```javascript
+const assertion = await navigator.credentials.get({
+  publicKey: response.publicKey
+});
+```
+
+### Schritt 2: Anmeldung abschließen
+
+```
+POST /api/auth/passkey/login/finish
+```
+
+**Anfrage-Body:** Die Assertion-Antwort des Browsers:
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "authenticatorData": "base64url-auth-data",
+    "clientDataJSON": "base64url-client-data",
+    "signature": "base64url-signature"
+  },
+  "type": "public-key"
+}
+```
+
+**Antwort (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
+```
+
+---
+
+## Sicherheit
+
+| Maßnahme | Beschreibung |
+|---------|-------------|
+| Challenge/Response | Servergenerierte zufällige Challenges, in der Session gespeichert |
+| Origin-Verifizierung | Strikte Origin- und Relying-Party-ID-Validierung |
+| Zähler-Validierung | Schutz gegen geklonte Authentikatoren |
+| Sicherer Transport | Konzipiert für HTTPS mit URL-sicherer Base64-Kodierung |
+
+## Implementierungsdetails
+
+- **Backend:** Verwendet `go-passkeys/go-passkeys` für reine Go-WebAuthn-Verifizierung
+- **Session-Speicher:** Challenges werden in Gorilla-Sessions gespeichert (über `gothic.Store`)
+- **Datenbank:** Passkey-Credentials werden im `Passkey`-Modell gespeichert (Credential-ID, öffentlicher Schlüssel, Zähler)
+- **Frontend (Web):** `navigator.credentials`-API mit Base64url-Hilfsfunktionen in `src/lib/auth.ts`
+- **Android:** Credentials API für native Passkey-Unterstützung
+- **iOS:** ASAuthorizationController für Passkey-Unterstützung
+
+## Testen
+
+1. Mit einem bestehenden Konto anmelden
+2. Die Passkey-Registrierungsschaltfläche anklicken (Fingerabdruck-Icon im Header/Dashboard)
+3. Die biometrische Eingabeaufforderung abschließen
+4. Abmelden
+5. Auf der Anmeldeseite "Mit Passkey anmelden" anklicken
+6. Die biometrische Eingabeaufforderung zur Authentifizierung abschließen
+
+---
+
+## Siehe auch
+
+- [Authentifizierungs-Ablauf](/de/docs/backend/authentication) - Passkey-Registrierungs-/Anmeldezeremonien erklärt
+- [Authentifizierungs-API](/de/docs/api/authentication) - alle Authentifizierungs-Endpunkte

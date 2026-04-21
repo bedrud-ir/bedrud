@@ -1,0 +1,271 @@
+---
+title: 認証API
+description: 認証エンドポイントとメソッド
+order: 23
+---
+
+すべての認証エンドポイントは `/api/auth/` 以下にあります。
+
+## 概要
+
+Bedrudは複数の認証方式に対応しています：
+
+| 方式 | エンドポイント | 説明 |
+|--------|----------|-------------|
+| Email/Password | `POST /api/auth/login` | 従来のログイン |
+| Registration | `POST /api/auth/register` | アカウント作成 |
+| Guest | `POST /api/auth/guest-login` | 一時アクセス |
+| OAuth | `GET /api/auth/:provider/login` | ソーシャルログイン |
+| Passkeys | `POST /api/auth/passkey/*` | FIDO2/WebAuthn |
+| Token Refresh | `POST /api/auth/refresh` | アクセストークンの更新 |
+
+## トークン形式
+
+認証に成功すると、JWTトークンのペアが返されます：
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+- **Access Token** - 有効期間が短く、`Authorization` ヘッダーで使用します
+- **Refresh Token** - 有効期間が長く、新しいアクセストークンを取得するために使用します
+
+### トークンの使用
+
+認証が必要なすべてのリクエストにアクセストークンを含めてください：
+
+```
+Authorization: Bearer <accessToken>
+```
+
+---
+
+## エンドポイント
+
+### アカウント作成
+
+新しいユーザーアカウントを作成します。
+
+```
+POST /api/auth/register
+```
+
+**リクエストボディ：**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "name": "John Doe"
+}
+```
+
+**レスポンス (200)：**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### ログイン
+
+メールアドレスとパスワードで認証します。
+
+```
+POST /api/auth/login
+```
+
+**リクエストボディ：**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**レスポンス (200)：**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### ゲストログイン
+
+アカウントを作成せずにゲストとして参加します。ゲストには制限付きの権限が付与されます。
+
+```
+POST /api/auth/guest-login
+```
+
+**リクエストボディ：**
+
+```json
+{
+  "name": "Guest User"
+}
+```
+
+**レスポンス (200)：**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "name": "Guest User",
+    "role": "guest"
+  }
+}
+```
+
+---
+
+### 現在のユーザー情報の取得
+
+認証済みユーザーのプロフィールを取得します。
+
+```
+GET /api/auth/me
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**レスポンス (200)：**
+
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "avatar": "https://...",
+  "role": "user",
+  "provider": "email"
+}
+```
+
+---
+
+### トークンのリフレッシュ
+
+リフレッシュトークンを新しいアクセストークンと交換します。
+
+```
+POST /api/auth/refresh
+```
+
+**リクエストボディ：**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**レスポンス (200)：**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ..."
+}
+```
+
+---
+
+### ログアウト
+
+現在のリフレッシュトークンを無効化します。
+
+```
+POST /api/auth/logout
+```
+
+**ヘッダー：** `Authorization: Bearer <accessToken>`
+
+**リクエストボディ：**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**レスポンス (200)：**
+
+```json
+{
+  "message": "logged out"
+}
+```
+
+---
+
+### OAuthログイン
+
+ソーシャルプロバイダーでOAuthフローを開始します。
+
+```
+GET /api/auth/:provider/login
+```
+
+**対応プロバイダー：**
+
+| プロバイダー | パス |
+|----------|------|
+| Google | `/api/auth/google/login` |
+| GitHub | `/api/auth/github/login` |
+| Twitter | `/api/auth/twitter/login` |
+
+サーバーはユーザーをプロバイダーの認証ページにリダイレクトします。認証後、プロバイダーはコールバックURLにリダイレクトし、サーバーがJWTトークンを返します。
+
+---
+
+## エラーレスポンス
+
+すべての認証エンドポイントは以下の形式でエラーを返します：
+
+```json
+{
+  "error": "invalid credentials"
+}
+```
+
+| ステータスコード | 意味 |
+|--------|---------|
+| 400 | 不正なリクエスト（フィールド不足、バリデーションエラー） |
+| 401 | 認証情報が無効、またはトークンの有効期限切れ |
+| 409 | メールアドレスはすでに登録されています |
+| 500 | サーバー内部エラー |
+
+---
+
+## 関連ドキュメント
+
+- [認証フロー](/ja/docs/backend/authentication) - JWT、OAuth、パスキーの内部動作
+- [Passkeys API](/ja/docs/api/passkeys) - FIDO2/WebAuthnエンドポイントリファレンス

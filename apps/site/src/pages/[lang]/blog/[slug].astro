@@ -1,0 +1,118 @@
+---
+import BlogBackLink from "~/components/blog/blog-back-link.astro";
+import BlogPostHeader from "~/components/blog/blog-post-header.astro";
+import Landing from "~/layouts/Landing.astro";
+import { getCollection, render } from "astro:content";
+import { isValidLocale, type Locale, supportedLocales, t } from "../../../i18n/utils";
+
+export function getStaticPaths() {
+  return supportedLocales.flatMap((lang) => {
+    const allPosts = import.meta.glob<{ frontmatter: Record<string, unknown> }>(
+      "/src/content/blog/**/*.mdx",
+      { eager: true },
+    );
+
+    const slugs = new Set<string>();
+    for (const path of Object.keys(allPosts)) {
+      const match = path.match(/\/src\/content\/blog\/(?:en|de|fr|es|zh|ja|tr|fa|ar|ru)\/(.+)\.mdx$/);
+      if (match) slugs.add(match[1]);
+    }
+
+    return Array.from(slugs).map((slug) => ({
+      params: { lang, slug },
+    }));
+  });
+}
+
+const { lang: rawLang, slug } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+
+const localePost = await getCollection("blog", (post) => {
+  return post.id === `${lang}/${slug}` && !post.data.draft;
+});
+
+const enPost = await getCollection("blog", (post) => {
+  return post.id === `en/${slug}` && !post.data.draft;
+});
+
+const post = localePost[0] || enPost[0];
+
+if (!post) {
+  return Astro.redirect(`/${lang}/blog`);
+}
+
+const { Content } = await render(post);
+---
+
+<Landing
+  lang={lang}
+  title={`${post.data.title}${t(lang, "blog.titleSuffix")}`}
+  description={post.data.description}
+>
+  <article class="py-12 lg:py-16">
+    <div class="mx-auto max-w-3xl px-6">
+      <BlogBackLink lang={lang} />
+      <BlogPostHeader
+        lang={lang}
+        title={post.data.title}
+        description={post.data.description}
+        date={String(post.data.date)}
+        author={post.data.author ?? t(lang, "blog.defaultAuthor")}
+        tags={post.data.tags ?? []}
+      />
+      <div class="prose prose-neutral max-w-none prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
+        <Content />
+      </div>
+    </div>
+  </article>
+
+  <script>
+    import mermaid from "mermaid";
+
+    let initialized = false;
+
+    function initMermaid() {
+      if (initialized) return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: document.documentElement.classList.contains("dark")
+          ? "dark"
+          : "default",
+        securityLevel: "loose",
+      });
+      initialized = true;
+    }
+
+    async function renderDiagrams() {
+      const codes = document.querySelectorAll(
+        'code[data-language="mermaid"]',
+      );
+      if (!codes.length) return;
+      initMermaid();
+      for (const codeEl of codes) {
+        const figure = codeEl.closest("figure");
+        if (!figure || figure.dataset.mermaidDone) continue;
+        figure.dataset.mermaidDone = "true";
+        const diagram = codeEl.textContent.trim();
+        const container = document.createElement("div");
+        container.className = "mermaid-container";
+        container.style.direction = "ltr";
+        figure.replaceWith(container);
+        const id = `mermaid-${Math.random().toString(36).slice(2)}`;
+        try {
+          const { svg, bindFunctions } = await mermaid.render(id, diagram);
+          container.innerHTML = svg;
+          bindFunctions?.(container);
+        } catch (err) {
+          const orphan = document.getElementById(`d${id}`);
+          orphan?.remove();
+          container.className = "mermaid-error";
+          container.innerHTML =
+            `<strong>Diagram error</strong><pre style="margin-top:0.5rem;font-size:0.75rem;white-space:pre-wrap">${String(err)}</pre>`;
+        }
+      }
+    }
+
+    document.addEventListener("astro:page-load", renderDiagrams);
+  </script>
+</Landing>

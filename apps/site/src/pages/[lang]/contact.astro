@@ -1,0 +1,87 @@
+---
+import Landing from "~/layouts/Landing.astro";
+import {
+  isValidLocale,
+  type Locale,
+  supportedLocales,
+  t,
+} from "../../i18n/utils";
+import { CONTACT_EMAIL, DISCORD_URL, GITHUB_URL } from "../../lib/config";
+
+export function getStaticPaths() {
+  return supportedLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang: rawLang } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+
+const channels = [
+  {
+    title: t(lang, "contactPage.github.title"),
+    description: t(lang, "contactPage.github.description"),
+    cta: t(lang, "contactPage.github.cta"),
+    href: `${GITHUB_URL}/issues`,
+  },
+  {
+    title: t(lang, "contactPage.discord.title"),
+    description: t(lang, "contactPage.discord.description"),
+    cta: t(lang, "contactPage.discord.cta"),
+    href: DISCORD_URL,
+  },
+  {
+    title: t(lang, "contactPage.email.title"),
+    description: t(lang, "contactPage.email.description"),
+    cta: t(lang, "contactPage.email.cta"),
+    href: `mailto:${CONTACT_EMAIL}`,
+  },
+];
+---
+
+<Landing
+  lang={lang}
+  title={t(lang, "contactPage.meta.title")}
+  description={t(lang, "contactPage.meta.description")}
+>
+  <section class="py-20">
+    <div class="mx-auto max-w-3xl px-6 text-center">
+      <h1
+        data-animate="fade-up"
+        class="text-4xl font-bold tracking-tight sm:text-5xl"
+      >
+        {t(lang, "contactPage.title")}
+      </h1>
+      <p
+        data-animate="fade-up"
+        class="mt-4 text-lg text-muted-foreground"
+        style="transition-delay: 80ms"
+      >
+        {t(lang, "contactPage.subtitle")}
+      </p>
+    </div>
+  </section>
+
+  <section class="pb-20">
+    <div class="mx-auto max-w-4xl px-6">
+      <div class="grid gap-6 sm:grid-cols-3">
+        {channels.map((ch, i) => (
+          <div
+            data-animate="fade-up"
+            class="rounded-lg border bg-card p-6 text-center"
+            style={`transition-delay: ${(i + 1) * 100}ms`}
+          >
+            <h3 class="font-semibold">{ch.title}</h3>
+            <p class="mt-2 text-sm text-muted-foreground">{ch.description}</p>
+            <a
+              href={ch.href}
+              target={ch.href.startsWith("mailto:") ? undefined : "_blank"}
+              rel={ch.href.startsWith("mailto:") ? undefined : "noopener noreferrer"}
+              class="mt-4 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              {ch.cta}
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</Landing>

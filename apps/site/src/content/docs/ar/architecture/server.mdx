@@ -1,0 +1,132 @@
+---
+title: بنية الخادم
+description: تصميم الخادم الخلفي ومكوناته
+order: 7
+---
+
+خادم بدرود هو تطبيق Go يوفر REST API، ويخدم واجهة الويب المدمجة، ويدير خادم وسائط LiveKit.
+
+## حزمة التقنيات
+
+| التقنية | الغرض |
+|-----------|---------|
+| Go 1.24 | اللغة الأساسية |
+| Fiber v2 | إطار عمل الويب (مشابه لـ Express) |
+| GORM | ORM لـ SQLite وPostgreSQL |
+| LiveKit Protocol SDK | إدارة غرف `WebRTC` والرموز |
+| Zerolog | تسجيل JSON منظم |
+| Goth | OAuth2 متعدد المزودين |
+| go-passkeys | دعم FIDO2/WebAuthn |
+| golang-jwt | إنشاء رموز JWT والتحقق منها |
+| gocron | جدولة المهام في الخلفية |
+| Swagger (swaggo) | توليد توثيق API |
+
+## هيكل المجلدات
+
+```
+server/
+├── cmd/
+│   ├── server/main.go        # Development entry point
+│   └── bedrud/main.go        # Production entry point (with install/livekit flags)
+├── internal/
+│   ├── auth/                  # Authentication services
+│   │   ├── auth.go            # Core auth service (register, login, OAuth)
+│   │   ├── jwt.go             # JWT token creation and validation
+│   │   └── session_store.go   # Gorilla session store for OAuth state
+│   ├── database/              # Database initialization and migrations
+│   ├── handlers/              # HTTP request handlers (controller layer)
+│   │   ├── auth_handler.go    # Auth endpoints
+│   │   ├── room.go            # Room endpoints
+│   │   └── users.go           # User management endpoints
+│   ├── middleware/             # Fiber middleware
+│   │   └── auth.go            # JWT validation, permission checks
+│   ├── models/                # GORM models (database schemas)
+│   │   ├── user.go            # User model
+│   │   ├── room.go            # Room model
+│   │   └── passkey.go         # Passkey model
+│   ├── repository/            # Data access layer (SQL via GORM)
+│   │   ├── user_repository.go
+│   │   ├── room_repository.go
+│   │   └── passkey_repository.go
+│   ├── livekit/               # Embedded LiveKit server management
+│   ├── scheduler/             # Background job scheduling
+│   └── utils/                 # TLS and other utilities
+├── frontend/                  # Embedded web frontend (populated at build time)
+├── config.yaml                # Development configuration
+├── livekit.yaml               # Development LiveKit configuration
+├── go.mod
+└── go.sum
+```
+
+## بنية الطبقات
+
+يتبع الخادم بنية ثلاثية الطبقات:
+
+```mermaid
+flowchart TB
+    HTTP[HTTP Request] --> Middleware
+    Middleware["Middleware<br/>JWT validation, CORS, logging"] --> Handlers
+    Handlers["Handlers<br/>Parse requests, call services, format responses"] --> Services
+    Services["Services<br/>Business logic (auth, room management)"] --> Repository
+    Repository["Repository<br/>Database queries via GORM"] --> Database
+    Database["Database<br/>SQLite (dev) or PostgreSQL (production)"]
+```
+
+## الأنماط الرئيسية
+
+### الواجهة المدمجة
+
+تُجمَّع واجهة الويب كملفات ثابتة وتُدمَج في الملف الثنائي Go باستخدام `//go:embed`:
+
+```go
+//go:embed frontend/*
+var frontendFS embed.FS
+```
+
+في وقت البناء، يقوم `bun run build:embed` بالعرض المسبق SSR لتطبيق React وينسخ `dist/client/` إلى `server/frontend/`. ثم يقوم مترجم Go بحزمها في الملف الثنائي. يخدم خادم Fiber هذه الملفات لأي مسار غير API.
+
+### مصادقة JWT
+
+يستخرج الوسيطة رمز JWT من ترويسة `Authorization: Bearer <token>`، ويتحقق منه، ويربط سياق المستخدم بالطلب. تستخدم المسارات المحمية وسيطة `RequireAccess` للتحقق من أدوار المستخدم.
+
+### توليد رموز LiveKit
+
+عند انضمام مستخدم إلى غرفة، يقوم الخادم بما يلي:
+
+١. التحقق من صلاحيات الغرفة
+٢. إنشاء رمز وصول LiveKit موقّع بمفتاح API السري
+٣. إرجاع الرمز للعميل
+٤. يتصل العميل مباشرة بـ LiveKit باستخدام الرمز
+
+### توثيق Swagger
+
+يُولَّد توثيق API تلقائيًا من التعليقات التوضيحية في الكود باستخدام swaggo. في بيئة التطوير، يتوفر على `/api/swagger/`.
+
+## قاعدة البيانات
+
+### SQLite (الافتراضي)
+
+للتطوير والنشر الصغير، يستخدم بدرود SQLite. يُخزَّن ملف قاعدة البيانات في المسار المُهيأ `database.path` (الافتراضي: `data.db`).
+
+### PostgreSQL
+
+للإنتاج مع متطلبات تزامن أعلى، اضبط سلسلة اتصال PostgreSQL. يتعامل GORM مع اللهجتين بشفافية.
+
+### الترحيلات
+
+يقوم GORM بالترحيل التلقائي للمخطط عند البدء بناءً على هياكل النماذج. تُعرَّف النماذج في `internal/models/`.
+
+## المهام في الخلفية
+
+يقوم مجدول `gocron` بتشغيل مهام دورية مثل:
+- تنظيف رموز التحديث المنتهية الصلاحية
+- إزالة المشاركين غير النشطين في الغرف
+
+---
+
+## انظر أيضًا
+
+- [هيكل كود الخلفية](/ar/docs/backend/structure) - خريطة المجلدات ومعايير البرمجة
+- [معالجات API](/ar/docs/backend/api-handlers) - التوجيه ودورة حياة الطلبات
+- [قاعدة البيانات والنماذج](/ar/docs/backend/database) - نماذج GORM ونمط المستودع
+- [مسار المصادقة](/ar/docs/backend/authentication) - تفاصيل JWT وOAuth ومفاتيح المرور

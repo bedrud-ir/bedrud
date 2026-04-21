@@ -1,0 +1,55 @@
+---
+title: مستندات بک‌اند
+description: نمای کلی از معماری سیستم بک‌اند Bedrud
+order: 15
+---
+
+## مقدمه
+
+backend Bedrud یک پلتفرم جلسه تک‌باینری نوشته‌شده در **Go 1.24+** است. تمام وابستگی‌ها — media server، frontend، TURN server — در یک executable embed شده‌اند.
+
+### فناوری‌های کلیدی
+
+- **فریم‌ورک:** [Fiber v2](https://gofiber.io/) (روتر zero-allocation، API مشابه Express)
+- **دیتابیس:** [GORM](https://gorm.io/) با **SQLite** (پیش‌فرض) و **PostgreSQL** (production)
+- **Media engine:** [LiveKit](https://livekit.io/) (embed شده)
+- **احراز هویت:** چندلایه — JWT، OAuth2 (Google/GitHub/Twitter)، Passkey (FIDO2)
+- **Static assets:** از `embed` در Go 1.16+ برای بسته‌بندی frontend React (SSR)
+- **استقرار:** نصب‌کننده خودکار Debian/Ubuntu با systemd و ACME (Let's Encrypt)
+
+## چرا این معماری؟
+
+پلتفرم‌های WebRTC معمولاً سرویس‌های جداگانه برای signaling، TURN، وب و دیتابیس اجرا می‌کنند. Bedrud همه را در یک باینری ادغام کرده:
+
+۱. **استخراج** باینری media server در runtime.
+۲. **Proxy** ترافیک media از طریق پورت HTTP(S) اصلی.
+۳. **اتوماسیون** پیکربندی سیستم (SSL، systemd) توسط خود باینری.
+
+## معماری سطح بالا
+
+backend از معماری لایه‌ای پیروی می‌کند:
+
+۱. **Server** (`internal/server`): Fiber app، مسیرها و middleware.
+۲. **Handler** (`internal/handlers`): پردازش درخواست و پاسخ HTTP.
+۳. **Repository** (`internal/repository`): queryهای دیتابیس با GORM.
+۴. **Model** (`internal/models`): جداول دیتابیس و structهای Go.
+۵. **Service:** در handlerها و repositoryها ادغام شده، با پکیج‌های `internal/auth` و `internal/livekit`.
+
+## نقطه ورودی
+
+برنامه در `server/cmd/bedrud/main.go` شروع می‌شود. سه حالت دارد:
+
+- `run`: سرور کامل جلسات را شروع می‌کند.
+- `livekit`: فقط media server داخلی را شروع می‌کند.
+- `install`: نصب خودکار در Debian/Ubuntu.
+
+## بخش‌های مستندات
+
+- [**ساختار کد**](/fa/docs/backend/structure): همه‌چیز کجاست؟
+- [**دیتابیس و مدل‌ها**](/fa/docs/backend/database): داده‌ها چطور ذخیره می‌شوند؟
+- [**احراز هویت**](/fa/docs/backend/authentication): کاربران چطور login می‌شوند؟
+- [**Handlerهای API**](/fa/docs/backend/api-handlers): درخواست‌ها چطور پردازش می‌شوند؟
+- [**یکپارچگی LiveKit**](/fa/docs/backend/livekit): video server چطور کار می‌کند؟
+- [**اتصال WebRTC**](/fa/docs/architecture/webrtc-connectivity): کلاینت‌ها چطور اتصال media برقرار می‌کنند؟ (STUN/ICE/TURN/SFU)
+- [**TURN server**](/fa/docs/architecture/turn-server): معماری، پیکربندی و عیب‌یابی TURN
+- [**نصب و استقرار**](/fa/docs/backend/deployment): نصب‌کننده خودکار چطور کار می‌کند؟

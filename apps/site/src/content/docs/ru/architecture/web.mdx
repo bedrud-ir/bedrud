@@ -1,0 +1,155 @@
+---
+title: Веб-фронтенд
+description: Архитектура веб-приложения на React
+order: 8
+---
+
+Веб-фронтенд Bedrud - это приложение на React, построенное с TanStack Start, TailwindCSS v4 и shadcn/ui. В продакшене серверный рендеринг создаёт HTML-оболочку. Бинарник Go встраивает эту оболочку вместе со статическими клиентскими ресурсами.
+
+## Стек технологий
+
+| Технология | Назначение |
+|-----------|---------|
+| React 19 | UI-фреймворк |
+| TanStack Start | SSR-фреймворк и файловая маршрутизация |
+| TanStack Router | Клиентская маршрутизация |
+| TanStack Query | Серверное состояние и загрузка данных |
+| TailwindCSS 4 | Утилитарные стили |
+| shadcn/ui + Radix UI | Доступные примитивы компонентов |
+| Zustand | Клиентское состояние аутентификации |
+| Vite 7 | Сборка и dev-сервер |
+| LiveKit React SDK | Работа с медиа WebRTC |
+| Zod | Валидация схем |
+| Lucide React | Библиотека иконок |
+| Bun | Менеджер пакетов |
+
+## Структура директорий
+
+```
+apps/web/
+├── src/
+│   ├── routes/                    # TanStack Router file-based routes
+│   │   ├── index.tsx              # Home / landing page
+│   │   ├── __root.tsx             # Root layout
+│   │   ├── auth/
+│   │   │   ├── login.tsx          # Sign-in page
+│   │   │   └── register.tsx       # Sign-up page
+│   │   ├── dashboard/             # User dashboard
+│   │   ├── m.$meetId.tsx          # Meeting room page
+│   │   ├── admin/                 # Admin panel
+│   │   │   ├── index.tsx          # Overview
+│   │   │   ├── rooms.$id.tsx      # Room detail
+│   │   │   ├── users.$id.tsx      # User detail
+│   │   │   └── settings.tsx       # Server settings + invite tokens
+│   │   └── settings.tsx           # Account settings page
+│   ├── components/
+│   │   ├── admin/                 # Admin table components
+│   │   │   ├── RoomTable.tsx
+│   │   │   └── UserTable.tsx
+│   │   ├── auth/                  # Auth UI (OAuth, Passkey buttons)
+│   │   ├── dashboard/             # Room cards, create room dialog
+│   │   ├── meeting/               # Video tiles, controls, device picker
+│   │   │   ├── ControlsBar.tsx
+│   │   │   ├── DeviceSelector.tsx
+│   │   │   ├── ParticipantGrid.tsx
+│   │   │   ├── ChatPanel.tsx
+│   │   │   └── SpotlightView.tsx
+│   │   ├── ui/                    # shadcn/ui component library
+│   │   └── ThemeToggle.tsx        # Light/dark mode switcher
+│   └── lib/
+│       ├── api.ts                 # authFetch wrapper
+│       └── auth.store.ts          # Zustand auth store (tokens, user)
+├── scripts/
+│   └── embed.mjs                  # SSR pre-render + copy to server/frontend/
+├── public/                        # Static assets
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+## Процесс аутентификации
+
+Состояние аутентификации управляется хранилищем Zustand в `src/lib/auth.store.ts`:
+
+1. **Вход** - пользователь отправляет учётные данные на `POST /api/auth/login`
+2. **Хранение токенов** - access- и refresh-токены сохраняются в `localStorage`
+3. **Автоматическая инъекция** - `authFetch` оборачивает каждый API-вызов, добавляя заголовок `Authorization: Bearer`
+4. **Автообновление** - когда запрос возвращает 401, `authFetch` пытается обновить токен с помощью refresh-токена
+5. **Выход** - очищает токены и перенаправляет на страницу входа
+
+### authFetch
+
+Функция `authFetch` в `src/lib/api.ts` - это замена `fetch`, которая:
+
+- Добавляет JWT access-токен к каждому запросу
+- Перехватывает ответы 401 и пытается обновить токен
+- Выполняет выход пользователя, если обновление токена не удалось
+
+## Страница конференции
+
+Страница комнаты конференции по адресу `/m/$meetId` обеспечивает:
+
+- **Подключение к LiveKit** - подключение к медиасерверу с токеном, полученным от API подключения
+- **Рендеринг дорожек** - подписка на аудио- и видеодорожки других участников
+- **Выбор устройств** - переключение камеры, микрофона или динамика прямо во время звонка
+- **Управление администратора** - создатель комнаты видит кнопки кика, мута и отключения видео
+- **Чат** - текстовый чат в комнате через `ChatPanel`
+- **Режим Spotlight** - фокус на одном участнике
+
+## Панель администратора
+
+Панель администратора по адресу `/admin` предоставляет:
+
+- **Управление комнатами** - табличный вид с переходом на страницы деталей комнаты
+- **Управление пользователями** - табличный вид с переходом к аккаунтам отдельных пользователей и редактированием ролей
+- **Настройки сервера** - конфигурация общих параметров экземпляра, управление доступом и пригласительными ссылками
+- **Пригласительные токены** - создание и отзыв пригласительных ссылок для контроля доступа
+
+## Тёмная тема
+
+Компонент `ThemeToggle` позволяет пользователям переключаться между светлой и тёмной темами из любого места в приложении. Предпочтение сохраняется в `localStorage` и применяется при загрузке.
+
+## Сборка
+
+### Разработка
+
+```bash
+cd apps/web
+bun run dev      # Starts Vite dev server with HMR at localhost:3000
+```
+
+Dev-сервер проксирует запросы `/api` и `/livekit` к серверу Go на `localhost:8090`.
+
+### Продакшен (отдельный веб-бандл)
+
+```bash
+cd apps/web
+bun run build    # Outputs static client assets to dist/client/ and SSR server to dist/server/
+```
+
+### Продакшен (встроен в бинарник Go)
+
+```bash
+cd apps/web
+bun run build:embed
+```
+
+Это запускает `scripts/embed.mjs`, который:
+
+1. Выполняет `bun run build`, создавая `dist/client/` и `dist/server/`
+2. Запускает SSR-сервер локально
+3. Загружает `/`, чтобы получить предварительно отрендеренную HTML-оболочку
+4. Копирует `dist/client/` в `server/frontend/`
+5. Записывает отрендеренный HTML как `server/frontend/index.html`
+
+### Проверка типов
+
+```bash
+bun run check    # Runs tsc --noEmit
+```
+
+---
+
+## См. также
+
+- [Система дизайна веб-приложения](https://github.com/bedrud-ir/bedrud/tree/main/apps/web/AGENTS.md) - паттерны UI-компонентов, цветовые токены и правила стилизации

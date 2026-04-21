@@ -1,0 +1,149 @@
+---
+title: Desktop App
+description: Rust-based desktop application
+order: 11
+---
+
+Bedrud 桌面客户端是一个使用 **Rust** 和 **Slint** UI 工具包构建的原生 Windows 和 Linux 桌面应用。它提供与 Web 和移动客户端相同的核心会议体验，编译为单个二进制文件，无运行时依赖。
+
+## 技术栈
+
+| 组件 | 技术 |
+|-----------|-----------|
+| 语言 | Rust (stable) |
+| UI 工具包 | Slint 1.x |
+| HTTP 客户端 | reqwest (async, TLS) |
+| 媒体 | LiveKit Rust SDK |
+| 存储 | serde_json + 操作系统密钥环 (libsecret / Windows Credential Store) |
+| 构建系统 | Cargo workspace |
+
+## 平台支持
+
+| 平台 | 渲染器 | 二进制 |
+|----------|----------|--------|
+| Windows 10/11 | Direct3D 11 | `bedrud-desktop.exe` |
+| Linux x86_64 | OpenGL / Vulkan (via EGL/Wayland/X11) | `bedrud-desktop` |
+| macOS | _(暂不支持 - 请使用 Web 应用)_ | - |
+
+## 源码布局
+
+```
+apps/desktop/
+├── Cargo.toml              # Crate definition
+├── build.rs                # Slint compile step
+├── src/
+│   ├── main.rs             # Entry point - initialises app + event loop
+│   ├── app.rs              # Top-level AppState and startup logic
+│   ├── api/
+│   │   ├── client.rs       # Shared HTTP client (base URL, JWT injection)
+│   │   ├── auth.rs         # Login, register, refresh
+│   │   ├── rooms.rs        # Room list, join, create
+│   │   └── admin.rs        # Admin endpoints
+│   ├── auth/
+│   │   ├── session.rs      # JWT storage and refresh loop
+│   │   └── passkey.rs      # FIDO2 passkey stub
+│   ├── livekit/
+│   │   ├── room.rs         # Room connection lifecycle
+│   │   ├── tracks.rs       # Audio/video track management
+│   │   └── devices.rs      # Microphone / camera enumeration
+│   ├── store/
+│   │   ├── instance.rs     # Multi-instance persistence
+│   │   └── settings.rs     # User preferences
+│   └── ui/
+│       ├── mod.rs
+│       └── bridge.rs       # Slint ↔ Rust callback wiring
+└── ui/
+    ├── app.slint            # Root component, page router
+    ├── theme.slint          # Colours, typography, spacing tokens
+    ├── components/          # Button, Input, Card, Avatar
+    ├── auth/                # Login and Register screens
+    ├── dashboard/           # Room list, Create-room dialog
+    ├── meeting/             # Controls bar, participant tiles, chat
+    ├── admin/               # Admin panel, user table
+    └── settings.slint       # Settings screen
+```
+
+## 架构
+
+```mermaid
+flowchart TB
+    subgraph UI ["Slint UI Layer"]
+        direction TB
+        SLINT[app.slint<br/>theme.slint<br/>components/ + screens]
+    end
+
+    subgraph Bridge ["Bridge Layer"]
+        BRIDGE[ui/bridge.rs<br/>Slint ↔ Rust wiring]
+    end
+
+    subgraph Core ["Core Modules"]
+        direction TB
+        API[api/<br/>client.rs • auth.rs • rooms.rs • admin.rs]
+        LIVEKIT[livekit/<br/>room.rs • tracks.rs • devices.rs]
+        AUTH[auth/<br/>session.rs • passkey.rs]
+        STORE[store/<br/>instance.rs • settings.rs]
+    end
+
+    SLINT -->|"callbacks /<br/>property bindings"| BRIDGE
+    BRIDGE <-->|"async tasks<br/>+ Weak&lt;AppWindow&gt;"| Core
+    API <--> LIVEKIT
+    AUTH <--> STORE
+```
+
+### 关键设计决策
+
+- **Slint 的编译时 UI** - `.slint` 文件在构建时通过 `build.rs` 编译为 Rust。运行时没有布局引擎；UI 完全是原生的。
+- **`bridge.rs` 作为唯一的 UI↔逻辑边界** - 所有 Slint 回调在一个地方连接，保持业务逻辑不在 UI 层中，并使桥接器易于审查。
+- **回调中使用 `Weak<AppWindow>`** - Slint UI 句柄是 `!Send` 的，因此后台任务通过在 UI 线程上升级存储的 `Weak` 引用来设置属性，而不是跨线程共享句柄。
+- **通过 `store/instance.rs` 实现多实例** - 与移动应用相同：实例被序列化为操作系统配置目录中的 JSON 文件；每个实例有自己的 `APIClient` 和 `AuthSession`。
+
+## 本地构建
+
+### 前置要求
+
+- Rust stable 工具链（`rustup toolchain install stable`）
+- **Linux：** `libfontconfig`、`libxkbcommon`、`libwayland`、`libgles2`、`libdbus`、`libsecret`
+
+  ```bash
+  sudo apt-get install -y \
+    libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+    libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
+    libdbus-1-dev libsecret-1-dev \
+    libasound2-dev
+  ```
+
+- **Windows：** 带有 C++ 工作负载的 Visual Studio Build Tools（MSVC）
+
+### 构建
+
+```bash
+# Debug build (fast compile, no optimisations)
+make dev-desktop          # runs the app immediately after build
+
+# Release build
+make build-desktop        # → target/release/bedrud-desktop (Linux)
+                           # → target/release/bedrud-desktop.exe (Windows)
+```
+
+或直接使用 Cargo：
+
+```bash
+cargo build -p bedrud-desktop                          # debug
+cargo build -p bedrud-desktop --release                # optimised
+cargo run   -p bedrud-desktop                          # run immediately
+```
+
+## CI
+
+桌面应用在每次推送到 `main` 和拉取请求时在 CI 中构建：
+
+| 任务 | Runner | 检查内容 |
+|-----|--------|----------------|
+| `Desktop – Build & Test` | `ubuntu-latest` | `cargo build`、`cargo test` |
+
+发布构建产生两个产物：
+
+| 产物 | Runner | 格式 |
+|----------|--------|--------|
+| `bedrud-desktop-linux-x86_64.tar.xz` | `ubuntu-latest` | tar.xz |
+| `bedrud-desktop-windows-x86_64.zip` | `windows-latest` | zip

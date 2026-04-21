@@ -1,0 +1,49 @@
+---
+title: Backend-Dokumentation
+description: Übersicht der Bedrud-Backend-Systemarchitektur
+order: 15
+---
+
+## Einführung
+Das Bedrud-Backend ist eine Single-Binary-Meeting-Plattform, geschrieben in **Go 1.24+**. Alle Abhängigkeiten – Medienserver, Web-Frontend, TURN-Server – sind in einer einzigen ausführbaren Datei gebündelt.
+
+### Kerntechnologien
+- **Core Framework:** [Fiber v2](https://gofiber.io/) (Zero-Allocation-Router, Express-ähnliche API).
+- **Database Layer:** [GORM](https://gorm.io/) mit Unterstützung für **SQLite** (Standard) und **PostgreSQL** (Produktion).
+- **Media Engine:** [LiveKit](https://livekit.io/) (als begleitendes Binary eingebettet).
+- **Auth System:** Mehrschichtiges Auth-System mit Unterstützung für JWT, OAuth2 (Google/GitHub/Twitter) und Passwort-losen FIDO2-Passkeys.
+- **Embedded Static Assets:** Nutzt das `embed`-Paket aus Go 1.16+, um das React-Frontend (SSR-vorgerenderte Client-Assets) zu bündeln.
+- **Deployment:** Integrierter Debian/Ubuntu-Auto-Installer mit systemd-Orchestrierung und ACME (Let's Encrypt)-Unterstützung.
+
+## Warum diese Architektur?
+WebRTC-Plattformen betreiben üblicherweise separate Dienste für Signalisierung, TURN, Web-Serving und Datenbankverwaltung. Bedrud konsolidiert all dies in einem einzigen Binary, indem es:
+
+1.  Das Medienserver-Binary **zur Laufzeit extrahiert**.
+2.  Medientraffic über den Haupt-HTTP(S)-Port **weiterleitet**.
+3.  Die Konfiguration auf Betriebssystemebene (SSL, systemd) automatisch über das Binary selbst **verwaltet**.
+
+## Architektur auf oberster Ebene
+Das Backend folgt einer standardmäßigen Schichtenarchitektur:
+
+1.  **Server-Schicht (`internal/server`):** Richtet die Fiber-App, Routen und Middleware ein.
+2.  **Handler-Schicht (`internal/handlers`):** Verwaltet HTTP-Anfragen und -Antworten.
+3.  **Repository-Schicht (`internal/repository`):** Verwaltet Datenbankabfragen mit GORM.
+4.  **Modell-Schicht (`internal/models`):** Definiert die Datenbanktabellen und Go-Strukturen.
+5.  **Service/Logik-Schicht:** In Handler und Repositories integriert, mit spezialisierten Paketen wie `internal/auth` und `internal/livekit`.
+
+## Haupteinstiegspunkt
+Die Anwendung startet in `server/cmd/bedrud/main.go`. Sie verfügt über drei Hauptmodi:
+
+- `run`: Startet den vollständigen Meeting-Server.
+- `livekit`: Startet nur den eingebetteten Medienserver.
+- `install`: Richtet den Server automatisch auf Debian/Ubuntu-Systemen ein.
+
+## Dokumentationsabschnitte
+- [**Code-Struktur**](/de/docs/backend/structure): Wo befindet sich was?
+- [**Datenbank & Modelle**](/de/docs/backend/database): Wie werden Daten gespeichert?
+- [**Authentifizierung**](/de/docs/backend/authentication): Wie melden sich Benutzer an?
+- [**API-Handler**](/de/docs/backend/api-handlers): Wie werden Anfragen verarbeitet?
+- [**LiveKit-Integration**](/de/docs/backend/livekit): Wie funktioniert der Videoserver?
+- [**WebRTC-Konnektivität**](/de/docs/architecture/webrtc-connectivity): Wie bauen Clients Medienverbindungen auf? (STUN/ICE/TURN/SFU)
+- [**TURN-Server**](/de/docs/architecture/turn-server): TURN-Relay-Architektur, Konfiguration und Fehlerbehebung
+- [**Installation & Deployment**](/de/docs/backend/deployment): Wie funktioniert der Auto-Installer?

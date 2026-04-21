@@ -1,0 +1,73 @@
+---
+title: Internal TLS
+description: Self-signed certificates for internal networks
+order: 30
+---
+
+For isolated networks - no public domain, no outbound internet, restricted connectivity.
+
+Browsers require trusted HTTPS for camera/mic via WebRTC. Self-signed certs work but show warnings. For a clean setup, generate a private CA and distribute it to clients.
+
+## Generate Private CA and Server Certificate
+
+```bash
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=Bedrud Internal CA"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=<your-server-ip-or-hostname>"
+openssl x509 -req -days 365 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+sudo ./bedrud install --tls --cert server.crt --key server.key --ip YOUR_SERVER_IP
+```
+
+## Add CA to Client Trust Stores
+
+Distribute `ca.crt` to all client machines:
+
+### Windows
+
+```powershell
+certmgr.msc  # Right-click ca.crt → Install Certificate → Trusted Root CAs
+```
+
+### macOS
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt
+```
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
+sudo update-ca-certificates
+```
+
+### Linux (Arch/Fedora)
+
+```bash
+sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
+sudo update-ca-trust
+```
+
+Restart browsers, then open `https://YOUR_SERVER_IP` (replace with the server's actual IP address, e.g. `192.168.1.100`). After restarting, the certificate will be trusted and camera/microphone access will work without warnings.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Browser still warns certificate untrusted | Clear browser cache, restart browser after CA install |
+| Camera/mic blocked | Verify CA is in Trusted Root CAs, not intermediate |
+| Certificate expired | Regenerate with longer `-days` value |
+| CN mismatch | Ensure server certificate CN matches IP or hostname in URL |
+
+---
+
+## See also
+- [Installation Guide](/en/docs/getting-started/installation) - install methods
+- [Configuration Reference](/en/docs/getting-started/configuration) - full config options

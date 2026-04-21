@@ -1,0 +1,157 @@
+---
+title: Docker Guide
+description: Run Bedrud with Docker
+order: 29
+---
+
+Bedrud 提供多阶段 Dockerfile，用于在容器中构建和运行。
+
+## 快速开始
+
+```bash
+# Build
+docker build -t bedrud .
+
+# Run
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  bedrud
+```
+
+## Dockerfile 概览
+
+Dockerfile 使用三个阶段来最小化最终镜像大小：
+
+### 阶段 1：前端构建
+
+```dockerfile
+FROM node:22-alpine AS frontend
+RUN npm install -g bun
+WORKDIR /build/apps/web
+COPY apps/web/package.json apps/web/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY apps/web/ ./
+RUN bun run build:embed
+```
+
+安装 Bun，SSR 预渲染 React 应用，并将资源复制到 `server/frontend/`。
+
+### 阶段 2：服务器构建
+
+```dockerfile
+FROM golang:1.24-alpine AS backend
+RUN apk add --no-cache gcc musl-dev
+WORKDIR /build/server
+COPY server/go.mod server/go.sum ./
+RUN go mod download
+COPY server/ ./
+COPY --from=frontend /build/server/frontend ./frontend/
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /bedrud ./cmd/bedrud/main.go
+# CGO is required for SQLite (uses C bindings)
+```
+
+编译嵌入前端的 Go 二进制文件。启用了 CGO 以支持 SQLite。
+
+### 阶段 3：运行时
+
+```dockerfile
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=backend /bedrud /usr/local/bin/bedrud
+EXPOSE 8090 7880
+ENTRYPOINT ["bedrud"]
+CMD ["run"]
+```
+
+最小化的 Alpine 镜像，仅包含二进制文件、CA 证书和时区数据。
+
+## 端口
+
+| 端口 | 服务 | 协议 |
+|------|---------|----------|
+| 8090 | API + Web UI | HTTP |
+| 7880 | LiveKit | WebSocket + HTTP |
+| 50000-60000 | RTC 媒体 | UDP |
+
+对于 LiveKit 媒体流，你可能还需要暴露 RTC UDP 端口范围（默认：50000-60000）。
+
+## 卷挂载
+
+挂载卷以实现持久化数据：
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v bedrud-data:/var/lib/bedrud \
+  bedrud
+```
+
+## 配置
+
+传入自定义配置文件：
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v /path/to/config.yaml:/etc/bedrud/config.yaml \
+  -v bedrud-data:/var/lib/bedrud \
+  bedrud run --config /etc/bedrud/config.yaml
+```
+
+或使用环境变量：
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -e JWT_SECRET=my-production-secret \
+  -e LIVEKIT_API_KEY=prodkey \
+  -e LIVEKIT_API_SECRET=prodsecret \
+  bedrud
+```
+
+## 预构建镜像
+
+每次发布时，Docker 镜像会发布到 GitHub Container Registry：
+
+```bash
+# Latest release
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+
+# Specific version
+docker pull ghcr.io/bedrud-ir/bedrud:v1.0.0
+```
+
+## Docker Compose 示例
+
+```yaml
+services:
+  bedrud:
+    image: ghcr.io/bedrud-ir/bedrud:latest
+    ports:
+      - "8090:8090"
+      - "7880:7880"
+    volumes:
+      - bedrud-data:/var/lib/bedrud
+      - ./config.yaml:/etc/bedrud/config.yaml
+    environment:
+      - JWT_SECRET=change-me
+    restart: unless-stopped
+
+volumes:
+  bedrud-data:
+```
+
+---
+
+## 另请参阅
+
+- [配置参考](/zh/docs/getting-started/configuration) - 完整配置选项和环境变量
+- [部署指南](/zh/docs/guides/deployment) - 使用 Docker 的生产部署

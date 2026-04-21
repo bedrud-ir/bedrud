@@ -1,0 +1,68 @@
+---
+import BlogPostCard from "~/components/blog/blog-post-card.astro";
+import Landing from "~/layouts/Landing.astro";
+import { getCollection } from "astro:content";
+import { isValidLocale, type Locale, supportedLocales, t } from "../../../i18n/utils";
+
+export function getStaticPaths() {
+  return supportedLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang: rawLang } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+
+const allPosts = await getCollection("blog", ({ data }) => {
+  return !data.draft;
+});
+
+const localePosts = allPosts.filter((post) => post.id.startsWith(`${lang}/`));
+const fallbackPosts = localePosts.length > 0
+  ? localePosts
+  : allPosts.filter((post) => post.id.startsWith("en/"));
+
+const posts = fallbackPosts.sort(
+  (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime(),
+);
+---
+
+<Landing
+  lang={lang}
+  title={t(lang, "blog.meta.title")}
+  description={t(lang, "blog.meta.description")}
+>
+  <section class="py-12 lg:py-16">
+    <div class="mx-auto max-w-3xl px-6">
+      <h1
+        data-animate="fade-up"
+        class="text-4xl font-bold tracking-tight sm:text-5xl"
+      >
+        {t(lang, "blog.title")}
+      </h1>
+      <p
+        data-animate="fade-up"
+        class="mt-4 text-lg text-muted-foreground"
+        style="transition-delay: 80ms"
+      >
+        {t(lang, "blog.subtitle")}
+      </p>
+
+      <div class="mt-12">
+        {posts.length === 0 ? (
+          <p class="text-muted-foreground">{t(lang, "blog.noPosts")}</p>
+        ) : (
+          posts.map((post) => (
+            <BlogPostCard
+              lang={lang}
+              slug={post.id.replace(/^(en|de|fr|es|zh|ja|tr|fa|ar|ru)\//, "")}
+              title={post.data.title}
+              description={post.data.description}
+              date={String(post.data.date)}
+              author={post.data.author ?? t(lang, "blog.defaultAuthor")}
+              tags={post.data.tags ?? []}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  </section>
+</Landing>

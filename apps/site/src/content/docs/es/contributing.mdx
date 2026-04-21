@@ -1,0 +1,108 @@
+---
+title: Contribuir
+description: Cómo contribuir a Bedrud
+order: 34
+---
+
+Las contribuciones a Bedrud son bienvenidas. Esta guía describe el proceso para enviar cambios.
+
+> **Nota:** La guía de contribución oficial se encuentra en la raíz del repositorio: [CONTRIBUTING.md](https://github.com/bedrud-ir/bedrud/blob/main/CONTRIBUTING.md). Esta página se conserva únicamente como referencia.
+
+## Primeros pasos
+
+1. Haz un fork del repositorio
+2. Clona tu fork
+3. Crea una rama de feature desde `main`
+4. Realiza tus cambios
+5. Envía un pull request
+
+## Requisitos previos
+
+- Go 1.22+
+- Bun (para el frontend web)
+- Rust (para la app de escritorio)
+- Make
+- Git
+
+## Configuración del entorno de desarrollo
+
+```bash
+# After forking on GitHub, clone tu fork
+git clone https://github.com/<tu-usuario>/bedrud.git
+cd bedrud
+make init
+make dev
+```
+
+Consulta el [Flujo de trabajo de desarrollo](/es/docs/guides/development) para obtener instrucciones detalladas de configuración.
+
+## Estructura del proyecto
+
+| Directorio       | Lenguaje         | Descripción                        |
+|------------------|------------------|------------------------------------|
+| `server/`        | Go               | API del backend y LiveKit integrado|
+| `apps/web/`      | TypeScript/React | Frontend web                       |
+| `apps/desktop/`  | Rust + Slint     | App de escritorio                  |
+| `apps/android/`  | Kotlin           | App de Android                     |
+| `apps/ios/`      | Swift            | App de iOS                         |
+| `agents/`        | Python           | Agentes bot                        |
+| `packages/`      | TypeScript       | Definiciones de tipos compartidos  |
+| `tools/cli/`     | Python           | CLI de despliegue                  |
+| `docs/`          | Markdown         | Documentación                      |
+
+## Estilo de código
+
+| Lenguaje         | Estándar                       |
+|------------------|--------------------------------|
+| Go               | `gofmt`                        |
+| TypeScript/React | Biome                          |
+| Kotlin           | Valores por defecto de Android Studio |
+| Swift            | Valores por defecto de Xcode   |
+| Python           | ruff                           |
+
+## Proceso de pull request
+
+1. **Nomenclatura de ramas:** `feature/descripción`, `fix/descripción` o `docs/descripción`
+2. **Mensajes de commit:** `<acción> <qué> por <por qué>` (p.ej., `add user model for auth feature`, `fix login redirect for expired sessions`)
+3. **Verificaciones de CI:** Todas las verificaciones de GitHub Actions deben pasar
+4. **Descripción:** Incluye qué cambió y por qué
+
+### Verificaciones de CI
+
+Cada PR ejecuta estas verificaciones automáticamente:
+
+| Verificación | Qué valida                              |
+|--------------|-----------------------------------------|
+| Server       | `go vet`, compilación, tests           |
+| Web          | Verificación de tipos TypeScript, build |
+| Android      | Lint, tests unitarios                  |
+| iOS          | Compilación, test (simulador)           |
+
+## Reportar problemas
+
+Abre issues en [GitHub Issues](https://github.com/bedrud-ir/bedrud/issues) incluyendo:
+
+- Pasos para reproducir
+- Comportamiento esperado vs. comportamiento real
+- Detalles del entorno (SO, navegador, versión de la app)
+
+## Documentación
+
+La documentación se encuentra en `docs/` y se genera con [MkDocs Material](https://squidfunk.github.io/mkdocs-material/).
+
+### Vista previa local
+
+```bash
+pip install mkdocs-material
+mkdocs serve
+```
+
+Luego abre `http://localhost:8000` en tu navegador.
+
+### Estructura
+
+Las páginas de documentación se organizan por tema. La navegación se define en `mkdocs.yml` en la raíz del proyecto.
+
+## Licencia
+
+Al contribuir, aceptas que tus contribuciones se licenciarán bajo la [Licencia Apache 2.0](https://github.com/bedrud-ir/bedrud/blob/main/LICENSE).

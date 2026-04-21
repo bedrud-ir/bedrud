@@ -1,0 +1,49 @@
+---
+title: バックエンドドキュメント
+description: Bedrudバックエンドシステムアーキテクチャの概要
+order: 15
+---
+
+## はじめに
+Bedrudバックエンドは**Go 1.24+**で記述されたシングルバイナリのミーティングプラットフォームです。メディアサーバー、ウェブフロントエンド、TURNサーバーなど、すべての依存関係が1つの実行可能ファイルに埋め込まれています。
+
+### 主要技術
+- **コアフレームワーク:** [Fiber v2](https://gofiber.io/)（ゼロアロケーションルーター、ExpressライクなAPI）。
+- **データベース層:** [GORM](https://gorm.io/)（**SQLite**（標準）と**PostgreSQL**（本番）をサポート）。
+- **メディアエンジン:** [LiveKit](https://livekit.io/)（兄弟バイナリとして埋め込み）。
+- **認証システム:** JWT、OAuth2（Google/GitHub/Twitter）、パスワードレスFIDO2パスキーをサポートする多層認証。
+- **埋め込み静的アセット:** Go 1.16+の`embed`パッケージを使用してReactフロントエンド（SSRプリレンダリングされたクライアントアセット）をバンドル。
+- **デプロイ:** systemdオーケストレーションとACME（Let's Encrypt）サポートを備えた統合Debian/Ubuntu自動インストーラー。
+
+## なぜこのアーキテクチャなのか
+WebRTCプラットフォームは通常、シグナリング、TURN、ウェブサービング、データベース管理に別々のサービスを実行します。Bedrudは以下の方法でこれらを1つのバイナリに統合しています:
+
+1.  **抽出:** 実行時にメディアサーバーバイナリを展開します。
+2.  **プロキシ:** メディアトラフィックをメインのHTTP(S)ポート経由でプロキシします。
+3.  **自動化:** バイナリ自体を通じてOSレベルの設定（SSL、systemd）を自動化します。
+
+## 高レベルアーキテクチャ
+バックエンドは標準的な階層アーキテクチャに従っています:
+
+1.  **サーバー層 (`internal/server`):** Fiberアプリ、ルート、ミドルウェアを設定します。
+2.  **ハンドラ層 (`internal/handlers`):** HTTPリクエストとレスポンスを管理します。
+3.  **リポジトリ層 (`internal/repository`):** GORMを使用してデータベースクエリを処理します。
+4.  **モデル層 (`internal/models`):** データベーステーブルとGo構造体を定義します。
+5.  **サービス/ロジック層:** シンプルさのためにハンドラとリポジトリに統合され、`internal/auth`や`internal/livekit`などの特殊なパッケージが存在します。
+
+## メインエントリポイント
+アプリケーションは`server/cmd/bedrud/main.go`から起動します。3つのメインモードがあります:
+
+- `run`: フルミーティングサーバーを起動します。
+- `livekit`: 組み込みメディアサーバーのみを起動します。
+- `install`: Debian/Ubuntuシステムにサーバーを自動設定します。
+
+## ドキュメントセクション
+- [**コード構造**](/ja/docs/backend/structure): どこに何があるのか？
+- [**データベースとモデル**](/ja/docs/backend/database): データはどのように保存されるのか？
+- [**認証**](/ja/docs/backend/authentication): ユーザーはどのようにログインするのか？
+- [**APIハンドラ**](/ja/docs/backend/api-handlers): リクエストはどのように処理されるのか？
+- [**LiveKit統合**](/ja/docs/backend/livekit): ビデオサーバーはどのように機能するのか？
+- [**WebRTC接続性**](/ja/docs/architecture/webrtc-connectivity): クライアントはどのようにメディア接続を確立するのか？（STUN/ICE/TURN/SFU）
+- [**TURNサーバー**](/ja/docs/architecture/turn-server): TURNリレーアーキテクチャ、設定、トラブルシューティング
+- [**インストールとデプロイ**](/ja/docs/backend/deployment): 自動インストーラーはどのように機能するのか？

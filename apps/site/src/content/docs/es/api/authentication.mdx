@@ -1,0 +1,271 @@
+---
+title: API de Autenticación
+description: Endpoints y métodos de autenticación
+order: 23
+---
+
+Todos los endpoints de autenticación están bajo `/api/auth/`.
+
+## Resumen
+
+Bedrud admite múltiples métodos de autenticación:
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| Correo/Contraseña | `POST /api/auth/login` | Inicio de sesión tradicional |
+| Registro | `POST /api/auth/register` | Crear cuenta |
+| Invitado | `POST /api/auth/guest-login` | Acceso temporal |
+| OAuth | `GET /api/auth/:provider/login` | Inicio de sesión social |
+| Passkeys | `POST /api/auth/passkey/*` | FIDO2/WebAuthn |
+| Renovación de Token | `POST /api/auth/refresh` | Renovar token de acceso |
+
+## Formato de Token
+
+La autenticación exitosa devuelve un par de tokens JWT:
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+- **Access Token** - De corta duración, se usa en el encabezado `Authorization`
+- **Refresh Token** - De larga duración, se usa para obtener nuevos tokens de acceso
+
+### Uso de Tokens
+
+Incluya el token de acceso en todas las solicitudes autenticadas:
+
+```
+Authorization: Bearer <accessToken>
+```
+
+---
+
+## Endpoints
+
+### Registrar
+
+Crea una nueva cuenta de usuario.
+
+```
+POST /api/auth/register
+```
+
+**Cuerpo de la Solicitud:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "name": "John Doe"
+}
+```
+
+**Respuesta (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### Iniciar Sesión
+
+Autenticarse con correo y contraseña.
+
+```
+POST /api/auth/login
+```
+
+**Cuerpo de la Solicitud:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**Respuesta (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### Iniciar Sesión como Invitado
+
+Únete como invitado sin crear una cuenta. Los invitados tienen permisos limitados.
+
+```
+POST /api/auth/guest-login
+```
+
+**Cuerpo de la Solicitud:**
+
+```json
+{
+  "name": "Guest User"
+}
+```
+
+**Respuesta (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "name": "Guest User",
+    "role": "guest"
+  }
+}
+```
+
+---
+
+### Obtener Usuario Actual
+
+Recupera el perfil del usuario autenticado.
+
+```
+GET /api/auth/me
+```
+
+**Encabezados:** `Authorization: Bearer <accessToken>`
+
+**Respuesta (200):**
+
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "avatar": "https://...",
+  "role": "user",
+  "provider": "email"
+}
+```
+
+---
+
+### Renovar Token
+
+Intercambia un token de actualización por un nuevo token de acceso.
+
+```
+POST /api/auth/refresh
+```
+
+**Cuerpo de la Solicitud:**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**Respuesta (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ..."
+}
+```
+
+---
+
+### Cerrar Sesión
+
+Invalida el token de actualización actual.
+
+```
+POST /api/auth/logout
+```
+
+**Encabezados:** `Authorization: Bearer <accessToken>`
+
+**Cuerpo de la Solicitud:**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**Respuesta (200):**
+
+```json
+{
+  "message": "logged out"
+}
+```
+
+---
+
+### Inicio de Sesión OAuth
+
+Inicia un flujo OAuth con un proveedor social.
+
+```
+GET /api/auth/:provider/login
+```
+
+**Proveedores Admitidos:**
+
+| Proveedor | Ruta |
+|-----------|------|
+| Google | `/api/auth/google/login` |
+| GitHub | `/api/auth/github/login` |
+| Twitter | `/api/auth/twitter/login` |
+
+El servidor redirige al usuario a la página de autorización del proveedor. Después del consentimiento, el proveedor redirige de vuelta a la URL de devolución de llamada, y el servidor devuelve tokens JWT.
+
+---
+
+## Respuestas de Error
+
+Todos los endpoints de autenticación devuelven errores en este formato:
+
+```json
+{
+  "error": "invalid credentials"
+}
+```
+
+| Estado | Significado |
+|--------|-------------|
+| 400 | Solicitud incorrecta (campos faltantes, error de validación) |
+| 401 | Credenciales inválidas o token expirado |
+| 409 | Correo ya registrado |
+| 500 | Error interno del servidor |
+
+---
+
+## Véase también
+
+- [Flujo de Autenticación](/es/docs/backend/authentication) - cómo funcionan JWT, OAuth y passkeys internamente
+- [API de Passkeys](/es/docs/api/passkeys) - referencia de endpoints FIDO2/WebAuthn

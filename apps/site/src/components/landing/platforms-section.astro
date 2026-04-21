@@ -1,0 +1,50 @@
+---
+import { Icon } from "astro-icon/components";
+import { type Locale, t } from "../../i18n/utils";
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+
+const platforms = [
+  { key: "web", icon: "lucide:globe" },
+  { key: "android", icon: "lucide:smartphone" },
+  { key: "ios", icon: "lucide:tablet" },
+  { key: "desktop", icon: "lucide:monitor" },
+  { key: "server", icon: "lucide:hard-drive" },
+  { key: "bots", icon: "lucide:bot" },
+] as const;
+---
+
+<section id="platforms" class="relative scroll-mt-20 section-y">
+  <div class="section-container">
+    <div class="max-w-lg">
+      <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
+        {t(lang, "platforms.title")}
+      </h2>
+      <p class="mt-4 text-lg text-muted-foreground">
+        {t(lang, "platforms.subtitle")}
+      </p>
+    </div>
+
+    <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {platforms.map(({ key, icon }) => (
+        <div class="group flex items-start gap-4 rounded-xl bg-card p-6 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08)] transition-[shadow] duration-300 hover:shadow-[0px_0px_0px_1px_rgba(0,0,0,0.12)] dark:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.1)] dark:hover:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.14)]">
+          <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/8">
+            <Icon name={icon} class="size-5 text-primary" stroke-width="1.5" />
+          </div>
+          <div class="min-w-0">
+            <h3 class="font-semibold leading-tight">
+              {t(lang, `platforms.${key}.title`)}
+            </h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              {t(lang, `platforms.${key}.tech`)}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

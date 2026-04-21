@@ -1,0 +1,155 @@
+---
+title: Frontend Web
+description: Architecture de l'application web React
+order: 8
+---
+
+Le frontend web Bedrud est une application React construite avec TanStack Start, TailwindCSS v4 et shadcn/ui. En production, le rendu côté serveur pré-rend un shell HTML. Le binaire Go intègre ce shell avec les actifs clients statiques.
+
+## Stack Technologique
+
+| Technologie | Objectif |
+|-----------|---------|
+| React 19 | Framework UI |
+| TanStack Start | Framework SSR et routage basé sur les fichiers |
+| TanStack Router | Routage côté client |
+| TanStack Query | État serveur et récupération de données |
+| TailwindCSS 4 | Styling utilitaire |
+| shadcn/ui + Radix UI | Primitives de composants accessibles |
+| Zustand | État d'authentification côté client |
+| Vite 7 | Outil de build et serveur de dev |
+| LiveKit React SDK | Gestion des médias WebRTC |
+| Zod | Validation de schéma |
+| Lucide React | Bibliothèque d'icônes |
+| Bun | Gestionnaire de paquets |
+
+## Structure du Répertoire
+
+```
+apps/web/
+├── src/
+│   ├── routes/                    # Routes basées sur les fichiers TanStack Router
+│   │   ├── index.tsx              # Page d'accueil / landing
+│   │   ├── __root.tsx             # Layout racine
+│   │   ├── auth/
+│   │   │   ├── login.tsx          # Page de connexion
+│   │   │   └── register.tsx       # Page d'inscription
+│   │   ├── dashboard/             # Tableau de bord utilisateur
+│   │   ├── m.$meetId.tsx          # Page de salle de réunion
+│   │   ├── admin/                 # Panneau d'administration
+│   │   │   ├── index.tsx          # Vue d'ensemble
+│   │   │   ├── rooms.$id.tsx      # Détail de salle
+│   │   │   ├── users.$id.tsx      # Détail d'utilisateur
+│   │   │   └── settings.tsx       # Paramètres serveur + jetons d'invitation
+│   │   └── settings.tsx           # Page des paramètres de compte
+│   ├── components/
+│   │   ├── admin/                 # Composants de table admin
+│   │   │   ├── RoomTable.tsx
+│   │   │   └── UserTable.tsx
+│   │   ├── auth/                  # UI d'auth (boutons OAuth, Passkey)
+│   │   ├── dashboard/             # Cartes de salle, dialogue de création de salle
+│   │   ├── meeting/               # Tuiles vidéo, contrôles, sélecteur d'appareil
+│   │   │   ├── ControlsBar.tsx
+│   │   │   ├── DeviceSelector.tsx
+│   │   │   ├── ParticipantGrid.tsx
+│   │   │   ├── ChatPanel.tsx
+│   │   │   └── SpotlightView.tsx
+│   │   ├── ui/                    # Bibliothèque de composants shadcn/ui
+│   │   └── ThemeToggle.tsx        # Basculeur mode clair/sombre
+│   └── lib/
+│       ├── api.ts                 # Wrapper authFetch
+│       └── auth.store.ts          # Store d'auth Zustand (jetons, utilisateur)
+├── scripts/
+│   └── embed.mjs                  # Pré-rendu SSR + copie vers server/frontend/
+├── public/                        # Actifs statiques
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+## Flux d'Authentification
+
+L'état d'authentification est géré par un store Zustand dans `src/lib/auth.store.ts` :
+
+1. **Connexion** - L'utilisateur soumet ses identifiants à `POST /api/auth/login`
+2. **Stockage des jetons** - Les jetons d'accès et de rafraîchissement sont sauvegardés dans `localStorage`
+3. **Injection automatique** - `authFetch` enveloppe chaque appel API, ajoutant l'en-tête `Authorization: Bearer`
+4. **Rafraîchissement automatique** - Quand une requête renvoie 401, `authFetch` tente de rafraîchir le jeton en utilisant le jeton de rafraîchissement
+5. **Déconnexion** - Efface les jetons et redirige vers la page de connexion
+
+### authFetch
+
+La fonction `authFetch` dans `src/lib/api.ts` est un remplacement direct de `fetch` qui :
+
+- Attache le jeton d'accès JWT à chaque requête
+- Intercepte les réponses 401 et tente un rafraîchissement de jeton
+- Déconnecte l'utilisateur si le rafraîchissement échoue
+
+## Page de Réunion
+
+La salle de réunion à `/m/$meetId` gère :
+
+- **Connexion LiveKit** - Se connecte au serveur média avec le jeton de l'API de join
+- **Rendu des pistes** - S'abonne aux pistes audio/vidéo des autres participants
+- **Sélection d'appareil** - Changer la caméra, le microphone ou le haut-parleur en cours d'appel sans quitter la salle
+- **Contrôles admin** - Le créateur de la salle voit les boutons expulser, couper le micro et éteindre la vidéo
+- **Chat** - Chat textuel dans la salle via `ChatPanel`
+- **Vue spotlight** - Focaliser sur un seul participant
+
+## Panneau d'Administration
+
+Le panneau d'administration à `/admin` fournit :
+
+- **Gestion des salles** - vue tabulaire avec navigation vers les pages de détail de salle
+- **Gestion des utilisateurs** - vue tabulaire avec navigation vers les comptes utilisateurs individuels et édition des rôles
+- **Paramètres serveur** - configurer les options à l'échelle de l'instance, les contrôles d'accès et les liens d'invitation
+- **Jetons d'invitation** - générer et révoquer les liens d'invitation pour contrôler qui peut rejoindre
+
+## Mode Sombre
+
+Un composant `ThemeToggle` permet aux utilisateurs de basculer entre les thèmes clair et noir depuis n'importe où dans l'application. La préférence est persistée dans `localStorage` et appliquée au chargement.
+
+## Build
+
+### Développement
+
+```bash
+cd apps/web
+bun run dev      # Démarre le serveur de dev Vite avec HMR sur localhost:3000
+```
+
+Le serveur de dev proxie les requêtes `/api` et `/livekit` vers le serveur Go sur `localhost:8090`.
+
+### Production (bundle web autonome)
+
+```bash
+cd apps/web
+bun run build    # Sort les actifs clients statiques dans dist/client/ et le serveur SSR dans dist/server/
+```
+
+### Production (intégré dans le binaire Go)
+
+```bash
+cd apps/web
+bun run build:embed
+```
+
+Cela exécute `scripts/embed.mjs` qui :
+
+1. Exécute `bun run build` pour produire `dist/client/` et `dist/server/`
+2. Démarre le serveur SSR localement
+3. Récupère `/` pour capturer le shell HTML pré-rendu
+4. Copie `dist/client/` dans `server/frontend/`
+5. Écrit le HTML rendu dans `server/frontend/index.html`
+
+### Vérification de Types
+
+```bash
+bun run check    # Exécute tsc --noEmit
+```
+
+---
+
+## Voir aussi
+
+- [Web Design System](https://github.com/bedrud-ir/bedrud/tree/main/apps/web/AGENTS.md) - Modèles de composants UI, jetons de couleur et règles de styling

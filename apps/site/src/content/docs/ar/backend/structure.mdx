@@ -1,0 +1,132 @@
+---
+title: بنية الكود
+description: تنظيم كود الخلفية
+order: 16
+---
+
+خريطة دليل `server/` ومحتوياته.
+
+## خارطة المشروع والشجرة
+
+دليل `server/` يحتوي على خلفية Go وخادم وسائط LiveKit المدمج. دليل `apps/` يحتوي على تطبيقات العميل.
+
+```text
+bedrud/
+├── apps/                # Client Applications
+│   ├── web/             # React Frontend (TanStack Start)
+│   ├── android/         # Native Android Application
+│   └── ios/             # Native iOS Application
+├── server/              # Go Backend (The "Appliance")
+│   ├── cmd/             # CLI Entry points (run, install)
+│   ├── internal/        # Private application code
+│   │   ├── auth/        # JWT, Passkeys, OAuth logic
+│   │   ├── handlers/    # HTTP Controllers
+│   │   ├── models/      # Database Schemas
+│   │   ├── repository/  # GORM Data Access Layer
+│   │   └── livekit/     # Media Server Management
+│   ├── frontend/        # (Generated) Compiled web assets
+│   ├── config.yaml      # Configuration template
+│   └── Makefile         # Build & Deploy automation
+└── docs/                # System Documentation (MkDocs)
+```
+
+## خريطة الأدلة
+
+### `/cmd/bedrud`
+- **`main.go`**: نقطة دخول التطبيق. يتعامل مع أوامر CLI مثل `run` و `install` و `livekit`.
+
+### `/config`
+- **`config.go`**: يُعرّف بنية `Config` ويحمّل الإعدادات من `config.yaml` أو متغيرات البيئة.
+- **`livekit.yaml`**: التهيئة الافتراضية لخادم LiveKit المدمج.
+
+### `/internal`
+
+- **`/auth`**: يحتوي على منطق توليد JWT وموفري OAuth وتسجيل/دخول مفاتيح المرور (WebAuthn).
+- **`/database`**: يدير الاتصال بـ SQLite أو PostgreSQL ويشغّل التهييرات.
+- **`/handlers`**: معالجات HTTP الخاصة بـ Fiber. هنا تجد منطق كل نقطة نهاية API (مثلاً `auth_handler.go`، `room_handler.go`).
+- **`/models`**: نماذج قاعدة بيانات GORM. هذه الملفات تُعرّف الجداول في قاعدة بياناتك.
+- **`/repository`**: "طبقة الوصول إلى البيانات". المعالجات تستدعي المستودعات بدلاً من كتابة استعلامات قاعدة البيانات مباشرة، مما يبقي منطق المعالج نظيفًا.
+- **`/livekit`**: تكامل مع LiveKit Go SDK. يدير إنشاء الغرف ويُنشئ "رموز الانضمام" للمشاركين.
+- **`/middleware`**: برمجيات وسيطة مخصصة لـ Fiber لفحوصات المصادقة والتسجيل و CORS.
+- **`/server`**: كود الربط الذي يجمع كل شيء. يُهيئ قاعدة البيانات والمستودعات ويشغّل خادم Fiber.
+- **`/install`**: منطق أمر `bedrud install` الذي يؤتمت تهيئة systemd و TLS على Linux.
+- **`/scheduler`**: مهام الخلفية (إن وُجدت).
+- **`/utils`**: دوال مساعدة صغيرة (مثلاً تجزئة كلمات المرور، سلاسل عشوائية).
+
+### `/migrations`
+
+- يحتوي على ملفات SQL أو Go لتحديثات مخطط قاعدة البيانات.
+
+### `/docs` (داخل الخادم)
+
+- يحتوي على ملفات توثيق Swagger/OpenAPI (المُنشأة بواسطة `swag`).
+
+## نظرة تقنية متعمقة
+
+### ١. تضمين الملفات الثنائية ("الحيلة")
+
+يستخدم Bedrud التوجيه `//go:embed` لتجميع الملفات في الملف الثنائي المُترجم.
+
+- **الواجهة الأمامية:** مجلد React `dist/client/` (بالإضافة إلى `index.html` مُعرَّض مسبقًا) مُضمَّن في `server/ui.go`. تُقدَّم الملفات الثابتة مباشرة من الذاكرة باستخدام برمجية `filesystem` الوسيطة في Fiber.
+- **خادم LiveKit:** الملف التنفيذي `livekit-server` المُترجم مسبقًا مُضمَّن في `internal/livekit/bin/`. أثناء التشغيل، يستخرجه Bedrud إلى `/tmp/bedrud-livekit-server` ويُطلقه كعملية خلفية (`internal/livekit/server.go`).
+
+### ٢. البروكسي العكسي لـ LiveKit
+
+لتجنب فتح منافذ متعددة (إشارات، API، إلخ)، يوجّه Bedrud جميع حركة إشارات LiveKit عبر منفذ HTTP(S) الرئيسي.
+
+- أي طلب يبدأ بـ `/livekit` يتم اعتراضه في `internal/server/server.go`.
+- **بروكسي عكسي** (باستخدام `httputil.NewSingleHostReverseProxy`) يُمرر هذه الطلبات إلى مثيل LiveKit الداخلي (عادةً يعمل على `127.0.0.1:7880`).
+- البروكسي يزيل بادئة `/livekit` قبل التمرير، مما يسمح لـ LiveKit بالعمل وكأنه التطبيق الجذري.
+
+### ٣. سياق البرمجية الوسيطة والمتغيرات المحلية
+تستخدم الخلفية `.Locals` في Fiber لتمرير البيانات بين البرمجيات الوسيطة والمعالجات.
+- **برمجية المصادقة الوسيطة (`internal/middleware/auth.go`):** تتحقق من JWT وتخزّن كائن `Claims` في `c.Locals("user")`.
+- **المعالجات:** يمكنها الوصول إلى معرّف المستخدم الحالي وصلاحياته باستخدام:
+  ```go
+  claims := c.Locals("user").(*auth.Claims)
+  userID := claims.UserID
+  ```
+
+### ٤. تجاوزات التهيئة
+
+بينما يستخدم Bedrud ملف `config.yaml`، يمكن تجاوز كل إعداد تقريبًا باستخدام **متغيرات البيئة**. هذا ضروري لبيئات Docker و CI/CD.
+
+| المتغير | الوصف |
+|----------|-------------|
+| `SERVER_PORT` | المنفذ الذي تستمع إليه الخلفية (الافتراضي: `8090`). |
+| `SERVER_ENABLE_TLS` | قيمة منطقية (`true/false`) لتفعيل HTTPS. |
+| `SERVER_DOMAIN` | نطاق الإنتاج الخاص بك (يُستخدم لـ ACME ومعرّف RP لمفتاح المرور). |
+| `DB_TYPE` | `sqlite` أو `postgres`. |
+| `DB_PATH` | مسار ملف `.db` (إذا كنت تستخدم SQLite). |
+| `LIVEKIT_HOST` | الرابط العام لـ LiveKit (مثلاً `https://meet.example.com/livekit`). |
+| `LIVEKIT_API_KEY` | المفتاح لمصادقة LiveKit. |
+| `JWT_SECRET` | المفتاح السري المستخدم لتوقيع رموز الوصول. |
+
+## معايير وأنماط البرمجة
+
+تتبع الخلفية هذه الأنماط:
+
+### ١. نمط المستودع
+
+لا يجب أن تتواصل المعالجات مع قاعدة البيانات مباشرة. استخدم مستودعًا. هذا يجعل الكود أسهل للاختبار ويسمح بتغيير منطق قاعدة البيانات دون لمس معالجات API.
+
+### ٢. معالجة الأخطاء المعيارية
+
+يجب أن تُرجع معالجات API رسائل خطأ واضحة.
+- استخدم `c.Status(fiber.StatusBadRequest).JSON(...)` لأخطاء التحقق.
+- استخدم `c.Status(fiber.StatusUnauthorized).JSON(...)` لأخطاء المصادقة.
+- استخدم `c.Status(fiber.StatusInternalServerError).JSON(...)` لأخطاء قاعدة البيانات أو الخادم.
+
+### ٣. التسجيل المنظّم
+
+تستخدم الخلفية **Zerolog** للتسجيل.
+- `log.Info()`: للأحداث المهمة (مثلاً بدء الخادم).
+- `log.Error()`: للإخفاقات.
+- `log.Debug()`: لمعلومات التطوير التفصيلية.
+
+تجنب استخدام `fmt.Println` للتسجيل في المنطق الأساسي.
+
+### ٤. اصطلاحات التسمية
+- **الملفات:** snake_case (مثلاً `user_handler.go`).
+- **البنى/الدوال:** PascalCase (مثلاً `GetUserByEmail`).
+- **المتغيرات:** camelCase (مثلاً `hashedPassword`).

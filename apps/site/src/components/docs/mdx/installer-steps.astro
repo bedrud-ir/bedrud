@@ -1,0 +1,78 @@
+---
+import { isValidLocale, type Locale, t } from "~/i18n/utils";
+
+const pathname = Astro.url.pathname;
+const langMatch = pathname.match(/^\/([a-z]{2})\//);
+const lang: Locale = langMatch && isValidLocale(langMatch[1]) ? (langMatch[1] as Locale) : "en";
+---
+
+<div class="my-6">
+	<h2 class="text-2xl font-semibold tracking-tight scroll-m-20">
+		{t(lang, "docs.mdx.installerSteps.title")}
+	</h2>
+	<p class="mt-4 leading-7 text-muted-foreground">
+		{t(lang, "docs.mdx.installerSteps.description")}
+	</p>
+	<table class="my-6 w-full border-collapse">
+		<thead class="border-b border-border">
+			<tr>
+				<th class="px-4 py-2 text-left text-sm font-semibold">{t(lang, "docs.mdx.installerSteps.headerStep")}</th>
+				<th class="px-4 py-2 text-left text-sm font-semibold">
+					{t(lang, "docs.mdx.installerSteps.headerAction")}
+				</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr class="border-t border-border">
+				<td class="px-5 py-3 text-sm">1</td>
+				<td class="px-5 py-3 text-sm">
+					{t(lang, "docs.mdx.installerSteps.step1Action")}{" "}
+					<code class="font-mono">/etc/bedrud</code>,{" "}
+					<code class="font-mono">/var/lib/bedrud</code>,{" "}
+					<code class="font-mono">/var/log/bedrud</code>
+				</td>
+			</tr>
+			<tr class="border-t border-border">
+				<td class="px-5 py-3 text-sm">2</td>
+				<td class="px-5 py-3 text-sm">
+					{t(lang, "docs.mdx.installerSteps.step2Action")}{" "}
+					<code class="font-mono">/usr/local/bin/bedrud</code>
+				</td>
+			</tr>
+			<tr class="border-t border-border">
+				<td class="px-5 py-3 text-sm">3</td>
+				<td class="px-5 py-3 text-sm">
+					{t(lang, "docs.mdx.installerSteps.step3Action")}{" "}
+					<code class="font-mono">/etc/bedrud/config.yaml</code>
+				</td>
+			</tr>
+			<tr class="border-t border-border">
+				<td class="px-5 py-3 text-sm">4</td>
+				<td class="px-5 py-3 text-sm">
+					{t(lang, "docs.mdx.installerSteps.step4Action")}{" "}
+					<code class="font-mono">/etc/bedrud/livekit.yaml</code>
+				</td>
+			</tr>
+			<tr class="border-t border-border">
+				<td class="px-5 py-3 text-sm">5</td>
+				<td class="px-5 py-3 text-sm">
+					{t(lang, "docs.mdx.installerSteps.step5Action")}{" "}
+					<code class="font-mono">bedrud.service</code> {" "}&{" "}
+					<code class="font-mono">livekit.service</code>
+				</td>
+			</tr>
+			<tr class="border-t border-border">
+				<td class="px-5 py-3 text-sm">6</td>
+				<td class="px-5 py-3 text-sm">
+					{t(lang, "docs.mdx.installerSteps.step6Action")}
+				</td>
+			</tr>
+			<tr class="border-t border-border">
+				<td class="px-5 py-3 text-sm">7</td>
+				<td class="px-5 py-3 text-sm">
+					{t(lang, "docs.mdx.installerSteps.step7Action")}
+				</td>
+			</tr>
+		</tbody>
+	</table>
+</div>

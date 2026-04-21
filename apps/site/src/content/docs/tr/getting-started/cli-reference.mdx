@@ -1,0 +1,292 @@
+---
+title: CLI Referansı
+description: Komut satırı arayüzü belgeleri
+order: 5
+---
+
+`bedrud` komut satırı arayüzü için tam referans.
+
+## Özet
+
+```bash
+# Alt komut stili
+bedrud <komut> [bayraklar]
+
+# Bayrak stili
+bedrud --livekit --config <yol>
+bedrud --run --config <yol>
+```
+
+## Komutlar
+
+### `run` / `server`
+
+API, gömülü web önyüzü ve (yapılandırılmışsa) gömülü LiveKit ile Bedrud toplantı sunucusunu başlatır.
+
+```bash
+bedrud run    [--config <yol>]
+bedrud server [--config <yol>]
+```
+
+| Bayrak       | Varsayılan                                  | Açıklama                     |
+|------------|------------------------------------------|---------------------------------|
+| `--config` | `$CONFIG_PATH` ortam değişkeni → `"config.yaml"` | Bedrud YAML yapılandırma dosyasının yolu |
+
+**Davranış:**
+- Yapılandırmayı belirtilen yoldan veya varsayılanlardan yükler
+- Dahili mod için yapılandırılmışsa gömülü LiveKit'i başlatır
+- SQLite/PostgreSQL veritabanını başlatır ve göçleri çalıştırır
+- Tüm API yollarıyla Fiber HTTP sunucusu oluşturur
+- Gömülü React önyüzünü sunar
+- ACME (Let's Encrypt), kendi imzalı TLS, manuel TLS veya düz HTTP destekler
+- SIGTERM/SIGINT sinyalinde düzgün kapanma
+
+**Uygulama:** `server/internal/server/server.go`
+
+---
+
+### `--livekit`
+
+Yalnızca gömülü LiveKit medya sunucusunu başlatır. İkili dosyayı Go embed'dan geçici bir dizine çıkarır.
+
+```bash
+bedrud --livekit --config <yol>
+```
+
+| Bayrak       | Varsayılan    | Açıklama                      |
+|------------|------------|----------------------------------|
+| `--config` | (gerekli) | LiveKit YAML yapılandırma dosyasının yolu |
+
+**Kullanan:** `bedrud install` tarafından oluşturulan systemd `livekit.service`
+
+**Uygulama:** `server/internal/livekit/server.go`
+
+---
+
+### `--run`
+
+Aynı `--config` bayrak davranışıyla `bedrud run` için takma ad. systemd `bedrud.service` tarafından kullanılır.
+
+```bash
+bedrud --run --config <yol>
+```
+
+---
+
+### `install`
+
+Bedrud'u bir Debian/Linux sistemine kurar. systemd servisleri, yapılandırma dosyaları, dizinler ve TLS sertifikaları oluşturur.
+
+```bash
+bedrud install [bayraklar]
+```
+
+| Bayrak                 | Varsayılan                         | Açıklama                                                              |
+|----------------------|---------------------------------|--------------------------------------------------------------------------|
+| `--tls`              | `false`                         | HTTPS'yi etkinleştir (`--self-signed` ile aynı)                                   |
+| `--self-signed`      | `false`                         | Kendi imzalı TLS sertifikası oluştur                                     |
+| `--no-tls`           | `false`                         | TLS'yi tamamen devre dışı bırak (düz HTTP). `--tls` ve `--self-signed`'i geçersiz kılar |
+| `--ip`               | otomatik algılandı                   | Otomatik algılanan sunucu IP adresini geçersiz kıl                                 |
+| `--domain`           | `""`                            | Let's Encrypt veya kendi imzalı sertifika için alan adı                        |
+| `--email`            | `""`                            | Let's Encrypt kaydı için e-posta                                     |
+| `--port`             | `"443"` (TLS) / `"8090"` (HTTP) | Dinleme bağlantı noktasını geçersiz kıl                                                  |
+| `--cert`             | `""`                            | Mevcut PEM sertifika dosyasının yolu                                    |
+| `--key`              | `""`                            | Mevcut PEM özel anahtar dosyasının yolu                                    |
+| `--lk-port`          | `"7880"`                        | LiveKit API/WebSocket bağlantı noktasını geçersiz kıl                                      |
+| `--lk-tcp-port`      | `"7881"`                        | LiveKit RTC TCP bağlantı noktasını geçersiz kıl                                            |
+| `--lk-udp-port`      | `"7882"`                        | LiveKit RTC UDP bağlantı noktasını geçersiz kıl                                            |
+| `--fresh`            | `false`                         | Kurulumdan önce mevcut kurulumu kaldır                           |
+| `--behind-proxy`     | `false`                         | Sunucu CDN/ters vekil arkasında (Cloudflare, nginx)                   |
+| `--external-livekit` | `""`                            | Tamamen harici LiveKit sunucusunun URL'si (farklı makine)                 |
+| `--livekit-domain`   | `""`                            | Yerel LiveKit sunucusu için ayrı alan adı (CDN'yi atlar)                  |
+
+**Yaptığı işler:**
+1. `--fresh` ise önceki kurulumu durdurur ve kaldırır
+2. IP, alan adı, e-posta, TLS modu için sorar (etkileşimli olmayan ve bayraklar sağlanmamışsa)
+3. Dizinleri oluşturur: `/etc/bedrud`, `/var/lib/bedrud`, `/var/lib/bedrud/certs`, `/var/log/bedrud`
+4. İkili dosyayı `/usr/local/bin/bedrud` konumuna kopyalar
+5. `/etc/bedrud/config.yaml` konumunda Bedrud sunucu yapılandırması oluşturur
+6. `/etc/bedrud/livekit.yaml` konumunda LiveKit medya sunucusu yapılandırması oluşturur
+7. `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` konumunda kendi imzalı sertifikalar oluşturur (TLS etkinse ve özel sertifikalar yoksa)
+8. systemd `livekit.service` oluşturur (harici LiveKit kullanılmıyorsa)
+9. systemd `bedrud.service` oluşturur
+10. `systemctl daemon-reload` çalıştırır, her iki servisi de etkinleştirir ve başlatır
+11. Erişim URL'lerini yazdırır
+
+**TLS seçenekleri:**
+- `--domain` + `--email` → ACME (Let's Encrypt)
+- `--self-signed` veya `--tls` → kendi imzalı sertifika
+- `--cert` + `--key` → özel sertifikalar
+- `--no-tls` → yalnızca düz HTTP
+
+**LiveKit topolojisi:**
+- Varsayılan (gömülü): LiveKit yerel olarak çalışır, Bedrud üzerinden `/livekit` adresine vekil yapılır
+- `--livekit-domain`: LiveKit yerel olarak çalışır ama istemciler kendi alan adı üzerinden doğrudan bağlanır
+- `--external-livekit`: Yerel LiveKit yok; uzak sunucuya bağlanır
+
+**Uygulama:** `server/internal/install/debian.go`
+
+**İlgili belgeler:** [Kurulum Kılavuzu](/tr/docs/getting-started/installation) • [Dağıtım Kılavuzu](/tr/docs/guides/deployment) • [Arka Uç Dağıtım Mantığı](/tr/docs/backend/deployment)
+
+---
+
+### `uninstall`
+
+Bedrud'u sistemden kaldırır.
+
+```bash
+bedrud uninstall
+```
+
+**Kaldırdıkları:**
+- systemd servislerini durdurur ve devre dışı bırakır: `bedrud`, `livekit`
+- systemd birim dosyalarını `/etc/systemd/system/` konumundan kaldırır
+- İkili dosyaları kaldırır: `/usr/local/bin/bedrud`, `/tmp/bedrud`, `/tmp/bedrud-livekit-server`
+- Dizinleri kaldırır: `/etc/bedrud`, `/var/lib/bedrud`, `/var/log/bedrud`
+
+**Uygulama:** `server/internal/install/debian.go`
+
+**İlgili belgeler:** [Kurulum Kılavuzu - Kaldırma](/tr/docs/getting-started/installation#uninstallation)
+
+---
+
+### `user`
+
+Bedrud veritabanındaki kullanıcıları yönetir.
+
+```bash
+bedrud user <alt-komut> [--config <yol>] <bayraklar>
+```
+
+| Genel Bayrak | Varsayılan                   | Açıklama                                     |
+|-------------|---------------------------|-------------------------------------------------|
+| `--config`  | `/etc/bedrud/config.yaml` | Bedrud yapılandırma dosyasının yolu (veritabanını bulmak için) |
+
+#### `create`
+
+Yerel kimlik doğrulama ile yeni bir kullanıcı oluşturur (bcrypt ile hashlenmiş parola).
+
+```bash
+bedrud user create --email <e-posta> --password <parola> --name <ad>
+```
+
+**Gerekli bayraklar:**
+- `--email`: Kullanıcı e-posta adresi
+- `--password`: Kullanıcı parolası, depolanmadan önce bcrypt ile hashlenir
+- `--name`: Kullanıcı görünen adı
+
+**Erişim seviyesi:** `user` (süper yönetici değil). Yönetici hakları vermek için `promote` kullanın.
+
+#### `delete`
+
+Bir kullanıcıyı e-posta adresine göre siler.
+
+```bash
+bedrud user delete --email <e-posta>
+```
+
+#### `promote`
+
+Bir kullanıcıya `superadmin` erişimi verir.
+
+```bash
+bedrud user promote --email <e-posta>
+```
+
+#### `demote`
+
+Bir kullanıcıdan `superadmin` erişimini kaldırır (`user` seviyesine döner).
+
+```bash
+bedrud user demote --email <e-posta>
+```
+
+**Uygulama:** `server/internal/usercli/usercli.go`
+
+---
+
+### `help`
+
+Tüm komutlar ve bayraklarla kullanım mesajını gösterir.
+
+```bash
+bedrud help
+```
+
+Hiçbir argüman sağlanmadığında da tetiklenir. `printUsage()` çıktısını görüntüler.
+
+---
+
+## Örnekler
+
+### Temel geliştirme sunucusu başlatma
+
+```bash
+# Geçerli dizindeki varsayılan config.yaml ile çalıştır
+bedrud run
+
+# Özel yapılandırma ile çalıştır
+bedrud run --config /path/to/config.yaml
+
+# Ortam değişkeni ile (geri dönüş)
+export CONFIG_PATH=/etc/bedrud/config.yaml
+bedrud run
+```
+
+### Etkileşimli kurulum (girişler için sorar)
+
+```bash
+bedrud install
+```
+
+### Let's Encrypt ile etkileşimli olmayan kurulum
+
+```bash
+bedrud install --domain example.com --email admin@example.com
+```
+
+### Özel bağlantı noktalarıyla kendi imzalı TLS
+
+```bash
+bedrud install --self-signed --port 8443 --lk-port 7880 --lk-tcp-port 7881 --lk-udp-port 7882
+```
+
+### CDN arkasında ayrı LiveKit alan adı ile
+
+```bash
+bedrud install --domain bedrud.example.com --email admin@example.com --livekit-domain lk.example.com --behind-proxy
+```
+
+### Temiz yeniden kurulum
+
+```bash
+bedrud install --fresh --domain example.com --email admin@example.com
+```
+
+### Kullanıcı yönetimi
+
+```bash
+# İlk yönetici kullanıcısını oluştur
+bedrud user create --email admin@example.com --password secret123 --name "Admin User"
+
+# Süper yönetici erişimi ver
+bedrud user promote --email admin@example.com
+
+# Normal kullanıcı oluştur
+bedrud user create --email user@example.com --password pass456 --name "Regular User"
+
+# Bir kullanıcıyı kaldır
+bedrud user delete --email user@example.com
+
+# Yönetici erişimini kaldır
+bedrud user demote --email admin@example.com
+```
+
+---
+
+## İlgili Belgeler
+
+- [Kurulum Kılavuzu](/tr/docs/getting-started/installation) - Ayrıntılı `bedrud install` kılavuzu, TLS topolojileri, kurulum sonrası adımlar
+- [Yapılandırma Referansı](/tr/docs/getting-started/configuration) - Sunucu ve LiveKit yapılandırma dosyası yapısı
+- [Arka Uç Dağıtım Mantığı](/tr/docs/backend/deployment) - `install` ve `uninstall` dahili olarak nasıl çalışır
+- [Dağıtım Kılavuzu](/tr/docs/guides/deployment) - systemd servisleri dahil tam dağıtım seçenekleri

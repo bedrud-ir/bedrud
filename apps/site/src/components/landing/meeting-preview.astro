@@ -1,0 +1,246 @@
+---
+import { Icon } from "astro-icon/components";
+import { cn } from "~/lib/utils";
+import { isValidLocale, type Locale, t } from "../../i18n/utils";
+
+interface Props {
+  lang?: string;
+}
+
+const rawLang: string = Astro.props.lang ?? "";
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+
+interface Participant {
+  name: string;
+  image: string;
+  muted: boolean;
+  speaking?: boolean;
+}
+
+const gridParticipants: Participant[] = [
+  {
+    name: "Sarah Chen",
+    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=300&fit=crop&crop=face",
+    muted: false,
+    speaking: true,
+  },
+  {
+    name: "Alex Rivera",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop&crop=face",
+    muted: false,
+  },
+  {
+    name: "Jordan Lee",
+    image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400&h=300&fit=crop&crop=face",
+    muted: true,
+  },
+  {
+    name: "Marcus Webb",
+    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=300&fit=crop&crop=face",
+    muted: false,
+  },
+];
+
+const selfView = {
+  image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=200&fit=crop&crop=face",
+};
+
+const avatarThumbs = [
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=64&h=64&fit=crop&crop=face",
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face",
+  "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=64&h=64&fit=crop&crop=face",
+  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=face",
+];
+
+interface ChatMsg {
+  avatar: string;
+  name: string;
+  text: string;
+  time: string;
+}
+
+const chatMessages: ChatMsg[] = [
+  {
+    avatar: avatarThumbs[2],
+    name: "Jordan",
+    text: t(lang, "mockups.preview.chatMsg1"),
+    time: "2:34 PM",
+  },
+  {
+    avatar: avatarThumbs[0],
+    name: "Sarah",
+    text: t(lang, "mockups.preview.chatMsg2"),
+    time: "2:35 PM",
+  },
+  {
+    avatar: avatarThumbs[1],
+    name: "Alex",
+    text: t(lang, "mockups.preview.chatMsg3"),
+    time: "2:36 PM",
+  },
+];
+
+const reactions = [
+  { emoji: "👍", style: "bottom-16 end-12" },
+  { emoji: "🎉", style: "bottom-24 end-6" },
+];
+---
+
+<div
+  aria-hidden="true"
+  class="relative flex h-full w-full select-none flex-col"
+>
+  <div class="relative flex h-full flex-col overflow-hidden bg-[#111127]">
+    <div class="flex h-9 shrink-0 items-center border-b border-white/[0.05] bg-[#0c0c20] px-3 sm:h-10 sm:px-4">
+      <div class="flex gap-1.5">
+        <div class="size-2 rounded-full bg-[#ff5f57] sm:size-2.5" />
+        <div class="size-2 rounded-full bg-[#febc2e] sm:size-2.5" />
+        <div class="size-2 rounded-full bg-[#28c840] sm:size-2.5" />
+      </div>
+
+      <div class="flex flex-1 items-center justify-center gap-2.5">
+        <div class="flex items-center gap-1">
+          <Icon name="lucide:lock" class="size-2.5 text-emerald-400/70 sm:size-3" />
+          <span class="text-[10px] font-medium text-white/40 sm:text-[11px]">
+            {t(lang, "mockups.preview.title")}
+          </span>
+        </div>
+        <div class="hidden items-center gap-1.5 rounded-full bg-red-500/15 px-2 py-0.5 sm:flex">
+          <div class="size-1.5 animate-pulse rounded-full bg-red-500" />
+          <span class="font-mono text-[9px] tabular-nums text-red-400/80 sm:text-[10px]">
+            23:45
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center">
+        <div class="flex -space-x-1.5 rtl:space-x-reverse">
+          {avatarThumbs.slice(0, 4).map((src, i) => (
+            <img
+              src={src}
+              alt=""
+              class="size-5 rounded-full border border-[#0c0c20] object-cover sm:size-6"
+              style={`z-index: ${4 - i}`}
+              loading="lazy"
+            />
+          ))}
+        </div>
+        <span class="ms-1.5 text-[9px] text-white/30 sm:text-[10px]">+1</span>
+      </div>
+    </div>
+
+    <div class="flex min-h-0 flex-1">
+      <div class="relative flex flex-1 flex-col p-1 sm:p-1.5">
+        <div class="grid flex-1 grid-cols-2 grid-rows-2 gap-1 sm:gap-1.5">
+          {gridParticipants.map((p) => (
+            <div class="min-h-0">
+              <div class={cn(
+                "relative h-full overflow-hidden rounded-lg bg-[#16162e]",
+                p.speaking && "ring-[1.5px] ring-emerald-400/70 ring-offset-1 ring-offset-[#111127]",
+              )}>
+                <img
+                  src={p.image}
+                  alt=""
+                  class="size-full object-cover"
+                  loading="lazy"
+                />
+                <div class="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 via-black/25 to-transparent px-1.5 pb-1 pt-4 sm:px-2 sm:pb-1.5 sm:pt-5">
+                  <span class="truncate text-[9px] font-medium text-white/90 sm:text-[10px]">
+                    {p.name}
+                  </span>
+                  {p.muted ? (
+                    <div class="flex size-4 items-center justify-center rounded-full bg-red-500/80 sm:size-[18px]">
+                      <Icon name="lucide:mic-off" class="size-2.5 text-white sm:size-3" />
+                    </div>
+                  ) : p.speaking ? (
+                    <Icon name="lucide:volume-2" class="size-3 text-emerald-400 sm:size-3.5" />
+                  ) : (
+                    <Icon name="lucide:mic" class="size-2.5 text-white/40 sm:size-3" />
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div class="absolute bottom-2 end-2 w-[22%] min-w-16 overflow-hidden rounded-md border border-white/10 shadow-lg sm:bottom-3 sm:end-3 sm:rounded-lg">
+          <div class="aspect-video">
+            <div class="relative h-full">
+              <img
+                src={selfView.image}
+                alt=""
+                class="size-full object-cover"
+                loading="lazy"
+              />
+              <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 pb-0.5 pt-3 sm:px-1.5 sm:pb-1">
+                <span class="text-[7px] font-medium text-white/80 sm:text-[8px]">{t(lang, "mockups.preview.you")}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {reactions.map((r) => (
+          <div class={cn(
+            "absolute flex size-7 items-center justify-center rounded-full bg-white/10 text-sm backdrop-blur-sm sm:size-8 sm:text-base",
+            r.style,
+          )}>
+            {r.emoji}
+          </div>
+        ))}
+      </div>
+
+      <div class="hidden w-44 flex-col border-s border-white/[0.05] bg-[#0d0d22] lg:flex xl:w-48">
+        <div class="flex items-center justify-between border-b border-white/[0.04] px-3 py-2">
+          <span class="text-[10px] font-medium text-white/40">{t(lang, "mockups.preview.chat")}</span>
+          <Icon name="lucide:message-square" class="size-3 text-white/20" />
+        </div>
+        <div class="flex flex-1 flex-col justify-end gap-2.5 px-2.5 pb-2.5">
+          {chatMessages.map((msg) => (
+            <div class="flex gap-1.5">
+              <img
+                src={msg.avatar}
+                alt=""
+                class="mt-0.5 size-4 shrink-0 rounded-full object-cover"
+                loading="lazy"
+              />
+              <div class="min-w-0">
+                <div class="flex items-baseline gap-1">
+                  <span class="text-[9px] font-semibold text-white/50">{msg.name}</span>
+                  <span class="text-[7px] text-white/20">{msg.time}</span>
+                </div>
+                <p class="text-[10px] leading-snug text-white/40">{msg.text}</p>
+              </div>
+            </div>
+          ))}
+          <div class="mt-0.5 flex items-center rounded-md bg-white/[0.04] px-2 py-1.5">
+            <span class="flex-1 text-[9px] text-white/20">{t(lang, "mockups.preview.messagePlaceholder")}</span>
+            <Icon name="lucide:smile" class="size-3 text-white/15" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex shrink-0 items-center justify-center gap-1.5 border-t border-white/[0.05] bg-[#0c0c20] py-2 sm:gap-2 sm:py-2.5">
+      <div role="img" aria-label="Microphone on" class="relative flex size-8 items-center justify-center rounded-full bg-white/[0.12] text-white/90 sm:size-9">
+        <Icon name="lucide:mic" class="size-3.5 sm:size-4" />
+      </div>
+      <div role="img" aria-label="Camera on" class="relative flex size-8 items-center justify-center rounded-full bg-white/[0.12] text-white/90 sm:size-9">
+        <Icon name="lucide:video" class="size-3.5 sm:size-4" />
+      </div>
+      <div role="img" aria-label="Share screen" class="relative flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-white/35 sm:size-9">
+        <Icon name="lucide:monitor-up" class="size-3.5 sm:size-4" />
+      </div>
+      <div role="img" aria-label="Raise hand" class="relative flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-white/35 sm:size-9">
+        <Icon name="lucide:hand" class="size-3.5 sm:size-4" />
+      </div>
+      <div role="img" aria-label="Chat" class="relative flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-white/35 sm:size-9">
+        <Icon name="lucide:message-square" class="size-3.5 sm:size-4" />
+        <div class="absolute -end-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-blue-500 text-[7px] font-bold text-white sm:size-4 sm:text-[8px]">3</div>
+      </div>
+      <div role="img" aria-label="Leave call" class="relative flex size-8 items-center justify-center rounded-full bg-red-500 text-white sm:size-9">
+        <Icon name="lucide:phone" class="size-3.5 rotate-[135deg] sm:size-4" />
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,306 @@
+---
+title: Development Workflow
+description: Set up development environment
+order: 27
+---
+
+本指南介绍参与 Bedrud 开发的日常工作流程。
+
+## 仓库结构
+
+```
+bedrud/
+├── server/          # Go backend
+├── apps/
+│   ├── web/         # React frontend (TanStack Start)
+│   ├── android/     # Android app
+│   ├── ios/         # iOS app
+│   └── desktop/     # Desktop app (Rust + Slint)
+├── agents/          # Python bot agents
+├── packages/        # Shared TypeScript types
+├── tools/cli/       # Deployment CLI
+├── docs/            # Documentation (MkDocs)
+├── Cargo.toml       # Rust workspace root
+├── Makefile         # Build orchestration
+└── Dockerfile       # Container build
+```
+
+## 前提条件
+
+| 工具 | 用于 |
+|------|-------------|
+| Go 1.24+ | 服务器 |
+| Bun | Web 前端 |
+| LiveKit Server | 本地媒体服务器 |
+| Android Studio + JDK 17 | Android 应用 |
+| Xcode | iOS 应用 |
+| Rust（stable） | 桌面应用 |
+| Python 3.10+ | 机器人代理 |
+| FFmpeg | 广播和视频代理 |
+
+## 初始设置
+
+```bash
+git clone https://github.com/bedrud-ir/bedrud.git
+cd bedrud
+make init
+```
+
+## 全栈开发
+
+要在本地运行整个技术栈：
+
+```bash
+make dev
+```
+
+这将同时启动 LiveKit、Go 服务器和 React 开发服务器。按 `Ctrl+C` 停止所有进程。
+
+### 单独运行服务
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="web-frontend">Web Frontend</TabsTrigger>
+    <TabsTrigger value="go-server">Go Server</TabsTrigger>
+    <TabsTrigger value="livekit">LiveKit</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="web-frontend">
+    ```bash
+    make dev-web
+    ```
+    运行在 `http://localhost:3000`，支持热模块替换。
+  </TabsContent>
+
+  <TabsContent value="go-server">
+    ```bash
+    make dev-server
+    ```
+    运行在 `http://localhost:8090`。Go 代码更改后需手动重启。
+  </TabsContent>
+
+  <TabsContent value="livekit">
+    ```bash
+    make dev-livekit
+    ```
+    运行在 `http://localhost:7880`，使用开发凭据。
+  </TabsContent>
+</Tabs>
+
+## 服务器开发
+
+Go 服务器入口点为 `server/cmd/server/main.go`。
+
+### 添加 API 端点
+
+1. 在 `server/internal/handlers/` 中**定义处理函数**
+2. 如果需要新的数据库查询，在 `server/internal/repository/` 中**添加仓储方法**
+3. 在服务器设置中**注册路由**（通常在 `main.go` 或路由文件中）
+4. 如果端点需要身份验证或管理员检查，**添加中间件**
+
+### 数据库更改
+
+在 `server/internal/models/` 中添加或修改 GORM 模型结构体。GORM 在启动时自动迁移。
+
+### Swagger 文档
+
+API 文档注释使用 swaggo 格式。更改后重新生成：
+
+```bash
+cd server
+swag init -g cmd/server/main.go
+```
+
+> 完整目录结构和分层设计请参阅[服务器架构](/zh/docs/architecture/server)。
+
+## Web 前端开发
+
+前端位于 `apps/web/`，使用 React 19 和 TanStack Start。
+
+### 添加页面
+
+按照 [TanStack Router 的基于文件的路由约定](https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing)在 `src/routes/` 下创建新文件（例如 `src/routes/settings.tsx`）。导出使用 `createFileRoute` 创建的 `Route`。
+
+### 添加 API 客户端函数
+
+1. 在 `src/lib/api.ts` 中使用 `authFetch` 添加函数
+2. 在共享类型文件中内联定义 TypeScript 类型
+3. 从路由组件中使用该函数，通常通过 TanStack Query 的 `useQuery` 钩子
+
+### 类型检查
+
+```bash
+cd apps/web
+bun run check    # 运行 Biome lint + TypeScript 类型检查
+```
+
+> 完整前端结构和模式请参阅 [Web 前端架构](/zh/docs/architecture/web)。
+
+## Android 开发
+
+```bash
+make dev-android    # Opens in Android Studio
+```
+
+### 关键模式
+
+- 所有屏幕都是 Composable 函数
+- 依赖项通过 `koinInject()` 从 `InstanceManager` 获取
+- 对于可空的 `StateFlow` 值，使用 `collectAsState().value ?: return`
+- 导航在 `MainActivity.kt` 中处理
+
+### 构建
+
+```bash
+make build-android-debug    # Debug APK
+make build-android          # Release APK (needs keystore)
+make release-android        # Build + install on device
+```
+
+> 详细的移动应用架构请参阅 [Android 应用架构](/zh/docs/architecture/android)。
+
+## iOS 开发
+
+```bash
+make dev-ios    # Opens in Xcode
+```
+
+### 关键模式
+
+- 视图是 SwiftUI 结构体
+- 依赖项通过 `@EnvironmentObject` 从 `InstanceManager` 获取
+- 对于可空的已发布属性，使用可选绑定
+- 导航使用 SwiftUI 的原生导航栈
+
+### 项目生成
+
+如果修改了 `project.yml`，请重新生成 Xcode 项目：
+
+```bash
+cd apps/ios
+xcodegen generate
+```
+
+### 构建
+
+```bash
+make build-ios          # Release archive
+make build-ios-sim      # Simulator build
+make export-ios         # Export IPA
+```
+
+> 详细的移动应用架构请参阅 [iOS 应用架构](/zh/docs/architecture/ios)。
+
+## 桌面端开发
+
+桌面应用位于 `apps/desktop/`，是工作区中的一个 Rust crate。
+
+### 前提条件（Linux）
+
+```bash
+sudo apt-get install -y \
+  libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+  libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
+  libdbus-1-dev libsecret-1-dev \
+  libasound2-dev
+```
+
+Windows 需要安装 Visual Studio Build Tools（包含 C++ 工作负载 MSVC）。
+
+### 运行
+
+```bash
+make dev-desktop    # cargo run -p bedrud-desktop
+```
+
+### 构建
+
+```bash
+make build-desktop           # 当前平台的优化二进制文件
+```
+
+### 关键模式
+
+- 所有 UI 在 `apps/desktop/ui/` 下的 `.slint` 文件中定义；由 `build.rs` 在构建时编译为 Rust
+- `apps/desktop/src/ui/bridge.rs` 是唯一将 Slint 回调连接到 Rust 逻辑的地方--请将业务逻辑保持在 `.slint` 文件之外
+- 当生成需要更新 UI 的后台任务时，使用 `Weak<AppWindow>`
+
+> 详细的桌面应用架构请参阅[桌面应用架构](/zh/docs/architecture/desktop)。
+
+## 机器人代理开发
+
+代理位于 `agents/` 目录下，每个代理一个目录。
+
+```bash
+cd agents/music_agent
+pip install -r requirements.txt
+python agent.py "http://localhost:8090/m/test-room"
+```
+
+所有代理都需要一个正在运行的 Bedrud 服务器来进行身份验证。
+
+## CI/CD
+
+GitHub Actions 在每次推送到 `main` 和每个 PR 时运行：
+
+| 任务 | 检查内容 |
+|-----|---------------|
+| 服务器 | `go vet`、构建、测试 |
+| Web | 类型检查、构建 |
+| Android | Lint、单元测试、debug APK |
+| iOS | 构建 + 测试（模拟器，含覆盖率） |
+| 桌面端 | `cargo build`、`cargo test` |
+
+发布构建由版本标签（`v*`）触发。
+
+## 代码风格
+
+- **Go：** 标准 `gofmt` 格式化
+- **TypeScript/React：** Biome（配置在 `apps/web/biome.json`）
+- **Kotlin：** Android Studio 默认格式化
+- **Swift：** Xcode 默认格式化
+
+## 测试
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="server">Server</TabsTrigger>
+    <TabsTrigger value="web">Web</TabsTrigger>
+    <TabsTrigger value="android">Android</TabsTrigger>
+    <TabsTrigger value="ios">iOS</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="server">
+    ```bash
+    cd server
+    go test ./...
+    ```
+  </TabsContent>
+
+  <TabsContent value="web">
+    ```bash
+    cd apps/web
+    bun run check
+    ```
+  </TabsContent>
+
+  <TabsContent value="android">
+    ```bash
+    cd apps/android
+    ./gradlew test
+    ```
+  </TabsContent>
+
+  <TabsContent value="ios">
+    ```bash
+    make build-ios-sim   # Builds and runs tests
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## 另请参阅
+
+- [Makefile 参考](/zh/docs/guides/makefile) - 所有构建和开发命令
+- [架构概览](/zh/docs/architecture/overview) - 组件如何协作

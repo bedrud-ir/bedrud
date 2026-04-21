@@ -1,0 +1,74 @@
+---
+import { Icon } from "astro-icon/components";
+import { Spotlight } from "~/components/ui/spotlight";
+import { GITHUB_URL } from "~/lib/config";
+import { type Locale, t } from "../../i18n/utils";
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+---
+
+<section
+  id="open-source"
+  class="relative scroll-mt-20 overflow-hidden section-y"
+>
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute inset-0 -z-10 opacity-50"
+  >
+    <Spotlight />
+  </div>
+
+  <div class="section-container">
+    <div class="items-end gap-16 lg:flex">
+      <div class="max-w-lg flex-1">
+        <p class="text-sm font-medium uppercase tracking-widest text-muted-foreground">
+          {t(lang, "openSource.license")}
+        </p>
+
+        <h2 class="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
+          {t(lang, "openSource.title")}
+        </h2>
+
+        <p class="mt-6 text-lg leading-relaxed text-muted-foreground">
+          {t(lang, "openSource.subtitle")}
+        </p>
+      </div>
+
+      <div class="mt-10 flex shrink-0 flex-wrap gap-3 lg:mt-0">
+        <a
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noreferrer"
+          class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-6 h-10 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 has-[>svg]:px-4"
+        >
+          <svg
+            role="img"
+            aria-label="GitHub"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="size-4"
+          >
+            <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+            <path d="M9 18c-4.51 2-5-2-7-2" />
+          </svg>
+          {t(lang, "openSource.github")}
+        </a>
+        <a
+          href={`/${lang}/docs`}
+          class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background shadow-xs text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-10 px-6 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 has-[>svg]:px-4"
+        >
+          <Icon name="lucide:book-open" class="size-4" />
+          {t(lang, "openSource.docs")}
+        </a>
+      </div>
+    </div>
+  </div>
+</section>

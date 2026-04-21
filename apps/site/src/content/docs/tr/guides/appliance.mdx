@@ -1,0 +1,109 @@
+---
+title: Aygıt Modu
+description: Önceden yapılandırılmış aygıt kurulumu
+order: 33
+---
+
+Bedrud, video toplantıları için kendi kendine yeten bir "aygıt" olarak çalışmak üzere tasarlanmıştır. Tek bir çalıştırılabilir ikili dosya, gereken her şeyi - ön ucu, arka ucu ve LiveKit medya sunucusunu - paketler.
+
+## Temel Özellikler
+
+| Özellik                        | Açıklama                                                         |
+|--------------------------------|------------------------------------------------------------------|
+| Sıfır dış bağımlılık           | Node.js, Redis veya ayrı bir medya sunucusu gerekmez            |
+| Gömülü medya sunucusu          | LiveKit ikilisi dahil edilir ve otomatik olarak yönetilir       |
+| Gömülü ön uç                   | React arayüzü derlenip Go ikili dosyasına SSR ile ön render edilir |
+| SQLite depolama                | Veritabanı sunucusu gerekmez                                     |
+| Yerleşik TLS                   | Otomatik imzalı sertifikalar veya Let's Encrypt                  |
+| Yerleşik yükleyici             | systemd, dizinler ve yapılandırmaları ayarlar                    |
+
+## İkili Dosyayı Çalıştırma
+
+### Bedrud Sunucusunu Başlatın
+
+```bash
+./bedrud --run --config config.yaml
+```
+
+### LiveKit Medya Sunucusunu Başlatın
+
+```bash
+./bedrud --livekit --config livekit.yaml
+```
+
+İkili dosya hem API sunucusunu hem de medya sunucusunu içerir. Hangisini başlatmak istediğinizi bayraklarla seçin.
+
+## Kurulum
+
+### Hızlı Kurulum (Debian/Ubuntu)
+
+```bash
+# Let's Encrypt TLS ile
+sudo ./bedrud install --tls --domain meet.example.com --email admin@example.com
+
+# Otomatik imzalı sertifika ile
+sudo ./bedrud install --tls --ip 1.2.3.4
+
+# Düz HTTP (yalnızca geliştirme)
+sudo ./bedrud install --ip 1.2.3.4
+```
+
+<InstallerSteps />
+
+### Servis Mimarisi
+
+Kurulumdan sonra iki systemd servisi çalışır:
+
+```mermaid
+flowchart LR
+    BS["bedrud.service<br/>bedrud --run<br/>(API + Web UI)"]
+    LS["livekit.service<br/>bedrud --livekit<br/>(WebRTC media)"]
+    DB["SQLite database"]
+
+    BS --> LS
+    BS --> DB
+```
+
+## Yapılandırma Dosyaları
+
+| Dosya                           | Amaç                       |
+|---------------------------------|----------------------------|
+| `/etc/bedrud/config.yaml`       | Ana sunucu yapılandırması  |
+| `/etc/bedrud/livekit.yaml`      | Medya sunucusu yapılandırması |
+| `/var/lib/bedrud/bedrud.db`     | SQLite veritabanı          |
+| `/var/log/bedrud/bedrud.log`    | Uygulama günlükleri        |
+
+Tüm seçenekler için [Yapılandırma Referansı](/tr/docs/getting-started/configuration) sayfasına bakın.
+
+## Kurulum Sonrası
+
+### İlk Yöneticinizi Oluşturun
+
+<CreateAdmin />
+
+### Servis Durumunu Kontrol Edin
+
+```bash
+systemctl status bedrud livekit
+```
+
+### Günlükleri Görüntüleyin
+
+```bash
+tail -f /var/log/bedrud/bedrud.log
+journalctl -u bedrud -f
+```
+
+## Kaldırma
+
+```bash
+sudo ./bedrud uninstall
+```
+
+Bu işlem şunları tamamen kaldırır:
+
+- systemd servis dosyaları
+- `/usr/local/bin/` konumundaki ikili dosya
+- `/etc/bedrud/` dizinindeki yapılandırmalar
+- `/var/lib/bedrud/` dizinindeki veriler
+- `/var/log/bedrud/` dizinindeki günlükler

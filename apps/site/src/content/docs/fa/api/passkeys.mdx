@@ -1,0 +1,197 @@
+---
+title: API کلیدهای عبور
+description: یکپارچگی FIDO2/WebAuthn
+order: 26
+---
+
+نقاط پایانی کلیدهای عبور FIDO2/WebAuthn به کاربران اجازه می‌دهند با استفاده از بیومتریک یا کلیدهای امنیتی ثبت‌نام و احراز هویت کنند.
+
+## نمای کلی
+
+جریان‌های کلید عبور از پروتکل چالش-پاسخ با دو مرحله برای هر کدام استفاده می‌کنند:
+
+| جریان | مرحله ۱ (شروع) | مرحله ۲ (پایان) |
+|------|-----------------|-------------------|
+| ثبت‌نام | `POST /api/auth/passkey/register/begin` | `POST /api/auth/passkey/register/finish` |
+| ورود | `POST /api/auth/passkey/login/begin` | `POST /api/auth/passkey/login/finish` |
+
+---
+
+## جریان ثبت‌نام
+
+کاربران باید برای ثبت یک کلید عبور وارد سیستم شوند (به حساب موجود خود متصل است).
+
+### مرحله ۱: شروع ثبت‌نام
+
+```
+POST /api/auth/passkey/register/begin
+```
+
+**هدرها:** `Authorization: Bearer <accessToken>`
+
+**پاسخ (200):**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rp": {
+      "name": "Bedrud",
+      "id": "meet.example.com"
+    },
+    "user": {
+      "id": "base64url-encoded-user-id",
+      "name": "user@example.com",
+      "displayName": "John Doe"
+    },
+    "pubKeyCredParams": [
+      { "type": "public-key", "alg": -7 },
+      { "type": "public-key", "alg": -257 }
+    ],
+    "authenticatorSelection": {
+      "userVerification": "preferred"
+    }
+  }
+}
+```
+
+این را به WebAuthn API مرورگر پاس دهید:
+
+```javascript
+const credential = await navigator.credentials.create({
+  publicKey: response.publicKey
+});
+```
+
+### مرحله ۲: پایان ثبت‌نام
+
+```
+POST /api/auth/passkey/register/finish
+```
+
+**هدرها:** `Authorization: Bearer <accessToken>`
+
+**بدنه درخواست:** پاسخ اعتبار از مرورگر، با کدگذاری base64url:
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "attestationObject": "base64url-attestation",
+    "clientDataJSON": "base64url-client-data"
+  },
+  "type": "public-key"
+}
+```
+
+**پاسخ (200):**
+
+```json
+{
+  "message": "passkey registered"
+}
+```
+
+---
+
+## جریان ورود
+
+### مرحله ۱: شروع ورود
+
+```
+POST /api/auth/passkey/login/begin
+```
+
+نیاز به احراز هویت ندارد.
+
+**پاسخ (200):**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rpId": "meet.example.com",
+    "userVerification": "preferred"
+  }
+}
+```
+
+این را به WebAuthn API مرورگر پاس دهید:
+
+```javascript
+const assertion = await navigator.credentials.get({
+  publicKey: response.publicKey
+});
+```
+
+### مرحله ۲: پایان ورود
+
+```
+POST /api/auth/passkey/login/finish
+```
+
+**بدنه درخواست:** پاسخ ادعا از مرورگر:
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "authenticatorData": "base64url-auth-data",
+    "clientDataJSON": "base64url-client-data",
+    "signature": "base64url-signature"
+  },
+  "type": "public-key"
+}
+```
+
+**پاسخ (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
+```
+
+---
+
+## امنیت
+
+| اقدام | توضیحات |
+|---------|-------------|
+| چالش/پاسخ | چالش‌های تصادفی تولیدشده توسط سرور که در نشست ذخیره می‌شوند |
+| تأیید مبدا | اعتبارسنجی دقیق مبدا و شناسه طرف اعتماد |
+| اعتبارسنجی شمارنده | محافظت در برابر احرازکننده‌های کلون شده |
+| انتقال امن | طراحی شده برای HTTPS با کدگذاری base64 امن برای URL |
+
+## جزئیات پیاده‌سازی
+
+- **بک‌اند:** از `go-passkeys/go-passkeys` برای تأیید WebAuthn خالص Go استفاده می‌کند
+- **ذخیره‌سازی نشست:** چالش‌ها در نشست‌های Gorilla ذخیره می‌شوند (از طریق `gothic.Store`)
+- **دیتابیس:** اعتبارنامه‌های کلید عبور در مدل `Passkey` ذخیره می‌شوند (شناسه اعتبار، کلید عمومی، شمارنده)
+- **فرانت‌اند (وب):** API `navigator.credentials` با کمک‌های base64url در `src/lib/auth.ts`
+- **Android:** Credentials API برای پشتیبانی کلید عبور بومی
+- **iOS:** ASAuthorizationController برای پشتیبانی کلید عبور
+
+## نحوه تست
+
+۱. با یک حساب موجود وارد شوید
+۲. دکمه ثبت کلید عبور را کلیک کنید (آیکون اثر انگشت در هدر داشبورد)
+۳. درخواست بیومتریک را کامل کنید
+۴. خارج شوید
+۵. در صفحه ورود روی "Sign in with Passkey" کلیک کنید
+۶. برای احراز هویت درخواست بیومتریک را کامل کنید
+
+---
+
+## مشاهده همچنین
+
+- [جریان احراز هویت](/fa/docs/backend/authentication) - توضیح مراسم ثبت‌نام/ورود کلید عبور
+- [API احراز هویت](/fa/docs/api/authentication) - تمام نقاط پایانی احراز هویت

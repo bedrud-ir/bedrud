@@ -1,0 +1,217 @@
+---
+title: Guide de déploiement
+description: Déployer Bedrud en production
+order: 28
+---
+
+Ce guide explique comment déployer Bedrud sur un serveur de production.
+
+## Options de déploiement
+
+| Méthode | Idéal pour |
+|---------|------------|
+| [Gestionnaire de paquets (apt/AUR)](#package-manager) | Installation gérée sur les distributions Linux prises en charge |
+| [CLI automatisé](#automated-cli-deployment) | Configuration à distance rapide |
+| [Installation manuelle](#manual-installation) | Contrôle total de la configuration |
+| [Docker](#docker-deployment) | Environnements conteneurisés |
+| [Mode Appliance](/fr/docs/guides/appliance) | Configuration tout-en-un en binaire unique |
+
+---
+
+## Gestionnaire de paquets
+
+Installez Bedrud sur Debian/Ubuntu ou Arch Linux en utilisant le gestionnaire de paquets natif. C'est la méthode recommandée pour les déploiements de serveurs persistants où vous souhaitez des mises à jour automatiques via `apt upgrade` ou l'AUR.
+
+Consultez le [guide d'installation par paquet](/fr/docs/guides/packages) pour les instructions complètes, y compris l'ajout de la clé GPG apt et du dépôt.
+
+```bash
+# Ubuntu / Debian
+sudo apt install bedrud
+
+# Arch Linux (AUR)
+yay -S bedrud-bin
+```
+
+Après l'installation, exécutez l'installateur interactif pour configurer TLS, les services systemd et la base de données :
+
+```bash
+sudo bedrud install
+```
+
+---
+
+## Déploiement CLI automatisé
+
+Le moyen le plus rapide de déployer. Exécutez depuis votre machine locale :
+
+**Prérequis :** Python 3.10+, [uv](https://github.com/astral-sh/uv), et accès SSH au serveur cible.
+
+```bash
+cd tools/cli
+uv run python bedrud.py --auto-config \
+  --ip <server-ip> \
+  --user root \
+  --auth-key ~/.ssh/id_rsa \
+  --domain meet.example.com \
+  --acme-email admin@example.com
+```
+
+Cela va :
+
+1. Construire le binaire backend localement
+2. Compresser et le télécharger via rsync
+3. Effacer les serveurs web en conflit
+4. Configurer le pare-feu
+5. Installer et démarrer les services sur le serveur
+
+### Options CLI
+
+| Drapeau | Description |
+|---------|-------------|
+| `--ip` | Adresse IP du serveur |
+| `--user` | Utilisateur SSH (par défaut : root) |
+| `--auth-key` | Chemin vers la clé privée SSH |
+| `--domain` | Nom de domaine pour Let's Encrypt |
+| `--acme-email` | E-mail pour Let's Encrypt |
+| `--uninstall` | Supprimer Bedrud du serveur |
+
+---
+
+## Installation manuelle
+
+### 1. Construire le binaire
+
+```bash
+make build-dist
+```
+
+Cela produit `dist/bedrud_linux_amd64.tar.xz`.
+
+### 2. Télécharger sur le serveur
+
+```bash
+scp dist/bedrud_linux_amd64.tar.xz root@server:/tmp/
+ssh root@server "cd /tmp && tar xf bedrud_linux_amd64.tar.xz"
+```
+
+### 3. Installer
+
+```bash
+ssh root@server
+sudo /tmp/bedrud install --tls --domain meet.example.com --email admin@example.com
+```
+
+Consultez le [Guide d'installation](/fr/docs/getting-started/installation) pour tous les scénarios d'installation.
+
+### 4. Créer un utilisateur administrateur
+
+<CreateAdmin />
+
+---
+
+## Déploiement Docker
+
+Construisez et exécutez avec Docker :
+
+```bash
+docker build -t bedrud .
+docker run -d --name bedrud -p 8090:8090 -p 7880:7880 -v bedrud-data:/var/lib/bedrud bedrud
+```
+
+Une image préconstruite est également disponible :
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+```
+
+Consultez le [Guide Docker](/fr/docs/guides/docker) pour tous les détails, y compris les volumes, la configuration et Docker Compose.
+
+---
+
+## Architecture de production
+
+```mermaid
+flowchart TB
+    NET[Internet] --> TRAEFIK["Traefik (443)<br/>TLS termination, reverse proxy"]
+    TRAEFIK --> BEDRUD["Bedrud (8090)<br/>API + Web UI"]
+    TRAEFIK --> LIVEKIT["LiveKit (7880)<br/>WebRTC media"]
+    BEDRUD --> DB["SQLite<br/>(or PostgreSQL)"]
+```
+
+Pour la connectivité WebRTC, ouvrez également ces ports sur le pare-feu :
+
+| Port | Protocole | Objectif |
+|------|-----------|----------|
+| 3478 | UDP | TURN/UDP + STUN |
+| 5349 | TCP | TURN/TLS (ou utiliser 443) |
+| 7881 | TCP | ICE/TCP fallback |
+| 50000-60000 | UDP | Flux média RTC |
+
+Consultez [Connectivité WebRTC](/fr/docs/architecture/webrtc-connectivity) pour la pile de connectivité complète.
+
+<SystemdServices />
+
+### Gestion des services
+
+```bash
+# Vérifier l'état
+systemctl status bedrud livekit
+
+# Redémarrer
+systemctl restart bedrud
+
+# Voir les journaux
+journalctl -u bedrud -f
+tail -f /var/log/bedrud/bedrud.log
+```
+
+---
+
+## Emplacements des fichiers (Production)
+
+| Chemin | Contenu |
+|--------|---------|
+| `/usr/local/bin/bedrud` | Binaire |
+| `/etc/bedrud/config.yaml` | Configuration du serveur |
+| `/etc/bedrud/livekit.yaml` | Configuration LiveKit |
+| `/var/lib/bedrud/bedrud.db` | Base de données SQLite |
+| `/var/log/bedrud/bedrud.log` | Journaux de l'application |
+
+---
+
+## CI/CD
+
+### Pipeline de release
+
+Le workflow `release.yml` se déclenche sur les balises de version (`v*`) et produit :
+
+| Artefact | Description |
+|----------|-------------|
+| `bedrud_linux_amd64.tar.xz` / `bedrud_linux_arm64.tar.xz` | Binaires serveur (Linux x86_64 / ARM64) |
+| `bedrud_amd64.deb` / `bedrud_arm64.deb` | Paquets Debian/Ubuntu (serveur) |
+| Image Docker (`ghcr.io/bedrud-ir/bedrud`) | Image conteneur multi-arch pushée sur GHCR |
+| `bedrud-desktop-linux-x86_64.AppImage` | Desktop - AppImage Linux universelle |
+| `bedrud-desktop-linux-x86_64.deb` | Desktop - Paquet Debian/Ubuntu |
+| `bedrud-desktop-linux-x86_64.tar.xz` | Desktop - Archive portable Linux |
+| `bedrud-desktop-windows-x86_64-setup.exe` / `-arm64-setup.exe` | Desktop - Installateur NSIS Windows |
+| `bedrud-desktop-windows-x86_64.zip` / `-arm64.zip` | Desktop - Portable Windows |
+| `bedrud-desktop-macos-x86_64.tar.gz` / `-arm64.tar.gz` | Desktop - Portable macOS (non signé) |
+| APK Android (debug + release, par arch) | Builds client Android |
+| IPA iOS (optionnel, nécessite signature) | Archive client iOS |
+
+Tous les artefacts sont attachés à la release GitHub.
+
+### Builds nocturnes
+
+Le workflow `dev-nightly.yml` produit des builds de développement selon un calendrier.
+
+### Vérifications CI
+
+Chaque push vers `main` et chaque pull request exécute :
+
+| Vérification | Plateforme |
+|--------------|------------|
+| `go vet` + build + tests | ubuntu-latest (Go 1.24) |
+| Type check + build | ubuntu-latest (Bun) |
+| Lint + tests unitaires | ubuntu-latest (JDK 17) |
+| Build + test | macos-15 (Xcode) |

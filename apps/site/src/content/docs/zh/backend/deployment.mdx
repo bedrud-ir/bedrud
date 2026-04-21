@@ -1,0 +1,34 @@
+---
+title: Deployment
+description: Backend deployment strategies
+order: 21
+---
+
+内置安装器通过一条命令即可将全新的 Linux 服务器配置为生产环境。
+
+<InstallerSteps />
+
+<SystemdServices />
+
+## 安全性与 TLS
+
+安装器会自动处理安全问题：
+
+- **ACME（Let's Encrypt）：** 如果提供了域名和邮箱，它会设置自动证书续期。
+- **自签名证书：** 如果未提供域名，它会生成自签名证书，使站点仍然可以通过 HTTPS 访问。
+- **反向代理：** 后端充当反向代理。它在 443 端口接收流量，并将 `/livekit` 请求发送到内部媒体服务器。
+
+## 卸载
+
+如果需要移除 Bedrud，可以运行：
+```bash
+sudo bedrud uninstall
+```
+这会停止服务、删除 systemd 文件，并移除配置和数据文件夹。
+
+---
+
+## 另请参阅
+
+- [部署指南](/zh/docs/guides/deployment) - 完整的生产环境部署说明
+- [一体机模式](/zh/docs/guides/appliance) - 单二进制安装参考

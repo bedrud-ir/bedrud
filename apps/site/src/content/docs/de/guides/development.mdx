@@ -1,0 +1,306 @@
+---
+title: Entwicklungs-Workflow
+description: Entwicklungsumgebung einrichten
+order: 27
+---
+
+Diese Anleitung behandelt den täglichen Entwicklungs-Workflow für Beiträge zu Bedrud.
+
+## Repository-Struktur
+
+```
+bedrud/
+├── server/          # Go backend
+├── apps/
+│   ├── web/         # React frontend (TanStack Start)
+│   ├── android/     # Android app
+│   ├── ios/         # iOS app
+│   └── desktop/     # Desktop app (Rust + Slint)
+├── agents/          # Python bot agents
+├── packages/        # Shared TypeScript types
+├── tools/cli/       # Deployment CLI
+├── docs/            # Documentation (MkDocs)
+├── Cargo.toml       # Rust workspace root
+├── Makefile         # Build orchestration
+└── Dockerfile       # Container build
+```
+
+## Voraussetzungen
+
+| Tool | Erforderlich für |
+|------|-----------------|
+| Go 1.24+ | Server |
+| Bun | Web-Frontend |
+| LiveKit Server | Lokaler Medienserver |
+| Android Studio + JDK 17 | Android-App |
+| Xcode | iOS-App |
+| Rust (stable) | Desktop-App |
+| Python 3.10+ | Bot-Agenten |
+| FFmpeg | Radio- und Video-Agenten |
+
+## Ersteinrichtung
+
+```bash
+git clone https://github.com/bedrud-ir/bedrud.git
+cd bedrud
+make init
+```
+
+## Full-Stack-Entwicklung
+
+Um den gesamten Stack lokal auszuführen:
+
+```bash
+make dev
+```
+
+Dies startet LiveKit, den Go-Server und den React-Dev-Server gleichzeitig. Drücken Sie `Ctrl+C`, um alle Prozesse zu stoppen.
+
+### Dienste einzeln ausführen
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="web-frontend">Web-Frontend</TabsTrigger>
+    <TabsTrigger value="go-server">Go-Server</TabsTrigger>
+    <TabsTrigger value="livekit">LiveKit</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="web-frontend">
+    ```bash
+    make dev-web
+    ```
+    Läuft unter `http://localhost:3000` mit Hot Module Replacement.
+  </TabsContent>
+
+  <TabsContent value="go-server">
+    ```bash
+    make dev-server
+    ```
+    Läuft unter `http://localhost:8090`. Nach Go-Codeänderungen manuell neu starten.
+  </TabsContent>
+
+  <TabsContent value="livekit">
+    ```bash
+    make dev-livekit
+    ```
+    Läuft unter `http://localhost:7880` mit Entwicklungszugangsdaten.
+  </TabsContent>
+</Tabs>
+
+## Server-Entwicklung
+
+Der Einstiegspunkt des Go-Servers ist `server/cmd/server/main.go`.
+
+### Einen API-Endpunkt hinzufügen
+
+1. **Handler definieren** in `server/internal/handlers/`
+2. **Repository-Methoden hinzufügen** in `server/internal/repository/`, falls neue DB-Abfragen benötigt werden
+3. **Route registrieren** im Server-Setup (normalerweise in `main.go` oder einer Routen-Datei)
+4. **Middleware hinzufügen**, falls der Endpunkt Authentifizierung oder Admin-Prüfungen benötigt
+
+### Datenbankänderungen
+
+Fügen Sie GORM-Model-Structs hinzu oder ändern Sie diese in `server/internal/models/`. GORM migriert automatisch beim Start.
+
+### Swagger-Dokumentation
+
+API-Dokumentationsannotationen verwenden das swaggo-Format. Nach Änderungen neu generieren:
+
+```bash
+cd server
+swag init -g cmd/server/main.go
+```
+
+> Siehe [Server-Architektur](/de/docs/architecture/server) für das vollständige Verzeichnislayout und das Layered-Design.
+
+## Web-Frontend-Entwicklung
+
+Das Frontend befindet sich in `apps/web/` und verwendet React 19 mit TanStack Start.
+
+### Eine Seite hinzufügen
+
+Erstellen Sie eine neue Datei unter `src/routes/` gemäß der [dateibasierten Routing-Konvention von TanStack Router](https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing) (z. B. `src/routes/settings.tsx`). Exportieren Sie eine `Route`, die mit `createFileRoute` erstellt wurde.
+
+### Eine API-Client-Funktion hinzufügen
+
+1. Funktion in `src/lib/api.ts` mit `authFetch` hinzufügen
+2. TypeScript-Typen inline oder in einer gemeinsamen Typdatei definieren
+3. Funktion aus Ihrer Routen-Komponente verwenden, typischerweise über einen TanStack Query `useQuery`-Hook
+
+### Typprüfung
+
+```bash
+cd apps/web
+bun run check    # runs Biome lint + TypeScript type check
+```
+
+> Siehe [Web-Frontend-Architektur](/de/docs/architecture/web) für die vollständige Frontend-Struktur und Muster.
+
+## Android-Entwicklung
+
+```bash
+make dev-android    # Opens in Android Studio
+```
+
+### Wichtige Muster
+
+- Alle Bildschirme sind Composable-Funktionen
+- Abhängigkeiten kommen vom `InstanceManager` über `koinInject()`
+- Verwenden Sie `collectAsState().value ?: return` für nullable `StateFlow`-Werte
+- Navigation wird in `MainActivity.kt` verwaltet
+
+### Build
+
+```bash
+make build-android-debug    # Debug APK
+make build-android          # Release APK (needs keystore)
+make release-android        # Build + install on device
+```
+
+> Siehe [Android-App-Architektur](/de/docs/architecture/android) für detaillierte mobile App-Architektur.
+
+## iOS-Entwicklung
+
+```bash
+make dev-ios    # Opens in Xcode
+```
+
+### Wichtige Muster
+
+- Views sind SwiftUI-Structs
+- Abhängigkeiten kommen vom `InstanceManager` über `@EnvironmentObject`
+- Verwenden Sie Optional Binding für nullable Published Properties
+- Navigation verwendet den nativen Navigation-Stack von SwiftUI
+
+### Projektgenerierung
+
+Wenn Sie `project.yml` ändern, generieren Sie das Xcode-Projekt neu:
+
+```bash
+cd apps/ios
+xcodegen generate
+```
+
+### Build
+
+```bash
+make build-ios          # Release archive
+make build-ios-sim      # Simulator build
+make export-ios         # Export IPA
+```
+
+> Siehe [iOS-App-Architektur](/de/docs/architecture/ios) für detaillierte mobile App-Architektur.
+
+## Desktop-Entwicklung
+
+Die Desktop-App befindet sich in `apps/desktop/` und ist ein Rust-Crate im Workspace.
+
+### Voraussetzungen (Linux)
+
+```bash
+sudo apt-get install -y \
+  libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+  libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
+  libdbus-1-dev libsecret-1-dev \
+  libasound2-dev
+```
+
+Windows erfordert Visual Studio Build Tools mit der C++-Workload (MSVC).
+
+### Ausführen
+
+```bash
+make dev-desktop    # cargo run -p bedrud-desktop
+```
+
+### Build
+
+```bash
+make build-desktop           # optimised binary for the current platform
+```
+
+### Wichtige Muster
+
+- Die gesamte UI ist in `.slint`-Dateien unter `apps/desktop/ui/` definiert; wird zur Build-Zeit von `build.rs` zu Rust kompiliert
+- `apps/desktop/src/ui/bridge.rs` ist der einzige Ort, an dem Slint-Callbacks mit Rust-Logik verbunden werden - halten Sie Geschäftslogik aus den `.slint`-Dateien heraus
+- Verwenden Sie `Weak<AppWindow>`, wenn Sie Hintergrundaufgaben starten, die die UI aktualisieren müssen
+
+> Siehe [Desktop-App-Architektur](/de/docs/architecture/desktop) für detaillierte Desktop-App-Architektur.
+
+## Bot-Agenten-Entwicklung
+
+Agenten befinden sich in `agents/` mit einem Verzeichnis pro Agent.
+
+```bash
+cd agents/music_agent
+pip install -r requirements.txt
+python agent.py "http://localhost:8090/m/test-room"
+```
+
+Alle Agenten benötigen einen laufenden Bedrud-Server zur Authentifizierung.
+
+## CI/CD
+
+GitHub Actions wird bei jedem Push auf `main` und bei Pull Requests ausgeführt:
+
+| Job | Was geprüft wird |
+|-----|-----------------|
+| Server | `go vet`, Build, Tests |
+| Web | Typprüfung, Build |
+| Android | Lint, Unit-Tests, Debug-APK |
+| iOS | Build + Test (Simulator, mit Coverage) |
+| Desktop | `cargo build`, `cargo test` |
+
+Release-Builds werden durch Versions-Tags (`v*`) ausgelöst.
+
+## Code-Stil
+
+- **Go:** Standard `gofmt`-Formatierung
+- **TypeScript/React:** Biome (konfiguriert in `apps/web/biome.json`)
+- **Kotlin:** Android Studio-Standardformatierung
+- **Swift:** Xcode-Standardformatierung
+
+## Testing
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="server">Server</TabsTrigger>
+    <TabsTrigger value="web">Web</TabsTrigger>
+    <TabsTrigger value="android">Android</TabsTrigger>
+    <TabsTrigger value="ios">iOS</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="server">
+    ```bash
+    cd server
+    go test ./...
+    ```
+  </TabsContent>
+
+  <TabsContent value="web">
+    ```bash
+    cd apps/web
+    bun run check
+    ```
+  </TabsContent>
+
+  <TabsContent value="android">
+    ```bash
+    cd apps/android
+    ./gradlew test
+    ```
+  </TabsContent>
+
+  <TabsContent value="ios">
+    ```bash
+    make build-ios-sim   # Builds and runs tests
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## Siehe auch
+
+- [Makefile-Referenz](/de/docs/guides/makefile) - alle Build- und Dev-Befehle
+- [Architekturübersicht](/de/docs/architecture/overview) - wie die Komponenten zusammenpassen

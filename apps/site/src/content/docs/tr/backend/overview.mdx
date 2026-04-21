@@ -1,0 +1,49 @@
+---
+title: Arka Uç Dokümantasyonu
+description: Bedrud arka uç sistem mimarisine genel bakış
+order: 15
+---
+
+## Giriş
+Bedrud arka ucu, **Go 1.24+** ile yazılmış tek ikili (single-binary) toplantı platformudur. Medya sunucusu, web ön ucu, TURN sunucusu gibi tüm bağımlılıklar tek bir çalıştırılabilir dosyaya gömülüdür.
+
+### Temel Teknolojiler
+- **Çekirdek Framework:** [Fiber v2](https://gofiber.io/) (Sıfır tahsisatlı yönlendirici, Express benzeri API).
+- **Veritabanı Katmanı:** **SQLite** (standart) ve **PostgreSQL** (üretim) desteğiyle [GORM](https://gorm.io/).
+- **Medya Motoru:** [LiveKit](https://livekit.io/) (Eş ikili olarak gömülü).
+- **Kimlik Doğrulama Sistemi:** JWT, OAuth2 (Google/GitHub/Twitter) ve parolasız FIDO2 Passkey destekli çok katmanlı kimlik doğrulama.
+- **Gömülü Statik Dosyalar:** Go 1.16+ `embed` paketi kullanılarak React ön ucunun (SSR ön renderlı istemci dosyaları) paketlenmesi.
+- **Dağıtım:** systemd orkestrasyonu ve ACME (Let's Encrypt) desteğiyle entegre Debian/Ubuntu otomatik kurucu.
+
+## Neden Bu Mimari?
+WebRTC platformları genellikle sinyalleşme, TURN, web sunucusu ve veritabanı yönetimi için ayrı servisler çalıştırır. Bedrud, bunları tek bir ikili dosyada birleştirir:
+
+1.  Medya sunucusu ikili dosyasını **çalışma zamanında çıkararak**.
+2.  Medya trafiğini ana HTTP(S) portu üzerinden **proxyleyerek**.
+3.  İşletim sistemi düzeyindeki yapılandırmayı (SSL, systemd) ikili dosya kendisi aracılığıyla **otomatikleştirerek**.
+
+## Üst Düzey Mimari
+Arka uç, standart katmanlı bir mimari izler:
+
+1.  **Sunucu Katmanı (`internal/server`):** Fiber uygulamasını, rotaları ve ara katmanı (middleware) kurar.
+2.  **İşleyici Katmanı (`internal/handlers`):** HTTP isteklerini ve yanıtlarını yönetir.
+3.  **Depo Katmanı (`internal/repository`):** GORM kullanarak veritabanı sorgularını gerçekleştirir.
+4.  **Model Katmanı (`internal/models`):** Veritabanı tablolarını ve Go yapılarını tanımlar.
+5.  **Hizmet/Mantık Katmanı:** Basitlik için işleyicilere ve depolara entegre edilmiştir; `internal/auth` ve `internal/livekit` gibi özelleşmiş paketler bulunur.
+
+## Ana Giriş Noktası
+Uygulama `server/cmd/bedrud/main.go` dosyasından başlar. Üç ana moda sahiptir:
+
+- `run`: Tam toplantı sunucusunu başlatır.
+- `livekit`: Yalnızca gömülü medya sunucusunu başlatır.
+- `install`: Debian/Ubuntu sistemlerinde sunucuyu otomatik olarak kurar.
+
+## Dokümantasyon Bölümleri
+- [**Kod Yapısı**](/tr/docs/backend/structure): Her şey nerede bulunur?
+- [**Veritabanı ve Modeller**](/tr/docs/backend/database): Veriler nasıl saklanır?
+- [**Kimlik Doğrulama**](/tr/docs/backend/authentication): Kullanıcılar nasıl giriş yapar?
+- [**API İşleyicileri**](/tr/docs/backend/api-handlers): İstekler nasıl işlenir?
+- [**LiveKit Entegrasyonu**](/tr/docs/backend/livekit): Video sunucusu nasıl çalışır?
+- [**WebRTC Bağlantısı**](/tr/docs/architecture/webrtc-connectivity): İstemciler medya bağlantılarını nasıl kurar? (STUN/ICE/TURN/SFU)
+- [**TURN Sunucusu**](/tr/docs/architecture/turn-server): TURN röle mimarisi, yapılandırma ve sorun giderme
+- [**Kurulum ve Dağıtım**](/tr/docs/backend/deployment): Otomatik kurucu nasıl çalışır?

@@ -1,0 +1,264 @@
+---
+title: Installation des clients
+description: Installer les applications de bureau et mobiles
+order: 3
+---
+
+Ouvrez le lien de réunion dans un navigateur pour rejoindre - aucune installation requise. Pour une expérience d'application native, installez le client pour votre plateforme ci-dessous.
+
+---
+
+## Navigateur (aucune installation)
+
+Ouvrez l'URL de réunion dans **Chrome**, **Firefox**, **Edge** ou **Safari**. L'accès à la caméra et au microphone nécessite HTTPS (votre administrateur de serveur gère cela).
+
+Aucun téléchargement, aucune extension, aucun compte requis si l'accès invité est activé.
+
+---
+
+## Android
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="google-play">Google Play</TabsTrigger>
+    <TabsTrigger value="apk-sideload">APK (installation latérale)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="google-play">
+
+    Recherchez **Bedrud** sur Google Play, ou suivez le lien direct fourni par votre administrateur de serveur.
+  </TabsContent>
+  <TabsContent value="apk-sideload">
+
+    Téléchargez le dernier APK depuis les [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) :
+
+    ```bash
+    # Transférez vers votre téléphone, puis ouvrez pour installer
+    ```
+
+    Vous devrez peut-être activer l'option **Installer depuis des sources inconnues** dans les paramètres de votre appareil.
+  </TabsContent>
+</Tabs>
+
+---
+
+## iOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="app-store">App Store</TabsTrigger>
+    <TabsTrigger value="ipa-sideload">IPA (installation latérale)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="app-store">
+
+    Recherchez **Bedrud** sur l'App Store, ou suivez le lien direct fourni par votre administrateur de serveur.
+  </TabsContent>
+  <TabsContent value="ipa-sideload">
+
+    Téléchargez le dernier IPA depuis les [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest). Installez latéralement en utilisant AltStore ou un outil similaire.
+  </TabsContent>
+</Tabs>
+
+---
+
+## Linux Desktop
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="appimage-recommended">AppImage (recommandé)</TabsTrigger>
+    <TabsTrigger value="flatpak">Flatpak</TabsTrigger>
+    <TabsTrigger value="snap">Snap</TabsTrigger>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+    <TabsTrigger value="portable-tarxz">Portable tar.xz</TabsTrigger>
+  </TabsList>
+  <TabsContent value="appimage-recommended">
+
+    Aucune installation requise. Téléchargez, rendez exécutable, exécutez :
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
+    chmod +x bedrud-desktop-linux-x86_64.AppImage
+    ./bedrud-desktop-linux-x86_64.AppImage
+    ```
+
+    <Callout type="tip">
+        Pour intégrer AppImage dans votre lanceur d'application, utilisez [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher).
+    </Callout>
+  </TabsContent>
+  <TabsContent value="flatpak">
+
+    ```bash
+    flatpak install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.flatpak
+    flatpak run ir.bedrud.Desktop
+    ```
+  </TabsContent>
+  <TabsContent value="snap">
+
+    ```bash
+    sudo snap install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="ubuntu-debian-apt">
+
+    Si le dépôt apt Bedrud est déjà configuré sur votre système :
+
+    ```bash
+    sudo apt install bedrud-desktop
+    ```
+
+    Voir le [guide d'installation des packages](/fr/docs/guides/packages) pour la configuration du dépôt.
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-desktop-bin
+    ```
+  </TabsContent>
+  <TabsContent value="fedora-rhel-dnf">
+
+    Si le dépôt DNF Bedrud est déjà configuré :
+
+    ```bash
+    sudo dnf install bedrud-desktop
+    ```
+
+    Voir le [guide d'installation des packages](/fr/docs/guides/packages) pour la configuration du dépôt.
+  </TabsContent>
+  <TabsContent value="portable-tarxz">
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.tar.xz
+    tar xf bedrud-desktop-linux-x86_64.tar.xz
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## macOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="homebrew-recommended">Homebrew (recommandé)</TabsTrigger>
+    <TabsTrigger value="dmg-apple-silicon">Apple Silicon (.dmg)</TabsTrigger>
+    <TabsTrigger value="dmg-intel">Intel (.dmg)</TabsTrigger>
+    <TabsTrigger value="apple-silicon-arm64">Apple Silicon (tar.gz)</TabsTrigger>
+    <TabsTrigger value="intel-x8664">Intel (tar.gz)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="homebrew-recommended">
+
+    ```bash
+    brew tap bedrud-ir/bedrud
+    brew install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="dmg-apple-silicon">
+
+    Téléchargez le DMG depuis les [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) :
+
+    | Architecture | Fichier |
+    |---|---|
+    | Apple Silicon | `bedrud-desktop-macos-arm64.dmg` |
+
+    Ouvrez le DMG, faites glisser Bedrud vers Applications. Si Gatekeeper bloque l'application, allez dans **Réglages système → Confidentialité et sécurité** et cliquez sur **Ouvrir quand même**.
+  </TabsContent>
+  <TabsContent value="dmg-intel">
+
+    Téléchargez le DMG depuis les [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) :
+
+    | Architecture | Fichier |
+    |---|---|
+    | Intel | `bedrud-desktop-macos-x86_64.dmg` |
+
+    Ouvrez le DMG, faites glisser Bedrud vers Applications. Si Gatekeeper bloque l'application, allez dans **Réglages système → Confidentialité et sécurité** et cliquez sur **Ouvrir quand même**.
+  </TabsContent>
+  <TabsContent value="apple-silicon-arm64">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="intel-x8664">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="warning">
+    Les builds macOS peuvent être **non signés**. Si Gatekeeper bloque l'application, exécutez la commande `xattr` ci-dessus, ou allez dans **Réglages système → Confidentialité et sécurité** et cliquez sur **Ouvrir quand même**.
+</Callout>
+
+---
+
+## Windows
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="winget">WinGet</TabsTrigger>
+    <TabsTrigger value="chocolatey">Chocolatey</TabsTrigger>
+    <TabsTrigger value="nsis-installer">Installateur NSIS</TabsTrigger>
+    <TabsTrigger value="portable-zip">Portable .zip</TabsTrigger>
+  </TabsList>
+  <TabsContent value="winget">
+
+    ```powershell
+    winget install Bedrud.BedrudDesktop
+    ```
+  </TabsContent>
+  <TabsContent value="chocolatey">
+
+    ```powershell
+    choco install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="nsis-installer">
+
+    Téléchargez l'installateur depuis les [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) :
+
+    | Architecture | Fichier |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64-setup.exe` |
+    | ARM64 | `bedrud-desktop-windows-arm64-setup.exe` |
+
+    Exécutez l'installateur. L'application apparaît dans le menu Démarrer et dans Programmes et fonctionnalités.
+  </TabsContent>
+  <TabsContent value="portable-zip">
+
+    Téléchargez et extrayez depuis les [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) :
+
+    | Architecture | Fichier |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64.zip` |
+    | ARM64 | `bedrud-desktop-windows-arm64.zip` |
+
+    Aucune installation requise - exécutez `bedrud-desktop.exe` à partir du dossier extrait.
+  </TabsContent>
+</Tabs>
+
+---
+
+## Connexion à un serveur
+
+Lorsque vous ouvrez l'application de bureau pour la première fois, vous serez invité à entrer une URL de serveur.
+
+1. Entrez l'URL fournie par votre administrateur de serveur (ex. `https://meet.example.com`)
+2. Enregistrez un compte ou connectez-vous
+3. Créez ou rejoignez une salle de réunion
+
+L'application de bureau prend en charge la connexion à **plusieurs serveurs**. Ajoutez-en d'autres dans **Paramètres**.
+
+---
+
+## Tous les téléchargements
+
+Tous les installateurs et binaires clients sont disponibles sur la page [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest).
+
+Pour la référence complète de tous les gestionnaires de packages, dépôts et plateformes, voir le [Guide d'installation des packages](/fr/docs/guides/packages).

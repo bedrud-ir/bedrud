@@ -1,0 +1,157 @@
+---
+title: دليل Docker
+description: تشغيل Bedrud باستخدام Docker
+order: 29
+---
+
+يوفر Bedrud ملف Dockerfile متعدد المراحل للبناء والتشغيل في حاويات.
+
+## البدء السريع
+
+```bash
+# Build
+docker build -t bedrud .
+
+# Run
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  bedrud
+```
+
+## نظرة عامة على Dockerfile
+
+يستخدم Dockerfile ثلاث مراحل لتقليل حجم الصورة النهائية:
+
+### المرحلة ١: بناء الواجهة
+
+```dockerfile
+FROM node:22-alpine AS frontend
+RUN npm install -g bun
+WORKDIR /build/apps/web
+COPY apps/web/package.json apps/web/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY apps/web/ ./
+RUN bun run build:embed
+```
+
+يثبّت Bun، ويُجري SSR للعرض المسبق لتطبيق React، وينسخ الأصول إلى `server/frontend/`.
+
+### المرحلة ٢: بناء الخادم
+
+```dockerfile
+FROM golang:1.24-alpine AS backend
+RUN apk add --no-cache gcc musl-dev
+WORKDIR /build/server
+COPY server/go.mod server/go.sum ./
+RUN go mod download
+COPY server/ ./
+COPY --from=frontend /build/server/frontend ./frontend/
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /bedrud ./cmd/bedrud/main.go
+# CGO is required for SQLite (uses C bindings)
+```
+
+يُترجم الملف الثنائي Go مع تضمين الواجهة. CGO مُفعَّل لدعم SQLite.
+
+### المرحلة ٣: التشغيل
+
+```dockerfile
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=backend /bedrud /usr/local/bin/bedrud
+EXPOSE 8090 7880
+ENTRYPOINT ["bedrud"]
+CMD ["run"]
+```
+
+صورة Alpine مصغّرة تحتوي فقط على الملف الثنائي وشهادات CA وبيانات المناطق الزمنية.
+
+## المنافذ
+
+| المنفذ | الخدمة | البروتوكول |
+|------|---------|----------|
+| 8090 | API + واجهة الويب | HTTP |
+| 7880 | LiveKit | WebSocket + HTTP |
+| 50000-60000 | وسائط RTC | UDP |
+
+لتدفقات وسائط LiveKit، قد تحتاج أيضًا إلى كشف نطاق منافذ RTC UDP (الافتراضي: 50000-60000).
+
+## الأقراص
+
+وصِّل قرصًا للبيانات المستمرة:
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v bedrud-data:/var/lib/bedrud \
+  bedrud
+```
+
+## الإعدادات
+
+مرر ملف إعدادات مخصص:
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v /path/to/config.yaml:/etc/bedrud/config.yaml \
+  -v bedrud-data:/var/lib/bedrud \
+  bedrud run --config /etc/bedrud/config.yaml
+```
+
+أو استخدم متغيرات البيئة:
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -e JWT_SECRET=my-production-secret \
+  -e LIVEKIT_API_KEY=prodkey \
+  -e LIVEKIT_API_SECRET=prodsecret \
+  bedrud
+```
+
+## الصور المبنية مسبقًا
+
+تُنشر صور Docker إلى GitHub Container Registry مع كل إصدار:
+
+```bash
+# Latest release
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+
+# Specific version
+docker pull ghcr.io/bedrud-ir/bedrud:v1.0.0
+```
+
+## مثال Docker Compose
+
+```yaml
+services:
+  bedrud:
+    image: ghcr.io/bedrud-ir/bedrud:latest
+    ports:
+      - "8090:8090"
+      - "7880:7880"
+    volumes:
+      - bedrud-data:/var/lib/bedrud
+      - ./config.yaml:/etc/bedrud/config.yaml
+    environment:
+      - JWT_SECRET=change-me
+    restart: unless-stopped
+
+volumes:
+  bedrud-data:
+```
+
+---
+
+## انظر أيضًا
+
+- [مرجع الإعدادات](/ar/docs/getting-started/configuration) - جميع خيارات الإعداد ومتغيرات البيئة
+- [دليل النشر](/ar/docs/guides/deployment) - النشر في الإنتاج باستخدام Docker

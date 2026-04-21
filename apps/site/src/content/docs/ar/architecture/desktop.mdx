@@ -1,0 +1,149 @@
+---
+title: تطبيق سطح المكتب
+description: تطبيق سطح المكتب القائم على Rust
+order: 11
+---
+
+عميل بدرود لسطح المكتب هو تطبيق أصلي لـ Windows وLinux مبني بـ **Rust** وأدوات واجهة المستخدم **Slint**. يوفر نفس تجربة الاجتماعات الأساسية مثل عملاء الويب والهواتف المحمولة، مُجمَّع كملف ثنائي واحد بدون تبعيات وقت التشغيل.
+
+## حزمة التقنيات
+
+| المكون | التقنية |
+|-----------|-----------|
+| اللغة | Rust (stable) |
+| أدوات واجهة المستخدم | Slint 1.x |
+| عميل HTTP | reqwest (async, TLS) |
+| الوسائط | LiveKit Rust SDK |
+| التخزين | serde_json + OS keyring (libsecret / Windows Credential Store) |
+| نظام البناء | Cargo workspace |
+
+## دعم المنصات
+
+| المنصة | العارض | الملف الثنائي |
+|----------|----------|--------|
+| Windows 10/11 | Direct3D 11 | `bedrud-desktop.exe` |
+| Linux x86_64 | OpenGL / Vulkan (عبر EGL/Wayland/X11) | `bedrud-desktop` |
+| macOS | _(غير متاح بعد - استخدم تطبيق الويب)_ | - |
+
+## هيكل المصدر
+
+```
+apps/desktop/
+├── Cargo.toml              # Crate definition
+├── build.rs                # Slint compile step
+├── src/
+│   ├── main.rs             # Entry point - initialises app + event loop
+│   ├── app.rs              # Top-level AppState and startup logic
+│   ├── api/
+│   │   ├── client.rs       # Shared HTTP client (base URL, JWT injection)
+│   │   ├── auth.rs         # Login, register, refresh
+│   │   ├── rooms.rs        # Room list, join, create
+│   │   └── admin.rs        # Admin endpoints
+│   ├── auth/
+│   │   ├── session.rs      # JWT storage and refresh loop
+│   │   └── passkey.rs      # FIDO2 passkey stub
+│   ├── livekit/
+│   │   ├── room.rs         # Room connection lifecycle
+│   │   ├── tracks.rs       # Audio/video track management
+│   │   └── devices.rs      # Microphone / camera enumeration
+│   ├── store/
+│   │   ├── instance.rs     # Multi-instance persistence
+│   │   └── settings.rs     # User preferences
+│   └── ui/
+│       ├── mod.rs
+│       └── bridge.rs       # Slint ↔ Rust callback wiring
+└── ui/
+    ├── app.slint            # Root component, page router
+    ├── theme.slint          # Colours, typography, spacing tokens
+    ├── components/          # Button, Input, Card, Avatar
+    ├── auth/                # Login and Register screens
+    ├── dashboard/           # Room list, Create-room dialog
+    ├── meeting/             # Controls bar, participant tiles, chat
+    ├── admin/               # Admin panel, user table
+    └── settings.slint       # Settings screen
+```
+
+## البنية
+
+```mermaid
+flowchart TB
+    subgraph UI ["Slint UI Layer"]
+        direction TB
+        SLINT[app.slint<br/>theme.slint<br/>components/ + screens]
+    end
+
+    subgraph Bridge ["Bridge Layer"]
+        BRIDGE[ui/bridge.rs<br/>Slint ↔ Rust wiring]
+    end
+
+    subgraph Core ["Core Modules"]
+        direction TB
+        API[api/<br/>client.rs • auth.rs • rooms.rs • admin.rs]
+        LIVEKIT[livekit/<br/>room.rs • tracks.rs • devices.rs]
+        AUTH[auth/<br/>session.rs • passkey.rs]
+        STORE[store/<br/>instance.rs • settings.rs]
+    end
+
+    SLINT -->|"callbacks /<br/>property bindings"| BRIDGE
+    BRIDGE <-->|"async tasks<br/>+ Weak&lt;AppWindow&gt;"| Core
+    API <--> LIVEKIT
+    AUTH <--> STORE
+```
+
+### قرارات التصميم الرئيسية
+
+- **واجهة المستخدم في وقت البناء من Slint** - ملفات `.slint` تُترجَم إلى Rust في وقت البناء عبر `build.rs`. لا يوجد محرك تخطيط في وقت التشغيل؛ واجهة المستخدم أصلية بالكامل.
+- **`bridge.rs` كحدود UI↔المنطق الوحيد** - جميع استدعاءات Slint تُربَط في مكان واحد، مما يبقي المنطق التجاري خارج طبقة واجهة المستخدم ويجعل الجسر سهل المراجعة.
+- **`Weak<AppWindow>` في الاستدعاءات** - مقابض واجهة Slint هي `!Send`، لذا تقوم المهام في الخلفية بترقية مرجع `Weak` مخزّن على مؤشر ترابط واجهة المستخدم لتعيين الخصائص، بدلًا من مشاركة المقبض عبر المؤشرات.
+- **تعدد المثيلات عبر `store/instance.rs`** - مماثل لتطبيقات الهاتف: تُنسلخ المثيلات إلى ملف JSON في مجلد تهيئة نظام التشغيل؛ لكل مثيل `APIClient` و`AuthSession` خاصان به.
+
+## البناء محليًا
+
+### المتطلبات المسبقة
+
+- سلسلة أدوات Rust المستقرة (`rustup toolchain install stable`)
+- **Linux:** `libfontconfig`، `libxkbcommon`، `libwayland`، `libgles2`، `libdbus`، `libsecret`
+
+  ```bash
+  sudo apt-get install -y \
+    libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+    libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
+    libdbus-1-dev libsecret-1-dev \
+    libasound2-dev
+  ```
+
+- **Windows:** Visual Studio Build Tools (MSVC) مع عبء عمل C++
+
+### البناء
+
+```bash
+# Debug build (fast compile, no optimisations)
+make dev-desktop          # runs the app immediately after build
+
+# Release build
+make build-desktop        # → target/release/bedrud-desktop (Linux)
+                           # → target/release/bedrud-desktop.exe (Windows)
+```
+
+أو باستخدام Cargo مباشرة:
+
+```bash
+cargo build -p bedrud-desktop                          # debug
+cargo build -p bedrud-desktop --release                # optimised
+cargo run   -p bedrud-desktop                          # run immediately
+```
+
+## CI
+
+يُبنَى تطبيق سطح المكتب في CI عند كل دفع إلى `main` وفي طلبات السحب:
+
+| المهمة | المنفذ | ما يتحقق منه |
+|-----|--------|----------------|
+| `Desktop – Build & Test` | `ubuntu-latest` | `cargo build`، `cargo test` |
+
+تُنتِج بنيات الإصدار ملفين:
+
+| الملف | المنفذ | التنسيق |
+|----------|--------|--------|
+| `bedrud-desktop-linux-x86_64.tar.xz` | `ubuntu-latest` | tar.xz |
+| `bedrud-desktop-windows-x86_64.zip` | `windows-latest` | zip |

@@ -1,0 +1,108 @@
+---
+title: مشارکت
+description: نحوه مشارکت در Bedrud
+order: 34
+---
+
+مشارکت‌ها در Bedrud استقبال می‌شوند. این راهنما فرآیند ارسال تغییرات را پوشش می‌دهد.
+
+> **توجه:** راهنمای مشارکت اصلی در روت مخزن است: [CONTRIBUTING.md](https://github.com/bedrud-ir/bedrud/blob/main/CONTRIBUTING.md). این صفحه فقط برای مرجع بایگانی شده است.
+
+## شروع
+
+۱. مخزن را fork کنید
+۲. fork خود را کلون کنید
+۳. یک برنچ فیچر از `main` ایجاد کنید
+۴. تغییرات خود را انجام دهید
+۵. یک درخواست pull ارسال کنید
+
+## پیش‌نیازها
+
+- Go 1.22+
+- Bun (برای فرانت‌اند وب)
+- Rust (برای برنامه دسکتاپ)
+- Make
+- Git
+
+## تنظیم توسعه
+
+```bash
+# پس از fork کردن در GitHub، fork خود را کلون کنید
+git clone https://github.com/<your-username>/bedrud.git
+cd bedrud
+make init
+make dev
+```
+
+به [گردش کار توسعه](/fa/docs/guides/development) برای دستورالعمل‌های تنظیم دقیق ببینید.
+
+## ساختار پروژه
+
+| دایرکتوری       | زبان         | توضیحات                      |
+|-----------------|------------------|----------------------------------|
+| `server/`       | Go               | بک‌اند API و LiveKit جاسازی‌شده |
+| `apps/web/`     | TypeScript/React | فرانت‌اند وب                     |
+| `apps/desktop/` | Rust + Slint     | برنامه دسکتاپ                      |
+| `apps/android/` | Kotlin           | برنامه Android                      |
+| `apps/ios/`     | Swift            | برنامه iOS                          |
+| `agents/`       | Python           | عوامل ربات                       |
+| `packages/`     | TypeScript       | تعاریف نوع مشترک          |
+| `tools/cli/`    | Python           | CLI استقرار                   |
+| `docs/`         | Markdown         | مستندات                    |
+
+## سبک کد
+
+| زبان         | استاندارد                |
+|------------------|-------------------------|
+| Go               | `gofmt`                 |
+| TypeScript/React | Biome                   |
+| Kotlin           | پیش‌فرض‌های Android Studio |
+| Swift            | پیش‌فرض‌های Xcode          |
+| Python           | ruff                    |
+
+## فرآیند درخواست Pull
+
+۱. **نام‌گذاری برنچ:** `feature/description`، `fix/description`، یا `docs/description`
+۲. **پیام‌های commit:** `<action> <what> for <why>` (مثلاً `add user model for auth feature`، `fix login redirect for expired sessions`)
+۳. **بررسی‌های CI:** تمام بررسی‌های GitHub Actions باید پاس شوند
+۴. **توضیحات:** آنچه تغییر کرده و چرا را شامل کنید
+
+### بررسی‌های CI
+
+هر PR به طور خودکار این بررسی‌ها را اجرا می‌کند:
+
+| بررسی   | چه چیزی را تأیید می‌کند     |
+|---------|-----------------------------|
+| سرور    | `go vet`، build، tests      |
+| وب      | بررسی نوع TypeScript، build |
+| Android | Lint، unit tests            |
+| iOS     | Build، test (شبیه‌ساز)      |
+
+## گزارش مشکلات
+
+مسائل را در [GitHub Issues](https://github.com/bedrud-ir/bedrud/issues) با موارد زیر ثبت کنید:
+
+- مراحل برای تولید مجدد
+- رفتار مورد انتظار در مقابل واقعی
+- جزئیات محیط (سیستم عامل، مرورگر، نسخه برنامه)
+
+## مستندات
+
+مستندات در `docs/` قرار دارد و با [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) ساخته می‌شود.
+
+### پیش‌نمایش محلی
+
+```bash
+pip install mkdocs-material
+mkdocs serve
+```
+
+سپس `http://localhost:8000` را در مرورگر خود باز کنید.
+
+### ساختار
+
+صفحات مستندات بر اساس موضوع سازماندهی شده‌اند. ناوبری در `mkdocs.yml` در روت پروژه تعریف شده است.
+
+## مجوز
+
+با مشارکت، شما موافقت می‌کنید که مشارکت‌های شما تحت [مجوز Apache 2.0](https://github.com/bedrud-ir/bedrud/blob/main/LICENSE) مجوز دارند.

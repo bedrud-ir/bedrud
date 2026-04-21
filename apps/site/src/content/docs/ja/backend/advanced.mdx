@@ -1,0 +1,67 @@
+---
+title: 高度なトピック
+description: バックエンドの高度な機能
+order: 22
+---
+
+このドキュメントでは、Bedrudのシングルバイナリアーキテクチャの背後にある内部技術的判断について説明します。
+
+## 1. Fiberから標準ライブラリへのブリッジ
+Bedrudは速度のために**Fiber**を使用していますが、**Goth**（OAuth）や**LiveKit SDK**（Twirp）などの一部の依存関係は標準Goの`http.ResponseWriter`と`http.Request`を必要とします。
+
+これら2つの世界を橋渡しするため、Bedrudは`internal/handlers/auth.go`で**アダプタパターン**を実装しています:
+
+### `responseWriter`アダプタ
+```go
+type responseWriter struct {
+    ctx     *fiber.Ctx
+    headers http.Header
+    status  int
+}
+```
+この構造体は`http.ResponseWriter`インターフェースを実装しています。標準ライブラリ関数（Gothなど）が`Header().Add()`を呼び出すと、アダプタはローカルの`headers`マップに保存します。`WriteHeader()`が呼び出されると、すべてのヘッダーを**Fiberコンテキスト**に手動でコピーし戻します。
+
+### 目的
+Bedrudは極めて高速なまま（Fiberを使用）、標準Goウェブライブラリの広大なエコシステムとの完全な互換性を維持できます。
+
+## 2. LiveKitリバースプロキシ
+Bedrudはメインポート経由ですべてのメディアシグナリングをルーティングすることで、ポート管理の問題を回避しています。
+
+### 仕組み:
+
+1.  **検出:** `LIVEKIT_INTERNAL_HOST`が`127.0.0.1`を指している場合、Bedrudは内部メディアエンジンを起動します。
+2.  **マウント:** `/livekit`ルートに`httputil.NewSingleHostReverseProxy`をマウントします。
+3.  **パスストリッピング:** カスタム**Director**関数を使用して`/livekit`プレフィックスを削除し、メディアサーバーがルートにリクエストが来たかのように受け取れるようにします。
+4.  **WebSocketサポート:** プロキシは`adaptor.HTTPHandler`を経由して基盤のTCPストリーム上で動作するため、LiveKitがリアルタイムシグナリングに使用するWebSocketsをネイティブにサポートします。
+
+## 3. ストレージ効率: 埋め込み構造体
+BedrudはGORMの`embedded`タグを活用して、データベーススキーマをフラットかつ最適化された状態に保っています。
+
+**`models/room.go`の例:**
+```go
+type Room struct {
+    ID       string       `gorm:"primaryKey"`
+    Settings RoomSettings `gorm:"embedded;embeddedPrefix:settings_"`
+}
+```
+これにより、GORMは`settings_allow_chat`のようなカラムを`rooms`テーブルに直接作成します。これは`JOIN`よりも高速で、`JSON`ブロブよりも検索性に優れています。
+
+## 4. テストインフラストラクチャ
+Bedrudは`internal/testutil`パッケージを使用した「DB-First」テスト戦略に従っています。
+
+### `SetupTestDB`の仕組み:
+
+- 各テストごとに固有の**SQLiteインメモリ**データベースを作成します。
+- すべてのマイグレーションを自動的に実行します。
+- クリーンな状態を提供し、テストが決定論的で並列実行可能であることを保証します。
+
+バックエンドテストを実行するには:
+```bash
+go test ./internal/...
+```
+
+## 5. セキュリティ: トークンローテーションと失効
+シンプルなJWT実装とは異なり、Bedrudは更新のたびに**両方**のトークンをローテーションします。
+
+- **リフレッシュトークンの再利用検出:** リフレッシュトークンが新しいペアの取得に使用されると、直ちにブロックされます。
+- **クリーンアップ:** `BlockedRefreshToken`テーブルにより、リフレッシュトークンが盗まれた場合でも、ユーザーが正常にログアウトまたはセッションを更新した後は使用できなくなります。

@@ -1,0 +1,238 @@
+---
+import { Icon } from "astro-icon/components";
+import { type Locale, t } from "../../i18n/utils";
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+
+interface Feature {
+  key: string;
+  icon: string;
+  iconBg: string;
+  iconColor: string;
+  link: string;
+  featured?: boolean;
+}
+
+interface FeatureGroup {
+  labelKey: string;
+  features: Feature[];
+}
+
+const groups: FeatureGroup[] = [
+  {
+    labelKey: "infra",
+    features: [
+      {
+        key: "singleBinary",
+        icon: "lucide:terminal",
+        iconBg: "bg-blue-500/10 dark:bg-blue-500/15",
+        iconColor: "text-blue-600 dark:text-blue-400",
+        link: "/install",
+        featured: true,
+      },
+      {
+        key: "autoTls",
+        icon: "lucide:server",
+        iconBg: "bg-teal-500/10 dark:bg-teal-500/15",
+        iconColor: "text-teal-600 dark:text-teal-400",
+        link: "/docs/guides/internal-tls",
+      },
+      {
+        key: "airGapped",
+        icon: "lucide:cloud-off",
+        iconBg: "bg-slate-500/10 dark:bg-slate-500/15",
+        iconColor: "text-slate-600 dark:text-slate-400",
+        link: "/docs/guides/appliance",
+      },
+    ],
+  },
+  {
+    labelKey: "media",
+    features: [
+      {
+        key: "webrtc",
+        icon: "lucide:zap",
+        iconBg: "bg-violet-500/10 dark:bg-violet-500/15",
+        iconColor: "text-violet-600 dark:text-violet-400",
+        link: "/docs/architecture/webrtc-connectivity",
+      },
+      {
+        key: "audio",
+        icon: "lucide:mic",
+        iconBg: "bg-rose-500/10 dark:bg-rose-500/15",
+        iconColor: "text-rose-600 dark:text-rose-400",
+        link: "/docs/architecture/overview",
+      },
+      {
+        key: "e2eEncryption",
+        icon: "lucide:lock",
+        iconBg: "bg-emerald-500/10 dark:bg-emerald-500/15",
+        iconColor: "text-emerald-600 dark:text-emerald-400",
+        link: "/docs/api/rooms",
+      },
+    ],
+  },
+  {
+    labelKey: "access",
+    features: [
+      {
+        key: "guestJoin",
+        icon: "lucide:users",
+        iconBg: "bg-emerald-500/10 dark:bg-emerald-500/15",
+        iconColor: "text-emerald-600 dark:text-emerald-400",
+        link: "/demo",
+      },
+      {
+        key: "passkeys",
+        icon: "lucide:fingerprint",
+        iconBg: "bg-rose-500/10 dark:bg-rose-500/15",
+        iconColor: "text-rose-600 dark:text-rose-400",
+        link: "/docs/backend/authentication",
+      },
+      {
+        key: "admin",
+        icon: "lucide:shield-check",
+        iconBg: "bg-amber-500/10 dark:bg-amber-500/15",
+        iconColor: "text-amber-600 dark:text-amber-400",
+        link: "/docs/api/admin",
+      },
+    ],
+  },
+  {
+    labelKey: "extend",
+    features: [
+      {
+        key: "bots",
+        icon: "lucide:radio",
+        iconBg: "bg-cyan-500/10 dark:bg-cyan-500/15",
+        iconColor: "text-cyan-600 dark:text-cyan-400",
+        link: "/docs/architecture/agents",
+      },
+      {
+        key: "multiPlatform",
+        icon: "lucide:globe",
+        iconBg: "bg-blue-500/10 dark:bg-blue-500/15",
+        iconColor: "text-blue-600 dark:text-blue-400",
+        link: "/download",
+      },
+    ],
+  },
+];
+
+const stats: { key: string; icon: string }[] = [
+  { key: "ram", icon: "lucide:cpu" },
+  { key: "binary", icon: "lucide:package" },
+  { key: "auth", icon: "lucide:key-round" },
+  { key: "platforms", icon: "lucide:monitor" },
+];
+
+let globalCardIndex = 0;
+---
+
+<section id="features" class="relative scroll-mt-20 section-y">
+  <div class="section-container">
+    <div class="max-w-lg">
+      <h2
+        data-animate="fade-up"
+        class="text-3xl font-bold tracking-tight sm:text-4xl"
+      >
+        {t(lang, "featuresPage.sectionTitle")}
+      </h2>
+      <p
+        data-animate="fade-up"
+        class="mt-4 text-lg leading-relaxed text-muted-foreground"
+        style="transition-delay: 80ms"
+      >
+        {t(lang, "featuresPage.sectionSubtitle")}
+      </p>
+    </div>
+
+    {groups.map((group) => {
+      const startIndex = globalCardIndex;
+      const groupCards = group.features.map((feature, i) => {
+        const cardIndex = startIndex + i;
+        return (
+          <div
+            data-animate="fade-up"
+            style={`transition-delay: ${cardIndex * 60}ms`}
+            class={
+              feature.featured
+                ? "group relative rounded-2xl bg-card p-7 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08),0px_2px_2px_rgba(0,0,0,0.04),0px_8px_8px_-8px_rgba(0,0,0,0.04),0px_0px_0px_1px_#fafafa] transition-[shadow] duration-300 hover:shadow-[0px_0px_0px_1px_rgba(0,0,0,0.12),0px_4px_8px_rgba(0,0,0,0.06),0px_12px_16px_-8px_rgba(0,0,0,0.06),0px_0px_0px_1px_#fafafa] dark:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.1),0px_2px_2px_rgba(0,0,0,0.2),0px_8px_8px_-8px_rgba(0,0,0,0.3),0px_0px_0px_1px_rgba(255,255,255,0.03)] dark:hover:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.14),0px_4px_8px_rgba(0,0,0,0.3),0px_12px_16px_-8px_rgba(0,0,0,0.4),0px_0px_0px_1px_rgba(255,255,255,0.05)] sm:p-8"
+                : "group relative rounded-2xl bg-card p-7 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08)] transition-[shadow] duration-300 hover:shadow-[0px_0px_0px_1px_rgba(0,0,0,0.12),0px_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.1)] dark:hover:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.14),0px_2px_4px_rgba(0,0,0,0.2)] sm:p-8"
+            }
+          >
+            <div
+              class={`inline-flex size-11 items-center justify-center rounded-xl ${feature.iconBg}`}
+            >
+              <Icon
+                name={feature.icon}
+                class={`size-5 ${feature.iconColor}`}
+                stroke-width="1.5"
+              />
+            </div>
+
+            <p class="mt-4 text-[13px] font-medium uppercase tracking-widest text-muted-foreground/60">
+              {t(lang, `featuresPage.${feature.key}.pain`)}
+            </p>
+
+            <h3 class="mt-3 text-[17px] font-semibold tracking-tight">
+              {t(lang, `featuresPage.${feature.key}.title`)}
+            </h3>
+
+            <p class="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+              {t(lang, `featuresPage.${feature.key}.description`)}
+            </p>
+
+            {feature.featured && (
+              <div class="mt-4 inline-flex items-center gap-2 rounded-lg bg-foreground/[0.03] px-4 py-2.5 font-mono text-sm text-muted-foreground dark:bg-foreground/[0.06]">
+                {t(lang, "featuresPage.singleBinary.snippet")}
+              </div>
+            )}
+
+            <a
+              href={`/${lang}${feature.link}`}
+              class="mt-5 inline-flex items-center gap-1 text-sm font-medium text-primary/70 transition-colors hover:text-primary"
+            >
+              {t(lang, "featuresPage.learnMore")}
+              <Icon name="lucide:arrow-right" class="size-3.5" stroke-width="2" />
+            </a>
+          </div>
+        );
+      });
+      globalCardIndex += group.features.length;
+
+      return (
+        <div class="mt-16 first:mt-14">
+          <p
+            data-animate="fade-up"
+            class="text-sm font-medium uppercase tracking-widest text-muted-foreground/50"
+          >
+            {t(lang, `featuresPage.groups.${group.labelKey}`)}
+          </p>
+          <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {groupCards}
+          </div>
+        </div>
+      );
+    })}
+
+    <div class="mt-16 flex flex-wrap justify-center gap-3">
+      {stats.map(({ key, icon }, i) => (
+        <div
+          data-animate="fade-up"
+          style={`transition-delay: ${i * 60}ms`}
+          class="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-4 py-2"
+        >
+          <Icon name={icon} class="size-3.5 text-muted-foreground" stroke-width="2" />
+          <span class="text-sm font-medium">
+            {t(lang, `featuresPage.stats.${key}`)}
+          </span>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

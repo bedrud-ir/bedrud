@@ -1,0 +1,309 @@
+---
+title: CLI 安装程序
+description: 所有平台上一键安装 Bedrud
+order: 2
+---
+
+所有平台一键安装。无需 `sudo`——安装在你的主目录下。
+
+安装后进行服务器部署，请参阅 [快速开始](/zh/docs/getting-started/quickstart)。包管理器、Docker 及其他安装方式，请参阅 [服务器安装](/zh/docs/getting-started/installation)。
+
+---
+
+## 功能说明
+
+1. 检测操作系统、CPU 架构和平台变体（Rosetta 2）
+2. 从 [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) 下载对应的二进制文件
+3. 安装到 `~/bin`（可通过 `--install-dir` 自定义）
+4. 通过 shell 配置将安装目录添加到 `PATH`
+5. 运行 `bedrud completions` 启用 shell 补全
+6. 输出后续步骤提示
+
+---
+
+## 所需环境
+
+| 平台 | 依赖 |
+|------|------|
+| macOS / Linux | `curl` + `tar` |
+| Windows | PowerShell 5.1+（Windows 10/11 自带） |
+
+---
+
+## 快速安装
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="bash">macOS / Linux</TabsTrigger>
+    <TabsTrigger value="powershell">Windows</TabsTrigger>
+  </TabsList>
+  <TabsContent value="bash">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    重新加载 shell，然后验证：
+
+    ```bash
+    source ~/.bashrc  # 或 ~/.zshrc
+    bedrud --version
+    ```
+  </TabsContent>
+  <TabsContent value="powershell">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    bedrud --version
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## 标志与选项
+
+### Bash 安装程序
+
+```
+Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+```
+
+| 标志 | 默认值 | 说明 |
+|------|--------|------|
+| `--install-dir <dir>` | `~/bin` | 二进制文件安装位置 |
+| `--version <ver>` | `latest` | 固定到指定版本（如 `v1.2.0`） |
+| `--skip-shell` | 关闭 | 不修改 shell RC 文件或 PATH |
+| `-h`, `--help` | — | 打印用法并退出 |
+
+**示例：**
+
+```bash
+# 默认安装
+curl -fsSL https://get.bedrud.org | bash
+
+# 固定版本
+curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# 全局安装
+curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+
+# CI / 自动化 — 跳过 shell 配置
+curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+```
+
+### PowerShell 安装程序
+
+```
+Usage: irm https://get.bedrud.org/install.ps1 | iex
+```
+
+传参需先保存到文件：
+
+```powershell
+irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+.\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
+```
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `-InstallDir <path>` | `$HOME\bin` | `bedrud.exe` 安装位置 |
+| `-Version <ver>` | `latest` | 安装指定版本 |
+| `-SkipPath` | `$false` | 不将安装目录添加到用户 PATH |
+
+---
+
+## 环境变量
+
+| 变量 | 默认值 | 平台 | 说明 |
+|------|--------|------|------|
+| `BEDRUD_INSTALL` | `~/bin` | 仅 Bash | 覆盖安装目录（等同于 `--install-dir`） |
+| `BEDRUD_REPO` | `bedrud-ir/bedrud` | 两者 | 覆盖 GitHub 仓库（用于 fork 或镜像） |
+
+```bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+```
+
+```powershell
+$env:BEDRUD_REPO = "myorg/bedrud-fork"
+irm https://get.bedrud.org/install.ps1 | iex
+```
+
+---
+
+## 平台支持
+
+| 目标 | 操作系统 | 架构 | 备注 |
+|------|----------|------|------|
+| `darwin_amd64` | macOS | Intel (x86_64) | 标准支持 |
+| `darwin_arm64` | macOS | Apple Silicon (M1/M2/M3/M4) | 自动检测 Rosetta 2 |
+| `linux_amd64` | Linux | x86_64 | 标准支持 |
+| `linux_arm64` | Linux | ARM64 | 标准支持 |
+| `freebsd_amd64` | FreeBSD | x86_64 | 标准支持 |
+| `windows_amd64` | Windows | x86_64 | 标准支持 |
+| `windows_arm64` | Windows | ARM64 | 标准支持 |
+
+<details>
+<summary>操作系统和架构检测逻辑</summary>
+
+```
+uname -s → "Darwin"  → darwin
+           "Linux"   → linux
+           "FreeBSD" → freebsd
+           "MINGW*"  → 重定向到 PowerShell 脚本
+           "MSYS*"   → 重定向到 PowerShell 脚本
+
+uname -m → "x86_64" | "amd64"  → amd64
+           "aarch64" | "arm64"  → arm64
+```
+
+</details>
+
+---
+
+## 特殊情况检测
+
+### Rosetta 2（Apple Silicon 上的 macOS Intel 模式）
+
+**检测方式：** `sysctl -n sysctl.proc_translated` 返回 `1`。
+**效果：** 将 `darwin_amd64` 切换为 `darwin_arm64`，以获得原生 ARM 性能。
+
+---
+
+## 安装流程
+
+1. **Windows 检查** — 检测到 MINGW/MSYS/CYGWIN？输出 PowerShell 命令并退出
+2. **依赖检查** — 需要 `curl` + `tar`
+3. **参数解析** — 最多 3 个标志
+4. **平台检测** — 通过 `uname` 获取操作系统和架构
+5. **变体检测** — Rosetta 2
+6. **下载** — 下载 `bedrud_{TARGET}.tar.xz`
+7. **解压与安装** — 临时目录，解压，`mv → $INSTALL_DIR/bedrud`，`chmod +x`
+8. **验证** — 运行 `bedrud --version`
+9. **PATH 检查** — 已在 PATH 中？跳过。指定了 `--skip-shell`？输出手动命令。否则 → 修改 RC 文件
+10. **补全** — 运行 `bedrud completions`
+11. **完成** — 输出成功信息及重新加载说明
+
+下载 URL 格式：`github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+---
+
+## PATH 与 Shell 配置
+
+未设置 `--skip-shell` 时，安装程序会将安装目录添加到你的 PATH。
+
+| Shell | RC 文件 |
+|-------|---------|
+| fish | `~/.config/fish/config.fish` |
+| zsh | `$ZDOTDIR/.zshrc`（默认 `~/.zshrc`） |
+| bash (macOS) | `~/.bash_profile`，然后 `~/.bashrc` |
+| bash (Linux) | `~/.bashrc`，然后 `~/.bash_profile` |
+
+**添加的内容：**
+
+```bash
+# bedrud
+export PATH="$HOME/bin:$PATH"  # bedrud
+```
+
+`# bedrud` 注释标记可防止重复添加——可安全重复运行。
+
+**Windows：** 使用 `[Environment]::SetEnvironmentVariable("PATH", ..., "User")` 在注册表级别设置。不需要 RC 文件。
+
+**安装后重新加载 shell：**
+
+```bash
+source ~/.bashrc    # bash
+source ~/.zshrc     # zsh
+source ~/.config/fish/config.fish  # fish
+```
+
+---
+
+## 离线 / 气隙安装
+
+### 下载与传输
+
+```bash
+curl -fsSL -o bedrud.tar.xz \
+  https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+scp bedrud.tar.xz airgapped-server:/tmp/
+# 在目标机器上：
+tar -xf /tmp/bedrud.tar.xz -C /tmp/bedrud-extracted
+mv /tmp/bedrud-extracted/bedrud ~/bin/
+chmod +x ~/bin/bedrud
+```
+
+### 自托管镜像
+
+```bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+```
+
+### 直接使用二进制文件
+
+从 [Releases](https://github.com/bedrud-ir/bedrud/releases) 下载，解压后移动到 `PATH` 中的目录即可。
+
+---
+
+## 卸载
+
+```bash
+rm ~/bin/bedrud
+# 从 shell RC 文件中删除 PATH 行（搜索 "# bedrud"）：
+#   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
+```
+
+systemd 服务器安装：
+
+```bash
+sudo bedrud uninstall
+```
+
+Windows：
+
+```powershell
+Remove-Item "$env:USERPROFILE\bin\bedrud.exe"
+# 通过 系统属性 → 环境变量 从 PATH 中移除
+```
+
+---
+
+## 故障排除
+
+### `command not found: bedrud`
+
+```bash
+source ~/.bashrc    # 重新加载 shell
+echo $PATH | tr ':' '\n' | grep "$HOME/bin"  # 检查 PATH
+```
+
+如果缺失：
+
+```bash
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### `Failed to download bedrud`
+
+1. 检查网络连接
+2. 在 [Releases](https://github.com/bedrud-ir/bedrud/releases) 确认目标版本存在
+3. 尝试指定版本：`--version v1.0.0`
+4. 你的平台可能暂无预构建二进制文件
+
+### macOS：在 Rosetta 下运行 x64（速度较慢）
+
+强制使用原生 ARM：
+
+```bash
+arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+```
+
+### Windows："running scripts is disabled"
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+irm https://get.bedrud.org/install.ps1 | iex
+```

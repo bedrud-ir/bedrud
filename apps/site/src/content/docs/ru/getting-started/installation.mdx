@@ -1,0 +1,499 @@
+---
+title: Установка сервера
+description: Установите сервер Bedrud на Linux
+order: 2
+---
+
+В этом руководстве описана установка **сервера Bedrud** (API, веб-интерфейс, медиасервер WebRTC) на Linux-сервер. О настольных и мобильных клиентах см. [Установка клиентов](/ru/docs/getting-started/clients).
+
+---
+
+## Предварительные требования
+
+| Требование | Подробности |
+|-------------|---------|
+| **Операционная система** | Debian 12+, Ubuntu 22.04+, Arch Linux (rolling), Fedora 39+ |
+| **Архитектура** | amd64 (x86_64) или arm64 (aarch64) |
+| **Доступ** | Root или sudo |
+| **Система инициализации** | systemd |
+| **Оборудование** | 1 vCPU, 512 МБ RAM минимум. 2 vCPU, 2 ГБ RAM рекомендуется для 10+ одновременных комнат |
+| **Порты** | `8090` (API + веб-интерфейс), `7880` (LiveKit WebSocket), `50000–60000/udp` (медиа WebRTC) |
+| **Авто-TLS** | Дополнительно откройте `80` и `443`. Требуется домен с DNS A-записью, указывающей на этот сервер |
+| **Инструменты** | `curl`, `tar` (предустановлены в большинстве дистрибутивов) |
+
+> **Нет домена?** Bedrud работает с IP-адресом, используя самоподписанный TLS. Браузер покажет предупреждение о сертификате, но видео и аудио будут работать. Для доверенных сертификатов во внутренних сетях см. [Руководство по внутреннему TLS](/ru/docs/guides/internal-tls).
+
+---
+
+## 1. Установка одной командой (Рекомендуется)
+
+Скачивает и устанавливает бинарный файл Bedrud CLI в ваш PATH. Работает на Linux, macOS и Windows.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="bash">macOS / Linux (Bash)</TabsTrigger>
+    <TabsTrigger value="powershell">Windows (PowerShell)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="bash">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    Перезагрузите оболочку после установки:
+
+    ```bash
+    source ~/.bashrc  # или ~/.zshrc
+    ```
+
+  </TabsContent>
+  <TabsContent value="powershell">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    ```
+
+  </TabsContent>
+</Tabs>
+
+Проверьте:
+
+```bash
+bedrud --version
+```
+
+<Callout type="tip">
+    Хотите настроить установку? Используйте флаги: `--version 0.12.0`, `--install-dir /opt/bedrud` или `--skip-shell`. Полная документация: [CLI Установщик](/ru/docs/getting-started/cli-installer).
+</Callout>
+
+---
+
+## 2. Установка через пакетный менеджер
+
+Установите через пакетный менеджер вашего дистрибутива.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="ubuntu-debian-apt">
+
+    ```bash
+    curl -fsSL https://bedrud-ir.github.io/bedrud/bedrud.gpg.key \
+      | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/bedrud.gpg
+
+    echo "deb https://bedrud-ir.github.io/bedrud stable main" \
+      | sudo tee /etc/apt/sources.list.d/bedrud.list
+
+    sudo apt update && sudo apt install bedrud
+    ```
+
+    Затем запустите интерактивный установщик:
+
+    ```bash
+    sudo bedrud install
+    ```
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-bin
+    sudo bedrud install
+    ```
+  </TabsContent>
+  <TabsContent value="fedora-rhel-dnf">
+
+    ```bash
+    sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key \
+      -o /etc/pki/rpm-gpg/RPM-GPG-KEY-bedrud
+
+    sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.repo \
+      -o /etc/yum.repos.d/bedrud.repo
+
+    sudo dnf install bedrud
+    sudo bedrud install
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="tip">
+    Об установке настольных клиентов (Linux, macOS, Windows) см. в разделе [Установка клиентов](/ru/docs/getting-started/clients).
+</Callout>
+
+---
+
+## 3. Docker
+
+Запустите Bedrud в контейнере - не требуется настройка Linux-сервера, systemd или загрузка бинарного файла.
+
+### Готовый образ (быстро)
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+### Docker Compose
+
+```yaml
+services:
+  bedrud:
+    image: ghcr.io/bedrud-ir/bedrud:latest
+    ports:
+      - "8090:8090"
+      - "7880:7880"
+      - "50000-60000:50000-60000/udp"
+    volumes:
+      - bedrud-data:/var/lib/bedrud
+    restart: unless-stopped
+
+volumes:
+  bedrud-data:
+```
+
+### Порты
+
+| Порт | Служба | Протокол |
+|------|---------|----------|
+| 8090 | API + веб-интерфейс | HTTP |
+| 7880 | LiveKit | WebSocket + HTTP |
+| 50000–60000 | Медиа WebRTC | UDP |
+
+### Конфигурация
+
+Передайте файл конфигурации или используйте переменные окружения:
+
+```bash
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -e JWT_SECRET=change-this-to-a-random-string \
+  -e LIVEKIT_API_KEY=prodkey \
+  -e LIVEKIT_API_SECRET=prodsecret \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+<Callout type="warning">
+    Секреты JWT и LiveKit по умолчанию предназначены только для быстрого тестирования. Измените их перед тем, как открывать контейнер в интернет.
+</Callout>
+
+Полная документация по Docker, включая тома, обратный прокси и настройку TLS: [Руководство по Docker](/ru/docs/guides/docker).
+
+---
+
+## 4. Интерактивная установка
+
+Если бинарный файл `bedrud` уже есть на сервере:
+
+```bash
+sudo ./bedrud install
+```
+
+Установщик автоматически определяет IP сервера и запрашивает:
+
+| Запрос | По умолчанию | Примечания |
+|--------|---------|-------|
+| **IP-адрес** | Автоопределение (первый не-loopback IPv4) | Нажмите Enter для принятия или введите другой IP |
+| **Домен** | Пусто (только IP) | Если указан вместе с email, включает Let's Encrypt TLS |
+| **Email** | Пусто | Используется для регистрации Let's Encrypt (только если указан домен) |
+| **Самоподписанный TLS** | Да | Предлагается, если домен не указан. По умолчанию `Y` |
+
+Все запросы пропускаются при передаче данных через канал (неинтерактивный режим) - используются флаги и значения по умолчанию.
+
+---
+
+## 5. Неинтерактивная установка (через флаги)
+
+Пропустите все запросы, передавая флаги.
+
+### Let's Encrypt (требуется домен)
+
+**Требуется:** DNS A-запись для вашего домена уже указывает на IP этого сервера.
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com --email webmaster@example.com
+```
+
+### Самоподписанный TLS (по IP)
+
+**Требуется:** Ничего дополнительного. Работает сразу.
+
+```bash
+sudo ./bedrud install --tls --ip 1.2.3.4
+```
+
+### Обычный HTTP (только для разработки / внутренние сети)
+
+**Требуется:** localhost или `127.0.0.1`. Браузеры блокируют камеру/микрофон по не-HTTPS, кроме localhost.
+
+```bash
+sudo ./bedrud install --ip 1.2.3.4
+```
+
+### Самоподписанный для домена (тестирование до настройки DNS)
+
+**Требуется:** Имя домена (DNS пока не обязан разрешаться).
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com
+```
+
+### Пользовательский порт
+
+**Требуется:** Порт не занят другими службами.
+
+```bash
+sudo ./bedrud install --tls --port 8443 --domain meet.example.com
+```
+
+### Внешние сертификаты
+
+**Требуется:** Файлы fullchain и закрытого ключа в формате PEM.
+
+```bash
+sudo ./bedrud install --tls --cert /path/to/fullchain.pem --key /path/to/privkey.pem
+```
+
+### Пользовательские порты LiveKit
+
+**Требуется:** Все три порта открыты на файрволе.
+
+```bash
+sudo ./bedrud install --lk-port 9000 --lk-tcp-port 9001 --lk-udp-port 9002
+```
+
+### За обратным прокси
+
+**Требуется:** Обратный прокси (Nginx, Caddy, Traefik, Cloudflare), завершающий TLS перед Bedrud.
+
+```bash
+sudo ./bedrud install --behind-proxy --domain meet.example.com
+```
+
+Устанавливает `behindProxy: true` в конфигурации и настраивает доверенные заголовки прокси.
+
+### Внешний сервер LiveKit
+
+**Требуется:** Отдельный сервер LiveKit уже запущен и доступен с этой машины.
+
+```bash
+sudo ./bedrud install --external-livekit https://livekit.example.com
+```
+
+Пропускает установку встроенного LiveKit. API-ключ и секрет должны совпадать в обеих конфигурациях.
+
+### Отдельный домен для LiveKit
+
+**Требуется:** Домен, который разрешается напрямую на этот сервер, минуя любой CDN.
+
+```bash
+sudo ./bedrud install --livekit-domain lk.example.com --domain meet.example.com
+```
+
+Полезно, когда основной домен находится за Cloudflare, но медиа WebRTC требует прямого подключения.
+
+### Справка по всем флагам
+
+| Флаг | По умолчанию | Описание |
+|------|---------|-------------|
+| `--tls` | `false` | Включить HTTPS (самоподписанный или Let's Encrypt) |
+| `--self-signed` | `false` | Сгенерировать самоподписанный сертификат TLS |
+| `--no-tls` | `false` | Полностью отключить TLS (переопределяет `--tls`) |
+| `--ip` | автоопределение | Переопределить IP-адрес сервера |
+| `--domain` | `""` | Имя домена для Let's Encrypt или самоподписанного сертификата |
+| `--email` | `""` | Email для регистрации Let's Encrypt |
+| `--port` | `443` (TLS) / `8090` (HTTP) | Переопределить порт прослушивания |
+| `--cert` | `""` | Путь к существующему файлу сертификата (PEM) |
+| `--key` | `""` | Путь к существующему файлу закрытого ключа (PEM) |
+| `--lk-port` | `7880` | Порт API LiveKit |
+| `--lk-tcp-port` | `7881` | Порт RTC TCP LiveKit |
+| `--lk-udp-port` | `7882` | Порт RTC UDP LiveKit |
+| `--fresh` | `false` | Удалить существующую установку перед установкой |
+| `--behind-proxy` | `false` | Сервер находится за обратным прокси / CDN |
+| `--external-livekit` | `""` | URL внешнего сервера LiveKit |
+| `--livekit-domain` | `""` | Отдельный домен для LiveKit (в обход CDN) |
+
+---
+
+## 6. Полностью автоматическая установка (Python CLI)
+
+Соберите, загрузите и настройте сервер с вашего локального компьютера.
+
+**Требуется:** Python 3.12+, [uv](https://docs.astral.sh/uv/) (менеджер пакетов Python), SSH-ключ для доступа к целевому серверу, Go 1.24+ и Bun установлены локально.
+
+```bash
+cd tools/cli
+uv run python bedrud.py --auto-config \
+  --ip <your-server-ip> \
+  --user root \
+  --auth-key ~/.ssh/id_rsa \
+  --domain meet.example.com \
+  --acme-email admin@example.com
+```
+
+**Что он делает:**
+
+1. Собирает бинарный файл backend (`dist/bedrud`)
+2. Сжимает его в `bedrud.tar.xz`
+3. Загружает на сервер через rsync
+4. Останавливает конфликтующие службы (Nginx, Apache, Caddy)
+5. Настраивает файрвол (UFW)
+6. Запускает внутреннюю логику `install` на сервере
+
+| Флаг | Описание |
+|------|-------------|
+| `--ip` | IP-адрес сервера |
+| `--user` | SSH-пользователь (по умолчанию: root) |
+| `--auth-key` | Путь к закрытому SSH-ключу |
+| `--domain` | Имя домена для Let's Encrypt |
+| `--acme-email` | Email для Let's Encrypt |
+| `--uninstall` | Удалить Bedrud с сервера |
+
+---
+
+<InstallerSteps />
+
+### Точки входа служб
+
+```
+bedrud --run --config /etc/bedrud/config.yaml       # API + веб-сервер
+bedrud --livekit --config /etc/bedrud/livekit.yaml   # Медиасервер
+```
+
+---
+
+## После установки
+
+<CreateAdmin />
+
+### Проверка служб
+
+```bash
+systemctl status bedrud livekit
+```
+
+### Проверка API
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+```
+
+Ожидаемый результат: `200`
+
+### Проверка файрвола
+
+```bash
+sudo ufw status
+```
+
+Убедитесь, что порты `8090/tcp`, `7880/tcp` и `50000:60000/udp` разрешены:
+
+```bash
+sudo ufw allow 8090/tcp
+sudo ufw allow 7880/tcp
+sudo ufw allow 50000:60000/udp
+```
+
+### Просмотр журналов
+
+```bash
+tail -f /var/log/bedrud/bedrud.log
+```
+
+Или через journalctl:
+
+```bash
+journalctl -u bedrud -u livekit -f
+```
+
+---
+
+## Обновление
+
+### Через пакетный менеджер
+
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt upgrade bedrud
+
+# Arch Linux
+yay -Syu bedrud-bin
+
+# Fedora / RHEL
+sudo dnf upgrade bedrud
+```
+
+Службы перезапускаются автоматически после обновления пакета.
+
+### Загрузка бинарного файла
+
+Загрузите последний релиз и запустите установку снова. Установщик безопасно запускать повторно - он перезаписывает бинарный файл и конфигурацию, сохраняя базу данных:
+
+```bash
+curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+tar -xJf bedrud.tar.xz && chmod +x bedrud
+sudo ./bedrud install --fresh
+```
+
+<Callout type="tip">
+    `--fresh` сначала удаляет старую установку. Пропустите этот флаг, чтобы сохранить существующую конфигурацию и базу данных.
+</Callout>
+
+### Docker
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+docker stop bedrud && docker rm bedrud
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+С Docker Compose:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+---
+
+## Удаление
+
+Для полного удаления Bedrud:
+
+```bash
+sudo bedrud uninstall
+```
+
+Эта команда останавливает службы, удаляет unit-файлы systemd, удаляет бинарный файл из `/usr/local/bin` и очищает `/etc/bedrud`, `/var/lib/bedrud` и `/var/log/bedrud`.
+
+---
+
+## Устранение неполадок
+
+| Проблема | Решение |
+|---------|----------|
+| **Порт 80/443 занят** | Остановите конфликтующие веб-серверы: `systemctl stop nginx apache2 caddy` |
+| **Службы не запускаются** | Проверьте журналы: `journalctl -u bedrud -u livekit --no-pager -n 50` |
+| **Проблемы с сертификатом TLS** | Проверьте DNS: `dig +short meet.example.com` - должен возвращать IP этого сервера |
+| **Конфликт портов LiveKit** | Используйте флаги `--lk-port`, `--lk-tcp-port`, `--lk-udp-port` для смены портов |
+| **Установка прошла успешно, но 404 в веб-интерфейсе** | Фронтенд не встроен. Соберите с `make build` перед `bedrud install`. Сборка только бинарного файла пропускает фронтенд |
+| **Установка прошла успешно, но службы упали** | Проверьте скрытые ошибки: `journalctl -u bedrud --no-pager -n 100`. Проверьте конфигурацию в `/etc/bedrud/config.yaml` |
+| **Порт занят (неизвестный процесс)** | Найдите его: `ss -tlnp \| grep 8090` или `ss -ulnp \| grep 7880` |
+| **Файрвол блокирует медиа** | Откройте порты: `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
+| **Предупреждения самоподписанного сертификата** | Это ожидаемо. См. [Руководство по внутреннему TLS](/ru/docs/guides/internal-tls) для настройки приватного CA |
+| **Нет видео / ошибка WebRTC** | Для доступа к камере требуется HTTPS. Используйте `--tls`. Убедитесь, что UDP 50000–60000 открыт |
+| **Обратный прокси: неверный IP клиента** | Используйте флаг `--behind-proxy`. Настраивает доверенные заголовки прокси |

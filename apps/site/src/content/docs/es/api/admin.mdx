@@ -1,0 +1,147 @@
+---
+title: API de Administración
+description: Operaciones administrativas
+order: 25
+---
+
+Los endpoints de administración están bajo `/api/admin/`. Estos requieren el rol **Super Admin**.
+
+## Resumen
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/api/admin/users` | GET | Listar todos los usuarios |
+| `/api/admin/users/:id/status` | PUT | Activar o desactivar un usuario |
+
+---
+
+## Endpoints
+
+### Listar Todos los Usuarios
+
+Recupera una lista de todos los usuarios registrados.
+
+```
+GET /api/admin/users
+```
+
+**Encabezados:** `Authorization: Bearer <accessToken>`
+
+**Rol Requerido:** Super Admin
+
+**Respuesta (200):**
+
+```json
+{
+  "users": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "avatar": "https://...",
+      "role": "user",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": "uuid-2",
+      "email": "admin@example.com",
+      "name": "Admin User",
+      "role": "admin",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-10T08:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### Actualizar Estado de Usuario
+
+Activa o desactiva una cuenta de usuario. Los usuarios desactivados no pueden iniciar sesión.
+
+```
+PUT /api/admin/users/:id/status
+```
+
+**Encabezados:** `Authorization: Bearer <accessToken>`
+
+**Rol Requerido:** Super Admin
+
+**Parámetros de URL:**
+
+| Parámetro | Descripción |
+|-----------|-------------|
+| `id` | UUID del usuario |
+
+**Cuerpo de la Solicitud:**
+
+```json
+{
+  "isActive": false
+}
+```
+
+**Respuesta (200):**
+
+```json
+{
+  "message": "user status updated",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "isActive": false
+  }
+}
+```
+
+---
+
+## Roles de Usuario
+
+| Rol | Descripción | Permisos |
+|------|-------------|------------|
+| `guest` | Usuario temporal | Solo unirse a salas |
+| `user` | Usuario regular | Crear/unirse a salas, administrar su propio perfil |
+| `admin` | Super Admin | Todos los permisos de usuario + administrar usuarios, ver todas las salas |
+
+### Crear un Admin
+
+Los usuarios administradores se crean a través de la CLI:
+
+```bash
+# Crear un usuario
+bedrud user create --email "admin@example.com" --password "securepassword" --name "Admin"
+
+# Promocionar a admin
+bedrud user promote --email "admin@example.com"
+```
+
+No hay un endpoint de API para promocionar usuarios - esto es intencional por seguridad.
+
+---
+
+## Respuestas de Error
+
+```json
+{
+  "error": "forbidden"
+}
+```
+
+| Estado | Significado |
+|--------|-------------|
+| 401 | No autenticado |
+| 403 | No es un Super Admin |
+| 404 | Usuario no encontrado |
+| 500 | Error interno del servidor |
+
+---
+
+## Véase también
+
+- [Handlers de API y Enrutamiento](/es/docs/backend/api-handlers) - cómo se implementan las rutas de administración
+- [API de Salas](/es/docs/api/rooms) - endpoints de gestión de salas

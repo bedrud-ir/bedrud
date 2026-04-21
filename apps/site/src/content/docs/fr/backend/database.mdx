@@ -1,0 +1,66 @@
+---
+title: Base de Données & Modèles
+description: Modèles de données et schéma de base de données
+order: 17
+---
+
+Bedrud utilise **GORM** comme ORM, supportant à la fois SQLite et PostgreSQL.
+
+## Bases de Données Supportées
+
+- **SQLite :** Utilisé par défaut pour un développement facile et les petites installations. La base de données est stockée dans un fichier (généralement `bedrud.db`).
+- **PostgreSQL :** Recommandé pour les environnements de production avec de nombreux utilisateurs.
+
+Vous pouvez configurer le type de base de données et les détails de connexion dans le fichier `config.yaml` sous la section `database:`.
+
+## Modèles Principaux
+
+Les modèles sont situés dans `internal/models/`. Voici les plus importants :
+
+### User (`user.go`)
+
+Stocke les informations du compte incluant les identifiants et les rôles.
+
+### Room (`room.go`)
+
+Représente une session de réunion. Il utilise les **Structs Intégrés (Embedded Structs)** de GORM pour organiser les paramètres.
+Au lieu d'une table séparée ou d'un blob JSON, les champs `RoomSettings` (comme `allow_chat`, `allow_video`) sont stockés directement dans la table `rooms` avec un préfixe `settings_` (ex: `settings_allow_chat`). Cela fournit un modèle propre en Go tout en maintenant une structure de base de données plate et performante.
+
+### Passkey (`passkey.go`)
+
+Stocke les clés publiques FIDO2/WebAuthn pour la connexion sans mot de passe.
+
+### Types Personnalisés : `StringArray`
+
+Les bases de données SQL standard gèrent les tableaux différemment (PostgreSQL a des tableaux natifs, SQLite non). Pour maintenir la compatibilité, Bedrud définit un type `StringArray` dans `internal/models/user.go`.
+
+- Il implémente `sql.Scanner` et `driver.Valuer`.
+- Dans **PostgreSQL**, il utilise le type natif `text[]`.
+- Dans **SQLite**, il sérialise le tableau en une chaîne (ex: `{admin,user}`) pour le stockage.
+
+### Gestion des Clés Étrangères
+
+Le `AutoMigrate` de GORM ne gère pas les clés primaires composites (ex: `room_participants`).
+
+Dans `internal/database/migrations.go`, Bedrud exécute manuellement des instructions `ALTER TABLE` pour s'assurer que les contraintes de clés étrangères (comme `ON DELETE CASCADE`) sont correctement appliquées en production (PostgreSQL).
+
+## Pattern Référentiel (Repository Pattern)
+
+Le backend utilise le **Pattern Référentiel** pour l'accès à la base de données. Les handlers n'appellent pas GORM directement - ils utilisent un référentiel.
+
+Exemple :
+```go
+// Dans le handler :
+user, err := h.userRepo.GetByEmail(email)
+
+// Dans le référentiel :
+func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+    var user models.User
+    err := r.db.Where("email = ?", email).First(&user).Error
+    return &user, err
+}
+```
+
+## Migrations Automatiques
+
+Lorsque le serveur démarre, il exécute automatiquement "AutoMigrate". Cela crée ou met à jour les tables de base de données basées sur les structures Go dans `internal/models`. Aucune instruction manuelle `CREATE TABLE` n'est requise pour les changements simples de schéma.

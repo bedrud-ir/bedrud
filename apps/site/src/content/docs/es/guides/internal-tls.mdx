@@ -1,0 +1,73 @@
+---
+title: TLS interno
+description: Certificados autofirmados para redes internas
+order: 30
+---
+
+Para redes aisladas - sin dominio público, sin internet saliente, conectividad restringida.
+
+Los navegadores requieren HTTPS de confianza para cámara/micrófono mediante WebRTC. Los certificados autofirmados funcionan pero muestran advertencias. Para una configuración limpia, genera una CA privada y distribúyela a los clientes.
+
+## Generar CA privada y certificado de servidor
+
+```bash
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=Bedrud Internal CA"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=<tu-ip-o-nombre-de-host-del-servidor>"
+openssl x509 -req -days 365 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+sudo ./bedrud install --tls --cert server.crt --key server.key --ip TU_IP_DEL_SERVIDOR
+```
+
+## Añadir la CA a los almacenes de confianza de los clientes
+
+Distribuye `ca.crt` a todas las máquinas cliente:
+
+### Windows
+
+```powershell
+certmgr.msc  # Clic derecho en ca.crt → Instalar certificado → CA raíz de confianza
+```
+
+### macOS
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt
+```
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
+sudo update-ca-certificates
+```
+
+### Linux (Arch/Fedora)
+
+```bash
+sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
+sudo update-ca-trust
+```
+
+Reinicia los navegadores y luego abre `https://TU_IP_DEL_SERVIDOR` (reemplaza con la dirección IP real del servidor, por ejemplo `192.168.1.100`). Después de reiniciar, el certificado será de confianza y el acceso a la cámara y al micrófono funcionará sin advertencias.
+
+## Solución de problemas
+
+| Problema | Solución |
+|----------|----------|
+| El navegador sigue advirtiendo que el certificado no es de confianza | Limpia la caché del navegador, reinícialo después de instalar la CA |
+| Cámara/micrófono bloqueado | Verifica que la CA esté en las CA raíz de confianza, no en intermedias |
+| Certificado caducado | Regenera con un valor de `-days` mayor |
+| Desajuste de CN | Asegúrate de que el CN del certificado del servidor coincida con la IP o el nombre de host en la URL |
+
+---
+
+## Consulta también
+- [Guía de instalación](/es/docs/getting-started/installation) - métodos de instalación
+- [Referencia de configuración](/es/docs/getting-started/configuration) - opciones completas de configuración

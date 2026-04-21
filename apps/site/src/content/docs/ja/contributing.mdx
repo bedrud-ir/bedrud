@@ -1,0 +1,108 @@
+---
+title: コントリビューション
+description: Bedrudへのコントリビューション方法
+order: 34
+---
+
+Bedrudへのコントリビューションをお待ちしております。このガイドでは変更を提出するまでのプロセスについて説明します。
+
+> **注意：** 公式のコントリビューションガイドはリポジトリのルートにあります：[CONTRIBUTING.md](https://github.com/bedrud-ir/bedrud/blob/main/CONTRIBUTING.md)。このページは参考用としてアーカイブされています。
+
+## はじめに
+
+1. リポジトリをフォークします
+2. フォークをクローンします
+3. `main` からフィーチャーブランチを作成します
+4. 変更を加えます
+5. プルリクエストを提出します
+
+## 前提条件
+
+- Go 1.22+
+- Bun（Webフロントエンド用）
+- Rust（デスクトップアプリ用）
+- Make
+- Git
+
+## 開発環境のセットアップ
+
+```bash
+# GitHubでフォークした後、フォークをクローン
+git clone https://github.com/<your-username>/bedrud.git
+cd bedrud
+make init
+make dev
+```
+
+詳細なセットアップ手順については、[開発ワークフロー](/ja/docs/guides/development)を参照してください。
+
+## プロジェクト構成
+
+| ディレクトリ       | 言語         | 説明                      |
+|-----------------|------------------|----------------------------------|
+| `server/`       | Go               | バックエンドAPIと組み込みLiveKit |
+| `apps/web/`     | TypeScript/React | Webフロントエンド                     |
+| `apps/desktop/` | Rust + Slint     | デスクトップアプリ                      |
+| `apps/android/` | Kotlin           | Androidアプリ                      |
+| `apps/ios/`     | Swift            | iOSアプリ                          |
+| `agents/`       | Python           | ボットエージェント                       |
+| `packages/`     | TypeScript       | 共有型定義          |
+| `tools/cli/`    | Python           | デプロイCLI                   |
+| `docs/`         | Markdown         | ドキュメント                    |
+
+## コードスタイル
+
+| 言語         | 規準                |
+|------------------|-------------------------|
+| Go               | `gofmt`                 |
+| TypeScript/React | Biome                   |
+| Kotlin           | Android Studioのデフォルト |
+| Swift            | Xcodeのデフォルト          |
+| Python           | ruff                    |
+
+## プルリクエストのプロセス
+
+1. **ブランチの命名：** `feature/description`、`fix/description`、または `docs/description`
+2. **コミットメッセージ：** `<action> <what> for <why>`（例：`add user model for auth feature`、`fix login redirect for expired sessions`）
+3. **CIチェック：** すべてのGitHub Actionsチェックをパスする必要があります
+4. **説明：** 変更内容と理由を含めてください
+
+### CIチェック
+
+すべてのPRで以下のチェックが自動的に実行されます：
+
+| チェック   | 検証内容            |
+|---------|------------------------------|
+| Server  | `go vet`、ビルド、テスト       |
+| Web     | TypeScript型チェック、ビルド |
+| Android | Lint、ユニットテスト             |
+| iOS     | ビルド、テスト（シミュレーター）      |
+
+## バグ報告
+
+[GitHub Issues](https://github.com/bedrud-ir/bedrud/issues)に以下の情報を含めてIssueを報告してください：
+
+- 再現手順
+- 期待される動作と実際の動作
+- 環境情報（OS、ブラウザ、アプリバージョン）
+
+## ドキュメント
+
+ドキュメントは `docs/` ディレクトリにあり、[MkDocs Material](https://squidfunk.github.io/mkdocs-material/) でビルドされています。
+
+### ローカルプレビュー
+
+```bash
+pip install mkdocs-material
+mkdocs serve
+```
+
+その後、ブラウザで `http://localhost:8000` を開きます。
+
+### 構成
+
+ドキュメントページはトピックごとに整理されています。ナビゲーションはプロジェクトルートの `mkdocs.yml` で定義されています。
+
+## ライセンス
+
+コントリビューションすることで、あなたの贡献物が[Apache License 2.0](https://github.com/bedrud-ir/bedrud/blob/main/LICENSE)の下でライセンスされることに同意したものとみなされます。

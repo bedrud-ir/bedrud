@@ -1,0 +1,72 @@
+---
+title: Sujets Avancés
+description: Fonctionnalités avancées du backend
+order: 22
+---
+
+Ce document couvre les décisions techniques internes derrière l'architecture binaire unique de Bedrud.
+
+## 1. Le Pont Fiber-vers-Standard
+
+Bedrud utilise **Fiber** pour sa rapidité, mais certaines dépendances comme **Goth** (OAuth) et **LiveKit SDK** (Twirp) s'attendent aux `http.ResponseWriter` et `http.Request` standard de Go.
+
+Pour relier ces deux mondes, Bedrud implémente un **Pattern Adaptateur** dans `internal/handlers/auth.go` :
+
+### Adaptateur `responseWriter`
+```go
+type responseWriter struct {
+    ctx     *fiber.Ctx
+    headers http.Header
+    status  int
+}
+```
+Cette structure implémente l'interface `http.ResponseWriter`. Lorsqu'une fonction de la bibliothèque standard (comme Goth) appelle `Header().Add()`, l'adaptateur le stocke dans une map locale `headers`. Lorsque `WriteHeader()` est appelé, il copie manuellement tous les en-têtes dans le **Contexte Fiber**.
+
+### Objectif
+Il permet à Bedrud de rester extrêmement rapide (en utilisant Fiber) tout en maintenant une compatibilité complète avec le vaste écosystème de bibliothèques web Go standard.
+
+## 2. Proxy Inverse LiveKit
+
+Bedrud évite les problèmes de gestion de port en acheminant tout le signal média via son port principal.
+
+### Comment cela fonctionne :
+
+1.  **Détection :** Si `LIVEKIT_INTERNAL_HOST` pointe vers `127.0.0.1`, Bedrud démarre le moteur média interne.
+2.  **Montage :** Il monte un `httputil.NewSingleHostReverseProxy` sur la route `/livekit`.
+3.  **Suppression de Chemin :** Une fonction **Director** personnalisée est utilisée pour supprimer le préfixe `/livekit` afin que le serveur média reçoive la requête comme si elle était à la racine.
+4.  **Support WebSocket :** Puisque le proxy opère sur le flux TCP sous-jacent via `adaptor.HTTPHandler`, il supporte nativement les WebSockets utilisés par LiveKit pour la signalisation en temps réel.
+
+## 3. Efficacité de Stockage : Structs Intégrés
+
+Bedrud utilise largement le tag `embedded` de GORM pour garder le schéma de base de données plat et optimisé.
+
+**Exemple de `models/room.go` :**
+```go
+type Room struct {
+    ID       string       `gorm:"primaryKey"`
+    Settings RoomSettings `gorm:"embedded;embeddedPrefix:settings_"`
+}
+```
+Cela fait en sorte que GORM crée des colonnes comme `settings_allow_chat` directement dans la table `rooms`. C'est plus rapide qu'un `JOIN` et plus recherchable qu'un blob `JSON`.
+
+## 4. Infrastructure de Tests
+
+Bedrud suit une stratégie de test "DB-First" en utilisant le package `internal/testutil`.
+
+### Logique `SetupTestDB` :
+
+- Crée une base de données **SQLite en mémoire** unique pour chaque test.
+- Exécute automatiquement toutes les migrations.
+- Fournit une table rase, assurant que les tests sont déterministes et peuvent s'exécuter en parallèle.
+
+Pour exécuter les tests backend :
+```bash
+go test ./internal/...
+```
+
+## 5. Sécurité : Rotation et Révocation de Jetons
+
+Contrairement aux implémentations JWT simples, Bedrud fait tourner **les deux** jetons à chaque rafraîchissement.
+
+- **Détection de Réutilisation de Jeton de Rafraîchissement :** Une fois qu'un jeton de rafraîchissement est utilisé pour obtenir une nouvelle paire, il est bloqué.
+- **Nettoyage :** La table `BlockedRefreshToken` garantit que même si un jeton de rafraîchissement est volé, il ne peut pas être utilisé après que l'utilisateur s'est déconnecté proprement ou a rafraîchi sa session.

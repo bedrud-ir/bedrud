@@ -1,0 +1,197 @@
+---
+title: Passkeys API
+description: FIDO2/WebAuthn entegrasyonu
+order: 26
+---
+
+FIDO2/WebAuthn passkey uç noktaları, kullanıcıların biyometrik veya güvenlik anahtarları kullanarak kayıt olmasına ve kimlik doğrulaması yapmasına olanak tanır.
+
+## Genel Bakış
+
+Passkey akışları, her biri iki aşamalı bir challenge-response protokolü kullanır:
+
+| Akış | Aşama 1 (Başlat) | Aşama 2 (Tamamla) |
+|------|-------------------|-------------------|
+| Kayıt | `POST /api/auth/passkey/register/begin` | `POST /api/auth/passkey/register/finish` |
+| Giriş | `POST /api/auth/passkey/login/begin` | `POST /api/auth/passkey/login/finish` |
+
+---
+
+## Kayıt Akışı
+
+Kullanıcılar passkey kaydetmek için giriş yapmış olmalıdır (mevcut hesaplarına bağlanır).
+
+### Adım 1: Kaydı Başlat
+
+```
+POST /api/auth/passkey/register/begin
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**Yanıt (200):**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rp": {
+      "name": "Bedrud",
+      "id": "meet.example.com"
+    },
+    "user": {
+      "id": "base64url-encoded-user-id",
+      "name": "user@example.com",
+      "displayName": "John Doe"
+    },
+    "pubKeyCredParams": [
+      { "type": "public-key", "alg": -7 },
+      { "type": "public-key", "alg": -257 }
+    ],
+    "authenticatorSelection": {
+      "userVerification": "preferred"
+    }
+  }
+}
+```
+
+Bunu tarayıcının WebAuthn API'sine iletin:
+
+```javascript
+const credential = await navigator.credentials.create({
+  publicKey: response.publicKey
+});
+```
+
+### Adım 2: Kaydı Tamamla
+
+```
+POST /api/auth/passkey/register/finish
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**İstek Gövdesi:** Tarayıcıdan gelen credential yanıtı, base64url ile kodlanmış:
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "attestationObject": "base64url-attestation",
+    "clientDataJSON": "base64url-client-data"
+  },
+  "type": "public-key"
+}
+```
+
+**Yanıt (200):**
+
+```json
+{
+  "message": "passkey registered"
+}
+```
+
+---
+
+## Giriş Akışı
+
+### Adım 1: Girişi Başlat
+
+```
+POST /api/auth/passkey/login/begin
+```
+
+Kimlik doğrulaması gerekmez.
+
+**Yanıt (200):**
+
+```json
+{
+  "publicKey": {
+    "challenge": "base64url-encoded-challenge",
+    "rpId": "meet.example.com",
+    "userVerification": "preferred"
+  }
+}
+```
+
+Bunu tarayıcının WebAuthn API'sine iletin:
+
+```javascript
+const assertion = await navigator.credentials.get({
+  publicKey: response.publicKey
+});
+```
+
+### Adım 2: Girişi Tamamla
+
+```
+POST /api/auth/passkey/login/finish
+```
+
+**İstek Gövdesi:** Tarayıcıdan gelen assertion yanıtı:
+
+```json
+{
+  "id": "credential-id",
+  "rawId": "base64url-raw-id",
+  "response": {
+    "authenticatorData": "base64url-auth-data",
+    "clientDataJSON": "base64url-client-data",
+    "signature": "base64url-signature"
+  },
+  "type": "public-key"
+}
+```
+
+**Yanıt (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
+```
+
+---
+
+## Güvenlik
+
+| Önlem | Açıklama |
+|-------|----------|
+| Challenge/Response | Oturumda saklanan sunucu tarafından oluşturulan rastgele challenge'lar |
+| Köken Doğrulama | Katı köken ve Relying Party ID doğrulaması |
+| Sayaç Doğrulama | Kopyalanmış authenticator'lara karşı koruma |
+| Güvenli Aktarım | URL uyumlu base64 kodlaması ile HTTPS için tasarlanmıştır |
+
+## Uygulama Detayları
+
+- **Backend:** Saf Go WebAuthn doğrulaması için `go-passkeys/go-passkeys` kullanır
+- **Oturum Depolama:** Challenge'lar Gorilla oturumlarında saklanır (`gothic.Store` üzerinden)
+- **Veritabanı:** Passkey kimlik bilgileri `Passkey` modelinde saklanır (credential ID, açık anahtar, sayaç)
+- **Frontend (Web):** `src/lib/auth.ts` içindeki base64url yardımcıları ile `navigator.credentials` API'si
+- **Android:** Yerel passkey desteği için Credentials API
+- **iOS:** Passkey desteği için ASAuthorizationController
+
+## Nasıl Test Edilir
+
+1. Mevcut bir hesapla giriş yapın
+2. Passkey kayıt düğmesine tıklayın (başlık/kontrol panelindeki parmak izi simgesi)
+3. Biyometrik istemi tamamlayın
+4. Çıkış yapın
+5. Giriş sayfasında "Passkey ile Giriş Yap"a tıklayın
+6. Kimlik doğrulaması için biyometrik istemi tamamlayın
+
+---
+
+## Ayrıca bakınız
+
+- [Kimlik Doğrulama Akışı](/tr/docs/backend/authentication) - passkey kayıt/giriş seremonilerinin açıklaması
+- [Kimlik Doğrulama API'si](/tr/docs/api/authentication) - tüm kimlik doğrulama uç noktaları

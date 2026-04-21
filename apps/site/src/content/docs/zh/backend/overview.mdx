@@ -1,0 +1,49 @@
+---
+title: Backend Documentation
+description: Overview of the Bedrud backend system architecture
+order: 15
+---
+
+## 简介
+Bedrud 后端是一个使用 **Go 1.24+** 编写的单二进制会议平台。所有依赖--媒体服务器、Web 前端、TURN 服务器--都打包在一个可执行文件中。
+
+### 核心技术
+- **核心框架：** [Fiber v2](https://gofiber.io/)（零分配路由器，类 Express API）。
+- **数据库层：** [GORM](https://gorm.io/)，支持 **SQLite**（标准）和 **PostgreSQL**（生产环境）。
+- **媒体引擎：** [LiveKit](https://livekit.io/)（作为内嵌二进制文件打包）。
+- **认证系统：** 多层认证，支持 JWT、OAuth2（Google/GitHub/Twitter）以及无密码 FIDO2 Passkeys。
+- **内嵌静态资源：** 使用 Go 1.16+ 的 `embed` 包打包 React 前端（SSR 预渲染的客户端资源）。
+- **部署：** 集成 Debian/Ubuntu 自动安装器，支持 systemd 编排和 ACME（Let's Encrypt）。
+
+## 为什么采用这种架构？
+WebRTC 平台通常为信令、TURN、Web 服务和数据库管理运行独立的服务。Bedrud 通过以下方式将这些整合到一个二进制文件中：
+
+1.  在运行时**提取**媒体服务器二进制文件。
+2.  通过主 HTTP(S) 端口**代理**媒体流量。
+3.  通过二进制文件本身**自动化**操作系统级别的配置（SSL、systemd）。
+
+## 高层架构
+后端遵循标准的分层架构：
+
+1.  **服务器层（`internal/server`）：** 设置 Fiber 应用、路由和 middleware。
+2.  **Handler 层（`internal/handlers`）：** 管理 HTTP 请求和响应。
+3.  **Repository 层（`internal/repository`）：** 使用 GORM 处理数据库查询。
+4.  **Model 层（`internal/models`）：** 定义数据库表和 Go 结构体。
+5.  **服务/逻辑层：** 为简洁起见集成到 handler 和 repository 中，并提供专门的包如 `internal/auth` 和 `internal/livekit`。
+
+## 主入口
+应用程序从 `server/cmd/bedrud/main.go` 启动。它有三种主要模式：
+
+- `run`：启动完整的会议服务器。
+- `livekit`：仅启动内嵌的媒体服务器。
+- `install`：在 Debian/Ubuntu 系统上自动配置服务器。
+
+## 文档章节
+- [**代码结构**](/zh/docs/backend/structure)：各文件位于何处？
+- [**数据库与模型**](/zh/docs/backend/database)：数据如何存储？
+- [**认证**](/zh/docs/backend/authentication)：用户如何登录？
+- [**API Handler**](/zh/docs/backend/api-handlers)：请求如何处理？
+- [**LiveKit 集成**](/zh/docs/backend/livekit)：视频服务器如何工作？
+- [**WebRTC 连接**](/zh/docs/architecture/webrtc-connectivity)：客户端如何建立媒体连接？（STUN/ICE/TURN/SFU）
+- [**TURN 服务器**](/zh/docs/architecture/turn-server)：TURN 中继架构、配置和故障排除
+- [**安装与部署**](/zh/docs/backend/deployment)：自动安装器如何工作？

@@ -1,0 +1,97 @@
+---
+title: LiveKit Entegrasyonu
+description: WebRTC medya sunucusu entegrasyonu
+order: 20
+---
+
+Bedrud, gerçek zamanlı video ve ses iletişimini yönetmek için **LiveKit** kullanır. LiveKit SFU (Seçici İletim Birimi) medya sunucusunu sağlar; Bedrud ise kimlik doğrulama, oda yönetimi ve yönetici kontrollerini üstlenir.
+
+## Gömülü ve Harici Modlar
+
+Bedrud iki LiveKit dağıtım modunu destekler:
+
+1.  **Gömülü Mod (Varsayılan):** Arka uç, bir LiveKit sunucu sürecini dahili olarak başlatır ve yönetir. Ek bir altyapı gerekmez - arka uç LiveKit süreç yaşam döngüsünü halleder.
+2.  **Harici Mod:** Bedrud ayrı bir LiveKit sunucusuna veya kümesine bağlanır. Bu, yatay ölçeklendirme veya yönetilen bir LiveKit Cloud örneği kullanıldığında faydalıdır.
+
+### Harici Modu Yapılandırma
+
+Harici bir LiveKit sunucusu kullanmak için `config.yaml` dosyasında şu anahtarları ayarlayın:
+
+```yaml
+livekit:
+  host: "livekit.example.com:7880"
+  api_key: "your-api-key"
+  api_secret: "your-api-secret"
+  embedded: false
+```
+
+`embedded` `false` olduğunda, Bedrud gömülü LiveKit ikili dosyasını başlatmayı atlar. API anahtarı ve gizli anahtar, harici sunucunun kimlik bilgileriyle eşleşmelidir.
+
+LiveKit küme kurulumu ve yapılandırması için [LiveKit dokümantasyonuna](https://docs.livekit.io) bakın.
+
+## Nasıl Çalışır
+
+### 1. Oda Oluşturma
+
+Bir kullanıcı Bedrud'da oda oluşturduğunda, sunucu hemen bir LiveKit odası oluşturmaz. LiveKit odaları ilk katılımcı katıldığında talep üzerine oluşturulur.
+
+### 2. Katılım Jetonları
+
+Bir kullanıcı bir toplantıya katıldığında:
+
+1.  Ön uç `/api/room/join` uç noktasına bir istek gönderir.
+2.  Arka uç, kullanıcın o odaya katılma izni olduğunu doğrular.
+3.  Arka uç, API Anahtarını ve Gizli Anahtarını kullanarak imzalı bir JWT (Katılım Jetonu) üretir.
+4.  Jeton şunları içerir:
+
+    - Oda adı.
+    - Kullanıcının kimliği (görünen ad).
+    - İzinler - örneğin, kullanıcının ses yayımlayıp yayımlayamayacağı veya ekranını paylaşabileceği.
+5.  Ön uç bu jetonu alır ve doğrudan LiveKit medya portuna (varsayılan `7880`) bağlanır.
+
+### 3. Oda Kontrolleri (Yönetici)
+
+Arka uç, yönetimsel eylemleri gerçekleştirmek için LiveKit Go SDK'sını kullanır:
+
+- **Atma:** Bir katılımcının bağlantısını keser.
+- **Sessize Alma:** Bir katılımcının mikrofonunu zorla sessize alır.
+- **İzinler:** Bir katılımcının gerçek zamanlı olarak neler yapabileceğini değiştirir.
+
+## Ağ Mimarisi
+
+- **API Portu (8090/443):** HTTP isteklerini ve arama kurulumu için WebSocket sinyalleşmesini yönetir.
+- **Medya Portu (7880):** WebRTC protokollerini kullanarak video ve ses verilerini yönetir. UDP engellendiğinde ICE/TCP yedek portu olarak 7881 kullanılır.
+- **TURN Portu (3478 UDP / 5349 TLS):** Kısıtlayıcı NAT veya güvenlik duvarları arkasındaki istemciler için medyayı aktarır. Bkz. [TURN Sunucu Kılavuzu](/tr/docs/architecture/turn-server).
+
+Güvenlik duvarı ve port gereksinimleri için bkz. [WebRTC Bağlantısı](/tr/docs/architecture/webrtc-connectivity).
+
+## Hata İşleme
+
+### LiveKit Erişilemez
+
+LiveKit sunucusu erişilemez durumdaysa, jeton üretimi yine başarılı olabilir (jetonlar API anahtarı ve gizli anahtar kullanılarak yerel olarak oluşturulur). Ancak istemci medya sunucusuna bağlanamaz. Belirtiler:
+
+- İstemci geçerli bir katılım jetonu alır ancak WebRTC bağlantısı zaman aşımına uğrar.
+- LiveKit SDK bir `Reconnecting` olayı veya bağlantı hatası yayınlar.
+
+**Kontrol:** LiveKit sunucusunun çalıştığını (`systemctl status livekit`) ve `config.yaml` dosyasındaki ana makine/port bilgisinin doğru olduğunu doğrulayın.
+
+### Gömülü LiveKit Süreci Çökmeleri
+
+Gömülü modda, LiveKit alt süreci çökerse:
+
+- Bedrud API sunucusu çalışmaya devam eder (odalar listelenebilir, kullanıcılar giriş yapabilir).
+- Aktif toplantılar medya bağlantısını kaybeder.
+- Yeni katılım istekleri jeton üretir, ancak istemciler bağlanamaz.
+
+**Kontrol:** `/var/log/bedrud/bedrud.log` konumundaki günlükleri inceleyin veya çökme detayları için `journalctl -u livekit -f` komutunu çalıştırın.
+
+### Jeton Sona Ermesi
+
+LiveKit katılım jetonlarının geçerlilik süresi kısadır. Bir istemci jetonu aldıktan sonra bağlanmak arasında çok uzun süre beklerse, jeton sona erer. İstemci `/api/room/join` uç noktası üzerinden yeni bir jeton talep etmelidir.
+
+## Ayrıca bakınız
+
+- [TURN Sunucu Kılavuzu](/tr/docs/architecture/turn-server) - TURN mimarisi, yapılandırma, TLS ve sorun giderme
+- [WebRTC Bağlantısı](/tr/docs/architecture/webrtc-connectivity) - tam STUN/ICE/TURN/SFU bağlantı yığını
+- [Mimari Genel Bakış](/tr/docs/architecture/overview) - tam sistem mimarisi

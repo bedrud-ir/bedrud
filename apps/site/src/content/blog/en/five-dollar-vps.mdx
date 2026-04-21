@@ -1,0 +1,73 @@
+---
+title: "Running Bedrud on a $5 VPS: A Practical Guide"
+description: "Step-by-step guide to deploying Bedrud on Hetzner, DigitalOcean, or any budget VPS provider."
+date: "2026-03-15"
+author: "Bedrud Team"
+tags: ["guide", "deployment", "self-hosting"]
+---
+
+One of Bedrud's core promises: run video meetings on any cheap VPS. Here's how to actually do it.
+
+## Requirements
+
+- **CPU**: 1 vCPU (any modern x86_64 or ARM64)
+- **RAM**: 512MB minimum, 1GB recommended for 20+ concurrent users
+- **Disk**: 500MB for the binary + logs
+- **OS**: Any 64-bit Linux (Ubuntu, Debian, CentOS, AlmaLinux)
+
+## Step 1: Get a VPS
+
+We tested with these providers:
+
+| Provider | Plan | Price | Specs |
+|----------|------|-------|-------|
+| Hetzner | CX22 | €4.15/mo | 2 vCPU, 4GB RAM |
+| DigitalOcean | Basic | $6/mo | 1 vCPU, 1GB RAM |
+| Vultr | Regular | $5/mo | 1 vCPU, 1GB RAM |
+
+Any of these work. Hetzner gives you the best bang for buck.
+
+## Step 2: Install Bedrud
+
+```bash
+curl -fsSL https://get.bedrud.org | bash
+```
+
+The script detects your OS, downloads the correct binary, and installs it to `/usr/local/bin/bedrud`.
+
+## Step 3: Configure DNS
+
+Point your domain to the VPS IP:
+
+```
+meet.example.com  A  1.2.3.4
+```
+
+## Step 4: Start the Server
+
+```bash
+bedrud serve --domain meet.example.com --tls auto
+```
+
+The `--tls auto` flag provisions a Let's Encrypt certificate automatically.
+
+## Step 5: Create Your First Meeting
+
+Open `https://meet.example.com` in a browser. Click "New Meeting". Share the link. Done.
+
+## Performance Tips
+
+- **Enable JITSI-style last-n**: Limits video streams sent to each participant. Reduces bandwidth usage by ~60% in large meetings.
+- **Set max bitrate**: `--max-bitrate 1500` caps video at 1.5 Mbps per participant.
+- **Use TURN for NAT traversal**: Add `--turn-server turn:your-turn-server:3478` if participants are behind strict firewalls.
+
+## Monitoring
+
+Bedrud exposes a `/metrics` endpoint in Prometheus format. Track:
+
+- Active rooms and participants
+- Media bitrate per room
+- Error rates and connection failures
+- Memory and CPU usage
+
+That's it. Video meetings on a $5 VPS. No Docker, no config files, no ops team required.

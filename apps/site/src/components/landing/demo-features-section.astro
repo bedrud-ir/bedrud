@@ -1,0 +1,67 @@
+---
+import { Icon } from "astro-icon/components";
+import { type Locale, t } from "../../i18n/utils";
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+
+const features = [
+  {
+    key: "instantJoin",
+    icon: "lucide:play",
+    iconBg: "bg-blue-500/10 dark:bg-blue-500/15",
+    iconColor: "text-blue-600 dark:text-blue-400",
+  },
+  {
+    key: "noAccount",
+    icon: "lucide:user-x",
+    iconBg: "bg-violet-500/10 dark:bg-violet-500/15",
+    iconColor: "text-violet-600 dark:text-violet-400",
+  },
+  {
+    key: "webrtc",
+    icon: "lucide:wifi",
+    iconBg: "bg-emerald-500/10 dark:bg-emerald-500/15",
+    iconColor: "text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    key: "e2e",
+    icon: "lucide:lock",
+    iconBg: "bg-amber-500/10 dark:bg-amber-500/15",
+    iconColor: "text-amber-600 dark:text-amber-400",
+  },
+];
+---
+
+<section class="relative scroll-mt-20 section-y">
+  <div class="section-container">
+    <div class="max-w-lg">
+      <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
+        {t(lang, "demoPage.preview.caption")}
+      </h2>
+      <p class="mt-4 text-lg text-muted-foreground">
+        {t(lang, "demoPage.hero.subtitle")}
+      </p>
+    </div>
+
+    <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-2">
+      {features.map(({ key, icon, iconBg, iconColor }) => (
+        <div class="group relative rounded-2xl bg-card p-7 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08)] transition-[shadow] duration-300 hover:shadow-[0px_0px_0px_1px_rgba(0,0,0,0.12),0px_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.1)] dark:hover:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.14),0px_2px_4px_rgba(0,0,0,0.2)] sm:p-8">
+          <div class={`inline-flex size-11 items-center justify-center rounded-xl ${iconBg}`}>
+            <Icon name={icon} class={`size-5 ${iconColor}`} stroke-width="1.5" />
+          </div>
+
+          <h3 class="mt-5 text-[17px] font-semibold tracking-tight">
+            {t(lang, `demoPage.features.${key}.title`)}
+          </h3>
+          <p class="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+            {t(lang, `demoPage.features.${key}.description`)}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

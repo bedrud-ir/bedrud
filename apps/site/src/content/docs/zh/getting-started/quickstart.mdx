@@ -1,0 +1,256 @@
+---
+title: Quick Start
+description: Deploy Bedrud and join a video meeting in under 5 minutes
+order: 1
+---
+
+5 分钟内部署 Bedrud 并加入视频会议。
+
+**本指南：**
+
+1. **获取 CLI** — 一键安装（或手动下载）
+2. **部署服务器** — `bedrud install` 完成全部配置
+3. **验证** — 确认服务正常运行
+4. **创建管理员并加入** — 打开浏览器，提升权限，开始会议
+
+**更多信息：**
+
+- [CLI 安装程序](/zh/docs/getting-started/cli-installer) — 参数、平台、离线安装
+- [服务器安装](/zh/docs/getting-started/installation) — 包管理器、Docker、高级选项
+- [配置](/zh/docs/getting-started/configuration) — 端口、数据库、身份验证、TURN
+
+> **单二进制文件，下载后无需联网。** 内置媒体服务器和 SQLite - 可在隔离网络中运行。传输文件，执行一条命令即可。
+
+---
+
+## 所需环境
+
+| 需求 | 详情 |
+|------|------|
+| 一台 Linux 服务器 | amd64 或 arm64，需要 `sudo` 权限和 `systemd`。服务器部署需要 Linux。macOS/Windows 用户请使用 Docker 或 WSL2 |
+| 开放端口 | `8090`、`7880`、`50000–60000/udp`。自动 TLS 还需开放 `80` 和 `443` |
+| 域名（可选） | 需配置 DNS A record 指向你的服务器。没有域名？可直接使用 IP - 参见下方替代方案 |
+
+> **工作原理：** 你运行一个 Bedrud **服务器**。参与者通过**浏览器**加入会议（无需安装）或通过**原生应用**（Android、Windows、macOS、Linux）。
+
+---
+
+## 1. 获取 Bedrud CLI
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="macos-linux">macOS / Linux</TabsTrigger>
+    <TabsTrigger value="windows">Windows (PowerShell)</TabsTrigger>
+    <TabsTrigger value="manual">手动下载</TabsTrigger>
+  </TabsList>
+  <TabsContent value="macos-linux">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    安装后重新加载 shell：
+
+    ```bash
+    source ~/.bashrc  # 或 ~/.zshrc
+    ```
+
+    验证：
+
+    ```bash
+    bedrud --version
+    ```
+
+    更多参数（`--version`、`--install-dir`、`--skip-shell`、离线安装），请参阅 [CLI 安装程序](/zh/docs/getting-started/cli-installer)。
+  </TabsContent>
+  <TabsContent value="windows">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    ```
+
+    关闭并重新打开终端，然后验证：
+
+    ```powershell
+    bedrud --version
+    ```
+  </TabsContent>
+  <TabsContent value="manual">
+
+    手动下载并解压。将 `linux_amd64` 替换为你的平台（`linux_arm64`、`darwin_amd64`、`darwin_arm64`）：
+
+    ```bash
+    curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+    tar -xJf bedrud.tar.xz
+    chmod +x bedrud
+    sudo mv bedrud /usr/local/bin/
+    ```
+
+    所有平台目标，请参阅 [CLI 安装程序](/zh/docs/getting-started/cli-installer#platform-targets)。
+
+    > **服务器没有网络？** 在任意机器上下载，通过 USB 或 `scp bedrud.tar.xz user@server:/tmp/` 传输，然后在服务器上解压。二进制文件完全自包含 - 传输后不会产生任何出站请求。
+
+    > **下载失败？** 检查网络连接，或在 [github.com/bedrud-ir/bedrud/releases](https://github.com/bedrud-ir/bedrud/releases/latest) 验证 URL。
+  </TabsContent>
+</Tabs>
+
+---
+
+## 2. 部署服务器
+
+> **服务器部署需要 Linux 和 systemd。** macOS 和 Windows 不支持 `bedrud install` — 请使用 [Docker](#docker) 或 [WSL2](#非-linux-系统)。
+
+将 `meet.example.com` 和 `admin@example.com` 替换为你的实际值：
+
+```bash
+sudo bedrud install --tls --domain meet.example.com --email admin@example.com
+```
+
+将服务器二进制文件安装到 `/usr/local/bin`，生成配置，创建 systemd 服务，配置 TLS，启动所有服务。
+
+> **端口 80 或 443 被占用？** 停止冲突服务：`sudo systemctl stop nginx apache2 caddy`，然后重新运行。
+
+> **没有域名？** 使用服务器 IP 代替：
+> ```bash
+> sudo bedrud install --tls --ip 1.2.3.4
+> ```
+> 这将使用 self-signed certificate。浏览器会显示警告，但视频功能正常。内网可信证书请参阅[内网 TLS 指南](/zh/docs/guides/internal-tls)。
+
+---
+
+## 3. 验证
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+```
+
+预期结果：`200`
+
+> **不是 200？** 检查服务状态：`sudo systemctl status bedrud livekit`。查看日志：`journalctl -u bedrud -u livekit --no-pager -n 50`。
+
+---
+
+## 4. 注册并创建管理员
+
+在浏览器中打开 `https://meet.example.com`（或 `https://<你的IP>:8090`）：
+
+<CreateAdmin createOption />
+
+1. 登录（或刷新页面）- 侧边栏中出现**管理员**区域（概览、用户、房间、设置）。成功：你已成为管理员。
+2. **创建房间** → **加入** → **共享视频/音频** - 根据提示授予摄像头/麦克风权限
+
+> **管理面板** - 提升权限后，登录即可访问 `/dashboard/admin` 管理面板。管理用户、房间、系统设置和邀请令牌。
+
+> **CLI 参考** - 完整的用户管理：`bedrud user promote`、`demote`、`create`、`delete`。
+
+Android、Windows、macOS 和 Linux **原生客户端**：[GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest)。或者直接分享会议链接 - 参与者在任意浏览器中即可加入。
+
+---
+
+## 其他安装方式
+
+### Docker
+
+```bash
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+自定义配置、Docker Compose 和环境变量：参见 [Docker 指南](/zh/docs/guides/docker)。
+
+### 从源码构建
+
+需要 [Go 1.24+](https://go.dev/dl/) 和 [Bun](https://bun.sh/)：
+
+```bash
+git clone https://github.com/bedrud-ir/bedrud.git
+cd bedrud
+make init
+make local-run
+```
+
+`make init` 安装 LiveKit、创建配置、获取依赖。`make local-run` 构建并在 `http://localhost:8090` 上启动。
+
+### 纯 HTTP（仅开发/localhost）
+
+```bash
+sudo ./bedrud install --ip 127.0.0.1
+```
+
+> **警告：** 除 `localhost` 外，浏览器会阻止非 HTTPS 上的摄像头/麦克风。HTTP 仅用于开发。
+
+### 非 Linux 系统
+
+`bedrud install` 命令会设置 systemd 服务，仅限 Linux。CLI 安装程序（步骤 1）适用于所有平台，并自动将二进制文件放入 PATH。服务器部署请使用 Docker 或 WSL2。
+
+| 操作系统 | 方式 |
+|----------|------|
+| macOS | CLI 安装程序自动安装到 `~/bin/` |
+| Windows | CLI 安装程序自动安装到 `%USERPROFILE%\bin\` |
+| Docker | 适用于安装了 Docker 的任何操作系统（见上方） |
+
+---
+
+## 内网部署
+
+没有公网域名或出站网络？参阅[内网 TLS 指南](/zh/docs/guides/internal-tls)了解私有 CA 配置和客户端信任存储设置。
+
+---
+
+## 配置
+
+安装程序会生成 `/etc/bedrud/config.yaml`。默认配置适用于大多数场景。
+生产环境中请更改 `jwtSecret` 和 `sessionSecret`，然后重启：
+
+```bash
+sudo systemctl restart bedrud livekit
+```
+
+要调整房间容量、超时时间或媒体端口，请参阅[配置中的 LiveKit 部分](/zh/docs/getting-started/configuration#livekit-configuration)。
+
+完整参考：[配置](/zh/docs/getting-started/configuration)
+
+---
+
+## 故障排除
+
+| 问题 | 解决方案 |
+|------|----------|
+| 端口 80/443 被占用 | `sudo systemctl stop nginx apache2 caddy` |
+| 服务无法启动 | `journalctl -u bedrud -u livekit --no-pager -n 50` |
+| TLS 证书错误 | 验证 DNS：`dig meet.example.com`。必须指向服务器 IP |
+| 无视频 / WebRTC 失败 | 摄像头需要 HTTPS。使用 `--tls`。在防火墙中开放 UDP 50000–60000 |
+| LiveKit 端口冲突 | 使用 `--lk-port`、`--lk-tcp-port`、`--lk-udp-port` 标志 |
+| 防火墙阻止媒体 | `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
+| self-signed certificate 警告 | 参见[内网 TLS 指南](/zh/docs/guides/internal-tls)了解私有 CA 配置 |
+
+---
+
+## 卸载
+
+```bash
+# Binary 安装
+sudo ./bedrud uninstall
+
+# Docker
+docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
+
+# 源码构建
+# Ctrl+C 停止，然后：make clean
+```
+
+---
+
+## 后续步骤
+
+- [CLI 安装程序参考](/zh/docs/getting-started/cli-installer) — 参数、平台目标、离线安装、故障排除
+- [配置参考](/zh/docs/getting-started/configuration) - 端口、数据库、身份验证提供者、TURN
+- [安装指南](/zh/docs/getting-started/installation) - 包管理器、高级标志、所有安装方式
+- [内网 TLS 指南](/zh/docs/guides/internal-tls) - 气隙部署、私有 CA
+- [部署指南](/zh/docs/guides/deployment) - 生产环境配置、反向代理、扩容
+- [架构概览](/zh/docs/architecture/overview) - 各组件如何协同工作
+- [API 文档](http://localhost:8090/api/swagger) - Swagger UI（需运行实例）

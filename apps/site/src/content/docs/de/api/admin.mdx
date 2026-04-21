@@ -1,0 +1,147 @@
+---
+title: Admin-API
+description: Administrative Vorgänge
+order: 25
+---
+
+Admin-Endpunkte befinden sich unter `/api/admin/`. Diese erfordern die Rolle **Super Admin**.
+
+## Übersicht
+
+| Endpunkt | Methode | Beschreibung |
+|----------|--------|-------------|
+| `/api/admin/users` | GET | Alle Benutzer auflisten |
+| `/api/admin/users/:id/status` | PUT | Benutzer aktivieren oder deaktivieren |
+
+---
+
+## Endpunkte
+
+### Alle Benutzer auflisten
+
+Eine Liste aller registrierten Benutzer abrufen.
+
+```
+GET /api/admin/users
+```
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Erforderliche Rolle:** Super Admin
+
+**Antwort (200):**
+
+```json
+{
+  "users": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "avatar": "https://...",
+      "role": "user",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": "uuid-2",
+      "email": "admin@example.com",
+      "name": "Admin User",
+      "role": "admin",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-10T08:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### Benutzerstatus aktualisieren
+
+Ein Benutzerkonto aktivieren oder deaktivieren. Deaktivierte Benutzer können sich nicht anmelden.
+
+```
+PUT /api/admin/users/:id/status
+```
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Erforderliche Rolle:** Super Admin
+
+**URL-Parameter:**
+
+| Parameter | Beschreibung |
+|-----------|-------------|
+| `id` | Benutzer-UUID |
+
+**Anfrage-Body:**
+
+```json
+{
+  "isActive": false
+}
+```
+
+**Antwort (200):**
+
+```json
+{
+  "message": "user status updated",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "isActive": false
+  }
+}
+```
+
+---
+
+## Benutzerrollen
+
+| Rolle | Beschreibung | Berechtigungen |
+|------|-------------|------------|
+| `guest` | Vorübergehender Benutzer | Nur Räumen beitreten |
+| `user` | Regulärer Benutzer | Räume erstellen/beitreten, eigenes Profil verwalten |
+| `admin` | Super Admin | Alle Benutzerberechtigungen + Benutzer verwalten, alle Räume einsehen |
+
+### Admin erstellen
+
+Admin-Benutzer werden über die CLI erstellt:
+
+```bash
+# Create a user
+bedrud user create --email "admin@example.com" --password "securepassword" --name "Admin"
+
+# Promote to admin
+bedrud user promote --email "admin@example.com"
+```
+
+Es gibt keinen API-Endpunkt zur Beförderung von Benutzern - dies ist aus Sicherheitsgründen beabsichtigt.
+
+---
+
+## Fehlerantworten
+
+```json
+{
+  "error": "forbidden"
+}
+```
+
+| Status | Bedeutung |
+|--------|---------|
+| 401 | Nicht authentifiziert |
+| 403 | Kein Super Admin |
+| 404 | Benutzer nicht gefunden |
+| 500 | Interner Serverfehler |
+
+---
+
+## Siehe auch
+
+- [API-Handler und Routing](/de/docs/backend/api-handlers) - wie Admin-Routen implementiert sind
+- [Räume-API](/de/docs/api/rooms) - Raumverwaltungs-Endpunkte

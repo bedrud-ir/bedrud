@@ -1,0 +1,271 @@
+---
+title: واجهة برمجة المصادقة
+description: نقاط نهاية المصادقة وطرقها
+order: 23
+---
+
+جميع نقاط نهاية المصادقة تحت `/api/auth/`.
+
+## نظرة عامة
+
+يدعم Bedrud عدة طرق للمصادقة:
+
+| الطريقة | نقطة النهاية | الوصف |
+|--------|----------|-------------|
+| البريد الإلكتروني/كلمة المرور | `POST /api/auth/login` | تسجيل الدخول التقليدي |
+| التسجيل | `POST /api/auth/register` | إنشاء حساب |
+| الضيف | `POST /api/auth/guest-login` | وصول مؤقت |
+| OAuth | `GET /api/auth/:provider/login` | تسجيل الدخول الاجتماعي |
+| مفاتيح المرور | `POST /api/auth/passkey/*` | FIDO2/WebAuthn |
+| تحديث الرمز | `POST /api/auth/refresh` | تجديد رمز الوصول |
+
+## تنسيق الرمز
+
+المصادقة الناجحة تُرجع زوجًا من رموز JWT:
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+- **رمز الوصول** - قصير الأمد، يُستخدم في رأس `Authorization`
+- **رمز التحديث** - طويل الأمد، يُستخدم للحصول على رموز وصول جديدة
+
+### استخدام الرموز
+
+أضف رمز الوصول في جميع الطلبات المُصدَّقة:
+
+```
+Authorization: Bearer <accessToken>
+```
+
+---
+
+## نقاط النهاية
+
+### التسجيل
+
+إنشاء حساب مستخدم جديد.
+
+```
+POST /api/auth/register
+```
+
+**نص الطلب:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "name": "John Doe"
+}
+```
+
+**الاستجابة (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### تسجيل الدخول
+
+المصادقة بالبريد الإلكتروني وكلمة المرور.
+
+```
+POST /api/auth/login
+```
+
+**نص الطلب:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**الاستجابة (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### تسجيل دخول الضيف
+
+الدخول كضيف دون إنشاء حساب. للضيوف صلاحيات محدودة.
+
+```
+POST /api/auth/guest-login
+```
+
+**نص الطلب:**
+
+```json
+{
+  "name": "Guest User"
+}
+```
+
+**الاستجابة (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "name": "Guest User",
+    "role": "guest"
+  }
+}
+```
+
+---
+
+### الحصول على المستخدم الحالي
+
+استرجاع ملف المستخدم المُصدَّق.
+
+```
+GET /api/auth/me
+```
+
+**الرؤوس:** `Authorization: Bearer <accessToken>`
+
+**الاستجابة (200):**
+
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "avatar": "https://...",
+  "role": "user",
+  "provider": "email"
+}
+```
+
+---
+
+### تحديث الرمز
+
+استبدال رمز التحديث برمز وصول جديد.
+
+```
+POST /api/auth/refresh
+```
+
+**نص الطلب:**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**الاستجابة (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ..."
+}
+```
+
+---
+
+### تسجيل الخروج
+
+إبطال رمز التحديث الحالي.
+
+```
+POST /api/auth/logout
+```
+
+**الرؤوس:** `Authorization: Bearer <accessToken>`
+
+**نص الطلب:**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**الاستجابة (200):**
+
+```json
+{
+  "message": "logged out"
+}
+```
+
+---
+
+### تسجيل دخول OAuth
+
+بدء تدفق OAuth مع مزوّد اجتماعي.
+
+```
+GET /api/auth/:provider/login
+```
+
+**المزوّدون المدعومون:**
+
+| المزوّد | المسار |
+|----------|------|
+| Google | `/api/auth/google/login` |
+| GitHub | `/api/auth/github/login` |
+| Twitter | `/api/auth/twitter/login` |
+
+يُعيد الخادم توجيه المستخدم إلى صفحة ترخيص المزوّد. بعد الموافقة، يُعيد المزوّد التوجيه إلى رابط الاستدعاء ويُرجع الخادم رموز JWT.
+
+---
+
+## استجابات الخطأ
+
+جميع نقاط نهاية المصادقة تُرجع الأخطاء بهذا التنسيق:
+
+```json
+{
+  "error": "invalid credentials"
+}
+```
+
+| الحالة | المعنى |
+|--------|---------|
+| 400 | طلب غير صالح (حقول مفقودة، خطأ في التحقق) |
+| 401 | بيانات اعتماد غير صالحة أو رمز منتهي الصلاحية |
+| 409 | البريد الإلكتروني مُسجَّل مسبقًا |
+| 500 | خطأ داخلي في الخادم |
+
+---
+
+## انظر أيضًا
+
+- [تدفق المصادقة](/ar/docs/backend/authentication) - كيف تعمل JWT وOAuth ومفاتيح المرور داخليًا
+- [واجهة برمجة مفاتيح المرور](/ar/docs/api/passkeys) - مرجع نقاط نهاية FIDO2/WebAuthn

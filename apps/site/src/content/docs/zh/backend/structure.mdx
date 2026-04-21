@@ -1,0 +1,129 @@
+---
+title: Code Structure
+description: Backend code organization
+order: 16
+---
+
+`server/` 目录及其内容的结构说明。
+
+## 项目概览与目录树
+
+`server/` 目录包含 Go 后端和内嵌的 LiveKit 媒体服务器。`apps/` 目录包含客户端应用程序。
+
+```text
+bedrud/
+├── apps/                # Client Applications
+│   ├── web/             # React Frontend (TanStack Start)
+│   ├── android/         # Native Android Application
+│   └── ios/             # Native iOS Application
+├── server/              # Go Backend (The "Appliance")
+│   ├── cmd/             # CLI Entry points (run, install)
+│   ├── internal/        # Private application code
+│   │   ├── auth/        # JWT, Passkeys, OAuth logic
+│   │   ├── handlers/    # HTTP Controllers
+│   │   ├── models/      # Database Schemas
+│   │   ├── repository/  # GORM Data Access Layer
+│   │   └── livekit/     # Media Server Management
+│   ├── frontend/        # (Generated) Compiled web assets
+│   ├── config.yaml      # Configuration template
+│   └── Makefile         # Build & Deploy automation
+└── docs/                # System Documentation (MkDocs)
+```
+
+## 目录说明
+
+### `/cmd/bedrud`
+- **`main.go`**：应用程序的入口点。它处理 `run`、`install` 和 `livekit` 等 CLI 命令。
+
+### `/config`
+- **`config.go`**：定义 `Config` 结构体，并从 `config.yaml` 或环境变量加载设置。
+- **`livekit.yaml`**：内嵌 LiveKit 服务器的默认配置。
+
+### `/internal`
+
+- **`/auth`**：包含 JWT 生成、OAuth 提供商和 Passkey（WebAuthn）注册/登录的逻辑。
+- **`/database`**：管理与 SQLite 或 PostgreSQL 的连接，并运行迁移。
+- **`/handlers`**：Fiber HTTP handler。这里包含每个 API 端点的逻辑（如 `auth_handler.go`、`room_handler.go`）。
+- **`/models`**：GORM 数据库模型。这些文件定义了数据库中的表。
+- **`/repository`**："数据访问层"。Handler 调用 repository 而不是直接编写数据库查询，保持 handler 逻辑的整洁。
+- **`/livekit`**：与 LiveKit Go SDK 的集成。管理房间创建并为参与者生成"加入令牌"。
+- **`/middleware`**：自定义 Fiber middleware，用于认证检查、日志记录和 CORS。
+- **`/server`**：将所有内容组合在一起的粘合代码。它初始化数据库、repository，并启动 Fiber 服务器。
+- **`/install`**：`bedrud install` 命令的逻辑，用于在 Linux 上自动化 systemd 和 TLS 配置。
+- **`/scheduler`**：后台任务（如有）。
+- **`/utils`**：小型辅助函数（如密码哈希、随机字符串）。
+
+### `/migrations`
+
+- 包含用于数据库 schema 更新的 SQL 或 Go 文件。
+
+### `/docs`（服务器内）
+
+- 包含 Swagger/OpenAPI 文档文件（由 `swag` 生成）。
+
+## 技术深入分析
+
+### 1. 二进制嵌入（"技巧"）
+
+Bedrud 使用 `//go:embed` 指令将文件打包到编译后的二进制文件中。
+
+- **前端：** React 的 `dist/client/` 文件夹（加上预渲染的 `index.html`）嵌入在 `server/ui.go` 中。静态文件使用 Fiber 的 `filesystem` middleware 直接从内存提供服务。
+- **LiveKit 服务器：** 预编译的 `livekit-server` 可执行文件嵌入在 `internal/livekit/bin/` 中。运行时，Bedrud 将其提取到 `/tmp/bedrud-livekit-server` 并作为后台进程启动（`internal/livekit/server.go`）。
+
+### 2. LiveKit 反向代理
+
+为了避免开放多个端口（信令、API 等），Bedrud 将所有 LiveKit 信令流量通过其主 HTTP(S) 端口进行路由。
+
+- 任何以 `/livekit` 开头的请求都在 `internal/server/server.go` 中被拦截。
+- **反向代理**（使用 `httputil.NewSingleHostReverseProxy`）将这些请求转发到内部 LiveKit 实例（通常运行在 `127.0.0.1:7880`）。
+- 代理在转发前去除 `/livekit` 前缀，使 LiveKit 可以像根应用程序一样运行。
+
+### 3. Middleware 上下文与 Locals
+后端使用 Fiber 的 `.Locals` 在 middleware 和 handler 之间传递数据。
+- **Auth Middleware（`internal/middleware/auth.go`）：** 验证 JWT 并将 `Claims` 对象存储在 `c.Locals("user")` 中。
+- **Handler：** 可以使用以下方式访问当前用户的 ID 和权限：
+  ```go
+  claims := c.Locals("user").(*auth.Claims)
+  userID := claims.UserID
+  ```
+
+### 4. 配置覆盖
+
+虽然 Bedrud 使用 `config.yaml` 文件，但几乎每个设置都可以通过**环境变量**进行覆盖。这对于 Docker 和 CI/CD 环境至关重要。
+
+| 变量 | 描述 |
+|----------|-------------|
+| `SERVER_PORT` | 后端监听的端口（默认：`8090`）。 |
+| `SERVER_ENABLE_TLS` | 布尔值（`true/false`），用于启用 HTTPS。 |
+| `SERVER_DOMAIN` | 你的生产域名（用于 ACME 和 Passkey RP ID）。 |
+| `DB_TYPE` | `sqlite` 或 `postgres`。 |
+| `DB_PATH` | `.db` 文件的路径（如果使用 SQLite）。 |
+| `LIVEKIT_HOST` | LiveKit 的公共 URL（如 `https://meet.example.com/livekit`）。 |
+| `LIVEKIT_API_KEY` | LiveKit 认证的密钥。 |
+| `JWT_SECRET` | 用于签名 Access Token 的密钥。 |
+
+## 编码标准与模式
+
+后端遵循以下模式：
+
+### 1. Repository 模式
+Handler 不应直接与数据库交互。使用 Repository。这使得代码更易于测试，并且允许在不触及 API handler 的情况下更改数据库逻辑。
+
+### 2. 标准化错误处理
+API handler 应返回清晰的错误消息。
+- 使用 `c.Status(fiber.StatusBadRequest).JSON(...)` 处理验证错误。
+- 使用 `c.Status(fiber.StatusUnauthorized).JSON(...)` 处理认证错误。
+- 使用 `c.Status(fiber.StatusInternalServerError).JSON(...)` 处理数据库或服务器错误。
+
+### 3. 结构化日志
+后端使用 **Zerolog** 进行日志记录。
+- `log.Info()`：用于重要事件（如服务器启动）。
+- `log.Error()`：用于故障。
+- `log.Debug()`：用于详细的开发信息。
+
+避免在核心逻辑中使用 `fmt.Println` 进行日志记录。
+
+### 4. 命名规范
+- **文件：** snake_case（如 `user_handler.go`）。
+- **结构体/函数：** PascalCase（如 `GetUserByEmail`）。
+- **变量：** camelCase（如 `hashedPassword`）。

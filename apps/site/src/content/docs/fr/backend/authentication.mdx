@@ -1,0 +1,99 @@
+---
+title: Authentification
+description: Détails de l'implémentation de l'auth
+order: 18
+---
+
+Bedrud prend en charge plusieurs méthodes d'authentification.
+
+## JWT (JSON Web Tokens)
+
+Bedrud utilise JWT pour la gestion de session. Lors de la connexion, le serveur renvoie deux jetons :
+
+1.  **Jeton d'Accès (Access Token) :** À courte durée de vie (ex: 1 heure). Utilisé pour accéder aux points de terminaison API protégés.
+2.  **Jeton de Rafraîchissement (Refresh Token) :** À longue durée de vie (ex: 30 jours). Utilisé pour obtenir un nouveau Jeton d'Accès sans se reconnecter.
+
+Le backend valide ces jetons dans le fichier `internal/middleware/auth.go`.
+
+## Gestion & Sécurité des Jetons
+
+### 1. Stratégie de Paire de Jetons (Rotation)
+
+Bedrud utilise une stratégie de rotation sécurisée des jetons. Lorsqu'un utilisateur s'authentifie, il reçoit :
+
+- **Jeton d'Accès :** Signé avec HS256, contient l'ID utilisateur, le nom et les permissions. Valide pour une courte durée (configuré via `tokenDuration`).
+- **Jeton de Rafraîchissement :** Un jeton distinct à longue durée de vie.
+
+**Rotation :** Lorsque le Jeton d'Accès expire, le client envoie le Jeton de Rafraîchissement à `/api/auth/refresh`. Le serveur émet alors une **nouvelle paire complète** de jetons et met à jour le jeton de rafraîchissement stocké dans la base de données. Cela limite la fenêtre d'opportunité même si un jeton est volé.
+
+### 2. Révocation de Jeton (Liste Noire)
+
+Pour supporter une déconnexion sécurisée, Bedrud implémente une **Liste Noire de Jetons**.
+
+- Lorsqu'un utilisateur se déconnecte, son Jeton de Rafraîchissement actuel est ajouté à la table `blocked_refresh_tokens`.
+- Avant de rafraîchir toute session, le serveur vérifie cette table. Si un jeton est bloqué, la requête est immédiatement rejetée.
+- Une tâche en arrière-plan (Scheduler) est conçue pour nettoyer ces jetons bloqués une fois qu'ils expirent naturellement.
+
+### 3. Structure des Claims JWT
+
+Les jetons portent des métadonnées qui permettent au backend et au frontend de prendre des décisions rapides sans accès à la base de données :
+```json
+{
+  "userId": "uuid-string",
+  "email": "user@example.com",
+  "name": "Display Name",
+  "accesses": ["user", "admin"],
+  "exp": 123456789,
+  "iat": 123456780
+}
+```
+
+## Méthodes d'Authentification
+
+### 1. Email & Mot de Passe Local
+
+- Les mots de passe sont hachés en utilisant **bcrypt** - jamais stockés en texte brut.
+- Lors de l'inscription, un nouvel enregistrement Utilisateur est créé dans la base de données.
+
+### 2. Connexion Sociale (OAuth2)
+
+Bedrud utilise la bibliothèque `Goth` pour supporter :
+
+- **Google**
+- **GitHub**
+- **Twitter**
+
+Vous pouvez activer ces services en remplissant la section `auth:` dans votre `config.yaml` avec votre ID Client et Secret API.
+
+### 3. Passkeys (WebAuthn/FIDO2)
+
+Bedrud supporte l'authentification sans mot de passe via le standard FIDO2 (WebAuthn).
+
+- **Cérémonie d'Inscription :**
+   1.  **Début :** Le serveur génère un **Challenge** cryptographiquement sécurisé et le stocke dans la session de l'utilisateur.
+   2.  **Fin :** L'authentificateur du client (ex: TouchID, YubiKey) signe le challenge. Le serveur vérifie l'attestation, extrait la **Clé Publique**, et la sauvegarde dans la table `passkeys`.
+- **Cérémonie d'Authentification :**
+   1.  **Début :** Le serveur émet un nouveau challenge.
+   2.  **Fin :** Le client signe le challenge avec sa clé privée. Le serveur récupère la Clé Publique de la base de données, vérifie la signature, et vérifie le **Compteur de Signe (Sign Counter)**.
+- **Sécurité :** La correspondance du champ `Counter` empêche les **Attaques par Rejeu**. Si le compteur de l'authentificateur n'est pas supérieur au compteur stocké, la connexion est rejetée.
+
+### 4. Connexion Invité
+
+Permet aux utilisateurs de rejoindre une réunion instantanément avec juste un nom. Le serveur crée un enregistrement utilisateur temporaire avec le rôle `guest`.
+
+## Interopérabilité & CORS
+
+Bedrud est conçu pour être accessible depuis plusieurs origines, ce qui est crucial pour le développement (serveur dev React) et la production (sous-domaines différents).
+
+- **Politique CORS :** Définie dans `config.yaml`. Elle supporte `AllowCredentials: true`, ce qui est requis pour les cookies de session utilisés pendant les cérémonies OAuth et Passkey.
+- **Origines Autorisées :** Par défaut, elle permet le propre domaine du serveur et `localhost:3000` (le port du serveur dev React).
+
+## Rôles Utilisateur (Contrôle d'Accès)
+
+Chaque utilisateur a une liste d'"accesses" (rôles).
+
+- `user` : Utilisateur standard. Peut rejoindre et créer des salles.
+- `guest` : Utilisateur temporaire. Peut rejoindre des salles.
+- `superadmin` : Peut gérer tous les utilisateurs et salles via le tableau de bord `/admin`.
+
+Le garde `middleware.RequireAccess("superadmin")` protège les routes d'administration.

@@ -1,0 +1,256 @@
+---
+title: Démarrage rapide
+description: Déployez Bedrud et rejoignez une réunion vidéo en moins de 5 minutes
+order: 1
+---
+
+Déployez Bedrud et rejoignez une réunion vidéo en moins de 5 minutes.
+
+**Dans ce guide :**
+
+1. **Installer la CLI** — installation en une commande (ou téléchargement manuel)
+2. **Déployer le serveur** — `bedrud install` configure tout
+3. **Vérifier** — confirmer que les services fonctionnent
+4. **Créer un admin et rejoindre** — ouvrir le navigateur, vous promouvoir, démarrer une réunion
+
+**Plus d'infos :**
+
+- [CLI Installer](/fr/docs/getting-started/cli-installer) — flags, plateformes, installations hors ligne
+- [Installation du serveur](/fr/docs/getting-started/installation) — gestionnaires de packages, Docker, options avancées
+- [Configuration](/fr/docs/getting-started/configuration) — ports, base de données, auth, TURN
+
+> **Binaire unique, pas besoin d'Internet après le téléchargement.** Il inclut un serveur média intégré et SQLite - il fonctionne sur les réseaux isolés. Transférez le fichier, exécutez une commande, terminé.
+
+---
+
+## Ce dont vous avez besoin
+
+| Exigence | Détails |
+|----------|---------|
+| Un serveur Linux | amd64 ou arm64, avec accès `sudo` et `systemd`. macOS/Windows : utilisez Docker ou WSL2 pour le serveur |
+| Ports ouverts | `8090`, `7880`, `50000–60000/udp`. Pour TLS automatique : également `80` et `443` |
+| Un domaine (optionnel) | Avec un enregistrement DNS A pointant vers votre serveur. Pas de domaine ? Fonctionne avec IP - voir les alternatives ci-dessous |
+
+> **Comment ça fonctionne :** Vous exécutez un serveur Bedrud **unique**. Les gens rejoignent les réunions dans leur **navigateur** (pas d'installation) ou via des **applications natives** (Android, Windows, macOS, Linux).
+
+---
+
+## 1. Installer la CLI Bedrud
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="macos-linux">macOS / Linux</TabsTrigger>
+    <TabsTrigger value="windows">Windows (PowerShell)</TabsTrigger>
+    <TabsTrigger value="manual">Téléchargement manuel</TabsTrigger>
+  </TabsList>
+  <TabsContent value="macos-linux">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    Rechargez votre shell après l'installation :
+
+    ```bash
+    source ~/.bashrc  # ou ~/.zshrc
+    ```
+
+    Vérifiez :
+
+    ```bash
+    bedrud --version
+    ```
+
+    Pour les flags (`--version`, `--install-dir`, `--skip-shell`, installations hors ligne), voir [CLI Installer](/fr/docs/getting-started/cli-installer).
+  </TabsContent>
+  <TabsContent value="windows">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    ```
+
+    Fermez et rouvrez votre terminal, puis vérifiez :
+
+    ```powershell
+    bedrud --version
+    ```
+  </TabsContent>
+  <TabsContent value="manual">
+
+    Téléchargez et extrayez manuellement. Remplacez `linux_amd64` par votre plateforme (`linux_arm64`, `darwin_amd64`, `darwin_arm64`) :
+
+    ```bash
+    curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+    tar -xJf bedrud.tar.xz
+    chmod +x bedrud
+    sudo mv bedrud /usr/local/bin/
+    ```
+
+    Pour toutes les plateformes cibles, voir [CLI Installer](/fr/docs/getting-started/cli-installer#platform-targets).
+
+    > **Pas d'Internet sur le serveur ?** Téléchargez sur n'importe quelle machine, transférez via USB ou `scp bedrud.tar.xz user@server:/tmp/`, puis extrayez là-bas. Le binaire est entièrement autonome - zéro requête sortante après le transfert.
+
+    > **Échec du téléchargement ?** Vérifiez l'accès Internet, ou vérifiez l'URL sur [github.com/bedrud-ir/bedrud/releases](https://github.com/bedrud-ir/bedrud/releases/latest).
+  </TabsContent>
+</Tabs>
+
+---
+
+## 2. Déployer le serveur
+
+> **La configuration du serveur nécessite Linux avec systemd.** macOS et Windows ne prennent pas en charge `bedrud install` directement — utilisez [Docker](#docker) ou [WSL2](#systèmes-non-linux) à la place.
+
+Remplacez `meet.example.com` et `admin@example.com` par vos valeurs :
+
+```bash
+sudo bedrud install --tls --domain meet.example.com --email admin@example.com
+```
+
+Installe le binaire serveur dans `/usr/local/bin`, génère la configuration, crée les services systemd, provisionne TLS, démarre tout.
+
+> **Port 80 ou 443 occupé ?** Arrêtez les services en conflit : `sudo systemctl stop nginx apache2 caddy`, puis relancez.
+
+> **Pas de domaine ?** Utilisez l'IP de votre serveur à la place :
+> ```bash
+> sudo bedrud install --tls --ip 1.2.3.4
+> ```
+> Cela utilise un certificat auto-signé. Les navigateurs avertiront mais la vidéo fonctionne. Pour des certificats de confiance sur les réseaux internes, voir [Guide TLS interne](/fr/docs/guides/internal-tls).
+
+---
+
+## 3. Vérification
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+```
+
+Attendu : `200`
+
+> **Pas 200 ?** Vérifiez l'état des services : `sudo systemctl status bedrud livekit`. Vérifiez les logs : `journalctl -u bedrud -u livekit --no-pager -n 50`.
+
+---
+
+## 4. Enregistrement et création d'admin
+
+Ouvrez `https://meet.example.com` (ou `https://<votre-ip>:8090`) dans votre navigateur :
+
+<CreateAdmin createOption />
+
+1. Connectez-vous (ou rafraîchissez) — la section **Admin** apparaît dans la barre latérale (Vue d'ensemble, Utilisateurs, Salles, Paramètres). Succès : vous êtes admin.
+2. **Créez une salle** → **Rejoignez** → **Partagez vidéo/audio** - accordez les autorisations caméra/mic lorsqu'on vous le demande
+
+> **Tableau de bord admin** - Après la promotion, connectez-vous pour accéder au panneau admin sur `/dashboard/admin`. Gérez les utilisateurs, les salles, les paramètres système et les jetons d'invitation.
+
+> **Référence CLI** - Gestion complète des utilisateurs : `bedrud user promote`, `demote`, `create`, `delete`.
+
+**Clients natifs** pour Android, Windows, macOS et Linux : [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest). Ou partagez le lien de réunion - les participants rejoignent dans n'importe quel navigateur.
+
+---
+
+## Chemins d'installation alternatifs
+
+### Docker
+
+```bash
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+Configuration personnalisée, Docker Compose et variables d'environnement : voir [Guide Docker](/fr/docs/guides/docker).
+
+### Compilation depuis les sources
+
+Nécessite [Go 1.24+](https://go.dev/dl/) et [Bun](https://bun.sh/) :
+
+```bash
+git clone https://github.com/bedrud-ir/bedrud.git
+cd bedrud
+make init
+make local-run
+```
+
+`make init` installe LiveKit, crée la configuration, récupère les dépendances. `make local-run` construit et démarre sur `http://localhost:8090`.
+
+### HTTP simple (développement / localhost uniquement)
+
+```bash
+sudo bedrud install --ip 127.0.0.1
+```
+
+> **Attention :** Les navigateurs bloquent la caméra/mic sur non-HTTPS sauf `localhost`. HTTP est uniquement pour le développement.
+
+### Systèmes non-Linux
+
+La commande `bedrud install` configure les services systemd et est réservée à Linux. L'installateur CLI (étape 1) fonctionne partout et place le binaire dans le PATH. Pour la configuration du serveur, utilisez Docker ou WSL2.
+
+| OS      | Comment                                         |
+|---------|-------------------------------------------------|
+| macOS   | L'installateur CLI s'installe automatiquement dans `~/bin/` |
+| Windows | L'installateur CLI s'installe automatiquement dans `%USERPROFILE%\bin\` |
+| Docker  | Fonctionne sur tout OS avec Docker (voir ci-dessus) |
+
+---
+
+## Réseaux internes
+
+Pas de domaine public ou d'Internet sortant ? Voir [Guide TLS interne](/fr/docs/guides/internal-tls) pour la configuration d'AC privée et la configuration du magasin de confiance client.
+
+---
+
+## Configuration
+
+L'installateur génère `/etc/bedrud/config.yaml`. Les valeurs par défaut fonctionnent pour la plupart des configurations.
+Changez `jwtSecret` et `sessionSecret` pour la production, puis redémarrez :
+
+```bash
+sudo systemctl restart bedrud livekit
+```
+
+Pour ajuster la capacité des salles, les délais d'expiration ou les ports média, voir [Section LiveKit dans Configuration](/fr/docs/getting-started/configuration#livekit-configuration).
+
+Référence complète : [Configuration](/fr/docs/getting-started/configuration)
+
+---
+
+## Dépannage
+
+| Problème | Correction |
+|----------|------------|
+| Port 80/443 utilisé | `sudo systemctl stop nginx apache2 caddy` |
+| Les services ne démarrent pas | `journalctl -u bedrud -u livekit --no-pager -n 50` |
+| Erreurs de certificat TLS | Vérifiez le DNS : `dig meet.example.com`. Doit pointer vers l'IP du serveur |
+| Pas de vidéo / WebRTC échoué | HTTPS requis pour la caméra. Utilisez `--tls`. Ouvrez UDP 50000–60000 sur le pare-feu |
+| Conflits de ports LiveKit | Utilisez les drapeaux `--lk-port`, `--lk-tcp-port`, `--lk-udp-port` |
+| Pare-feu bloquant les médias | `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
+| Avertissements de certificat auto-signé | Voir [Guide TLS interne](/fr/docs/guides/internal-tls) pour la configuration d'AC privée |
+
+---
+
+## Démontage
+
+```bash
+# Installation binaire
+sudo bedrud uninstall
+
+# Docker
+docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
+
+# Compilation depuis les sources
+# Ctrl+C pour arrêter, puis : make clean
+```
+
+---
+
+## Prochaines étapes
+
+- [Référence CLI Installer](/fr/docs/getting-started/cli-installer) — flags, plateformes cibles, installations hors ligne, dépannage
+- [Référence de configuration](/fr/docs/getting-started/configuration) — ports, base de données, fournisseurs d'auth, TURN
+- [Guide d'installation](/fr/docs/getting-started/installation) — gestionnaires de packages, Docker, drapeaux avancés
+- [Guide TLS interne](/fr/docs/guides/internal-tls) — déploiement air-gapped, AC privée
+- [Guide de déploiement](/fr/docs/guides/deployment) — configuration de production, reverse proxy, mise à l'échelle
+- [Vue d'ensemble de l'architecture](/fr/docs/architecture/overview) — comment les pièces s'assemblent
+- [Documentation API](http://localhost:8090/api/swagger) — Swagger UI (instance en cours d'exécution)

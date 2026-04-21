@@ -1,0 +1,109 @@
+---
+title: Режим Appliance
+description: Предварительно настроенная установка appliance
+order: 33
+---
+
+Bedrud спроектирован для работы как самодостаточный «appliance» для видеоконференций. Один исполняемый бинарник содержит всё необходимое - фронтенд, backend и медиа-сервер LiveKit.
+
+## Ключевые особенности
+
+| Особенность | Описание |
+|---------|-------------|
+| Нулевые внешние зависимости | Не нужны Node.js, Redis или отдельный медиа-сервер |
+| Встроенный медиа-сервер | Бинарник LiveKit включён и управляется автоматически |
+| Встроенный фронтенд | React UI скомпилирован и SSR пререндерен в Go-бинарник |
+| Хранилище SQLite | Сервер базы данных не требуется |
+| Встроенный TLS | Самоподписанные сертификаты или Let's Encrypt |
+| Встроенный установщик | Настраивает systemd, директории и конфигурации |
+
+## Запуск бинарника
+
+### Запуск сервера Bedrud
+
+```bash
+./bedrud --run --config config.yaml
+```
+
+### Запуск медиа-сервера LiveKit
+
+```bash
+./bedrud --livekit --config livekit.yaml
+```
+
+Бинарник содержит как API-сервер, так и медиа-сервер. Используйте флаги для выбора нужного.
+
+## Установка
+
+### Быстрая установка (Debian/Ubuntu)
+
+```bash
+# С TLS от Let's Encrypt
+sudo ./bedrud install --tls --domain meet.example.com --email admin@example.com
+
+# С самоподписанным сертификатом
+sudo ./bedrud install --tls --ip 1.2.3.4
+
+# Обычный HTTP (только для разработки)
+sudo ./bedrud install --ip 1.2.3.4
+```
+
+<InstallerSteps />
+
+### Архитектура сервисов
+
+После установки работают два сервиса systemd:
+
+```mermaid
+flowchart LR
+    BS["bedrud.service<br/>bedrud --run<br/>(API + Web UI)"]
+    LS["livekit.service<br/>bedrud --livekit<br/>(WebRTC media)"]
+    DB["SQLite database"]
+
+    BS --> LS
+    BS --> DB
+```
+
+## Файлы конфигурации
+
+| Файл | Назначение |
+|------|---------|
+| `/etc/bedrud/config.yaml` | Основная конфигурация сервера |
+| `/etc/bedrud/livekit.yaml` | Конфигурация медиа-сервера |
+| `/var/lib/bedrud/bedrud.db` | База данных SQLite |
+| `/var/log/bedrud/bedrud.log` | Логи приложения |
+
+См. [Справочник конфигурации](/ru/docs/getting-started/configuration) для всех параметров.
+
+## После установки
+
+### Создание первого администратора
+
+<CreateAdmin />
+
+### Проверка статуса сервисов
+
+```bash
+systemctl status bedrud livekit
+```
+
+### Просмотр логов
+
+```bash
+tail -f /var/log/bedrud/bedrud.log
+journalctl -u bedrud -f
+```
+
+## Удаление
+
+```bash
+sudo ./bedrud uninstall
+```
+
+Это полностью удалит:
+
+- Файлы сервисов systemd
+- Бинарник из `/usr/local/bin/`
+- Конфигурацию в `/etc/bedrud/`
+- Данные в `/var/lib/bedrud/`
+- Логи в `/var/log/bedrud`

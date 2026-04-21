@@ -1,0 +1,292 @@
+---
+title: مرجع CLI
+description: وثائق واجهة سطر الأوامر
+order: 5
+---
+
+المرجع الكامل لواجهة سطر الأوامر `bedrud`.
+
+## الموجز
+
+```bash
+# نمط الأوامر الفرعية
+bedrud <command> [flags]
+
+# نمط العلامات
+bedrud --livekit --config <path>
+bedrud --run --config <path>
+```
+
+## الأوامر
+
+### `run` / `server`
+
+ابدأ خادم اجتماعات بدرود مع واجهة برمجة التطبيقات، واجهة الويب الأمامية المدمجة، و LiveKit المدمج (إذا كان مهيّأً).
+
+```bash
+bedrud run    [--config <path>]
+bedrud server [--config <path>]
+```
+
+| العلامة     | الافتراضي                                | الوصف                          |
+|-------------|------------------------------------------|--------------------------------|
+| `--config`  | متغير البيئة `$CONFIG_PATH` ← `"config.yaml"` | مسار ملف تهيئة YAML لبدرود |
+
+**السلوك:**
+- يحمّل التهيئة من المسار المحدد أو الافتراضيات
+- يبدأ LiveKit المدمج إذا كان مهيّأً للوضع الداخلي
+- يهيّئ قاعدة بيانات SQLite/PostgreSQL ويشغّل عمليات الترحيل
+- ينشئ خادم HTTP Fiber مع جميع مسارات API
+- يقدّم واجهة React الأمامية المدمجة
+- يدعم ACME (Let's Encrypt)، TLS الموقّع ذاتياً، TLS اليدوي، أو HTTP عادي
+- إيقاف سلس عند SIGTERM/SIGINT
+
+**التنفيذ:** `server/internal/server/server.go`
+
+---
+
+### `--livekit`
+
+ابدأ خادم وسائط LiveKit المدمج فقط. يستخرج الملف الثنائي من Go embed إلى دليل مؤقت.
+
+```bash
+bedrud --livekit --config <path>
+```
+
+| العلامة     | الافتراضي   | الوصف                             |
+|-------------|-------------|-----------------------------------|
+| `--config`  | (مطلوب)     | مسار ملف تهيئة YAML لـ LiveKit |
+
+**يُستخدم من قبل:** systemd `livekit.service` الذي ينشئه `bedrud install`
+
+**التنفيذ:** `server/internal/livekit/server.go`
+
+---
+
+### `--run`
+
+اسم مستعار لـ `bedrud run` بنفس سلوك علامة `--config`. يُستخدم من قبل systemd `bedrud.service`.
+
+```bash
+bedrud --run --config <path>
+```
+
+---
+
+### `install`
+
+ثبّت بدرود على نظام Debian/Linux. ينشئ خدمات systemd وملفات التهيئة والأدلة وشهادات TLS.
+
+```bash
+bedrud install [flags]
+```
+
+| العلامة                | الافتراضي                        | الوصف                                                                   |
+|------------------------|----------------------------------|-------------------------------------------------------------------------|
+| `--tls`                | `false`                          | تفعيل HTTPS (مثل `--self-signed`)                                       |
+| `--self-signed`        | `false`                          | توليد شهادة TLS موقّعة ذاتياً                                           |
+| `--no-tls`             | `false`                          | تعطيل TLS بالكامل (HTTP عادي). يتجاوز `--tls` و `--self-signed`        |
+| `--ip`                 | مُكتشف تلقائياً                 | تجاوز عنوان IP للخادم المكتشف تلقائياً                                  |
+| `--domain`             | `""`                             | اسم النطاق لـ Let's Encrypt أو شهادة موقّعة ذاتياً                      |
+| `--email`              | `""`                             | البريد الإلكتروني لتسجيل Let's Encrypt                                  |
+| `--port`               | `"443"` (TLS) / `"8090"` (HTTP)  | تجاوز منفذ الاستماع                                                      |
+| `--cert`               | `""`                             | مسار ملف شهادة PEM موجودة                                                |
+| `--key`                | `""`                             | مسار ملف مفتاح PEM الخاص الموجود                                         |
+| `--lk-port`            | `"7880"`                         | تجاوز منفذ API/WebSocket لـ LiveKit                                      |
+| `--lk-tcp-port`        | `"7881"`                         | تجاوز منفذ RTC TCP لـ LiveKit                                            |
+| `--lk-udp-port`        | `"7882"`                         | تجاوز منفذ RTC UDP لـ LiveKit                                            |
+| `--fresh`              | `false`                          | إزالة التثبيت الموجود قبل التثبيت                                        |
+| `--behind-proxy`       | `false`                          | الخادم خلف CDN/بروكسي عكسي (Cloudflare، nginx)                           |
+| `--external-livekit`   | `""`                             | رابط خادم LiveKit خارجي تماماً (جهاز مختلف)                              |
+| `--livekit-domain`     | `""`                             | نطاق منفصل لخادم LiveKit المحلي (يتجاوز CDN)                            |
+
+**ما يفعله:**
+١. يوقف ويزيل التثبيت السابق إذا كانت `--fresh`
+٢. يطلب IP، النطاق، البريد الإلكتروني، وضع TLS (إذا كان غير تفاعلي ولم تُقدّم العلامات)
+٣. ينشئ الأدلة: `/etc/bedrud`، `/var/lib/bedrud`، `/var/lib/bedrud/certs`، `/var/log/bedrud`
+٤. ينسخ الملف الثنائي إلى `/usr/local/bin/bedrud`
+٥. يولّد تهيئة خادم بدرود في `/etc/bedrud/config.yaml`
+٦. يولّد تهيئة خادم وسائط LiveKit في `/etc/bedrud/livekit.yaml`
+٧. يولّد شهادات موقّعة ذاتياً في `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` (إذا كان TLS مُفعّلاً ولا توجد شهادات مخصصة)
+٨. ينشئ systemd `livekit.service` (إلا إذا كنت تستخدم LiveKit خارجي)
+٩. ينشئ systemd `bedrud.service`
+١٠. يشغّل `systemctl daemon-reload`، يُفعّل ويبدأ كلتا الخدمتين
+١١. يطبع روابط الوصول
+
+**خيارات TLS:**
+- `--domain` + `--email` ← ACME (Let's Encrypt)
+- `--self-signed` أو `--tls` ← شهادة موقّعة ذاتياً
+- `--cert` + `--key` ← شهادات مخصصة
+- `--no-tls` ← HTTP عادي فقط
+
+**طوبولوجيا LiveKit:**
+- الافتراضي (مدمج): يعمل LiveKit محلياً، موجه عبر بدرود في `/livekit`
+- `--livekit-domain`: يعمل LiveKit محلياً لكن العملاء يتصلون مباشرة عبر نطاقه الخاص
+- `--external-livekit`: بدون LiveKit محلي؛ يتصل بخادم بعيد
+
+**التنفيذ:** `server/internal/install/debian.go`
+
+**وثائق ذات صلة:** [دليل التثبيت](/ar/docs/getting-started/installation) • [دليل النشر](/ar/docs/guides/deployment) • [منطق نشر الخلفية](/ar/docs/backend/deployment)
+
+---
+
+### `uninstall`
+
+أزِل بدرود من النظام.
+
+```bash
+bedrud uninstall
+```
+
+**يزيل:**
+- يوقف ويعطّل خدمات systemd: `bedrud`، `livekit`
+- يزيل ملفات وحدات systemd من `/etc/systemd/system/`
+- يزيل الملف الثنائي: `/usr/local/bin/bedrud`، `/tmp/bedrud`، `/tmp/bedrud-livekit-server`
+- يزيل الأدلة: `/etc/bedrud`، `/var/lib/bedrud`، `/var/log/bedrud`
+
+**التنفيذ:** `server/internal/install/debian.go`
+
+**وثائق ذات صلة:** [دليل التثبيت - إزالة التثبيت](/ar/docs/getting-started/installation#uninstallation)
+
+---
+
+### `user`
+
+إدارة المستخدمين في قاعدة بيانات بدرود.
+
+```bash
+bedrud user <subcommand> [--config <path>] <flags>
+```
+
+| العلامة العامة | الافتراضي                  | الوصف                                          |
+|----------------|----------------------------|------------------------------------------------|
+| `--config`     | `/etc/bedrud/config.yaml`  | مسار ملف تهيئة بدرود (لتحديد موقع قاعدة البيانات) |
+
+#### `create`
+
+أنشئ مستخدماً جديداً بمصادقة محلية (كلمة مرور مشفّرة بـ bcrypt).
+
+```bash
+bedrud user create --email <email> --password <password> --name <name>
+```
+
+**العلامات المطلوبة:**
+- `--email`: عنوان البريد الإلكتروني للمستخدم
+- `--password`: كلمة مرور المستخدم، تُشفّر بـ bcrypt قبل التخزين
+- `--name`: اسم العرض للمستخدم
+
+**مستوى الوصول:** `user` (ليس superadmin). استخدم `promote` لمنح صلاحيات المدير.
+
+#### `delete`
+
+احذف مستخدماً بعنوان البريد الإلكتروني.
+
+```bash
+bedrud user delete --email <email>
+```
+
+#### `promote`
+
+امنح وصول `superadmin` لمستخدم.
+
+```bash
+bedrud user promote --email <email>
+```
+
+#### `demote`
+
+أزِل وصول `superadmin` من مستخدم (يعود إلى مستوى `user`).
+
+```bash
+bedrud user demote --email <email>
+```
+
+**التنفيذ:** `server/internal/usercli/usercli.go`
+
+---
+
+### `help`
+
+اعرض رسالة الاستخدام مع جميع الأوامر والعلامات.
+
+```bash
+bedrud help
+```
+
+يُفعّل أيضاً عند عدم تقديم أي وسائط. يعرض خرج `printUsage()`.
+
+---
+
+## أمثلة
+
+### بدء خادم تطوير أساسي
+
+```bash
+# تشغيل بتهيئة config.yaml الافتراضية في الدليل الحالي
+bedrud run
+
+# تشغيل بتهيئة مخصصة
+bedrud run --config /path/to/config.yaml
+
+# عبر متغير بيئة (احتياطي)
+export CONFIG_PATH=/etc/bedrud/config.yaml
+bedrud run
+```
+
+### تثبيت تفاعلي (يطلب المدخلات)
+
+```bash
+bedrud install
+```
+
+### تثبيت غير تفاعلي مع Let's Encrypt
+
+```bash
+bedrud install --domain example.com --email admin@example.com
+```
+
+### TLS موقّع ذاتياً مع منافذ مخصصة
+
+```bash
+bedrud install --self-signed --port 8443 --lk-port 7880 --lk-tcp-port 7881 --lk-udp-port 7882
+```
+
+### خلف CDN مع نطاق LiveKit منفصل
+
+```bash
+bedrud install --domain bedrud.example.com --email admin@example.com --livekit-domain lk.example.com --behind-proxy
+```
+
+### إعادة تثبيت نظيف
+
+```bash
+bedrud install --fresh --domain example.com --email admin@example.com
+```
+
+### إدارة المستخدمين
+
+```bash
+# إنشاء أول مستخدم مدير
+bedrud user create --email admin@example.com --password secret123 --name "Admin User"
+
+# منح وصول superadmin
+bedrud user promote --email admin@example.com
+
+# إنشاء مستخدم عادي
+bedrud user create --email user@example.com --password pass456 --name "Regular User"
+
+# حذف مستخدم
+bedrud user delete --email user@example.com
+
+# إزالة وصول المدير
+bedrud user demote --email admin@example.com
+```
+
+---
+
+## وثائق ذات صلة
+
+- [دليل التثبيت](/ar/docs/getting-started/installation) - شرح مفصّل لـ `bedrud install`، طوبولوجيات TLS، خطوات ما بعد التثبيت
+- [مرجع التهيئة](/ar/docs/getting-started/configuration) - بنية ملف تهيئة الخادم و LiveKit
+- [منطق نشر الخلفية](/ar/docs/backend/deployment) - كيف يعمل `install` و `uninstall` داخلياً
+- [دليل النشر](/ar/docs/guides/deployment) - خيارات النشر الكاملة بما في ذلك خدمات systemd

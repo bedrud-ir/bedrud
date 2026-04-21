@@ -1,0 +1,262 @@
+---
+title: تثبيت العميل
+description: تثبيت تطبيقات سطح المكتب والهاتف المحمول
+order: 3
+---
+
+افتح رابط الاجتماع في متصفح للانضمام - لا حاجة للتثبيت. لتجربة تطبيق أصلي، ثبّت العميل لمنصتك أدناه.
+
+---
+
+## المتصفح (بدون تثبيت)
+
+افتح رابط الاجتماع في **Chrome**، **Firefox**، **Edge**، أو **Safari**. الوصول للكاميرا والميكروفون يتطلب HTTPS (مدير خادمك يتولى ذلك).
+
+بدون تنزيلات، بدون إضافات، بدون حساب مطلوب إذا كان وصول الضيوف مُفعّلاً.
+
+---
+
+## Android
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="google-play">Google Play</TabsTrigger>
+    <TabsTrigger value="apk-sideload">APK (sideload)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="google-play">
+
+    ابحث عن **Bedrud** على Google Play، أو اتبع الرابط المباشر من مدير خادمك.
+  </TabsContent>
+  <TabsContent value="apk-sideload">
+
+    نزّل أحدث APK من [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest):
+
+    ```bash
+    # انقل إلى هاتفك، ثم افتح للتثبيت
+    ```
+
+    قد تحتاج لتفعيل **التثبيت من مصادر غير معروفة** في إعدادات جهازك.
+  </TabsContent>
+</Tabs>
+
+---
+
+## iOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="app-store">App Store</TabsTrigger>
+    <TabsTrigger value="ipa-sideload">IPA (sideload)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="app-store">
+
+    ابحث عن **Bedrud** على App Store، أو اتبع الرابط المباشر من مدير خادمك.
+  </TabsContent>
+  <TabsContent value="ipa-sideload">
+
+    نزّل أحدث IPA من [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest). حمّله جانبياً باستخدام AltStore أو أداة مشابهة.
+  </TabsContent>
+</Tabs>
+
+---
+
+## سطح مكتب Linux
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="appimage-recommended">AppImage (موصى به)</TabsTrigger>
+    <TabsTrigger value="flatpak">Flatpak</TabsTrigger>
+    <TabsTrigger value="snap">Snap</TabsTrigger>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+    <TabsTrigger value="portable-tarxz">Portable tar.xz</TabsTrigger>
+  </TabsList>
+  <TabsContent value="appimage-recommended">
+
+    لا حاجة للتثبيت. نزّل، اجعله قابلاً للتنفيذ، شغّل:
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
+    chmod +x bedrud-desktop-linux-x86_64.AppImage
+    ./bedrud-desktop-linux-x86_64.AppImage
+    ```
+
+    <Callout type="tip">
+        لدمج AppImage في مشغّل التطبيقات، استخدم [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher).
+    </Callout>
+  </TabsContent>
+  <TabsContent value="flatpak">
+
+    ```bash
+    flatpak install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.flatpak
+    flatpak run ir.bedrud.Desktop
+    ```
+  </TabsContent>
+  <TabsContent value="snap">
+
+    ```bash
+    sudo snap install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="ubuntu-debian-apt">
+
+    إذا كان مستودع apt لبدرود مهيّأ بالفعل على نظامك:
+
+    ```bash
+    sudo apt install bedrud-desktop
+    ```
+
+    راجع [دليل تثبيت الحزم](/ar/docs/guides/packages) لإعداد المستودع.
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-desktop-bin
+    ```
+
+    إذا كان مستودع DNF لبدرود مهيّأ بالفعل:
+
+    ```bash
+    sudo dnf install bedrud-desktop
+    ```
+
+    راجع [دليل تثبيت الحزم](/ar/docs/guides/packages) لإعداد المستودع.
+  </TabsContent>
+  <TabsContent value="portable-tarxz">
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.tar.xz
+    tar xf bedrud-desktop-linux-x86_64.tar.xz
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## macOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="homebrew-recommended">Homebrew (موصى به)</TabsTrigger>
+    <TabsTrigger value="dmg-apple-silicon">Apple Silicon (.dmg)</TabsTrigger>
+    <TabsTrigger value="dmg-intel">Intel (.dmg)</TabsTrigger>
+    <TabsTrigger value="apple-silicon-arm64">Apple Silicon (tar.gz)</TabsTrigger>
+    <TabsTrigger value="intel-x8664">Intel (tar.gz)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="homebrew-recommended">
+
+    ```bash
+    brew tap bedrud-ir/bedrud
+    brew install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="dmg-apple-silicon">
+
+    نزّل ملف DMG من [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest):
+
+    | المعمارية | الملف |
+    |---|---|
+    | Apple Silicon | `bedrud-desktop-macos-arm64.dmg` |
+
+    افتح ملف DMG، اسحب بدرود إلى التطبيقات. إذا منع Gatekeeper التطبيق، اذهب إلى **إعدادات النظام → الخصوصية والأمان** وانقر **فتح على أي حال**.
+  </TabsContent>
+  <TabsContent value="dmg-intel">
+
+    نزّل ملف DMG من [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest):
+
+    | المعمارية | الملف |
+    |---|---|
+    | Intel | `bedrud-desktop-macos-x86_64.dmg` |
+
+    افتح ملف DMG، اسحب بدرود إلى التطبيقات. إذا منع Gatekeeper التطبيق، اذهب إلى **إعدادات النظام → الخصوصية والأمان** وانقر **فتح على أي حال**.
+  </TabsContent>
+  <TabsContent value="apple-silicon-arm64">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="intel-x8664">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="warning">
+    builds قد تكون إصدارات macOS **غير موقّعة**. إذا منع Gatekeeper التطبيق، شغّل أمر `xattr` أعلاه، أو اذهب إلى **إعدادات النظام → الخصوصية والأمان** وانقر **فتح على أي حال**.
+</Callout>
+
+---
+
+## Windows
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="winget">WinGet</TabsTrigger>
+    <TabsTrigger value="chocolatey">Chocolatey</TabsTrigger>
+    <TabsTrigger value="nsis-installer">مثبّت NSIS</TabsTrigger>
+    <TabsTrigger value="portable-zip">Portable .zip</TabsTrigger>
+  </TabsList>
+  <TabsContent value="winget">
+
+    ```powershell
+    winget install Bedrud.BedrudDesktop
+    ```
+  </TabsContent>
+  <TabsContent value="chocolatey">
+
+    ```powershell
+    choco install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="nsis-installer">
+
+    نزّل المثبّت من [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest):
+
+    | المعمارية | الملف |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64-setup.exe` |
+    | ARM64 | `bedrud-desktop-windows-arm64-setup.exe` |
+
+    شغّل المثبّت. يظهر التطبيق في قائمة ابدأ وإضافة/إزالة البرامج.
+  </TabsContent>
+  <TabsContent value="portable-zip">
+
+    نزّل واستخرج من [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest):
+
+    | المعمارية | الملف |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64.zip` |
+    | ARM64 | `bedrud-desktop-windows-arm64.zip` |
+
+    لا حاجة للتثبيت - شغّل `bedrud-desktop.exe` من المجلد المستخرج.
+  </TabsContent>
+</Tabs>
+
+---
+
+## الاتصال بالخادم
+
+عند فتح تطبيق سطح المكتب لأول مرة، سيُطلب منك رابط الخادم.
+
+١. أدخل الرابط الذي قدمه مدير خادمك (مثلاً `https://meet.example.com`)
+٢. سجّل حساباً أو سجّل الدخول
+٣. أنشئ غرفة اجتماع أو انضم إليها
+
+يدعم تطبيق سطح المكتب الاتصال **بخوادم متعددة**. أضف المزيد في **الإعدادات**.
+
+---
+
+## جميع التنزيلات
+
+جميع مثبّتات وملفات العميل الثنائية متاحة على صفحة [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest).
+
+للمرجع الكامل لجميع مديري الحزم والمستودعات والمنصات، راجع [دليل تثبيت الحزم](/ar/docs/guides/packages).

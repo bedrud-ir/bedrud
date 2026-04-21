@@ -1,0 +1,155 @@
+---
+title: Web Ön Ucu
+description: React web uygulaması mimarisi
+order: 8
+---
+
+Bedrud web ön ucu; TanStack Start, TailwindCSS v4 ve shadcn/ui ile oluşturulmuş bir React uygulamasıdır. Üretimde sunucu tarafı işleme bir HTML kabuğunu ön_RENDERLER. Go ikili dosyası bu kabuğu statik istemci varlıklarıyla birlikte gömer.
+
+## Teknoloji Yığını
+
+| Teknoloji | Amaç |
+|-----------|------|
+| React 19 | UI çerçevesi |
+| TanStack Start | SSR çerçevesi ve dosya tabanlı yönlendirme |
+| TanStack Router | İstemci tarafı yönlendirme |
+| TanStack Query | Sunucu durumu ve veri getirme |
+| TailwindCSS 4 | Yardımcı sınıf öncelikli biçimlendirme |
+| shadcn/ui + Radix UI | Erişilebilir bileşen temelleri |
+| Zustand | İstemci tarafı auth durumu |
+| Vite 7 | Derleme aracı ve geliştirme sunucusu |
+| LiveKit React SDK | WebRTC medya işleme |
+| Zod | Şema doğrulama |
+| Lucide React | Simge kütüphanesi |
+| Bun | Paket yöneticisi |
+
+## Dizin Yapısı
+
+```
+apps/web/
+├── src/
+│   ├── routes/                    # TanStack Router dosya tabanlı yollar
+│   │   ├── index.tsx              # Ana / açılış sayfası
+│   │   ├── __root.tsx             # Kök düzen
+│   │   ├── auth/
+│   │   │   ├── login.tsx          # Oturum açma sayfası
+│   │   │   └── register.tsx       # Kayıt olma sayfası
+│   │   ├── dashboard/             # Kullanıcı paneli
+│   │   ├── m.$meetId.tsx          # Toplantı odası sayfası
+│   │   ├── admin/                 # Yönetici paneli
+│   │   │   ├── index.tsx          # Genel görünüm
+│   │   │   ├── rooms.$id.tsx      # Oda detayı
+│   │   │   ├── users.$id.tsx      # Kullanıcı detayı
+│   │   │   └── settings.tsx       # Sunucu ayarları + davet tokenları
+│   │   └── settings.tsx           # Hesap ayarları sayfası
+│   ├── components/
+│   │   ├── admin/                 # Yönetici tablosu bileşenleri
+│   │   │   ├── RoomTable.tsx
+│   │   │   └── UserTable.tsx
+│   │   ├── auth/                  # Auth arayüzü (OAuth, Passkey düğmeleri)
+│   │   ├── dashboard/             # Oda kartları, oda oluşturma iletişim kutusu
+│   │   ├── meeting/               # Video karoları, kontroller, aygıt seçici
+│   │   │   ├── ControlsBar.tsx
+│   │   │   ├── DeviceSelector.tsx
+│   │   │   ├── ParticipantGrid.tsx
+│   │   │   ├── ChatPanel.tsx
+│   │   │   └── SpotlightView.tsx
+│   │   ├── ui/                    # shadcn/ui bileşen kütüphanesi
+│   │   └── ThemeToggle.tsx        # Açık/koyu mod değiştirici
+│   └── lib/
+│       ├── api.ts                 # authFetch sarmalayıcısı
+│       └── auth.store.ts          # Zustand auth deposu (tokenlar, kullanıcı)
+├── scripts/
+│   └── embed.mjs                  # SSR ön işleme + server/frontend/ dizinine kopyalama
+├── public/                        # Statik varlıklar
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+## Kimlik Doğrulama Akışı
+
+Auth durumu `src/lib/auth.store.ts` dosyasındaki bir Zustand deposu tarafından yönetilir:
+
+1. **Giriş** - Kullanıcı kimlik bilgilerini `POST /api/auth/login` adresine gönderir
+2. **Token Depolama** - Erişim ve yenileme tokenları `localStorage`'a kaydedilir
+3. **Otomatik Ekleme** - `authFetch` her API çağrısını sararak `Authorization: Bearer` başlığını ekler
+4. **Otomatik Yenileme** - Bir istek 401 döndürdüğünde `authFetch` yenileme tokenı ile token yenilemeyi dener
+5. **Çıkış** - Tokenları temizler ve oturum açma sayfasına yönlendirir
+
+### authFetch
+
+`src/lib/api.ts` dosyasındaki `authFetch` işlevi `fetch` yerine doğrudan kullanılabilen bir sarmalayıcıdır:
+
+- Her isteğe JWT erişim tokenını ekler
+- 401 yanıtlarını yakalar ve token yenilemeyi dener
+- Yenileme başarısız olursa kullanıcıyı oturumu kapatır
+
+## Toplantı Sayfası
+
+`/m/$meetId` adresindeki toplantı odası şunları yönetir:
+
+- **LiveKit bağlantısı** - Katılma API'sinden alınan token ile medya sunucusuna bağlanır
+- **Kanal işleme** - Diğer katılımcıların ses/video kanallarına abone olur
+- **Aygıt seçimi** - Görüntülü arama sırasında odayı terk etmeden kamera, mikrofon veya hoparlör değiştirme
+- **Yönetici kontrolleri** - Oda oluşturan kişi atma, susturma ve video kapatma düğmelerini görür
+- **Sohbet** - `ChatPanel` ile oda içi metin sohbeti
+- **Odak görünümü** - Tek bir katılımcıya odaklanma
+
+## Yönetici Paneli
+
+`/admin` adresindeki yönetici paneli şunları sunar:
+
+- **Oda yönetimi** - oda detay sayfalarına inilebilen tablo görünümü
+- **Kullanıcı yönetimi** - bireysel kullanıcı hesaplarına ve rol düzenlemeye inilebilen tablo görünümü
+- **Sunucu ayarları** - örnek genelindeki seçenekleri, erişim kontrollerini ve davet bağlantılarını yapılandırma
+- **Davet tokenları** - kimlerin katılabileceğini denetlemek için davet bağlantıları oluşturma ve iptal etme
+
+## Koyu Mod
+
+`ThemeToggle` bileşeni kullanıcıların uygulamanın herhangi bir yerinden açık ve koyu temalar arasında geçiş yapmasına olanak tanır. Tercih `localStorage`'a kaydedilir ve yükleme sırasında uygulanır.
+
+## Derleme
+
+### Geliştirme
+
+```bash
+cd apps/web
+bun run dev      # Vite geliştirme sunucusunu HMR ile localhost:3000 adresinde başlatır
+```
+
+Geliştirme sunucusu `/api` ve `/livekit` isteklerini `localhost:8090` adresindeki Go sunucusuna vekil olarak iletir.
+
+### Üretim (bağımsız web paketi)
+
+```bash
+cd apps/web
+bun run build    # Statik istemci varlıklarını dist/client/'a ve SSR sunucusunu dist/server/'a çıkarır
+```
+
+### Üretim (Go ikili dosyasına gömülü)
+
+```bash
+cd apps/web
+bun run build:embed
+```
+
+Bu `scripts/embed.mjs` betiğini çalıştırır:
+
+1. `dist/client/` ve `dist/server/` üretmek için `bun run build` çalıştırır
+2. SSR sunucusunu yerel olarak başlatır
+3. Ön_RENDERLENMIŞ HTML kabuğunu yakalamak için `/` adresine istek atar
+4. `dist/client/` klasörünü `server/frontend/` içine kopyalar
+5. İşlenen HTML'yi `server/frontend/index.html` olarak yazar
+
+### Tür Denetimi
+
+```bash
+bun run check    # tsc --noEmit çalıştırır
+```
+
+---
+
+## Ayrıca bakınız
+
+- [Web Tasarım Sistemi](https://github.com/bedrud-ir/bedrud/tree/main/apps/web/AGENTS.md) - UI bileşen örüntüleri, renk tokenları ve biçimlendirme kuralları

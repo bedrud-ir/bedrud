@@ -1,0 +1,109 @@
+---
+title: Appliance-Modus
+description: Vorkonfiguriertes Appliance-Setup
+order: 33
+---
+
+Bedrud ist als eigenständige „Appliance" für Videokonferenzen konzipiert. Ein einzelnes ausführbares Binary enthält alles Notwendige - Frontend, Backend und den LiveKit-Medienserver.
+
+## Wichtige Funktionen
+
+| Funktion | Beschreibung |
+|----------|-------------|
+| Keine externen Abhängigkeiten | Kein Node.js, Redis oder separater Medienserver erforderlich |
+| Eingebetteter Medienserver | LiveKit-Binary automatisch eingebunden und verwaltet |
+| Eingebettetes Frontend | React-UI kompiliert und SSR-prerendert im Go-Binary |
+| SQLite-Speicher | Kein Datenbankserver erforderlich |
+| Integriertes TLS | Selbstsignierte Zertifikate oder Let's Encrypt |
+| Integriertes Installationsprogramm | Konfiguriert systemd, Verzeichnisse und Konfigurationen |
+
+## Binary ausführen
+
+### Bedrud-Server starten
+
+```bash
+./bedrud --run --config config.yaml
+```
+
+### LiveKit-Medienserver starten
+
+```bash
+./bedrud --livekit --config livekit.yaml
+```
+
+Das Binary enthält sowohl den API-Server als auch den Medienserver. Verwenden Sie Flags, um auszuwählen, welcher gestartet werden soll.
+
+## Installation
+
+### Schnellinstallation (Debian/Ubuntu)
+
+```bash
+# With Let's Encrypt TLS
+sudo ./bedrud install --tls --domain meet.example.com --email admin@example.com
+
+# With self-signed certificate
+sudo ./bedrud install --tls --ip 1.2.3.4
+
+# Plain HTTP (dev only)
+sudo ./bedrud install --ip 1.2.3.4
+```
+
+<InstallerSteps />
+
+### Dienstarchitektur
+
+Nach der Installation laufen zwei systemd-Dienste:
+
+```mermaid
+flowchart LR
+    BS["bedrud.service<br/>bedrud --run<br/>(API + Web UI)"]
+    LS["livekit.service<br/>bedrud --livekit<br/>(WebRTC media)"]
+    DB["SQLite database"]
+
+    BS --> LS
+    BS --> DB
+```
+
+## Konfigurationsdateien
+
+| Datei | Zweck |
+|-------|-------|
+| `/etc/bedrud/config.yaml` | Haupt-Serverkonfiguration |
+| `/etc/bedrud/livekit.yaml` | Medienserver-Konfiguration |
+| `/var/lib/bedrud/bedrud.db` | SQLite-Datenbank |
+| `/var/log/bedrud/bedrud.log` | Anwendungsprotokolle |
+
+Siehe die [Konfigurationsreferenz](/de/docs/getting-started/configuration) für alle Optionen.
+
+## Nach der Installation
+
+### Ersten Administrator erstellen
+
+<CreateAdmin />
+
+### Dienststatus prüfen
+
+```bash
+systemctl status bedrud livekit
+```
+
+### Protokolle anzeigen
+
+```bash
+tail -f /var/log/bedrud/bedrud.log
+journalctl -u bedrud -f
+```
+
+## Deinstallation
+
+```bash
+sudo ./bedrud uninstall
+```
+
+Dies entfernt vollständig:
+
+- systemd-Dienstdateien
+- Binary aus `/usr/local/bin/`
+- Konfiguration in `/etc/bedrud/`
+- Daten in `/var/lib/bedrud/`
+- Protokolle in `/var/log/bedrud`

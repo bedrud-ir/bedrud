@@ -1,0 +1,306 @@
+---
+title: 開発ワークフロー
+description: 開発環境のセットアップ
+order: 27
+---
+
+Bedrud へのコントリビューションに必要な日常的な開発ワークフローについて説明します。
+
+## リポジトリレイアウト
+
+```
+bedrud/
+├── server/          # Go バックエンド
+├── apps/
+│   ├── web/         # React フロントエンド (TanStack Start)
+│   ├── android/     # Android アプリ
+│   ├── ios/         # iOS アプリ
+│   └── desktop/     # デスクトップアプリ (Rust + Slint)
+├── agents/          # Python ボットエージェント
+├── packages/        # 共有 TypeScript 型
+├── tools/cli/       # デプロイ CLI
+├── docs/            # ドキュメント (MkDocs)
+├── Cargo.toml       # Rust ワークスペースルート
+├── Makefile         # ビルドオーケストレーション
+└── Dockerfile       # コンテナビルド
+```
+
+## 前提条件
+
+| ツール | 対象 |
+|------|-------------|
+| Go 1.24+ | サーバー |
+| Bun | Web フロントエンド |
+| LiveKit Server | ローカルメディアサーバー |
+| Android Studio + JDK 17 | Android アプリ |
+| Xcode | iOS アプリ |
+| Rust (stable) | デスクトップアプリ |
+| Python 3.10+ | ボットエージェント |
+| FFmpeg | ラジオ・動画エージェント |
+
+## 初期セットアップ
+
+```bash
+git clone https://github.com/bedrud-ir/bedrud.git
+cd bedrud
+make init
+```
+
+## フルスタック開発
+
+ローカルで全体スタックを実行するには：
+
+```bash
+make dev
+```
+
+LiveKit、Go サーバー、React 開発サーバーが同時に起動します。`Ctrl+C` ですべてのプロセスを停止します。
+
+### サービスの個別実行
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="web-frontend">Web フロントエンド</TabsTrigger>
+    <TabsTrigger value="go-server">Go サーバー</TabsTrigger>
+    <TabsTrigger value="livekit">LiveKit</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="web-frontend">
+    ```bash
+    make dev-web
+    ```
+    `http://localhost:3000` でホットモジュール置換付きで実行されます。
+  </TabsContent>
+
+  <TabsContent value="go-server">
+    ```bash
+    make dev-server
+    ```
+    `http://localhost:8090` で実行されます。Go コード変更後は手動で再起動が必要です。
+  </TabsContent>
+
+  <TabsContent value="livekit">
+    ```bash
+    make dev-livekit
+    ```
+    `http://localhost:7880` で開発用認証情報で実行されます。
+  </TabsContent>
+</Tabs>
+
+## サーバー開発
+
+Go サーバーのエントリポイントは `server/cmd/server/main.go` です。
+
+### API エンドポイントの追加
+
+1. `server/internal/handlers/` に**ハンドラーを定義**
+2. 新しい DB クエリが必要な場合は `server/internal/repository/` に**リポジトリメソッドを追加**
+3. サーバーセットアップ（通常 `main.go` またはルーティングファイル）に**ルートを登録**
+4. 認証や管理者チェックが必要な場合は**ミドルウェアを追加**
+
+### データベースの変更
+
+`server/internal/models/` で GORM モデル構造体を追加または変更します。GORM は起動時に自動マイグレーションを行います。
+
+### Swagger ドキュメント
+
+API ドキュメントのアノテーションには swaggo 形式を使用します。変更後、再生成します：
+
+```bash
+cd server
+swag init -g cmd/server/main.go
+```
+
+> 完全なディレクトリレイアウトとレイヤー設計については、[サーバーアーキテクチャ](/ja/docs/architecture/server)を参照してください。
+
+## Web フロントエンド開発
+
+フロントエンドは `apps/web/` にあり、React 19 と TanStack Start を使用しています。
+
+### ページの追加
+
+[TanStack Router のファイルベースルーティング規約](https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing)に従って、`src/routes/` の下に新しいファイルを作成します（例：`src/routes/settings.tsx`）。`createFileRoute` で作成した `Route` をエクスポートします。
+
+### API クライアント関数の追加
+
+1. `src/lib/api.ts` に `authFetch` を使用して関数を追加
+2. TypeScript 型をインラインまたは共有型ファイルで定義
+3. ルートコンポーネントから TanStack Query の `useQuery` フック経由で使用
+
+### 型チェック
+
+```bash
+cd apps/web
+bun run check    # runs Biome lint + TypeScript type check
+```
+
+> 完全なフロントエンド構造とパターンについては、[Web フロントエンドアーキテクチャ](/ja/docs/architecture/web)を参照してください。
+
+## Android 開発
+
+```bash
+make dev-android    # Android Studio で開く
+```
+
+### 主要なパターン
+
+- すべての画面は Composable 関数
+- 依存関係は `InstanceManager` 経由で `koinInject()` で取得
+- nullable な `StateFlow` 値には `collectAsState().value ?: return` を使用
+- ナビゲーションは `MainActivity.kt` で処理
+
+### ビルド
+
+```bash
+make build-android-debug    # Debug APK
+make build-android          # Release APK（キーストアが必要）
+make release-android        # ビルド + デバイスにインストール
+```
+
+> 詳しいモバイルアプリアーキテクチャについては、[Android アプリアーキテクチャ](/ja/docs/architecture/android)を参照してください。
+
+## iOS 開発
+
+```bash
+make dev-ios    # Xcode で開く
+```
+
+### 主要なパターン
+
+- ビューは SwiftUI 構造体
+- 依存関係は `InstanceManager` 経由で `@EnvironmentObject` で取得
+- nullable な published プロパティにはオプショナルバインディングを使用
+- ナビゲーションは SwiftUI のネイティブナビゲーションスタックを使用
+
+### プロジェクト生成
+
+`project.yml` を変更した場合、Xcode プロジェクトを再生成します：
+
+```bash
+cd apps/ios
+xcodegen generate
+```
+
+### ビルド
+
+```bash
+make build-ios          # Release アーカイブ
+make build-ios-sim      # シミュレータビルド
+make export-ios         # IPA をエクスポート
+```
+
+> 詳しいモバイルアプリアーキテクチャについては、[iOS アプリアーキテクチャ](/ja/docs/architecture/ios)を参照してください。
+
+## デスクトップ開発
+
+デスクトップアプリは `apps/desktop/` にあり、ワークスペース内の Rust クレートです。
+
+### 前提条件（Linux）
+
+```bash
+sudo apt-get install -y \
+  libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+  libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
+  libdbus-1-dev libsecret-1-dev \
+  libasound2-dev
+```
+
+Windows には Visual Studio Build Tools（C++ ワークロード、MSVC）が必要です。
+
+### 実行
+
+```bash
+make dev-desktop    # cargo run -p bedrud-desktop
+```
+
+### ビルド
+
+```bash
+make build-desktop           # optimised binary for the current platform
+```
+
+### 主要なパターン
+
+- すべての UI は `apps/desktop/ui/` 以下の `.slint` ファイルで定義 - `build.rs` がビルド時に Rust にコンパイル
+- `apps/desktop/src/ui/bridge.rs` が Slint コールバックを Rust ロジックに接続する唯一の場所 - ビジネスロジックを `.slint` ファイルに配置しないでください
+- UI の更新が必要なバックグラウンドタスクを起動する場合は `Weak<AppWindow>` を使用
+
+> 詳しいデスクトップアプリアーキテクチャについては、[デスクトップアプリアーキテクチャ](/ja/docs/architecture/desktop)を参照してください。
+
+## ボットエージェント開発
+
+エージェントは `agents/` にあり、エージェントごとに1つのディレクトリがあります。
+
+```bash
+cd agents/music_agent
+pip install -r requirements.txt
+python agent.py "http://localhost:8090/m/test-room"
+```
+
+すべてのエージェントは認証先として動作中の Bedrud サーバーが必要です。
+
+## CI/CD
+
+GitHub Actions は `main` へのプッシュおよびプルリクエストごとに実行されます：
+
+| ジョブ | チェック内容 |
+|-----|---------------|
+| Server | `go vet`、ビルド、テスト |
+| Web | 型チェック、ビルド |
+| Android | リント、ユニットテスト、デバッグ APK |
+| iOS | ビルド + テスト（シミュレータ、カバレッジ付き） |
+| Desktop | `cargo build`、`cargo test` |
+
+リリースビルドはバージョンタグ（`v*`）でトリガーされます。
+
+## コードスタイル
+
+- **Go:** 標準の `gofmt` フォーマット
+- **TypeScript/React:** Biome（`apps/web/biome.json` で設定）
+- **Kotlin:** Android Studio のデフォルトフォーマット
+- **Swift:** Xcode のデフォルトフォーマット
+
+## テスト
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="server">サーバー</TabsTrigger>
+    <TabsTrigger value="web">Web</TabsTrigger>
+    <TabsTrigger value="android">Android</TabsTrigger>
+    <TabsTrigger value="ios">iOS</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="server">
+    ```bash
+    cd server
+    go test ./...
+    ```
+  </TabsContent>
+
+  <TabsContent value="web">
+    ```bash
+    cd apps/web
+    bun run check
+    ```
+  </TabsContent>
+
+  <TabsContent value="android">
+    ```bash
+    cd apps/android
+    ./gradlew test
+    ```
+  </TabsContent>
+
+  <TabsContent value="ios">
+    ```bash
+    make build-ios-sim   # Builds and runs tests
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## 関連項目
+
+- [Makefile リファレンス](/ja/docs/guides/makefile) - すべてのビルド・開発コマンド
+- [アーキテクチャ概要](/ja/docs/architecture/overview) - コンポーネントの全体構成

@@ -1,0 +1,292 @@
+---
+title: Referencia de CLI
+description: Documentación de la interfaz de línea de comandos
+order: 5
+---
+
+Referencia completa para la interfaz de línea de comandos `bedrud`.
+
+## Sinopsis
+
+```bash
+# Estilo de subcomando
+bedrud <command> [flags]
+
+# Estilo de flag
+bedrud --livekit --config <path>
+bedrud --run --config <path>
+```
+
+## Comandos
+
+### `run` / `server`
+
+Inicia el servidor de reuniones Bedrud con API, frontend web integrado y LiveKit integrado (si está configurado).
+
+```bash
+bedrud run    [--config <path>]
+bedrud server [--config <path>]
+```
+
+| Flag       | Predeterminado                           | Descripción                              |
+|------------|------------------------------------------|------------------------------------------|
+| `--config` | `$CONFIG_PATH` var de entorno → `"config.yaml"` | Ruta al archivo de configuración YAML de Bedrud |
+
+**Comportamiento:**
+- Carga la configuración desde la ruta especificada o predeterminados
+- Inicia LiveKit integrado si está configurado en modo interno
+- Inicializa la base de datos SQLite/PostgreSQL y ejecuta migraciones
+- Crea el servidor HTTP Fiber con todas las rutas de API
+- Sirve el frontend React integrado
+- Admite ACME (Let's Encrypt), TLS autofirmado, TLS manual o HTTP simple
+- Apagado elegante en SIGTERM/SIGINT
+
+**Implementación:** `server/internal/server/server.go`
+
+---
+
+### `--livekit`
+
+Inicia solo el servidor de medios LiveKit integrado. Extrae el binario desde Go embed a un directorio temporal.
+
+```bash
+bedrud --livekit --config <path>
+```
+
+| Flag       | Predeterminado | Descripción                                    |
+|------------|----------------|------------------------------------------------|
+| `--config` | (requerido)    | Ruta al archivo de configuración YAML de LiveKit |
+
+**Usado por:** systemd `livekit.service` creado por `bedrud install`
+
+**Implementación:** `server/internal/livekit/server.go`
+
+---
+
+### `--run`
+
+Alias para `bedrud run` con el mismo comportamiento del flag `--config`. Usado por systemd `bedrud.service`.
+
+```bash
+bedrud --run --config <path>
+```
+
+---
+
+### `install`
+
+Instala Bedrud en un sistema Debian/Linux. Crea servicios systemd, archivos de configuración, directorios y certificados TLS.
+
+```bash
+bedrud install [flags]
+```
+
+| Flag                 | Predeterminado                              | Descripción                                                                    |
+|----------------------|---------------------------------------------|--------------------------------------------------------------------------------|
+| `--tls`              | `false`                                     | Habilitar HTTPS (igual que `--self-signed`)                                   |
+| `--self-signed`      | `false`                                     | Generar certificado TLS autofirmado                                           |
+| `--no-tls`           | `false`                                     | Deshabilitar TLS por completo (HTTP simple). Anula `--tls` y `--self-signed`  |
+| `--ip`               | autodetectado                               | Anular la dirección IP del servidor autodetectada                             |
+| `--domain`           | `""`                                        | Nombre de dominio para Let's Encrypt o certificado autofirmado                |
+| `--email`            | `""`                                        | Correo electrónico para el registro de Let's Encrypt                          |
+| `--port`             | `"443"` (TLS) / `"8090"` (HTTP)             | Anular el puerto de escucha                                                   |
+| `--cert`             | `""`                                        | Ruta al archivo de certificado PEM existente                                  |
+| `--key`              | `""`                                        | Ruta al archivo de clave privada PEM existente                                |
+| `--lk-port`          | `"7880"`                                    | Anular el puerto API/WebSocket de LiveKit                                     |
+| `--lk-tcp-port`      | `"7881"`                                    | Anular el puerto TCP RTC de LiveKit                                           |
+| `--lk-udp-port`      | `"7882"`                                    | Anular el puerto UDP RTC de LiveKit                                           |
+| `--fresh`            | `false`                                     | Eliminar la instalación existente antes de instalar                           |
+| `--behind-proxy`     | `false`                                     | El servidor está detrás de CDN/proxy inverso (Cloudflare, nginx)              |
+| `--external-livekit` | `""`                                        | URL del servidor LiveKit completamente externo (máquina diferente)            |
+| `--livekit-domain`   | `""`                                        | Dominio separado para el servidor LiveKit local (evita CDN)                   |
+
+**Lo que hace:**
+1. Detiene y elimina la instalación anterior si `--fresh`
+2. Solicita IP, dominio, correo electrónico, modo TLS (si no es interactivo y no se proporcionan flags)
+3. Crea directorios: `/etc/bedrud`, `/var/lib/bedrud`, `/var/lib/bedrud/certs`, `/var/log/bedrud`
+4. Copia el binario a `/usr/local/bin/bedrud`
+5. Genera la configuración del servidor Bedrud en `/etc/bedrud/config.yaml`
+6. Genera la configuración del servidor de medios LiveKit en `/etc/bedrud/livekit.yaml`
+7. Genera certificados autofirmados en `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` (si TLS está habilitado y no hay certificados personalizados)
+8. Crea systemd `livekit.service` (a menos que use LiveKit externo)
+9. Crea systemd `bedrud.service`
+10. Ejecuta `systemctl daemon-reload`, habilita e inicia ambos servicios
+11. Imprime las URLs de acceso
+
+**Opciones de TLS:**
+- `--domain` + `--email` → ACME (Let's Encrypt)
+- `--self-signed` o `--tls` → certificado autofirmado
+- `--cert` + `--key` → certificados personalizados
+- `--no-tls` → solo HTTP simple
+
+**Topología de LiveKit:**
+- Predeterminado (integrado): LiveKit se ejecuta localmente, a través de proxy en Bedrud en `/livekit`
+- `--livekit-domain`: LiveKit se ejecuta localmente pero los clientes se conectan directamente a través de su propio dominio
+- `--external-livekit`: Sin LiveKit local; se conecta a un servidor remoto
+
+**Implementación:** `server/internal/install/debian.go`
+
+**Documentos relacionados:** [Guía de instalación](/es/docs/getting-started/installation) • [Guía de implementación](/es/docs/guides/deployment) • [Lógica de implementación del backend](/es/docs/backend/deployment)
+
+---
+
+### `uninstall`
+
+Elimina Bedrud del sistema.
+
+```bash
+bedrud uninstall
+```
+
+**Elimina:**
+- Detiene y deshabilita los servicios systemd: `bedrud`, `livekit`
+- Elimina los archivos de unidad systemd de `/etc/systemd/system/`
+- Elimina el binario: `/usr/local/bin/bedrud`, `/tmp/bedrud`, `/tmp/bedrud-livekit-server`
+- Elimina los directorios: `/etc/bedrud`, `/var/lib/bedrud`, `/var/log/bedrud`
+
+**Implementación:** `server/internal/install/debian.go`
+
+**Documentos relacionados:** [Guía de instalación - Desinstalación](/es/docs/getting-started/installation#uninstallation)
+
+---
+
+### `user`
+
+Gestiona usuarios en la base de datos de Bedrud.
+
+```bash
+bedrud user <subcommand> [--config <path>] <flags>
+```
+
+| Flag global | Predeterminado                | Descripción                                    |
+|-------------|-------------------------------|------------------------------------------------|
+| `--config`  | `/etc/bedrud/config.yaml`     | Ruta al archivo de configuración de Bedrud (para ubicar la base de datos) |
+
+#### `create`
+
+Crea un nuevo usuario con autenticación local (contraseña con hash bcrypt).
+
+```bash
+bedrud user create --email <email> --password <password> --name <name>
+```
+
+**Flags requeridos:**
+- `--email`: Dirección de correo electrónico del usuario
+- `--password`: Contraseña del usuario, con hash bcrypt antes del almacenamiento
+- `--name`: Nombre para mostrar del usuario
+
+**Nivel de acceso:** `user` (no superadmin). Usa `promote` para otorgar derechos de administrador.
+
+#### `delete`
+
+Elimina un usuario por dirección de correo electrónico.
+
+```bash
+bedrud user delete --email <email>
+```
+
+#### `promote`
+
+Otorga acceso `superadmin` a un usuario.
+
+```bash
+bedrud user promote --email <email>
+```
+
+#### `demote`
+
+Elimina el acceso `superadmin` de un usuario (revierte al nivel `user`).
+
+```bash
+bedrud user demote --email <email>
+```
+
+**Implementación:** `server/internal/usercli/usercli.go`
+
+---
+
+### `help`
+
+Muestra el mensaje de uso con todos los comandos y flags.
+
+```bash
+bedrud help
+```
+
+También se activa cuando no se proporcionan argumentos. Muestra la salida de `printUsage()`.
+
+---
+
+## Ejemplos
+
+### Inicio básico del servidor de desarrollo
+
+```bash
+# Ejecutar con config.yaml predeterminado en el directorio actual
+bedrud run
+
+# Ejecutar con configuración personalizada
+bedrud run --config /path/to/config.yaml
+
+# Vía var de entorno (fallback)
+export CONFIG_PATH=/etc/bedrud/config.yaml
+bedrud run
+```
+
+### Instalación interactiva (solicita entradas)
+
+```bash
+bedrud install
+```
+
+### Instalación no interactiva con Let's Encrypt
+
+```bash
+bedrud install --domain example.com --email admin@example.com
+```
+
+### TLS autofirmado con puertos personalizados
+
+```bash
+bedrud install --self-signed --port 8443 --lk-port 7880 --lk-tcp-port 7881 --lk-udp-port 7882
+```
+
+### Detrás de CDN con dominio LiveKit separado
+
+```bash
+bedrud install --domain bedrud.example.com --email admin@example.com --livekit-domain lk.example.com --behind-proxy
+```
+
+### Reinstalación fresca
+
+```bash
+bedrud install --fresh --domain example.com --email admin@example.com
+```
+
+### Gestión de usuarios
+
+```bash
+# Crear el primer usuario administrador
+bedrud user create --email admin@example.com --password secret123 --name "Admin User"
+
+# Otorgar acceso superadmin
+bedrud user promote --email admin@example.com
+
+# Crear usuario regular
+bedrud user create --email user@example.com --password pass456 --name "Regular User"
+
+# Eliminar un usuario
+bedrud user delete --email user@example.com
+
+# Eliminar acceso de administrador
+bedrud user demote --email admin@example.com
+```
+
+---
+
+## Documentación relacionada
+
+- [Guía de instalación](/es/docs/getting-started/installation) - Guía detallada de `bedrud install`, topologías TLS, pasos posteriores a la instalación
+- [Referencia de configuración](/es/docs/getting-started/configuration) - Estructura de archivos de configuración del servidor y LiveKit
+- [Lógica de implementación del backend](/es/docs/backend/deployment) - Cómo funcionan `install` y `uninstall` internamente
+- [Guía de implementación](/es/docs/guides/deployment) - Opciones completas de implementación, incluidos los servicios systemd

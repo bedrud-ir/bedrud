@@ -1,0 +1,129 @@
+---
+title: Code-Struktur
+description: Organisation des Backend-Codes
+order: 16
+---
+
+Übersicht über das `server/`-Verzeichnis und dessen Inhalte.
+
+## Projektübersicht & Verzeichnisbaum
+
+Das Verzeichnis `server/` enthält das Go-Backend und den eingebetteten LiveKit-Medienserver. Das Verzeichnis `apps/` enthält die Client-Anwendungen.
+
+```text
+bedrud/
+├── apps/                # Client Applications
+│   ├── web/             # React Frontend (TanStack Start)
+│   ├── android/         # Native Android Application
+│   └── ios/             # Native iOS Application
+├── server/              # Go Backend (The "Appliance")
+│   ├── cmd/             # CLI Entry points (run, install)
+│   ├── internal/        # Private application code
+│   │   ├── auth/        # JWT, Passkeys, OAuth logic
+│   │   ├── handlers/    # HTTP Controllers
+│   │   ├── models/      # Database Schemas
+│   │   ├── repository/  # GORM Data Access Layer
+│   │   └── livekit/     # Media Server Management
+│   ├── frontend/        # (Generated) Compiled web assets
+│   ├── config.yaml      # Configuration template
+│   └── Makefile         # Build & Deploy automation
+└── docs/                # System Documentation (MkDocs)
+```
+
+## Verzeichnisübersicht
+
+### `/cmd/bedrud`
+- **`main.go`**: Der Einstiegspunkt der Anwendung. Er verarbeitet CLI-Befehle wie `run`, `install` und `livekit`.
+
+### `/config`
+- **`config.go`**: Definiert die `Config`-Struktur und lädt Einstellungen aus `config.yaml` oder Umgebungsvariablen.
+- **`livekit.yaml`**: Standardkonfiguration für den eingebetteten LiveKit-Server.
+
+### `/internal`
+
+- **`/auth`**: Enthält die Logik für JWT-Generierung, OAuth-Provider und Passkey-(WebAuthn)-Registrierung/-Anmeldung.
+- **`/database`**: Verwaltet die Verbindung zu SQLite oder PostgreSQL und führt Migrationen durch.
+- **`/handlers`**: Fiber-HTTP-Handler. Hier finden Sie die Logik für jeden API-Endpunkt (z. B. `auth_handler.go`, `room_handler.go`).
+- **`/models`**: GORM-Datenbankmodelle. Diese Dateien definieren die Tabellen in Ihrer Datenbank.
+- **`/repository`**: Die „Data Access Layer". Handler rufen Repositories auf, anstatt Datenbankabfragen direkt zu schreiben, wodurch die Handler-Logik sauber bleibt.
+- **`/livekit`**: Integration mit dem LiveKit Go SDK. Verwaltet die Raumerstellung und generiert „Join Tokens" für Teilnehmer.
+- **`/middleware`**: Benutzerdefinierte Fiber-Middleware für Authentifizierungsprüfungen, Logging und CORS.
+- **`/server`**: Der Code, der alles zusammenführt. Er initialisiert die Datenbank, die Repositories und startet den Fiber-Server.
+- **`/install`**: Logik für den Befehl `bedrud install`, der systemd- und TLS-Einrichtung auf Linux automatisiert.
+- **`/scheduler`**: Hintergrundaufgaben (falls vorhanden).
+- **`/utils`**: Kleine Hilfsfunktionen (z. B. Passwort-Hashing, zufällige Zeichenketten).
+
+### `/migrations`
+
+- Enthält SQL- oder Go-Dateien für Datenbank-Schema-Updates.
+
+### `/docs` (innerhalb von server)
+
+- Enthält Swagger/OpenAPI-Dokumentationsdateien (generiert von `swag`).
+
+## Technischer Deep Dive
+
+### 1. Binary Embedding (Der „Trick")
+
+Bedrud nutzt die `//go:embed`-Direktive, um Dateien in das kompilierte Binary zu bündeln.
+
+- **Frontend:** Der React-Ordner `dist/client/` (plus ein vorgerendertes `index.html`) ist in `server/ui.go` eingebettet. Statische Dateien werden direkt aus dem Speicher über Fibers `filesystem`-Middleware bereitgestellt.
+- **LiveKit-Server:** Die vorkompilierte `livekit-server`-Ausführbare ist in `internal/livekit/bin/` eingebettet. Zur Laufzeit extrahiert Bedrud sie nach `/tmp/bedrud-livekit-server` und startet sie als Hintergrundprozess (`internal/livekit/server.go`).
+
+### 2. LiveKit-Reverse-Proxy
+
+Um zu vermeiden, mehrere Ports (Signalisierung, API usw.) öffnen zu müssen, leitet Bedrud den gesamten LiveKit-Signalisierungstraffic über seinen Haupt-HTTP(S)-Port.
+
+- Jede Anfrage, die mit `/livekit` beginnt, wird in `internal/server/server.go` abgefangen.
+- Ein **Reverse Proxy** (mit `httputil.NewSingleHostReverseProxy`) leitet diese Anfragen an die interne LiveKit-Instanz weiter (normalerweise laufend auf `127.0.0.1:7880`).
+- Der Proxy entfernt das `/livekit`-Präfix vor der Weiterleitung, sodass LiveKit so funktioniert, als wäre es die Root-Anwendung.
+
+### 3. Middleware-Kontext & Locals
+Das Backend verwendet Fibers `.Locals`, um Daten zwischen Middleware und Handlern zu übergeben.
+- **Auth-Middleware (`internal/middleware/auth.go`):** Validiert das JWT und speichert das `Claims`-Objekt in `c.Locals("user")`.
+- **Handler:** Können auf die ID und Berechtigungen des aktuellen Benutzers zugreifen mit:
+  ```go
+  claims := c.Locals("user").(*auth.Claims)
+  userID := claims.UserID
+  ```
+
+### 4. Konfigurationsüberschreibungen
+
+Obwohl Bedrud eine `config.yaml`-Datei verwendet, kann fast jede Einstellung mit **Umgebungsvariablen** überschrieben werden. Dies ist unerlässlich für Docker- und CI/CD-Umgebungen.
+
+| Variable | Beschreibung |
+|----------|-------------|
+| `SERVER_PORT` | Der Port, auf dem das Backend lauscht (Standard: `8090`). |
+| `SERVER_ENABLE_TLS` | Boolescher Wert (`true/false`) zum Aktivieren von HTTPS. |
+| `SERVER_DOMAIN` | Ihre Produktionsdomäne (verwendet für ACME und Passkey RP ID). |
+| `DB_TYPE` | `sqlite` oder `postgres`. |
+| `DB_PATH` | Pfad zur `.db`-Datei (bei Verwendung von SQLite). |
+| `LIVEKIT_HOST` | Die öffentliche URL für LiveKit (z. B. `https://meet.example.com/livekit`). |
+| `LIVEKIT_API_KEY` | Schlüssel für die LiveKit-Authentifizierung. |
+| `JWT_SECRET` | Geheimschlüssel zum Signieren von Access Tokens. |
+
+## Coding-Standards und Muster
+
+Das Backend folgt diesen Mustern:
+
+### 1. Repository-Muster
+Handler sollten nicht direkt mit der Datenbank kommunizieren. Verwenden Sie ein Repository. Dies macht den Code leichter testbar und ermöglicht Änderungen an der Datenbanklogik, ohne die API-Handler zu berühren.
+
+### 2. Standardisierte Fehlerbehandlung
+API-Handler sollten klare Fehlermeldungen zurückgeben.
+- Verwenden Sie `c.Status(fiber.StatusBadRequest).JSON(...)` für Validierungsfehler.
+- Verwenden Sie `c.Status(fiber.StatusUnauthorized).JSON(...)` für Auth-Fehler.
+- Verwenden Sie `c.Status(fiber.StatusInternalServerError).JSON(...)` für Datenbank- oder Serverfehler.
+
+### 3. Strukturiertes Logging
+Das Backend verwendet **Zerolog** für das Logging.
+- `log.Info()`: Für wichtige Ereignisse (z. B. Server gestartet).
+- `log.Error()`: Für Fehler.
+- `log.Debug()`: Für detaillierte Entwicklungsinformationen.
+
+Vermeiden Sie die Verwendung von `fmt.Println` für das Logging in der Kernlogik.
+
+### 4. Namenskonventionen
+- **Dateien:** snake_case (z. B. `user_handler.go`).
+- **Structs/Funktionen:** PascalCase (z. B. `GetUserByEmail`).
+- **Variablen:** camelCase (z. B. `hashedPassword`).

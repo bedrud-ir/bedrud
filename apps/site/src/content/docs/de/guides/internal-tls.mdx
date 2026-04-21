@@ -1,0 +1,73 @@
+---
+title: Internes TLS
+description: Selbstsignierte Zertifikate für interne Netzwerke
+order: 30
+---
+
+Für isolierte Netzwerke - keine öffentliche Domain, kein ausgehendes Internet, eingeschränkte Konnektivität.
+
+Browser erfordern vertrauenswürdiges HTTPS für Kamera/Mikrofon über WebRTC. Selbstsignierte Zertifikate funktionieren, zeigen jedoch Warnungen. Für eine saubere Einrichtung generieren Sie eine private CA und verteilen Sie diese an die Clients.
+
+## Private CA und Serverzertifikat generieren
+
+```bash
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+  -subj "/CN=Bedrud Internal CA"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=<your-server-ip-or-hostname>"
+openssl x509 -req -days 365 -in server.csr \
+  -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
+sudo ./bedrud install --tls --cert server.crt --key server.key --ip YOUR_SERVER_IP
+```
+
+## CA zu Client-Trust-Stores hinzufügen
+
+Verteilen Sie `ca.crt` an alle Client-Rechner:
+
+### Windows
+
+```powershell
+certmgr.msc  # Right-click ca.crt → Install Certificate → Trusted Root CAs
+```
+
+### macOS
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt
+```
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo cp ca.crt /usr/local/share/ca-certificates/bedrud-ca.crt
+sudo update-ca-certificates
+```
+
+### Linux (Arch/Fedora)
+
+```bash
+sudo cp ca.crt /etc/pki/ca-trust/source/anchors/bedrud-ca.crt
+sudo update-ca-trust
+```
+
+Starten Sie die Browser neu und öffnen Sie dann `https://YOUR_SERVER_IP` (ersetzen Sie dies durch die tatsächliche IP-Adresse des Servers, z. B. `192.168.1.100`). Nach dem Neustart wird das Zertifikat als vertrauenswürdig eingestuft und Kamera-/Mikrofonzugriff funktioniert ohne Warnungen.
+
+## Fehlerbehebung
+
+| Problem | Lösung |
+|---------|--------|
+| Browser warnt weiterhin vor nicht vertrauenswürdigem Zertifikat | Browser-Cache leeren, Browser nach CA-Installation neu starten |
+| Kamera/Mikrofon blockiert | Prüfen Sie, ob sich die CA in den Vertrauenswürdigen Stammzertifikaten befindet, nicht als Zwischenzertifikat |
+| Zertifikat abgelaufen | Mit längerem `-days`-Wert neu generieren |
+| CN-Konflikt | Stellen Sie sicher, dass das Serverzertifikat-CN mit der IP oder dem Hostnamen in der URL übereinstimmt |
+
+---
+
+## Siehe auch
+- [Installationsanleitung](/de/docs/getting-started/installation) - Installationsmethoden
+- [Konfigurationsreferenz](/de/docs/getting-started/configuration) - vollständige Konfigurationsoptionen

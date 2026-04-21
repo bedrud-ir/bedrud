@@ -1,0 +1,309 @@
+---
+title: CLI-Installer
+description: Ein-Klick-Installation von Bedrud auf allen Plattformen
+order: 2
+---
+
+Ein-Klick-Installation für alle Plattformen. Kein `sudo` — wird in Ihrem Home-Verzeichnis installiert.
+
+Für die Server-Einrichtung nach der Installation siehe [Schnellstart](/de/docs/getting-started/quickstart). Für Paketmanager, Docker und andere Methoden siehe [Serverinstallation](/de/docs/getting-started/installation).
+
+---
+
+## Funktionsweise
+
+1. Erkennt Betriebssystem, CPU-Architektur und Plattformvarianten (Rosetta 2)
+2. Lädt die richtige Binärdatei von [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) herunter
+3. Installiert nach `~/bin` (anpassbar über `--install-dir`)
+4. Fügt das Installationsverzeichnis über die Shell-Konfiguration zum `PATH` hinzu
+5. Führt `bedrud completions` für Shell-Tab-Vervollständigung aus
+6. Zeigt die nächsten Schritte an
+
+---
+
+## Voraussetzungen
+
+| Plattform | Abhängigkeiten |
+|-----------|---------------|
+| macOS / Linux | `curl` + `tar` |
+| Windows | PowerShell 5.1+ (in Windows 10/11 enthalten) |
+
+---
+
+## Schnellinstallation
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="bash">macOS / Linux</TabsTrigger>
+    <TabsTrigger value="powershell">Windows</TabsTrigger>
+  </TabsList>
+  <TabsContent value="bash">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    Shell neu laden, dann überprüfen:
+
+    ```bash
+    source ~/.bashrc  # oder ~/.zshrc
+    bedrud --version
+    ```
+  </TabsContent>
+  <TabsContent value="powershell">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    bedrud --version
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## Flags & Optionen
+
+### Bash-Installer
+
+```
+Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+```
+
+| Flag | Standard | Beschreibung |
+|------|----------|-------------|
+| `--install-dir <dir>` | `~/bin` | Ablageort der Binärdatei |
+| `--version <ver>` | `latest` | Eine Release-Version festlegen (z. B. `v1.2.0`) |
+| `--skip-shell` | off | Shell-RC-Dateien und PATH nicht ändern |
+| `-h`, `--help` | — | Verwendung anzeigen und beenden |
+
+**Beispiele:**
+
+```bash
+# Standard
+curl -fsSL https://get.bedrud.org | bash
+
+# Version festlegen
+curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# Systemweite Installation
+curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+
+# CI / Automatisierung — Shell-Konfiguration überspringen
+curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+```
+
+### PowerShell-Installer
+
+```
+Usage: irm https://get.bedrud.org/install.ps1 | iex
+```
+
+Zum Übergeben von Parametern zunächst in einer Datei speichern:
+
+```powershell
+irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+.\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
+```
+
+| Parameter | Standard | Beschreibung |
+|-----------|----------|-------------|
+| `-InstallDir <path>` | `$HOME\bin` | Ablageort von `bedrud.exe` |
+| `-Version <ver>` | `latest` | Eine bestimmte Release-Version installieren |
+| `-SkipPath` | `$false` | Installationsverzeichnis nicht zum Benutzer-PATH hinzufügen |
+
+---
+
+## Umgebungsvariablen
+
+| Variable | Standard | Plattformen | Beschreibung |
+|----------|----------|-------------|-------------|
+| `BEDRUD_INSTALL` | `~/bin` | Nur Bash | Installationsverzeichnis überschreiben (gleich wie `--install-dir`) |
+| `BEDRUD_REPO` | `bedrud-ir/bedrud` | Beide | GitHub-Repo überschreiben (für Forks oder Mirrors) |
+
+```bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+```
+
+```powershell
+$env:BEDRUD_REPO = "myorg/bedrud-fork"
+irm https://get.bedrud.org/install.ps1 | iex
+```
+
+---
+
+## Plattformunterstützung
+
+| Ziel | Betriebssystem | Architektur | Hinweise |
+|------|---------------|-------------|----------|
+| `darwin_amd64` | macOS | Intel (x86_64) | Standard |
+| `darwin_arm64` | macOS | Apple Silicon (M1/M2/M3/M4) | Rosetta 2 automatisch erkannt |
+| `linux_amd64` | Linux | x86_64 | Standard |
+| `linux_arm64` | Linux | ARM64 | Standard |
+| `freebsd_amd64` | FreeBSD | x86_64 | Standard |
+| `windows_amd64` | Windows | x86_64 | Standard |
+| `windows_arm64` | Windows | ARM64 | Standard |
+
+<details>
+<summary>Logik zur Erkennung von Betriebssystem und Architektur</summary>
+
+```
+uname -s → "Darwin"  → darwin
+           "Linux"   → linux
+           "FreeBSD" → freebsd
+           "MINGW*"  → Weiterleitung zum PowerShell-Skript
+           "MSYS*"   → Weiterleitung zum PowerShell-Skript
+
+uname -m → "x86_64" | "amd64"  → amd64
+           "aarch64" | "arm64"  → arm64
+```
+
+</details>
+
+---
+
+## Erkennung von Sonderfällen
+
+### Rosetta 2 (macOS Intel auf Apple Silicon)
+
+**Erkennung:** `sysctl -n sysctl.proc_translated` gibt `1` zurück.
+**Auswirkung:** Wechselt `darwin_amd64` → `darwin_arm64` für native ARM-Leistung.
+
+---
+
+## Installationsablauf
+
+1. **Windows-Prüfung** — MINGW/MSYS/CYGWIN erkannt? PowerShell-Befehl anzeigen, beenden
+2. **Abhängigkeitsprüfung** — erfordert `curl` + `tar`
+3. **Argumentauswertung** — maximal 3 Flags
+4. **Plattform-Erkennung** — Betriebssystem + Architektur über `uname`
+5. **Varianten-Erkennung** — Rosetta 2
+6. **Download** — `bedrud_{TARGET}.tar.xz` herunterladen
+7. **Extrahieren & Installieren** — Temp-Verzeichnis, entpacken, `mv → $INSTALL_DIR/bedrud`, `chmod +x`
+8. **Überprüfen** — `bedrud --version` ausführen
+9. **PATH-Prüfung** — bereits im PATH? Überspringen. `--skip-shell`? Manuellen Befehl anzeigen. Sonst → RC-Datei ändern
+10. **Vervollständigungen** — `bedrud completions` ausführen
+11. **Fertig** — Erfolgsmeldung + Neulade-Anweisungen anzeigen
+
+Download-URL-Format: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+---
+
+## PATH & Shell-Konfiguration
+
+Wenn `--skip-shell` nicht gesetzt ist, fügt das Installationsprogramm das Installationsverzeichnis Ihrem PATH hinzu.
+
+| Shell | RC-Datei |
+|-------|----------|
+| fish | `~/.config/fish/config.fish` |
+| zsh | `$ZDOTDIR/.zshrc` (Standard `~/.zshrc`) |
+| bash (macOS) | `~/.bash_profile`, dann `~/.bashrc` |
+| bash (Linux) | `~/.bashrc`, dann `~/.bash_profile` |
+
+**Was hinzugefügt wird:**
+
+```bash
+# bedrud
+export PATH="$HOME/bin:$PATH"  # bedrud
+```
+
+Der `# bedrud`-Kommentar-Marker verhindert doppelte Einträge — sicher zum erneuten Ausführen.
+
+**Windows:** Verwendet `[Environment]::SetEnvironmentVariable("PATH", ..., "User")` auf Registrierungsebene. Keine RC-Datei erforderlich.
+
+**Shell nach der Installation neu laden:**
+
+```bash
+source ~/.bashrc    # bash
+source ~/.zshrc     # zsh
+source ~/.config/fish/config.fish  # fish
+```
+
+---
+
+## Offline- / Air-Gap-Installationen
+
+### Herunterladen und Übertragen
+
+```bash
+curl -fsSL -o bedrud.tar.xz \
+  https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+scp bedrud.tar.xz airgapped-server:/tmp/
+# Auf dem Zielsystem:
+tar -xf /tmp/bedrud.tar.xz -C /tmp/bedrud-extracted
+mv /tmp/bedrud-extracted/bedrud ~/bin/
+chmod +x ~/bin/bedrud
+```
+
+### Selbstgehosteter Mirror
+
+```bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+```
+
+### Direkte Binärdatei
+
+Von [Releases](https://github.com/bedrud-ir/bedrud/releases) herunterladen, entpacken und in ein Verzeichnis in Ihrem `PATH` verschieben.
+
+---
+
+## Deinstallation
+
+```bash
+rm ~/bin/bedrud
+# PATH-Zeile aus der Shell-RC entfernen (nach "# bedrud" suchen):
+#   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
+```
+
+Für systemd-Serverinstallationen:
+
+```bash
+sudo bedrud uninstall
+```
+
+Windows:
+
+```powershell
+Remove-Item "$env:USERPROFILE\bin\bedrud.exe"
+# Über Systemeigenschaften → Umgebungsvariablen aus dem PATH entfernen
+```
+
+---
+
+## Fehlerbehebung
+
+### `command not found: bedrud`
+
+```bash
+source ~/.bashrc    # Shell neu laden
+echo $PATH | tr ':' '\n' | grep "$HOME/bin"  # PATH prüfen
+```
+
+Falls fehlend:
+
+```bash
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### `Failed to download bedrud`
+
+1. Internetverbindung prüfen
+2. Überprüfen, ob das Ziel unter [Releases](https://github.com/bedrud-ir/bedrud/releases) existiert
+3. Eine bestimmte Version versuchen: `--version v1.0.0`
+4. Ihre Plattform verfügt möglicherweise noch nicht über eine vorkompilierte Binärdatei
+
+### macOS: x64 wird unter Rosetta ausgeführt (langsam)
+
+Natives ARM erzwingen:
+
+```bash
+arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+```
+
+### Windows: „Ausführung von Skripts ist deaktiviert"
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+irm https://get.bedrud.org/install.ps1 | iex
+```

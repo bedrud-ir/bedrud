@@ -1,0 +1,149 @@
+---
+title: Aplicación de Escritorio
+description: Aplicación de escritorio basada en Rust
+order: 11
+---
+
+El cliente de escritorio de Bedrud es una aplicación nativa para Windows y Linux construida con **Rust** y el toolkit de UI **Slint**. Proporciona la misma experiencia central de reunión que los clientes web y móviles, compilada en un solo binario sin dependencias de tiempo de ejecución.
+
+## Stack Tecnológico
+
+| Componente | Tecnología |
+|-----------|-----------|
+| Lenguaje | Rust (estable) |
+| Toolkit de UI | Slint 1.x |
+| Cliente HTTP | reqwest (asíncrono, TLS) |
+| Medios | LiveKit Rust SDK |
+| Almacenamiento | serde_json + llavero del sistema operativo (libsecret / Windows Credential Store) |
+| Sistema de construcción | Espacio de trabajo Cargo |
+
+## Soporte de Plataformas
+
+| Plataforma | Renderizador | Binario |
+|----------|----------|--------|
+| Windows 10/11 | Direct3D 11 | `bedrud-desktop.exe` |
+| Linux x86_64 | OpenGL / Vulkan (vía EGL/Wayland/X11) | `bedrud-desktop` |
+| macOS | _(aún no - use la aplicación web)_ | - |
+
+## Estructura del Código Fuente
+
+```
+apps/desktop/
+├── Cargo.toml              # Definición de crate
+├── build.rs                # Paso de compilación de Slint
+├── src/
+│   ├── main.rs             # Punto de entrada - inicializa app + bucle de eventos
+│   ├── app.rs              # AppState de nivel superior y lógica de inicio
+│   ├── api/
+│   │   ├── client.rs       # Cliente HTTP compartido (URL base, inyección JWT)
+│   │   ├── auth.rs         # Login, registro, actualización
+│   │   ├── rooms.rs        # Lista de salas, unirse, crear
+│   │   └── admin.rs        # Endpoints de administración
+│   ├── auth/
+│   │   ├── session.rs      # Almacenamiento JWT y bucle de actualización
+│   │   └── passkey.rs      # Stub de passkey FIDO2
+│   ├── livekit/
+│   │   ├── room.rs         # Ciclo de vida de conexión de sala
+│   │   ├── tracks.rs       # Gestión de tracks de audio/video
+│   │   └── devices.rs      # Enumeración de micrófono / cámara
+│   ├── store/
+│   │   ├── instance.rs     # Persistencia multiinstancia
+│   │   └── settings.rs     # Preferencias del usuario
+│   └── ui/
+│       ├── mod.rs
+│       └── bridge.rs       # Cableado de callbacks Slint ↔ Rust
+└── ui/
+    ├── app.slint            # Componente raíz, enrutador de páginas
+    ├── theme.slint          # Colores, tipografía, tokens de espaciado
+    ├── components/          # Button, Input, Card, Avatar
+    ├── auth/                # Pantallas de Login y Register
+    ├── dashboard/           # Lista de salas, diálogo Create-room
+    ├── meeting/             # Barra de controles, mosaicos de participantes, chat
+    ├── admin/               # Panel de administración, tabla de usuarios
+    └── settings.slint       # Pantalla de configuración
+```
+
+## Arquitectura
+
+```mermaid
+flowchart TB
+    subgraph UI ["Slint UI Layer"]
+        direction TB
+        SLINT[app.slint<br/>theme.slint<br/>components/ + screens]
+    end
+
+    subgraph Bridge ["Bridge Layer"]
+        BRIDGE[ui/bridge.rs<br/>Slint ↔ Rust wiring]
+    end
+
+    subgraph Core ["Core Modules"]
+        direction TB
+        API[api/<br/>client.rs • auth.rs • rooms.rs • admin.rs]
+        LIVEKIT[livekit/<br/>room.rs • tracks.rs • devices.rs]
+        AUTH[auth/<br/>session.rs • passkey.rs]
+        STORE[store/<br/>instance.rs • settings.rs]
+    end
+
+    SLINT -->|"callbacks /<br/>property bindings"| BRIDGE
+    BRIDGE <-->|"async tasks<br/>+ Weak&lt;AppWindow&gt;"| Core
+    API <--> LIVEKIT
+    AUTH <--> STORE
+```
+
+### Decisiones de diseño clave
+
+- **UI en tiempo de compilación de Slint** - Los archivos `.slint` se compilan en Rust en tiempo de compilación vía `build.rs`. No hay motor de diseño en tiempo de ejecución; la UI es completamente nativa.
+- **`bridge.rs` como el único límite UI↔lógica** - todos los callbacks de Slint se cablean en un solo lugar, manteniendo la lógica de negocio fuera de la capa UI y facilitando la auditoría del puente.
+- **`Weak<AppWindow>` en callbacks** - Los manejadores de UI de Slint son `!Send`, por lo que las tareas en segundo plano actualizan una referencia `Weak` almacenada en el hilo de UI para establecer propiedades, en lugar de compartir el manejador entre hilos.
+- **Multiinstancia vía `store/instance.rs`** - idéntico a las aplicaciones móviles: las instancias se serializan a un archivo JSON en el directorio de configuración del sistema operativo; cada instancia tiene su propio `APIClient` y `AuthSession`.
+
+## Construcción Local
+
+### Prerrequisitos
+
+- Cadena de herramientas de Rust estable (`rustup toolchain install stable`)
+- **Linux:** `libfontconfig`, `libxkbcommon`, `libwayland`, `libgles2`, `libdbus`, `libsecret`
+
+  ```bash
+  sudo apt-get install -y \
+    libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+    libwayland-dev libgles2-mesa-dev libegl1-mesa-dev \
+    libdbus-1-dev libsecret-1-dev \
+    libasound2-dev
+  ```
+
+- **Windows:** Visual Studio Build Tools (MSVC) con la carga de trabajo C++
+
+### Construcción
+
+```bash
+# Construcción de depuración (compilación rápida, sin optimizaciones)
+make dev-desktop          # ejecuta la aplicación inmediatamente después de la construcción
+
+# Construcción de release
+make build-desktop        # → target/release/bedrud-desktop (Linux)
+                           # → target/release/bedrud-desktop.exe (Windows)
+```
+
+O con Cargo directamente:
+
+```bash
+cargo build -p bedrud-desktop                          # depuración
+cargo build -p bedrud-desktop --release                # optimizado
+cargo run   -p bedrud-desktop                          # ejecutar inmediatamente
+```
+
+## CI
+
+La aplicación de escritorio se construye en CI en cada envío a `main` y en pull requests:
+
+| Trabajo | Runner | Qué verifica |
+|-----|--------|----------------|
+| `Desktop – Build & Test` | `ubuntu-latest` | `cargo build`, `cargo test` |
+
+Las construcciones de release producen dos artefactos:
+
+| Artefacto | Runner | Formato |
+|----------|--------|--------|
+| `bedrud-desktop-linux-x86_64.tar.xz` | `ubuntu-latest` | tar.xz |
+| `bedrud-desktop-windows-x86_64.zip` | `windows-latest` | zip |

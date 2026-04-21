@@ -1,0 +1,133 @@
+---
+title: サーバーアーキテクチャ
+description: バックエンドサーバーの設計とコンポーネント
+order: 7
+---
+
+Bedrud サーバーは、REST API を提供し、組み込みの Web フロントエンドを配信し、LiveKit メディアサーバーを管理する Go アプリケーションです。
+
+## テクノロジースタック
+
+| テクノロジー | 目的 |
+|-----------|---------|
+| Go 1.24 | コア言語 |
+| Fiber v2 | Web フレームワーク（Express 風） |
+| GORM | SQLite および PostgreSQL 用 ORM |
+| LiveKit Protocol SDK | WebRTC ルームとトークン管理 |
+| Zerolog | 構造化 JSON ロギング |
+| Goth | マルチプロバイダー OAuth2 |
+| go-passkeys | FIDO2/WebAuthn サポート |
+| golang-jwt | JWT トークンの作成と検証 |
+| gocron | バックグラウンドジョブスケジューリング |
+| Swagger (swaggo) | API ドキュメント自動生成 |
+
+## ディレクトリ構造
+
+```
+server/
+├── cmd/
+│   ├── server/main.go        # Development entry point
+│   └── bedrud/main.go        # Production entry point (with install/livekit flags)
+├── internal/
+│   ├── auth/                  # Authentication services
+│   │   ├── auth.go            # Core auth service (register, login, OAuth)
+│   │   ├── jwt.go             # JWT token creation and validation
+│   │   └── session_store.go   # Gorilla session store for OAuth state
+│   ├── database/              # Database initialization and migrations
+│   ├── handlers/              # HTTP request handlers (controller layer)
+│   │   ├── auth_handler.go    # Auth endpoints
+│   │   ├── room.go            # Room endpoints
+│   │   └── users.go           # User management endpoints
+│   ├── middleware/             # Fiber middleware
+│   │   └── auth.go            # JWT validation, permission checks
+│   ├── models/                # GORM models (database schemas)
+│   │   ├── user.go            # User model
+│   │   ├── room.go            # Room model
+│   │   └── passkey.go         # Passkey model
+│   ├── repository/            # Data access layer (SQL via GORM)
+│   │   ├── user_repository.go
+│   │   ├── room_repository.go
+│   │   └── passkey_repository.go
+│   ├── livekit/               # Embedded LiveKit server management
+│   ├── scheduler/             # Background job scheduling
+│   └── utils/                 # TLS and other utilities
+├── frontend/                  # Embedded web frontend (populated at build time)
+├── config.yaml                # Development configuration
+├── livekit.yaml               # Development LiveKit configuration
+├── go.mod
+└── go.sum
+```
+
+## レイヤードアーキテクチャ
+
+サーバーは3層アーキテクチャに従っています。
+
+```mermaid
+flowchart TB
+    HTTP[HTTP Request] --> Middleware
+    Middleware["Middleware<br/>JWT validation, CORS, logging"] --> Handlers
+    Handlers["Handlers<br/>Parse requests, call services, format responses"] --> Services
+    Services["Services<br/>Business logic (auth, room management)"] --> Repository
+    Repository["Repository<br/>Database queries via GORM"] --> Database
+    Database["Database<br/>SQLite (dev) or PostgreSQL (production)"]
+```
+
+## 主要なパターン
+
+### 組み込みフロントエンド
+
+Web フロントエンドは静的ファイルにコンパイルされ、`//go:embed` を使用して Go バイナリに組み込まれます。
+
+```go
+//go:embed frontend/*
+var frontendFS embed.FS
+```
+
+ビルド時に、`bun run build:embed` で React アプリを SSR プリレンダリングし、`dist/client/` を `server/frontend/` にコピーします。Go コンパイラがこれをバイナリにバンドルします。Fiber サーバーは API 以外のルートに対してこれらのファイルを配信します。
+
+### JWT 認証
+
+ミドルウェアは `Authorization: Bearer <token>` ヘッダーから JWT を抽出し、検証して、ユーザーコンテキストをリクエストにアタッチします。保護されたルートは `RequireAccess` ミドルウェアを使用してユーザーロールを確認します。
+
+### LiveKit トークン生成
+
+ユーザーがルームに参加する際、サーバーは以下の処理を行います。
+
+1. ルームの権限を検証
+2. API シークレットで署名された LiveKit アクセストークンを作成
+3. トークンをクライアントに返す
+4. クライアントはトークンを使用して LiveKit に直接接続
+
+### Swagger ドキュメント
+
+API ドキュメントは swaggo を使用してコードアノテーションから自動生成されます。開発環境では `/api/swagger/` でアクセスできます。
+
+## データベース
+
+### SQLite（デフォルト）
+
+開発環境や小規模なデプロイメントでは、Bedrud は SQLite を使用します。データベースファイルは設定された `database.path`（デフォルト: `data.db`）に保存されます。
+
+### PostgreSQL
+
+高い同時実行性が求められる本番環境では、PostgreSQL の接続文字列を設定します。GORM は両方のダイアレクトを透過的に処理します。
+
+### マイグレーション
+
+GORM は起動時にモデル構造体に基づいてスキーマを自動マイグレーションします。モデルは `internal/models/` で定義されています。
+
+## バックグラウンドジョブ
+
+`gocron` スケジューラは以下の定期タスクを実行します。
+
+- 期限切れのリフレッシュトークンのクリーンアップ
+- 古いルーム参加者の削除
+
+---
+
+## 関連項目
+
+- [バックエンドコード構造](/ja/docs/backend/structure) - ディレクトリマップとコーディング規約
+- [API ハンドラー](/ja/docs/backend/api-handlers) - ルーティングとリクエストライフサイクル
+- [データベースとモデル](/ja/docs/backend/database) - GORM モデルとリポジトリパターン
+- [認証フロー](/ja/docs/backend/authentication) - JWT、OAuth、パスキーの内部構造

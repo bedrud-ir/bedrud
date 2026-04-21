@@ -1,0 +1,34 @@
+---
+title: Dağıtım
+description: Arka uç dağıtım stratejileri
+order: 21
+---
+
+Yerleşik kurucu, tek bir komutla yeni bir Linux sunucusunu üretim kullanımı için yapılandırır.
+
+<InstallerSteps />
+
+<SystemdServices />
+
+## Güvenlik ve TLS
+
+Kurucu güvenliği otomatik olarak halleder:
+
+- **ACME (Let's Encrypt):** Bir alan adı ve e-posta sağlarsanız, otomatik sertifika yenilemeyi ayarlar.
+- **Kendi İmzalı Sertifikalar:** Alan adı sağlanmazsa, sitenin yine de HTTPS üzerinden çalışabilmesi için kendi imzalı bir sertifika üretir.
+- **Ters Vekil:** Arka uç bir ters vekil (reverse proxy) olarak çalışır. 443 portundan trafiği alır ve `/livekit` isteklerini dahili medya sunucusuna gönderir.
+
+## Kaldırma
+
+Bedrud'u kaldırmanız gerekiyorsa şu komutu çalıştırabilirsiniz:
+```bash
+sudo bedrud uninstall
+```
+Bu komut servisleri durdurur, systemd dosyalarını siler ve yapılandırma ile veri klasörlerini kaldırır.
+
+---
+
+## Ayrıca bakınız
+
+- [Dağıtım Kılavuzu](/tr/docs/guides/deployment) - tam üretim dağıtım talimatları
+- [Cihaz Modu](/tr/docs/guides/appliance) - tek ikili dosya kurulum referansı

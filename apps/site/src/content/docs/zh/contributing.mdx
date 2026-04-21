@@ -1,0 +1,108 @@
+---
+title: Contributing
+description: How to contribute to Bedrud
+order: 34
+---
+
+欢迎对 Bedrud 的贡献。本指南介绍提交更改的流程。
+
+> **注意：** 规范的贡献指南位于仓库根目录：[CONTRIBUTING.md](https://github.com/bedrud-ir/bedrud/blob/main/CONTRIBUTING.md)。此页面仅作存档参考。
+
+## 入门
+
+1. Fork 仓库
+2. 克隆你的 fork
+3. 从 `main` 创建功能分支
+4. 进行更改
+5. 提交 Pull Request
+
+## 前提条件
+
+- Go 1.22+
+- Bun（用于 Web 前端）
+- Rust（用于桌面应用）
+- Make
+- Git
+
+## 开发设置
+
+```bash
+# After forking on GitHub, clone your fork
+git clone https://github.com/<your-username>/bedrud.git
+cd bedrud
+make init
+make dev
+```
+
+详细设置说明请参阅[开发工作流](/zh/docs/guides/development)。
+
+## 项目结构
+
+| 目录       | 语言         | 说明                      |
+|-----------------|------------------|----------------------------------|
+| `server/`       | Go               | 后端 API 和嵌入式 LiveKit |
+| `apps/web/`     | TypeScript/React | Web 前端                     |
+| `apps/desktop/` | Rust + Slint     | 桌面应用                      |
+| `apps/android/` | Kotlin           | Android 应用                      |
+| `apps/ios/`     | Swift            | iOS 应用                          |
+| `agents/`       | Python           | 机器人代理                       |
+| `packages/`     | TypeScript       | 共享类型定义          |
+| `tools/cli/`    | Python           | 部署 CLI                   |
+| `docs/`         | Markdown         | 文档                    |
+
+## 代码风格
+
+| 语言         | 标准                |
+|------------------|-------------------------|
+| Go               | `gofmt`                 |
+| TypeScript/React | Biome                   |
+| Kotlin           | Android Studio 默认格式化 |
+| Swift            | Xcode 默认格式化          |
+| Python           | ruff                    |
+
+## Pull Request 流程
+
+1. **分支命名：** `feature/description`、`fix/description` 或 `docs/description`
+2. **提交消息：** `<action> <what> for <why>`（例如：`add user model for auth feature`、`fix login redirect for expired sessions`）
+3. **CI 检查：** 所有 GitHub Actions 检查必须通过
+4. **描述：** 包含更改内容和原因
+
+### CI 检查
+
+每个 PR 会自动运行以下检查：
+
+| 检查   | 验证内容            |
+|---------|------------------------------|
+| 服务器  | `go vet`、构建、测试       |
+| Web     | TypeScript 类型检查、构建 |
+| Android | Lint、单元测试             |
+| iOS     | 构建、测试（模拟器）      |
+
+## 报告问题
+
+在 [GitHub Issues](https://github.com/bedrud-ir/bedrud/issues) 上提交问题，包括：
+
+- 复现步骤
+- 预期行为 vs 实际行为
+- 环境详情（操作系统、浏览器、应用版本）
+
+## 文档
+
+文档位于 `docs/` 目录下，使用 [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) 构建。
+
+### 本地预览
+
+```bash
+pip install mkdocs-material
+mkdocs serve
+```
+
+然后在浏览器中打开 `http://localhost:8000`。
+
+### 结构
+
+文档页面按主题组织。导航定义在项目根目录的 `mkdocs.yml` 中。
+
+## 许可证
+
+贡献即表示你同意你的贡献将根据 [Apache License 2.0](https://github.com/bedrud-ir/bedrud/blob/main/LICENSE) 进行许可。

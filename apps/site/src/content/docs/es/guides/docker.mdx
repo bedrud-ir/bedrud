@@ -1,0 +1,157 @@
+---
+title: Guía de Docker
+description: Ejecutar Bedrud con Docker
+order: 29
+---
+
+Bedrud proporciona un Dockerfile multi-etapa para compilar y ejecutar en contenedores.
+
+## Inicio rápido
+
+```bash
+# Compilar
+docker build -t bedrud .
+
+# Ejecutar
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  bedrud
+```
+
+## Resumen del Dockerfile
+
+El Dockerfile usa tres etapas para minimizar el tamaño de la imagen final:
+
+### Etapa 1: Compilación del frontend
+
+```dockerfile
+FROM node:22-alpine AS frontend
+RUN npm install -g bun
+WORKDIR /build/apps/web
+COPY apps/web/package.json apps/web/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY apps/web/ ./
+RUN bun run build:embed
+```
+
+Instala Bun, pre-renderiza con SSR la aplicación React y copia los assets a `server/frontend/`.
+
+### Etapa 2: Compilación del servidor
+
+```dockerfile
+FROM golang:1.24-alpine AS backend
+RUN apk add --no-cache gcc musl-dev
+WORKDIR /build/server
+COPY server/go.mod server/go.sum ./
+RUN go mod download
+COPY server/ ./
+COPY --from=frontend /build/server/frontend ./frontend/
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /bedrud ./cmd/bedrud/main.go
+# CGO es necesario para SQLite (usa bindings en C)
+```
+
+Compila el binario de Go con el frontend embebido. CGO está habilitado para compatibilidad con SQLite.
+
+### Etapa 3: Entorno de ejecución
+
+```dockerfile
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=backend /bedrud /usr/local/bin/bedrud
+EXPOSE 8090 7880
+ENTRYPOINT ["bedrud"]
+CMD ["run"]
+```
+
+Imagen Alpine mínima con solo el binario, certificados CA y datos de zona horaria.
+
+## Puertos
+
+| Puerto | Servicio | Protocolo |
+|--------|----------|-----------|
+| 8090 | API + Interfaz web | HTTP |
+| 7880 | LiveKit | WebSocket + HTTP |
+| 50000-60000 | Medios RTC | UDP |
+
+Para los flujos de medios de LiveKit, es posible que también necesites exponer el rango de puertos UDP de RTC (predeterminado: 50000-60000).
+
+## Volúmenes
+
+Monta un volumen para datos persistentes:
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v bedrud-data:/var/lib/bedrud \
+  bedrud
+```
+
+## Configuración
+
+Pasa un archivo de configuración personalizado:
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v /path/to/config.yaml:/etc/bedrud/config.yaml \
+  -v bedrud-data:/var/lib/bedrud \
+  bedrud run --config /etc/bedrud/config.yaml
+```
+
+O usa variables de entorno:
+
+```bash
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -e JWT_SECRET=my-production-secret \
+  -e LIVEKIT_API_KEY=prodkey \
+  -e LIVEKIT_API_SECRET=prodsecret \
+  bedrud
+```
+
+## Imágenes precompiladas
+
+Las imágenes Docker se publican en GitHub Container Registry con cada lanzamiento:
+
+```bash
+# Última versión
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+
+# Versión específica
+docker pull ghcr.io/bedrud-ir/bedrud:v1.0.0
+```
+
+## Ejemplo con Docker Compose
+
+```yaml
+services:
+  bedrud:
+    image: ghcr.io/bedrud-ir/bedrud:latest
+    ports:
+      - "8090:8090"
+      - "7880:7880"
+    volumes:
+      - bedrud-data:/var/lib/bedrud
+      - ./config.yaml:/etc/bedrud/config.yaml
+    environment:
+      - JWT_SECRET=change-me
+    restart: unless-stopped
+
+volumes:
+  bedrud-data:
+```
+
+---
+
+## Consulta también
+
+- [Referencia de configuración](/es/docs/getting-started/configuration) - opciones completas de configuración y variables de entorno
+- [Guía de despliegue](/es/docs/guides/deployment) - despliegue en producción con Docker

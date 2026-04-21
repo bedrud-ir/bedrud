@@ -1,0 +1,95 @@
+---
+title: API İşleyicileri
+description: REST API uç noktası uygulamaları
+order: 19
+---
+
+Bedrud, **Fiber** web framework'ünü kullanır (Go için Express benzeri API).
+
+## Yönlendirme Mantığı
+
+Rotalar `internal/server/server.go` dosyasında tanımlanır. Ara katman veya önekleri kolayca uygulamak için rotalar gruplandırılır.
+
+### Ana Gruplar:
+
+- **`/api/auth`**: Kimlik doğrulama için açık ve korumalı rotalar.
+- **`/api/room`**: Oda yönetimi için korumalı rotalar.
+- **`/api/admin`**: Yalnızca `superadmin` rolüne sahip kullanıcılarla sınırlandırılmış rotalar.
+- **`/livekit`**: İstekleri gömülü LiveKit ses/video sunucusuna gönderen özel vekil grubu.
+
+## Özelleşmiş İşleyici Mantığı
+
+### Oda Yönetimi (`internal/handlers/room.go`)
+`RoomHandler`, Bedrud'un oda meta verileri ile LiveKit'in medya motoru arasında çeviri yapar.
+
+#### 1. Oda Oluşturma
+`POST /api/room/create` üzerinden bir oda oluşturulduğunda:
+
+- **Normalizasyon:** Oda adları kırpılır ve küçük harfe dönüştürülür.
+- **Otomatik Üretim:** Sağlanan ad yoksa, Bedrud rastgele URL uyumlu bir ad üretir (ör. `fancy-blue-whale`).
+- **Eşzamanlı Oluşturma:** Arka uç önce medya oturumunu oluşturmak için dahili LiveKit API'sini çağırır, ardından meta verileri yerel veritabanına kaydeder.
+
+#### 2. Katılım ve Jetonlar
+Bir kullanıcı `POST /api/room/join` üzerinden katıldığında:
+
+- **Erişim Kontrolü:** Arka uç odanın var olup olmadığını ve kullanıcının yetkili olup olmadığını denetler.
+- **Jeton Üretimi:** Şunları içeren imzalı bir JWT (Katılım Jetonu) üretilir:
+  - `Identity`: Bedrud'daki Kullanıcı Kimliği.
+  - `Name`: Kullanıcının Görünen Adı.
+  - `Grants`: `CanJoin`, `CanPublish`, `CanSubscribe` gibi belirli izinler.
+- **İstemci El Sıkışması:** Ön uç, hem yerel oda meta verilerini hem de WebRTC bağlantısını başlatmak için LiveKit jetonunu alır.
+
+## Yönetici ve Kullanıcı Yönetimi (`internal/handlers/users.go`)
+`/api/admin` altındaki rotalar `RequireAccess("superadmin")` ara katmanı tarafından sıkıca korunur.
+
+### 1. Kullanıcı Kontrolü
+`UsersHandler`, yöneticilere şu imkânları sağlar:
+
+- **Tüm Kullanıcıları Listeleme:** Kimlik doğrulama sağlayıcısı ve son giriş meta verileri dahil kayıtlı kullanıcıların tam dizinini getirir.
+- **Durum Güncelleme:** Hesap erişimini anında etkinleştirir veya devre dışı bırakır. Bir kullanıcıyı devre dışı bırakmak, oturum açmasını veya jetonlarını yenilemesini hemen engeller.
+
+### 2. Oda Genel Görünümü
+Yönetici rotaları, kim tarafından oluşturulduğuna bakılmaksızın tüm aktif ve geçmiş odaları platform genelinde listelemeye olanak tanır. Bu, platform moderasyonu için tasarlanmıştır.
+
+## İstek Yaşam Döngüsü
+
+1.  **İstek gelir**: Fiber HTTP isteğini alır.
+2.  **Ara Katman**:
+
+    - `recover`: Hata oluşursa sunucunun çökmesini engeller.
+    - `cors`: Çapraz Kökenli Kaynak Paylaşımını (CORS) yönetir.
+    - `Protected`: (İsteğe bağlı) `Authorization` başlığında geçerli bir JWT olup olmadığını denetler.
+3.  **İşleyici**: `internal/handlers` içindeki fonksiyon çağrılır.
+
+    - Varsa JSON gövdesini `c.BodyParser` kullanarak ayrıştırır.
+    - Gerekli Hizmeti veya Depoyu çağırır.
+    - `c.JSON` kullanarak bir JSON yanıtı döndürür.
+
+## Örnek: Oda Oluşturma İşleyicisi
+
+```go
+func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
+    var input struct {
+        Name string `json:"name"`
+    }
+    // 1. Parse Input
+    if err := c.BodyParser(&input); err != nil {
+        return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+    }
+
+    // 2. Business Logic (via Repository)
+    room := &models.Room{Name: input.Name}
+    if err := h.roomRepo.Create(room); err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to create room"})
+    }
+
+    // 3. Response
+    return c.Status(201).JSON(room)
+}
+```
+
+## Statik Dosyalar (Ön Uç)
+
+Web ön ucu, derleme zamanında Go ikili dosyasına **gömülüdür**. Fiber, React dosyalarını `filesystem.New` kullanarak `frontend/` dizininden sunar.
+
+`/api` ile başlamayan her rota, React uygulamasının `index.html` dosyasına yönlendirilir. Bu, sayfa yenilemesinde 404 hatası olmadan istemci taraflı yönlendirmeyi mümkün kılar.

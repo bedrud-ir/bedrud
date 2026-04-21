@@ -1,0 +1,499 @@
+---
+title: تثبيت الخادم
+description: تثبيت خادم بدرود على لينكس
+order: 2
+---
+
+يغطي هذا الدليل تثبيت **خادم بدرود** (واجهة برمجة التطبيقات، واجهة الويب، خادم وسائط WebRTC) على خادم لينكس. لتطبيقات العميل على سطح المكتب والهاتف المحمول، راجع [تثبيت العميل](/ar/docs/getting-started/clients).
+
+---
+
+## المتطلبات الأساسية
+
+| المتطلب | التفاصيل |
+|---------|----------|
+| **نظام التشغيل** | Debian 12+، Ubuntu 22.04+، Arch Linux (rolling)، Fedora 39+ |
+| **المعمارية** | amd64 (x86_64) أو arm64 (aarch64) |
+| **الوصول** | Root أو sudo |
+| **نظام init** | systemd |
+| **الأجهزة** | ١ vCPU كحد أدنى، ٥١٢ ميجابايت RAM. يُوصى بـ ٢ vCPU، ٢ جيجابايت RAM لـ ١٠+ غرف متزامنة |
+| **المنافذ** | `8090` (واجهة برمجة التطبيقات + واجهة الويب)، `7880` (LiveKit WebSocket)، `50000–60000/udp` (وسائط WebRTC) |
+| **TLS التلقائي** | افتح أيضاً المنفذين `80` و `443`. يتطلب نطاقاً مع سجل DNS A يشير إلى هذا الخادم |
+| **الأدوات** | `curl`، `tar` (مثبتان مسبقاً في معظم التوزيعات) |
+
+> **لا تملك نطاقاً؟** يعمل بدرود مع عنوان IP باستخدام TLS موقّع ذاتياً. ستُظهر المتصفحات تحذير شهادة لكن الفيديو والصوت يعملان. للحصول على شهادات موثوقة على الشبكات الداخلية، راجع [دليل TLS الداخلي](/ar/docs/guides/internal-tls).
+
+---
+
+## ١. التثبيت بأمر واحد (موصى به)
+
+يُنزّل ويُثبّت ملف Bedrud CLI الثنائي في مسار PATH الخاص بك. يعمل على لينكس وماك‌أو‌إس وويندوز.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="bash">macOS / Linux (Bash)</TabsTrigger>
+    <TabsTrigger value="powershell">Windows (PowerShell)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="bash">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    أعد تحميل الصدفة بعد التثبيت:
+
+    ```bash
+    source ~/.bashrc  # أو ~/.zshrc
+    ```
+
+  </TabsContent>
+  <TabsContent value="powershell">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    ```
+
+  </TabsContent>
+</Tabs>
+
+تحقّق:
+
+```bash
+bedrud --version
+```
+
+<Callout type="tip">
+    تخصيص التثبيت؟ استخدم المعاملات مثل `--version 0.12.0` أو `--install-dir /opt/bedrud` أو `--skip-shell`. المرجع الكامل: [مُثبّت CLI](/ar/docs/getting-started/cli-installer).
+</Callout>
+
+---
+
+## ٢. التثبيت عبر مدير الحزم
+
+ثبّت عبر مدير حزم توزيعتك.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="ubuntu-debian-apt">
+
+    ```bash
+    curl -fsSL https://bedrud-ir.github.io/bedrud/bedrud.gpg.key \
+      | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/bedrud.gpg
+
+    echo "deb https://bedrud-ir.github.io/bedrud stable main" \
+      | sudo tee /etc/apt/sources.list.d/bedrud.list
+
+    sudo apt update && sudo apt install bedrud
+    ```
+
+    ثم شغّل المثبّت التفاعلي:
+
+    ```bash
+    sudo bedrud install
+    ```
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-bin
+    sudo bedrud install
+    ```
+  </TabsContent>
+  <TabsContent value="fedora-rhel-dnf">
+
+    ```bash
+    sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key \
+      -o /etc/pki/rpm-gpg/RPM-GPG-KEY-bedrud
+
+    sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.repo \
+      -o /etc/yum.repos.d/bedrud.repo
+
+    sudo dnf install bedrud
+    sudo bedrud install
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="tip">
+    لتثبيت عميل سطح المكتب (Linux، macOS، Windows) راجع [تثبيت العميل](/ar/docs/getting-started/clients).
+</Callout>
+
+---
+
+## ٣. Docker
+
+شغّل بدرود في حاوية - بدون إعداد خادم لينكس، بدون systemd، بدون تنزيل ثنائي.
+
+### الصورة الجاهزة (الأسرع)
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+### Docker Compose
+
+```yaml
+services:
+  bedrud:
+    image: ghcr.io/bedrud-ir/bedrud:latest
+    ports:
+      - "8090:8090"
+      - "7880:7880"
+      - "50000-60000:50000-60000/udp"
+    volumes:
+      - bedrud-data:/var/lib/bedrud
+    restart: unless-stopped
+
+volumes:
+  bedrud-data:
+```
+
+### المنافذ
+
+| المنفذ | الخدمة | البروتوكول |
+|--------|--------|------------|
+| 8090 | واجهة برمجة التطبيقات + واجهة الويب | HTTP |
+| 7880 | LiveKit | WebSocket + HTTP |
+| 50000–60000 | وسائط WebRTC | UDP |
+
+### التهيئة
+
+مرّر ملف تهيئة أو استخدم متغيرات البيئة:
+
+```bash
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -e JWT_SECRET=change-this-to-a-random-string \
+  -e LIVEKIT_API_KEY=prodkey \
+  -e LIVEKIT_API_SECRET=prodsecret \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+<Callout type="warning">
+    رموز JWT و LiveKit الافتراضية مخصصة للاختبار السريع فقط. غيّرها قبل تعريض الحاوية للإنترنت.
+</Callout>
+
+وثائق Docker الكاملة بما في ذلك الأحجام والبروكسي العكسي وإعداد TLS: [دليل Docker](/ar/docs/guides/docker).
+
+---
+
+## ٤. التثبيت التفاعلي
+
+إذا كان لديك الملف الثنائي `bedrud` بالفعل على الخادم:
+
+```bash
+sudo ./bedrud install
+```
+
+يكتشف المثبّت تلقائياً عنوان IP لخادمك ويطلب:
+
+| المطلوب | الافتراضي | ملاحظات |
+|---------|-----------|---------|
+| **عنوان IP** | مُكتشف تلقائياً (أول IPv4 غير loopback) | اضغط Enter للقبول، أو اكتب IP مختلفاً |
+| **النطاق** | فارغ (IP فقط) | إذا قُدّم مع بريد إلكتروني، يُفعّل TLS عبر Let's Encrypt |
+| **البريد الإلكتروني** | فارغ | يُستخدم لتسجيل Let's Encrypt (فقط عند تعيين النطاق) |
+| **TLS موقّع ذاتياً** | نعم | يُعرض عند عدم تقديم نطاق. الافتراضي هو `Y` |
+
+يتم تخطي جميع المطالبات عند توجيه stdin (الوضع غير التفاعلي) - تُستخدم العلامات والقيم الافتراضية بدلاً من ذلك.
+
+---
+
+## ٥. غير تفاعلي (بالعلامات)
+
+تخطَّ جميع المطالبات بتمرير العلامات.
+
+### Let's Encrypt (يتطلب نطاقاً)
+
+**يتطلب:** سجل DNS A لنطاقك يشير بالفعل إلى عنوان IP لهذا الخادم.
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com --email webmaster@example.com
+```
+
+### TLS موقّع ذاتياً (بعنوان IP)
+
+**يتطلب:** لا شيء إضافي. يعمل فوراً.
+
+```bash
+sudo ./bedrud install --tls --ip 1.2.3.4
+```
+
+### HTTP عادي (للتطوير / الداخلي فقط)
+
+**يتطلب:** localhost أو `127.0.0.1`. تمنع المتصفحات الكاميرا/الميكروفون على غير HTTPS باستثناء localhost.
+
+```bash
+sudo ./bedrud install --ip 1.2.3.4
+```
+
+### موقّع ذاتياً لنطاق (اختبار قبل DNS)
+
+**يتطلب:** اسم نطاق (لا يحتاج DNS أن يحلّ بعد).
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com
+```
+
+### منفذ مخصص
+
+**يتطلب:** المنفذ غير مستخدم بالفعل.
+
+```bash
+sudo ./bedrud install --tls --port 8443 --domain meet.example.com
+```
+
+### شهادات خارجية
+
+**يتطلب:** ملفات fullchain والمفتاح الخاص بتنسيق PEM.
+
+```bash
+sudo ./bedrud install --tls --cert /path/to/fullchain.pem --key /path/to/privkey.pem
+```
+
+### منافذ LiveKit مخصصة
+
+**يتطلب:** المنافذ الثلاثة مفتوحة على جدار الحماية الخاص بك.
+
+```bash
+sudo ./bedrud install --lk-port 9000 --lk-tcp-port 9001 --lk-udp-port 9002
+```
+
+### خلف بروكسي عكسي
+
+**يتطلب:** بروكسي عكسي (Nginx، Caddy، Traefik، Cloudflare) ينهي TLS أمام بدرود.
+
+```bash
+sudo ./bedrud install --behind-proxy --domain meet.example.com
+```
+
+يضبط `behindProxy: true` في التهيئة ويُهيّئ عناوين البروكسي الموثوقة.
+
+### خادم LiveKit خارجي
+
+**يتطلب:** خادم LiveKit منفصل يعمل بالفعل، يمكن الوصول إليه من هذا الجهاز.
+
+```bash
+sudo ./bedrud install --external-livekit https://livekit.example.com
+```
+
+يتخطى تثبيت LiveKit المدمج. يجب أن تتطابق مفتاح API والسر في كلتا التهيئتين.
+
+### نطاق LiveKit منفصل
+
+**يتطلب:** نطاق يحلّ مباشرة إلى هذا الخادم، متجاوزاً أي CDN.
+
+```bash
+sudo ./bedrud install --livekit-domain lk.example.com --domain meet.example.com
+```
+
+مفيد عندما يكون النطاق الرئيسي خلف Cloudflare لكن وسائط WebRTC تحتاج اتصالاً مباشراً.
+
+### مرجع جميع العلامات
+
+| العلامة | الافتراضي | الوصف |
+|---------|-----------|-------|
+| `--tls` | `false` | تفعيل HTTPS (موقّع ذاتياً أو Let's Encrypt) |
+| `--self-signed` | `false` | توليد شهادة TLS موقّعة ذاتياً |
+| `--no-tls` | `false` | تعطيل TLS بالكامل (يتجاوز `--tls`) |
+| `--ip` | مُكتشف تلقائياً | تجاوز عنوان IP للخادم |
+| `--domain` | `""` | اسم النطاق لـ Let's Encrypt أو شهادة موقّعة ذاتياً |
+| `--email` | `""` | البريد الإلكتروني لتسجيل Let's Encrypt |
+| `--port` | `443` (TLS) / `8090` (HTTP) | تجاوز منفذ الاستماع |
+| `--cert` | `""` | مسار ملف الشهادة الموجودة (PEM) |
+| `--key` | `""` | مسار ملف المفتاح الخاص الموجود (PEM) |
+| `--lk-port` | `7880` | منفذ API/WebSocket لـ LiveKit |
+| `--lk-tcp-port` | `7881` | منفذ RTC TCP لـ LiveKit |
+| `--lk-udp-port` | `7882` | منفذ RTC UDP لـ LiveKit |
+| `--fresh` | `false` | إزالة التثبيت الموجود قبل التثبيت |
+| `--behind-proxy` | `false` | الخادم خلف بروكسي عكسي / CDN |
+| `--external-livekit` | `""` | رابط خادم LiveKit خارجي تماماً |
+| `--livekit-domain` | `""` | نطاق منفصل لـ LiveKit (تجاوز CDN) |
+
+---
+
+## ٦. مؤتمت بالكامل (CLI Python)
+
+ابنِ، ارفع، وتهيّئ خادمك من جهازك المحلي.
+
+**يتطلب:** Python 3.12+، [uv](https://docs.astral.sh/uv/) (مشغّل حزم Python)، وصول بمفتاح SSH إلى الخادم المستهدف، Go 1.24+ و Bun مثبتان محلياً.
+
+```bash
+cd tools/cli
+uv run python bedrud.py --auto-config \
+  --ip <your-server-ip> \
+  --user root \
+  --auth-key ~/.ssh/id_rsa \
+  --domain meet.example.com \
+  --acme-email admin@example.com
+```
+
+**ما يفعله:**
+
+١. يبني الملف الثنائي للخلفية (`dist/bedrud`)
+٢. يضغطه إلى `bedrud.tar.xz`
+٣. يرفعه إلى الخادم عبر rsync
+٤. يزيل الخدمات المتعارضة (Nginx، Apache، Caddy)
+٥. يهيّئ جدار الحماية (UFW)
+٦. يشغّل منطق `install` الداخلي على الخادم
+
+| العلامة | الوصف |
+|---------|-------|
+| `--ip` | عنوان IP للخادم |
+| `--user` | مستخدم SSH (الافتراضي: root) |
+| `--auth-key` | مسار مفتاح SSH الخاص |
+| `--domain` | اسم النطاق لـ Let's Encrypt |
+| `--acme-email` | البريد الإلكتروني لـ Let's Encrypt |
+| `--uninstall` | إزالة بدرود من الخادم |
+
+---
+
+<InstallerSteps />
+
+### نقاط دخول الخدمة
+
+```
+bedrud --run --config /etc/bedrud/config.yaml       # خادم API + الويب
+bedrud --livekit --config /etc/bedrud/livekit.yaml   # خادم الوسائط
+```
+
+---
+
+## ما بعد التثبيت
+
+<CreateAdmin />
+
+### التحقق من الخدمات
+
+```bash
+systemctl status bedrud livekit
+```
+
+### التحقق من واجهة برمجة التطبيقات
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+```
+
+المتوقع: `200`
+
+### فحص جدار الحماية
+
+```bash
+sudo ufw status
+```
+
+تأكد من أن المنافذ `8090/tcp`، `7880/tcp`، و `50000:60000/udp` مسموح بها:
+
+```bash
+sudo ufw allow 8090/tcp
+sudo ufw allow 7880/tcp
+sudo ufw allow 50000:60000/udp
+```
+
+### عرض السجلات
+
+```bash
+tail -f /var/log/bedrud/bedrud.log
+```
+
+أو عبر journalctl:
+
+```bash
+journalctl -u bedrud -u livekit -f
+```
+
+---
+
+## الترقية
+
+### مدير الحزم
+
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt upgrade bedrud
+
+# Arch Linux
+yay -Syu bedrud-bin
+
+# Fedora / RHEL
+sudo dnf upgrade bedrud
+```
+
+تُعاد تشغيل الخدمات تلقائياً بعد ترقية الحزمة.
+
+### تنزيل الملف الثنائي
+
+نزّل أحدث إصدار وأعد تشغيل التثبيت. إعادة تشغيل المثبّت آمنة - يستبدل الملف الثنائي والتهيئة مع الحفاظ على قاعدة البيانات:
+
+```bash
+curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+tar -xJf bedrud.tar.xz && chmod +x bedrud
+sudo ./bedrud install --fresh
+```
+
+<Callout type="tip">
+    `--fresh` يزيل التثبيت القديم أولاً. احذفها للحفاظ على تهيئتك وقاعدة بياناتك الحالية.
+</Callout>
+
+### Docker
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+docker stop bedrud && docker rm bedrud
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+مع Docker Compose:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+---
+
+## إزالة التثبيت
+
+لإزالة بدرود بالكامل:
+
+```bash
+sudo bedrud uninstall
+```
+
+يُوقف الخدمات، يزيل وحدات systemd، يحذف الملف الثنائي من `/usr/local/bin`، وينظّف `/etc/bedrud`، `/var/lib/bedrud`، و `/var/log/bedrud`.
+
+---
+
+## استكشاف الأخطاء وإصلاحها
+
+| المشكلة | الحل |
+|---------|------|
+| **المنفذ 80/443 قيد الاستخدام** | أوقف خوادم الويب المتعارضة: `systemctl stop nginx apache2 caddy` |
+| **الخدمات لا تبدأ** | تحقق من السجلات: `journalctl -u bedrud -u livekit --no-pager -n 50` |
+| **مشاكل شهادة TLS** | تحقق من DNS: `dig +short meet.example.com` - يجب أن يُرجع IP هذا الخادم |
+| **تعارض منافذ LiveKit** | استخدم العلامات `--lk-port`، `--lk-tcp-port`، `--lk-udp-port` لتغيير المنافذ |
+| **التثبيت نجح لكن 404 على واجهة الويب** | الواجهة الأمامية غير مدمجة. ابنِ بـ `make build` قبل `bedrud install`. البناء الثنائي فقط يتخطى الواجهة الأمامية |
+| **التثبيت نجح لكن الخدمات تعطلت** | تحقق من الأعطال الصامتة: `journalctl -u bedrud --no-pager -n 100`. تحقق من التهيئة في `/etc/bedrud/config.yaml` |
+| **المنفذ قيد الاستخدام بالفعل (عملية غير معروفة)** | اعثر عليها: `ss -tlnp \| grep 8090` أو `ss -ulnp \| grep 7880` |
+| **جدار الحماية يمنع الوسائط** | افتح المنافذ: `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
+| **تحذيرات شهادة موقّعة ذاتياً** | متوقع. راجع [دليل TLS الداخلي](/ar/docs/guides/internal-tls) لإعداد CA خاص |
+| **بدون فيديو / فشل WebRTC** | HTTPS مطلوب للوصول للكاميرا. استخدم `--tls`. تأكد من أن UDP 50000–60000 مفتوح |
+| **بروكسي عكسي: IP العميل خاطئ** | استخدم علامة `--behind-proxy`. تهيّئ عناوين البروكسي الموثوقة |

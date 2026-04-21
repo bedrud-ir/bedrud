@@ -8,6 +8,11 @@ server/dist/
 server/frontend/
 apps/web/build/
 apps/web/node_modules/
+apps/site/node_modules/
+apps/site/dist/
+apps/site/.astro/
+apps/site/public/search-index-*.json
+apps/site/public/search-index-*.json
 node_modules/
 
 # Environment
@@ -33,7 +38,6 @@ access.log
 .spm-cache/
 
 deploy
-site
 server/internal/livekit/bin/
 server/internal/livekit/LICENSEserver/tmp/
 server/tmp/

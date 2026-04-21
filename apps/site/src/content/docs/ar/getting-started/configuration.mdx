@@ -1,0 +1,233 @@
+---
+title: التهيئة
+description: تهيئة بدرود حسب احتياجاتك
+order: 4
+---
+
+يستخدم بدرود ملفات تهيئة YAML لكل من الخادم الرئيسي وخادم وسائط LiveKit المدمج.
+
+**أنظر أيضاً:** [البداية السريعة](/ar/docs/getting-started/quickstart) | [التثبيت](/ar/docs/getting-started/installation) | [دليل النشر](/ar/docs/guides/deployment) | [دليل Docker](/ar/docs/guides/docker)
+
+## الحد الأدنى لتهيئة الإنتاج
+
+التهيئة الافتراضية تعمل للتطوير. للإنتاج، غيّر هذه القيم في `/etc/bedrud/config.yaml`:
+
+```yaml
+auth:
+  jwtSecret: "change-to-random-string-32-chars"
+  sessionSecret: "change-to-another-random-string"
+```
+
+أعد التشغيل بعد التغييرات:
+
+```bash
+sudo systemctl restart bedrud livekit
+```
+
+المرجع الكامل أدناه.
+
+---
+
+## تهيئة الخادم
+
+**الموقع:** `server/config.yaml` (التطوير) أو `/etc/bedrud/config.yaml` (الإنتاج)
+
+### المرجع الكامل
+
+```yaml
+server:
+  port: 8090                    # منفذ HTTP
+  host: "localhost"             # عنوان الربط
+
+database:
+  type: "sqlite"                # نوع قاعدة البيانات: sqlite أو postgres
+  path: "data.db"               # مسار ملف قاعدة بيانات SQLite
+
+logger:
+  level: "debug"                # مستوى السجل: debug، info، warn، error
+  outputPath: ""                # مسار ملف السجل (فارغ = stdout)
+
+livekit:
+  host: "http://localhost:8090/livekit"  # رابط LiveKit الخارجي
+  internalHost: "http://127.0.0.1:7880"  # رابط LiveKit الداخلي
+  apiKey: "devkey"              # مفتاح API لـ LiveKit
+  apiSecret: "devsecret"        # سر API لـ LiveKit
+
+auth:
+  jwtSecret: "your-jwt-secret"           # السر لتوقيع رموز JWT
+  tokenDuration: 24                       # مدة انتهاء الرمز بالساعات
+  sessionSecret: "your-session-secret"    # السر لملفات تعريف الجلسة
+  frontendURL: "http://localhost:8090"    # رابط الواجهة الأمامية (لإعادة توجيه OAuth)
+
+  # مزوّدو OAuth (اختياري)
+  google:
+    clientId: ""
+    clientSecret: ""
+  github:
+    clientId: ""
+    clientSecret: ""
+  twitter:
+    clientKey: ""
+    clientSecret: ""
+
+cors:
+  allowedOrigins: "http://localhost:8090,http://localhost:3000"  # مفصولة بفواصل
+  allowedHeaders: "Origin, Content-Type, Accept, Authorization"
+  allowedMethods: "GET, POST, PUT, DELETE, OPTIONS"
+  allowCredentials: true
+```
+
+### الإعدادات الرئيسية
+
+#### قاعدة البيانات
+
+بشكل افتراضي، يستخدم بدرود **SQLite** مع ملف في المسار `path` المُهيّأ. للإنتاج مع تزامن أعلى، انتقل إلى PostgreSQL بتوفير سلسلة اتصال بدلاً من ذلك. عند استخدام PostgreSQL، يحمل حقل `path` سلسلة اتصال، وليس مسار ملف:
+
+```yaml
+database:
+  type: "postgres"
+  path: "postgres://user:password@localhost:5432/bedrud?sslmode=disable"
+```
+
+#### المصادقة
+
+يُستخدم `jwtSecret` لتوقيع رموز الوصول والتحديث. غيّره عن الافتراضي في الإنتاج.
+
+**مزوّدو OAuth** اختياريون. إذا لم تهيّئهم، لن تظهر أزرار تسجيل الدخول الاجتماعي في الواجهة. كل مزوّد يتطلب تسجيل تطبيق OAuth مع الخدمة المعنية وتوفير معرّف العميل والسر.
+
+#### CORS
+
+سلسلة `allowedOrigins` (مفصولة بفواصل) يجب أن تتضمن الرابط الذي تُقدّم منه واجهتك الأمامية. في التطوير، هذا `http://localhost:3000`. في الإنتاج، اضبطه على نطاقك (مثلاً `https://meet.example.com`).
+
+---
+
+## تهيئة LiveKit
+
+**الموقع:** `server/config/livekit.yaml` (التطوير) أو `/etc/bedrud/livekit.yaml` (الإنتاج)
+
+```yaml
+port: 7880                      # منفذ HTTP/WebSocket لـ LiveKit
+
+rtc:
+  port_range_start: 50000       # بداية نطاق منافذ UDP
+  port_range_end: 60000         # نهاية نطاق منافذ UDP
+  use_external_ip: true         # استخدام IP الخارجي لـ RTC
+
+turn:
+  enabled: true
+  domain: "localhost"
+  tls_port: 5349
+  udp_port: 3478
+
+keys:
+  devkey: "devsecret"           # يجب أن يتطابق مع تهيئة الخادم
+
+logging:
+  level: info
+
+room:
+  auto_create: true              # إنشاء الغرف تلقائياً عند انضمام المشاركين
+  empty_timeout: 60              # ثوانٍ قبل حذف الغرفة الفارغة
+  departure_timeout: 60          # ثوانٍ للاحتفاظ بالغرفة بعد مغادرة جميع المشاركين
+  max_participants: 20           # الحد الأقصى للمشاركين في كل غرفة (٠ = بلا حد)
+  enable_remote_unmute: true     # السماح بإلغاء كتم المشاركين من الخادم
+```
+
+<Callout type="warning">
+    `keys` في `livekit.yaml` يجب أن يتطابق مع `livekit.apiKey` و `livekit.apiSecret` في ملف `config.yaml` للخادم.
+</Callout>
+
+### نطاق منافذ RTC
+
+يستخدم LiveKit منافذ UDP لتدفقات الوسائط. النطاق الافتراضي `50000-60000` يعمل لمعظم الإعدادات. إذا كنت تعمل خلف جدار حماية، تأكد من أن هذه المنافذ مفتوحة.
+
+راجع [اتصال WebRTC](/ar/docs/architecture/webrtc-connectivity) للبنية واستكشاف الأخطاء.
+
+### خادم TURN
+
+خادم TURN المدمج يُرحّل الوسائط للعملاء خلف NATs مقيدة أو جدران حماية مؤسسية. مُفعّل افتراضياً على المنفذين ٣٤٧٨ (UDP) و ٥٣٤٩ (TLS).
+
+TURN هو حل أخير - معظم العملاء (~٨٠٪) يتصلون مباشرة عبر UDP ولا يستخدمونه أبداً. عند تفعيل TURN، يحمل الخادم كل عرض نطاق الوسائط المُرحّلة.
+
+**متطلب TLS:** TURN/TLS (المنفذ ٥٣٤٩) يحتاج شهادة TLS صالحة. للإنتاج، اضبط `turn.tls_port: 443` وأشِر `cert_file`/`key_file` إلى شهادتك، أو ضع موازن تحميل من الطبقة ٤ أمامه مع `external_tls: true`.
+
+راجع [دليل خادم TURN](/ar/docs/architecture/turn-server) للبنية وتفاصيل التهيئة وحسابات عرض النطاق واستكشاف الأخطاء.
+
+### إعدادات الغرفة
+
+القسم `room:` يتحكم في سلوك غرف الاجتماعات:
+
+- **`auto_create`** - إنشاء الغرف تلقائياً عند انضمام المشاركين (الافتراضي: `true`)
+- **`empty_timeout`** - ثوانٍ قبل حذف غرفة لم ينضم إليها أحد (الافتراضي: `60`)
+- **`departure_timeout`** - ثوانٍ للاحتفاظ بالغرفة نشطة بعد مغادرة جميع المشاركين (الافتراضي: `60`)
+- **`max_participants`** - الحد الأقصى للمشاركين في كل غرفة. اضبط على `٠` بلا حد (الافتراضي: `20`)
+- **`enable_remote_unmute`** - السماح بالكتم/إلغاء الكتم من الخادم للمشاركين (الافتراضي: `true`)
+
+**الضبط للسعة:**
+- اجتماعات الفريق الصغير: `max_participants: 10-20`
+- الندوات الكبيرة: `max_participants: 100` (أو `٠` بلا حد)
+- الخوادم محدودة الموارد: اخفض `max_participants` لتقليل استخدام المعالج/الذاكرة
+
+---
+
+## متغيرات البيئة
+
+يمكن تجاوز قيم التهيئة بمتغيرات البيئة. تتبع التسمية اتفاقية بادئة لكل قسم:
+
+لعمليات نشر Docker، راجع [دليل Docker](/ar/docs/guides/docker).
+
+```bash
+export SERVER_PORT=8090
+export DB_PATH=/var/lib/bedrud/bedrud.db
+export JWT_SECRET=production-secret
+export LIVEKIT_HOST=http://localhost:8090/livekit
+export LIVEKIT_API_KEY=prodkey
+export LIVEKIT_API_SECRET=prodsecret
+```
+
+### مرجع متغيرات البيئة الكامل
+
+| متغير البيئة | مسار YAML | الوصف |
+|--------------|-----------|-------|
+| `SERVER_PORT` | `server.port` | منفذ استماع HTTP |
+| `SERVER_ENABLE_TLS` | `server.enableTLS` | تفعيل HTTPS (`true`/`false`) |
+| `SERVER_CERT_FILE` | `server.certFile` | مسار شهادة TLS |
+| `SERVER_KEY_FILE` | `server.keyFile` | مسار مفتاح TLS الخاص |
+| `SERVER_DOMAIN` | `server.domain` | اسم النطاق |
+| `SERVER_EMAIL` | `server.email` | البريد الإلكتروني لـ Let's Encrypt |
+| `SERVER_USE_ACME` | `server.useACME` | تفعيل Let's Encrypt التلقائي (`true`/`false`) |
+| `SERVER_TRUSTED_PROXIES` | `server.trustedProxies` | عناوين البروكسي الموثوقة مفصولة بفواصل |
+| `SERVER_PROXY_HEADER` | `server.proxyHeader` | العنوان لقراءة IP العميل منه (مثلاً `X-Forwarded-For`) |
+| `DB_HOST` | `database.host` | مضيف قاعدة البيانات (PostgreSQL) |
+| `DB_PORT` | `database.port` | منفذ قاعدة البيانات |
+| `DB_USER` | `database.user` | مستخدم قاعدة البيانات |
+| `DB_PASSWORD` | `database.password` | كلمة مرور قاعدة البيانات |
+| `DB_NAME` | `database.dbname` | اسم قاعدة البيانات |
+| `DB_TYPE` | `database.type` | `sqlite` أو `postgres` |
+| `DB_PATH` | `database.path` | مسار ملف SQLite أو سلسلة اتصال PostgreSQL |
+| `LIVEKIT_HOST` | `livekit.host` | رابط LiveKit الخارجي |
+| `LIVEKIT_INTERNAL_HOST` | `livekit.internalHost` | رابط LiveKit الداخلي |
+| `LIVEKIT_API_KEY` | `livekit.apiKey` | مفتاح API لـ LiveKit |
+| `LIVEKIT_API_SECRET` | `livekit.apiSecret` | سر API لـ LiveKit |
+| `JWT_SECRET` | `auth.jwtSecret` | السر لتوقيع رموز JWT |
+| `AUTH_FRONTEND_URL` | `auth.frontendURL` | رابط الواجهة الأمامية لإعادة توجيه OAuth |
+| `CORS_ALLOWED_ORIGINS` | `cors.allowedOrigins` | الأصول المسموح بها مفصولة بفواصل |
+| `CORS_ALLOWED_HEADERS` | `cors.allowedHeaders` | عناوين الطلبات المسموح بها |
+| `CORS_ALLOWED_METHODS` | `cors.allowedMethods` | طرق HTTP المسموح بها |
+| `CORS_ALLOW_CREDENTIALS` | `cors.allowCredentials` | السماح ببيانات الاعتماد (`true`/`false`) |
+| `CORS_EXPOSE_HEADERS` | `cors.exposeHeaders` | العناوين المكشوفة للمتصفح |
+| `CORS_MAX_AGE` | `cors.maxAge` | مدة تخزين الطلب المسبق بالثواني |
+
+---
+
+## قائمة فحص الإنتاج
+
+- [ ] غيّر `jwtSecret` و `sessionSecret` إلى قيم عشوائية قوية
+- [ ] اضبط `logger.level` على `info` أو `warn`
+- [ ] هيّئ TLS (عبر المثبّت أو البروكسي العكسي)
+- [ ] اضبط `cors.allowedOrigins` على نطاق الإنتاج الخاص بك
+- [ ] هيّئ مزوّدي OAuth إذا لزم الأمر
+- [ ] افتح نطاق منافذ RTC لـ LiveKit في جدار الحماية
+- [ ] أعِد تدوير السجلات لـ `/var/log/bedrud/`
+
+لإعداد الإنتاج الكامل، راجع [دليل النشر](/ar/docs/guides/deployment).

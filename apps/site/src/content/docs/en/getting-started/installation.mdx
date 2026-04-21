@@ -1,0 +1,499 @@
+---
+title: Server Installation
+description: Install Bedrud server on Linux
+order: 2
+---
+
+This guide covers installing the **Bedrud server** (API, web UI, WebRTC media server) on a Linux server. For desktop and mobile client apps, see [Client Installation](/en/docs/getting-started/clients).
+
+---
+
+## Prerequisites
+
+| Requirement | Details |
+|-------------|---------|
+| **Operating system** | Debian 12+, Ubuntu 22.04+, Arch Linux (rolling), Fedora 39+ |
+| **Architecture** | amd64 (x86_64) or arm64 (aarch64) |
+| **Access** | Root or sudo |
+| **Init system** | systemd |
+| **Hardware** | 1 vCPU, 512 MB RAM minimum. 2 vCPU, 2 GB RAM recommended for 10+ concurrent rooms |
+| **Ports** | `8090` (API + web UI), `7880` (LiveKit WebSocket), `50000–60000/udp` (WebRTC media) |
+| **Auto-TLS** | Additionally open `80` and `443`. Requires a domain with DNS A record pointing to this server |
+| **Tools** | `curl`, `tar` (pre-installed on most distros) |
+
+> **No domain?** Bedrud works with an IP address using self-signed TLS. Browsers will show a certificate warning but video and audio work. For trusted certificates on internal networks, see the [Internal TLS Guide](/en/docs/guides/internal-tls).
+
+---
+
+## 1. One-Command Install (Recommended)
+
+Downloads and installs the Bedrud CLI binary to your PATH. Works on Linux, macOS, and Windows.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="bash">macOS / Linux (Bash)</TabsTrigger>
+    <TabsTrigger value="powershell">Windows (PowerShell)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="bash">
+
+    ```bash
+    curl -fsSL https://get.bedrud.org | bash
+    ```
+
+    Reload your shell after install:
+
+    ```bash
+    source ~/.bashrc  # or ~/.zshrc
+    ```
+
+  </TabsContent>
+  <TabsContent value="powershell">
+
+    ```powershell
+    irm https://get.bedrud.org/install.ps1 | iex
+    ```
+
+  </TabsContent>
+</Tabs>
+
+Verify:
+
+```bash
+bedrud --version
+```
+
+<Callout type="tip">
+    Want to customize the install? Use flags like `--version 0.12.0`, `--install-dir /opt/bedrud`, or `--skip-shell`. Full reference: [CLI Installer](/en/docs/getting-started/cli-installer).
+</Callout>
+
+---
+
+## 2. Package Manager Install
+
+Install via your distribution's package manager.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="ubuntu-debian-apt">
+
+    ```bash
+    curl -fsSL https://bedrud-ir.github.io/bedrud/bedrud.gpg.key \
+      | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/bedrud.gpg
+
+    echo "deb https://bedrud-ir.github.io/bedrud stable main" \
+      | sudo tee /etc/apt/sources.list.d/bedrud.list
+
+    sudo apt update && sudo apt install bedrud
+    ```
+
+    Then run the interactive installer:
+
+    ```bash
+    sudo bedrud install
+    ```
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-bin
+    sudo bedrud install
+    ```
+  </TabsContent>
+  <TabsContent value="fedora-rhel-dnf">
+
+    ```bash
+    sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key \
+      -o /etc/pki/rpm-gpg/RPM-GPG-KEY-bedrud
+
+    sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.repo \
+      -o /etc/yum.repos.d/bedrud.repo
+
+    sudo dnf install bedrud
+    sudo bedrud install
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="tip">
+    For desktop client installation (Linux, macOS, Windows) see [Client Installation](/en/docs/getting-started/clients).
+</Callout>
+
+---
+
+## 3. Docker
+
+Run Bedrud in a container - no Linux server setup, no systemd, no binary download.
+
+### Pre-built Image (fastest)
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+### Docker Compose
+
+```yaml
+services:
+  bedrud:
+    image: ghcr.io/bedrud-ir/bedrud:latest
+    ports:
+      - "8090:8090"
+      - "7880:7880"
+      - "50000-60000:50000-60000/udp"
+    volumes:
+      - bedrud-data:/var/lib/bedrud
+    restart: unless-stopped
+
+volumes:
+  bedrud-data:
+```
+
+### Ports
+
+| Port | Service | Protocol |
+|------|---------|----------|
+| 8090 | API + Web UI | HTTP |
+| 7880 | LiveKit | WebSocket + HTTP |
+| 50000–60000 | WebRTC media | UDP |
+
+### Configuration
+
+Pass a config file or use environment variables:
+
+```bash
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -e JWT_SECRET=change-this-to-a-random-string \
+  -e LIVEKIT_API_KEY=prodkey \
+  -e LIVEKIT_API_SECRET=prodsecret \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+<Callout type="warning">
+    The default JWT and LiveKit secrets are for quick testing only. Change them before exposing the container to the internet.
+</Callout>
+
+Full Docker documentation including volumes, reverse proxy, and TLS setup: [Docker Guide](/en/docs/guides/docker).
+
+---
+
+## 4. Interactive Install
+
+If you already have the `bedrud` binary on the server:
+
+```bash
+sudo ./bedrud install
+```
+
+The installer auto-detects your server's IP and prompts for:
+
+| Prompt | Default | Notes |
+|--------|---------|-------|
+| **IP address** | Auto-detected (first non-loopback IPv4) | Press Enter to accept, or type a different IP |
+| **Domain** | Empty (IP-only) | If provided with an email, enables Let's Encrypt TLS |
+| **Email** | Empty | Used for Let's Encrypt registration (only if domain is set) |
+| **Self-signed TLS** | Yes | Offered when no domain is provided. Default is `Y` |
+
+All prompts are skipped when stdin is piped (non-interactive mode) - flags and defaults are used instead.
+
+---
+
+## 5. Non-Interactive (Flag-Based)
+
+Skip all prompts by passing flags.
+
+### Let's Encrypt (domain required)
+
+**Requires:** DNS A record for your domain already pointing to this server's IP.
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com --email webmaster@example.com
+```
+
+### Self-Signed TLS (IP-based)
+
+**Requires:** Nothing extra. Works immediately.
+
+```bash
+sudo ./bedrud install --tls --ip 1.2.3.4
+```
+
+### Plain HTTP (dev / internal only)
+
+**Requires:** localhost or `127.0.0.1`. Browsers block camera/mic on non-HTTPS except localhost.
+
+```bash
+sudo ./bedrud install --ip 1.2.3.4
+```
+
+### Self-Signed for a Domain (pre-DNS testing)
+
+**Requires:** Domain name (DNS does not need to resolve yet).
+
+```bash
+sudo ./bedrud install --tls --domain meet.example.com
+```
+
+### Custom Port
+
+**Requires:** Port not already in use.
+
+```bash
+sudo ./bedrud install --tls --port 8443 --domain meet.example.com
+```
+
+### External Certificates
+
+**Requires:** PEM-formatted fullchain and private key files.
+
+```bash
+sudo ./bedrud install --tls --cert /path/to/fullchain.pem --key /path/to/privkey.pem
+```
+
+### Custom LiveKit Ports
+
+**Requires:** All three ports open on your firewall.
+
+```bash
+sudo ./bedrud install --lk-port 9000 --lk-tcp-port 9001 --lk-udp-port 9002
+```
+
+### Behind a Reverse Proxy
+
+**Requires:** A reverse proxy (Nginx, Caddy, Traefik, Cloudflare) terminating TLS in front of Bedrud.
+
+```bash
+sudo ./bedrud install --behind-proxy --domain meet.example.com
+```
+
+Sets `behindProxy: true` in the config and configures trusted proxy headers.
+
+### External LiveKit Server
+
+**Requires:** A separate LiveKit server already running, accessible from this machine.
+
+```bash
+sudo ./bedrud install --external-livekit https://livekit.example.com
+```
+
+Skips embedded LiveKit installation. API key and secret must match in both configs.
+
+### Separate LiveKit Domain
+
+**Requires:** A domain that resolves directly to this server, bypassing any CDN.
+
+```bash
+sudo ./bedrud install --livekit-domain lk.example.com --domain meet.example.com
+```
+
+Useful when the main domain is behind Cloudflare but WebRTC media needs a direct connection.
+
+### All Flags Reference
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--tls` | `false` | Enable HTTPS (self-signed or Let's Encrypt) |
+| `--self-signed` | `false` | Generate a self-signed TLS certificate |
+| `--no-tls` | `false` | Disable TLS entirely (overrides `--tls`) |
+| `--ip` | auto-detected | Override the server IP address |
+| `--domain` | `""` | Domain name for Let's Encrypt or self-signed cert |
+| `--email` | `""` | Email for Let's Encrypt registration |
+| `--port` | `443` (TLS) / `8090` (HTTP) | Override the listening port |
+| `--cert` | `""` | Path to existing certificate file (PEM) |
+| `--key` | `""` | Path to existing private key file (PEM) |
+| `--lk-port` | `7880` | LiveKit API port |
+| `--lk-tcp-port` | `7881` | LiveKit RTC TCP port |
+| `--lk-udp-port` | `7882` | LiveKit RTC UDP port |
+| `--fresh` | `false` | Remove existing installation before installing |
+| `--behind-proxy` | `false` | Server is behind a reverse proxy / CDN |
+| `--external-livekit` | `""` | URL of an external LiveKit server |
+| `--livekit-domain` | `""` | Separate domain for LiveKit (bypass CDN) |
+
+---
+
+## 6. Fully Automated (Python CLI)
+
+Build, upload, and configure your server from your local machine.
+
+**Requires:** Python 3.12+, [uv](https://docs.astral.sh/uv/) (Python package runner), SSH key access to the target server, Go 1.24+ and Bun installed locally.
+
+```bash
+cd tools/cli
+uv run python bedrud.py --auto-config \
+  --ip <your-server-ip> \
+  --user root \
+  --auth-key ~/.ssh/id_rsa \
+  --domain meet.example.com \
+  --acme-email admin@example.com
+```
+
+**What it does:**
+
+1. Builds the backend binary (`dist/bedrud`)
+2. Compresses it into `bedrud.tar.xz`
+3. Uploads it to the server via rsync
+4. Clears conflicting services (Nginx, Apache, Caddy)
+5. Configures the firewall (UFW)
+6. Runs the internal `install` logic on the server
+
+| Flag | Description |
+|------|-------------|
+| `--ip` | Server IP address |
+| `--user` | SSH user (default: root) |
+| `--auth-key` | Path to SSH private key |
+| `--domain` | Domain name for Let's Encrypt |
+| `--acme-email` | Email for Let's Encrypt |
+| `--uninstall` | Remove Bedrud from server |
+
+---
+
+<InstallerSteps />
+
+### Service Entrypoints
+
+```
+bedrud --run --config /etc/bedrud/config.yaml       # API + web server
+bedrud --livekit --config /etc/bedrud/livekit.yaml   # Media server
+```
+
+---
+
+## Post-Installation
+
+<CreateAdmin />
+
+### Verify Services
+
+```bash
+systemctl status bedrud livekit
+```
+
+### Verify the API
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+```
+
+Expect: `200`
+
+### Check the Firewall
+
+```bash
+sudo ufw status
+```
+
+Ensure ports `8090/tcp`, `7880/tcp`, and `50000:60000/udp` are allowed:
+
+```bash
+sudo ufw allow 8090/tcp
+sudo ufw allow 7880/tcp
+sudo ufw allow 50000:60000/udp
+```
+
+### View Logs
+
+```bash
+tail -f /var/log/bedrud/bedrud.log
+```
+
+Or via journalctl:
+
+```bash
+journalctl -u bedrud -u livekit -f
+```
+
+---
+
+## Upgrading
+
+### Package Manager
+
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt upgrade bedrud
+
+# Arch Linux
+yay -Syu bedrud-bin
+
+# Fedora / RHEL
+sudo dnf upgrade bedrud
+```
+
+Services restart automatically after package upgrade.
+
+### Binary Download
+
+Download the latest release and re-run install. The installer is safe to re-run - it overwrites the binary and config while preserving the database:
+
+```bash
+curl -fsSL -o bedrud.tar.xz https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz
+tar -xJf bedrud.tar.xz && chmod +x bedrud
+sudo ./bedrud install --fresh
+```
+
+<Callout type="tip">
+    `--fresh` removes the old installation first. Omit it to keep your existing config and database.
+</Callout>
+
+### Docker
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+docker stop bedrud && docker rm bedrud
+docker run -d --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -p 50000-60000:50000-60000/udp \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+With Docker Compose:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+---
+
+## Uninstallation
+
+To completely remove Bedrud:
+
+```bash
+sudo bedrud uninstall
+```
+
+This stops services, removes systemd units, deletes the binary from `/usr/local/bin`, and cleans up `/etc/bedrud`, `/var/lib/bedrud`, and `/var/log/bedrud`.
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| **Port 80/443 in use** | Stop conflicting web servers: `systemctl stop nginx apache2 caddy` |
+| **Services won't start** | Check logs: `journalctl -u bedrud -u livekit --no-pager -n 50` |
+| **TLS certificate issues** | Verify DNS: `dig +short meet.example.com` - must return this server's IP |
+| **LiveKit port conflicts** | Use `--lk-port`, `--lk-tcp-port`, `--lk-udp-port` flags to change ports |
+| **Install succeeded but 404 on web UI** | Frontend not embedded. Build with `make build` before `bedrud install`. Binary-only builds skip the frontend |
+| **Install succeeded but services crashed** | Check for silent failures: `journalctl -u bedrud --no-pager -n 100`. Verify config at `/etc/bedrud/config.yaml` |
+| **Port already in use (unknown process)** | Find it: `ss -tlnp \| grep 8090` or `ss -ulnp \| grep 7880` |
+| **Firewall blocking media** | Open ports: `sudo ufw allow 8090/tcp && sudo ufw allow 7880/tcp && sudo ufw allow 50000:60000/udp` |
+| **Self-signed cert warnings** | Expected. See [Internal TLS Guide](/en/docs/guides/internal-tls) for private CA setup |
+| **No video / WebRTC failed** | HTTPS required for camera access. Use `--tls`. Ensure UDP 50000–60000 is open |
+| **Reverse proxy: wrong client IP** | Use `--behind-proxy` flag. Configures trusted proxy headers |

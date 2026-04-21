@@ -1,0 +1,49 @@
+---
+title: Backend Documentation
+description: Overview of the Bedrud backend system architecture
+order: 15
+---
+
+## Introduction
+The Bedrud backend is a single-binary meeting platform written in **Go 1.24+**. All dependencies - media server, web frontend, TURN server - are embedded in one executable.
+
+### Key Technologies
+- **Core Framework:** [Fiber v2](https://gofiber.io/) (Zero allocation router, Express-like API).
+- **Database Layer:** [GORM](https://gorm.io/) with support for **SQLite** (standard) and **PostgreSQL** (production).
+- **Media Engine:** [LiveKit](https://livekit.io/) (Embedded as a sibling binary).
+- **Auth System:** Multi-layered auth supporting JWT, OAuth2 (Google/GitHub/Twitter), and passwordless FIDO2 Passkeys.
+- **Embedded Static Assets:** Uses Go 1.16+ `embed` package to bundle the React frontend (SSR pre-rendered client assets).
+- **Deployment:** Integrated Debian/Ubuntu auto-installer with systemd orchestration and ACME (Let's Encrypt) support.
+
+## Why this Architecture?
+WebRTC platforms typically run separate services for signaling, TURN, web serving, and database management. Bedrud consolidates these into one binary by:
+
+1.  **Extracting** the media server binary at runtime.
+2.  **Proxying** media traffic through the main HTTP(S) port.
+3.  **Automating** OS-level configuration (SSL, systemd) via the binary itself.
+
+## High-Level Architecture
+The backend follows a standard layered architecture:
+
+1.  **Server Layer (`internal/server`):** Sets up the Fiber app, routes, and middleware.
+2.  **Handler Layer (`internal/handlers`):** Manages HTTP requests and responses.
+3.  **Repository Layer (`internal/repository`):** Handles database queries using GORM.
+4.  **Model Layer (`internal/models`):** Defines the database tables and Go structures.
+5.  **Service/Logic Layer:** Integrated into handlers and repositories for simplicity, with specialized packages like `internal/auth` and `internal/livekit`.
+
+## Main Entry Point
+The application starts in `server/cmd/bedrud/main.go`. It has three main modes:
+
+- `run`: Starts the full meeting server.
+- `livekit`: Starts only the embedded media server.
+- `install`: Automatically sets up the server on Debian/Ubuntu systems.
+
+## Documentation Sections
+- [**Code Structure**](/en/docs/backend/structure): Where is everything located?
+- [**Database & Models**](/en/docs/backend/database): How is data stored?
+- [**Authentication**](/en/docs/backend/authentication): How do users log in?
+- [**API Handlers**](/en/docs/backend/api-handlers): How are requests processed?
+- [**LiveKit Integration**](/en/docs/backend/livekit): How does the video server work?
+- [**WebRTC Connectivity**](/en/docs/architecture/webrtc-connectivity): How do clients establish media connections? (STUN/ICE/TURN/SFU)
+- [**TURN Server**](/en/docs/architecture/turn-server): TURN relay architecture, configuration, and troubleshooting
+- [**Installation & Deployment**](/en/docs/backend/deployment): How does the auto-installer work?

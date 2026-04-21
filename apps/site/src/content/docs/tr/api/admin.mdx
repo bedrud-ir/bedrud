@@ -1,0 +1,147 @@
+---
+title: Yönetici API'si
+description: Yönetimsel işlemler
+order: 25
+---
+
+Yönetici uç noktaları `/api/admin/` altındadır. Bu uç noktalar **Süper Yönetici** rolü gerektirir.
+
+## Genel Bakış
+
+| Uç Nokta | Yöntem | Açıklama |
+|----------|--------|----------|
+| `/api/admin/users` | GET | Tüm kullanıcıları listele |
+| `/api/admin/users/:id/status` | PUT | Bir kullanıcıyı aktifleştir veya devre dışı bırak |
+
+---
+
+## Uç Noktalar
+
+### Tüm Kullanıcıları Listele
+
+Kayıtlı tüm kullanıcıların listesini alın.
+
+```
+GET /api/admin/users
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**Gerekli Rol:** Süper Yönetici
+
+**Yanıt (200):**
+
+```json
+{
+  "users": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "avatar": "https://...",
+      "role": "user",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": "uuid-2",
+      "email": "admin@example.com",
+      "name": "Admin User",
+      "role": "admin",
+      "provider": "email",
+      "isActive": true,
+      "createdAt": "2025-01-10T08:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### Kullanıcı Durumunu Güncelle
+
+Bir kullanıcı hesabını aktifleştirin veya devre dışı bırakın. Devre dışı bırakılan kullanıcılar giriş yapamaz.
+
+```
+PUT /api/admin/users/:id/status
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**Gerekli Rol:** Süper Yönetici
+
+**URL Parametreleri:**
+
+| Parametre | Açıklama |
+|-----------|----------|
+| `id` | Kullanıcı UUID'si |
+
+**İstek Gövdesi:**
+
+```json
+{
+  "isActive": false
+}
+```
+
+**Yanıt (200):**
+
+```json
+{
+  "message": "user status updated",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "isActive": false
+  }
+}
+```
+
+---
+
+## Kullanıcı Rolleri
+
+| Rol | Açıklama | İzinler |
+|-----|----------|---------|
+| `guest` | Geçici kullanıcı | Yalnızca odalara katılma |
+| `user` | Normal kullanıcı | Oda oluşturma/katılma, kendi profilini yönetme |
+| `admin` | Süper Yönetici | Tüm kullanıcı izinleri + kullanıcıları yönetme, tüm odaları görme |
+
+### Yönetici Oluşturma
+
+Yönetici kullanıcılar CLI üzerinden oluşturulur:
+
+```bash
+# Bir kullanıcı oluştur
+bedrud user create --email "admin@example.com" --password "securepassword" --name "Admin"
+
+# Yöneticiye yükselt
+bedrud user promote --email "admin@example.com"
+```
+
+Kullanıcıları yükseltmek için bir API uç noktası yoktur - bu, güvenlik amacıyla bilinçli olarak tasarlanmıştır.
+
+---
+
+## Hata Yanıtları
+
+```json
+{
+  "error": "forbidden"
+}
+```
+
+| Durum | Anlamı |
+|-------|--------|
+| 401 | Kimlik doğrulaması yapılmamış |
+| 403 | Süper Yönetici değil |
+| 404 | Kullanıcı bulunamadı |
+| 500 | İç sunucu hatası |
+
+---
+
+## Ayrıca bakınız
+
+- [API İşleyicileri ve Yönlendirme](/tr/docs/backend/api-handlers) - yönetici yollarının nasıl uygulandığı
+- [Rooms API](/tr/docs/api/rooms) - oda yönetimi uç noktaları

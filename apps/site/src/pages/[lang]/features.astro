@@ -1,0 +1,43 @@
+---
+import ComparisonSection from "~/components/landing/comparison-section.astro";
+import { CtaSection } from "~/components/landing/cta-section";
+import FeaturesPageGrid from "~/components/landing/features-page-grid.astro";
+import PlatformsSection from "~/components/landing/platforms-section.astro";
+import Landing from "~/layouts/Landing.astro";
+import { isValidLocale, type Locale, supportedLocales, t } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return supportedLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang: rawLang } = Astro.params;
+const lang: Locale = isValidLocale(rawLang) ? rawLang : "en";
+---
+
+<Landing
+  lang={lang}
+  title={t(lang, "featuresPage.meta.title")}
+  description={t(lang, "featuresPage.meta.description")}
+>
+  <section class="pt-8 pb-16 sm:pt-12 sm:pb-20">
+    <div class="mx-auto max-w-4xl px-6 text-center">
+      <h1
+        data-animate="fade-up"
+        class="text-4xl font-bold tracking-tight sm:text-5xl"
+      >
+        {t(lang, "featuresPage.title")}
+      </h1>
+      <p
+        data-animate="fade-up"
+        class="mt-4 text-lg text-muted-foreground"
+        style="transition-delay: 80ms"
+      >
+        {t(lang, "featuresPage.subtitle")}
+      </p>
+    </div>
+  </section>
+  <FeaturesPageGrid lang={lang} />
+  <PlatformsSection lang={lang} />
+  <ComparisonSection lang={lang} />
+  <CtaSection client:visible lang={lang} />
+</Landing>

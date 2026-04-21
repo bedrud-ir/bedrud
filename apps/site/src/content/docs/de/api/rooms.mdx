@@ -1,0 +1,297 @@
+---
+title: Räume-API
+description: Raumverwaltungs-Endpunkte
+order: 24
+---
+
+Die Raumverwaltungs-Endpunkte befinden sich unter `/api/room/`. Alle Endpunkte erfordern Authentifizierung.
+
+## Übersicht
+
+| Endpunkt | Methode | Beschreibung |
+|----------|--------|-------------|
+| `/api/room/create` | POST | Neuen Raum erstellen |
+| `/api/room/join` | POST | Einem Raum beitreten und ein LiveKit-Token erhalten |
+| `/api/room/list` | GET | Verfügbare Räume auflisten |
+| `/api/room/:roomId/kick/:identity` | POST | Teilnehmer entfernen (Admin) |
+| `/api/room/:roomId/mute/:identity` | POST | Teilnehmer stumm schalten (Admin) |
+| `/api/room/:roomId/video/:identity/off` | POST | Video eines Teilnehmers deaktivieren (Admin) |
+
+---
+
+## Endpunkte
+
+### Raum erstellen
+
+Einen neuen Besprechungsraum erstellen. Der authentifizierte Benutzer wird Raum-Admin.
+
+```
+POST /api/room/create
+```
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Anfrage-Body:**
+
+```json
+{
+  "name": "team-standup",
+  "isPublic": true,
+  "mode": "standard",
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  }
+}
+```
+
+> **Hinweis:** Das Feld `name` ist **optional**. Wenn es weggelassen wird oder leer ist, generiert der Server automatisch einen zufälligen URL-sicheren Namen im Format `xxx-xxxx-xxx` (z. B. `bkf-qmzl-rja`).
+
+**Regeln für Raumnamen:**
+
+Raumnamen erscheinen in der URL als `https://bedrud.xyz/m/NAME` und müssen daher URL-sicher sein:
+
+| Regel | Beschreibung |
+|------|-------------|
+| **Erlaubte Zeichen** | Kleinbuchstaben (`a-z`), Ziffern (`0-9`) und Bindestriche (`-`) |
+| **Minimale Länge** | 3 Zeichen |
+| **Maximale Länge** | 63 Zeichen |
+| **Keine Sonderzeichen** | `#`, `@`, `_`, `.`, `/`, `\`, `<`, `>`, `&`, `%`, `+`, `=`, `;`, `:`, `'`, `"`, `?`, `!`, Leerzeichen usw. sind **nicht erlaubt** |
+| **Keine führenden/abschließenden Bindestriche** | `-room` und `room-` sind ungültig |
+| **Keine aufeinanderfolgenden Bindestriche** | `room--name` ist ungültig |
+| **Nur Kleinbuchstaben** | Großbuchstaben werden abgelehnt; die Eingabe wird automatisch in Kleinbuchstaben umgewandelt |
+| **Eindeutig** | Jeder Raumname muss eindeutig sein |
+
+**Antwort (200):**
+
+```json
+{
+  "id": "uuid",
+  "name": "team-standup",
+  "createdBy": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 0,
+  "settings": {
+    "allowChat": true,
+    "allowVideo": true,
+    "allowAudio": true,
+    "requireApproval": false,
+    "e2ee": false
+  },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
+}
+```
+
+### Felder
+
+| Feld | Typ | Erforderlich | Beschreibung |
+|-------|------|----------|-------------|
+| `name` | string | Nein | URL-sicherer Raumname (wird automatisch generiert, wenn weggelassen) |
+| `isPublic` | boolean | Nein | Ob der Raum in öffentlichen Listen erscheint |
+| `mode` | string | Nein | Raummodus (z. B. `"standard"`) |
+| `maxParticipants` | number | Nein | Maximale Anzahl an Teilnehmern |
+| `settings.allowChat` | boolean | Nein | Ob der Textchat aktiviert ist |
+| `settings.allowVideo` | boolean | Nein | Ob Video aktiviert ist |
+| `settings.allowAudio` | boolean | Nein | Ob Audio aktiviert ist |
+| `settings.requireApproval` | boolean | Nein | Ob Teilnehmer die Genehmigung des Admins benötigen |
+| `settings.e2ee` | boolean | Nein | Ob Ende-zu-Ende-Verschlüsselung aktiviert ist |
+
+---
+
+### Raum beitreten
+
+Einem bestehenden Raum beitreten und ein LiveKit-Token für die Medienverbindung erhalten.
+
+```
+POST /api/room/join
+```
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Anfrage-Body:**
+
+```json
+{
+  "roomName": "team-standup"
+}
+```
+
+**Antwort (200):**
+
+```json
+{
+  "id": "uuid",
+  "name": "team-standup",
+  "token": "eyJ...",
+  "createdBy": "user-uuid",
+  "adminId": "user-uuid",
+  "isActive": true,
+  "isPublic": true,
+  "maxParticipants": 20,
+  "expiresAt": "2026-02-16T12:00:00Z",
+  "settings": { ... },
+  "livekitHost": "wss://lk.bedrud.xyz",
+  "mode": "standard"
+}
+```
+
+Das `token` ist ein signiertes LiveKit-Zugriffstoken. Verwenden Sie es, um sich über WebSocket mit dem LiveKit-Server zu verbinden:
+
+```javascript
+import { Room } from 'livekit-client';
+
+const room = new Room();
+await room.connect(livekitUrl, token);
+```
+
+---
+
+### Räume auflisten
+
+Eine Liste der vom Benutzer erstellten Räume abrufen.
+
+```
+GET /api/room/list
+```
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Antwort (200):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "team-standup",
+    "createdBy": "user-uuid",
+    "isActive": true,
+    "maxParticipants": 20,
+    "expiresAt": "2026-02-16T12:00:00Z",
+    "settings": { ... },
+    "mode": "standard",
+    "relationship": "creator"
+  }
+]
+```
+
+---
+
+### Teilnehmer entfernen
+
+Einen Teilnehmer aus dem Raum entfernen. Dies kann nur der Raum-Admin.
+
+```
+POST /api/room/:roomId/kick/:identity
+```
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Antwort (200):**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+### Teilnehmer stumm schalten
+
+Das Mikrofon eines Teilnehmers stumm schalten. Dies kann nur der Raum-Admin.
+
+```
+POST /api/room/:roomId/mute/:identity
+```
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Antwort (200):**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+### Video eines Teilnehmers deaktivieren
+
+Die Kamera eines Teilnehmers ausschalten. Dies kann nur der Raum-Admin.
+
+```
+POST /api/room/:roomId/video/:identity/off
+```
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Antwort (200):**
+
+```json
+{
+  "status": "success"
+}
+```
+
+---
+
+## Admin-Kontrolle
+
+Raum-Admin-Aktionen (entfernen, stumm schalten, Video aus) stehen nur dem Benutzer zur Verfügung, der den Raum erstellt hat (`adminId`). Der Versuch dieser Aktionen als Nicht-Admin gibt einen 403-Fehler zurück.
+
+### Berechtigungsmatrix
+
+| Aktion | Raum-Admin | Super Admin | Regulärer Benutzer | Gast |
+|--------|-----------|-------------|-------------|-------|
+| Raum erstellen | Ja | Ja | Ja | Nein |
+| Raum beitreten | Ja | Ja | Ja | Ja |
+| Räume auflisten | Ja | Ja | Ja | Ja |
+| Entfernen | Ja | Ja | Nein | Nein |
+| Stumm schalten | Ja | Ja | Nein | Nein |
+| Video aus | Ja | Ja | Nein | Nein |
+
+## Fehlerantworten
+
+Alle Fehler folgen einem einheitlichen Format:
+
+```json
+{
+  "error": "human-readable error message"
+}
+```
+
+### Fehler beim Raum erstellen
+
+| Status | Fehlermeldung | Beschreibung |
+|--------|---------------|-------------|
+| 400 | `"Invalid request body"` | Ungültiges JSON |
+| 400 | `"room name must contain only lowercase letters, numbers, and hyphens"` | Name enthält Sonderzeichen (`#`, `@`, `_` usw.) |
+| 400 | `"room name must be at least 3 characters"` | Name zu kurz |
+| 400 | `"room name must be at most 63 characters"` | Name zu lang |
+| 409 | `"a room with this name already exists"` | Doppelter Name |
+| 500 | `"Failed to create media room"` | LiveKit-Serverfehler |
+| 500 | `"Failed to create room"` | Datenbankfehler |
+
+### Allgemeine Fehler
+
+| Status | Bedeutung |
+|--------|---------|
+| 400 | Ungültige Anfrage (fehlende/ungültige Daten) |
+| 401 | Nicht authentifiziert |
+| 403 | Nicht autorisiert (Nicht-Admin versucht Admin-Aktion) |
+| 404 | Raum nicht gefunden |
+| 409 | Konflikt (doppelte Ressource) |
+| 500 | Interner Serverfehler |
+
+---
+
+## Siehe auch
+
+- [Architekturübersicht](/de/docs/architecture/overview) - Datenmodell und Besprechungsverbindungs-Ablauf
+- [API-Handler](/de/docs/backend/api-handlers) - wie Raum-Endpunkte implementiert sind

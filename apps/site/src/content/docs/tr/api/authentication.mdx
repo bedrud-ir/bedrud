@@ -1,0 +1,271 @@
+---
+title: Kimlik Doğrulama API'si
+description: Kimlik doğrulama uç noktaları ve yöntemleri
+order: 23
+---
+
+Tüm kimlik doğrulama uç noktaları `/api/auth/` altındadır.
+
+## Genel Bakış
+
+Bedrud birden fazla kimlik doğrulama yöntemini destekler:
+
+| Yöntem | Uç Nokta | Açıklama |
+|--------|----------|----------|
+| E-posta/Parola | `POST /api/auth/login` | Geleneksel giriş |
+| Kayıt | `POST /api/auth/register` | Hesap oluşturma |
+| Misafir | `POST /api/auth/guest-login` | Geçici erişim |
+| OAuth | `GET /api/auth/:provider/login` | Sosyal hesap ile giriş |
+| Passkey | `POST /api/auth/passkey/*` | FIDO2/WebAuthn |
+| Token Yenileme | `POST /api/auth/refresh` | Erişim token'ını yenileme |
+
+## Token Formatı
+
+Başarılı bir kimlik doğrulama, bir çift JWT token döndürür:
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+- **Access Token** - Kısa ömürlü, `Authorization` başlığında kullanılır
+- **Refresh Token** - Uzun ömürlü, yeni access token almak için kullanılır
+
+### Token Kullanımı
+
+Tüm kimlik doğrulamalı isteklerde access token'ı ekleyin:
+
+```
+Authorization: Bearer <accessToken>
+```
+
+---
+
+## Uç Noktalar
+
+### Kayıt Ol
+
+Yeni bir kullanıcı hesabı oluşturun.
+
+```
+POST /api/auth/register
+```
+
+**İstek Gövdesi:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "name": "John Doe"
+}
+```
+
+**Yanıt (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### Giriş Yap
+
+E-posta ve parola ile kimlik doğrulayın.
+
+```
+POST /api/auth/login
+```
+
+**İstek Gövdesi:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**Yanıt (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### Misafir Girişi
+
+Hesap oluşturmadan misafir olarak katılın. Misafir kullanıcıların sınırlı izinleri vardır.
+
+```
+POST /api/auth/guest-login
+```
+
+**İstek Gövdesi:**
+
+```json
+{
+  "name": "Guest User"
+}
+```
+
+**Yanıt (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "user": {
+    "id": "uuid",
+    "name": "Guest User",
+    "role": "guest"
+  }
+}
+```
+
+---
+
+### Mevcut Kullanıcıyı Getir
+
+Kimliği doğrulanmış kullanıcının profilini alın.
+
+```
+GET /api/auth/me
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**Yanıt (200):**
+
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "avatar": "https://...",
+  "role": "user",
+  "provider": "email"
+}
+```
+
+---
+
+### Token Yenile
+
+Refresh token'ı yeni bir access token ile değiştirin.
+
+```
+POST /api/auth/refresh
+```
+
+**İstek Gövdesi:**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**Yanıt (200):**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ..."
+}
+```
+
+---
+
+### Çıkış Yap
+
+Mevcut refresh token'ı geçersiz kılın.
+
+```
+POST /api/auth/logout
+```
+
+**Başlıklar:** `Authorization: Bearer <accessToken>`
+
+**İstek Gövdesi:**
+
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**Yanıt (200):**
+
+```json
+{
+  "message": "logged out"
+}
+```
+
+---
+
+### OAuth Girişi
+
+Bir sosyal sağlayıcı ile OAuth akışını başlatın.
+
+```
+GET /api/auth/:provider/login
+```
+
+**Desteklenen Sağlayıcılar:**
+
+| Sağlayıcı | Yol |
+|------------|-----|
+| Google | `/api/auth/google/login` |
+| GitHub | `/api/auth/github/login` |
+| Twitter | `/api/auth/twitter/login` |
+
+Sunucu, kullanıcıyı sağlayıcının yetkilendirme sayfasına yönlendirir. Onay sonrasında sağlayıcı, callback URL'sine geri yönlendirir ve sunucu JWT token'larını döndürür.
+
+---
+
+## Hata Yanıtları
+
+Tüm kimlik doğrulama uç noktaları hataları bu formatta döndürür:
+
+```json
+{
+  "error": "invalid credentials"
+}
+```
+
+| Durum | Anlamı |
+|-------|--------|
+| 400 | Hatalı istek (eksik alanlar, doğrulama hatası) |
+| 401 | Geçersiz kimlik bilgileri veya süresi dolmuş token |
+| 409 | E-posta adresi zaten kayıtlı |
+| 500 | İç sunucu hatası |
+
+---
+
+## Ayrıca bakınız
+
+- [Kimlik Doğrulama Akışı](/tr/docs/backend/authentication) - JWT, OAuth ve passkey'lerin dahili çalışma şekli
+- [Passkeys API](/tr/docs/api/passkeys) - FIDO2/WebAuthn uç nokta referansı

@@ -1,0 +1,217 @@
+---
+title: Dağıtım Rehberi
+description: Bedrud'u üretime dağıtın
+order: 28
+---
+
+Bu rehber, Bedrud'u bir üretim sunucusuna nasıl dağıtacağınızı açıklar.
+
+## Dağıtım Seçenekleri
+
+| Yöntem                                          | En İyi Kullanım Senaryosu                    |
+|--------------------------------------------------|-----------------------------------------------|
+| [Paket Yöneticisi (apt/AUR)](#package-manager)   | Desteklenen Linux dağıtımlarında yönetimli kurulum |
+| [Otomatik CLI](#automated-cli-deployment)         | Hızlı uzaktan kurulum                         |
+| [Manuel Kurulum](#manual-installation)            | Yapılandırma üzerinde tam kontrol             |
+| [Docker](#docker-deployment)                      | Konteynerleştirilmiş ortamlar                 |
+| [Aygıt Modu](/tr/docs/guides/appliance)          | Tek ikili dosyayla tümleşik kurulum           |
+
+---
+
+## Paket Yöneticisi
+
+Bedrud'u yerel paket yöneticisini kullanarak Debian/Ubuntu veya Arch Linux üzerine kurun. Bu, `apt upgrade` veya AUR aracılığıyla otomatik güncelleme istediğiniz kalıcı sunucu dağıtımları için önerilen yöntemdir.
+
+Apt GPG anahtarı ve depo ekleme dahil tam talimatlar için [Paket Kurulumu rehberine](/tr/docs/guides/packages) bakın.
+
+```bash
+# Ubuntu / Debian
+sudo apt install bedrud
+
+# Arch Linux (AUR)
+yay -S bedrud-bin
+```
+
+Kurulumdan sonra TLS, systemd servisleri ve veritabanını yapılandırmak için etkileşimli yükleyiciyi çalıştırın:
+
+```bash
+sudo bedrud install
+```
+
+---
+
+## Otomatik CLI Dağıtımı
+
+En hızlı dağıtım yöntemi. Yerel makinenizden çalıştırın:
+
+**Ön koşullar:** Python 3.10+, [uv](https://github.com/astral-sh/uv) ve hedef sunucuya SSH erişimi.
+
+```bash
+cd tools/cli
+uv run python bedrud.py --auto-config \
+  --ip <server-ip> \
+  --user root \
+  --auth-key ~/.ssh/id_rsa \
+  --domain meet.example.com \
+  --acme-email admin@example.com
+```
+
+Bu işlem şunları yapar:
+
+1. Arka uç ikili dosyasını yerel olarak derler
+2. rsync ile sıkıştırıp yükler
+3. Çakışan web sunucularını temizler
+4. Güvenlik duvarını yapılandırır
+5. Sunucuda servisleri kurar ve başlatır
+
+### CLI Seçenekleri
+
+| Bayrak          | Açıklama                            |
+|-----------------|--------------------------------------|
+| `--ip`          | Sunucu IP adresi                     |
+| `--user`        | SSH kullanıcısı (varsayılan: root)   |
+| `--auth-key`    | SSH özel anahtarı yolu               |
+| `--domain`      | Let's Encrypt için alan adı          |
+| `--acme-email`  | Let's Encrypt için e-posta           |
+| `--uninstall`   | Bedrud'u sunucudan kaldır            |
+
+---
+
+## Manuel Kurulum
+
+### 1. İkili Dosyayı Derleyin
+
+```bash
+make build-dist
+```
+
+Bu, `dist/bedrud_linux_amd64.tar.xz` dosyasını oluşturur.
+
+### 2. Sunucuya Yükleyin
+
+```bash
+scp dist/bedrud_linux_amd64.tar.xz root@server:/tmp/
+ssh root@server "cd /tmp && tar xf bedrud_linux_amd64.tar.xz"
+```
+
+### 3. Kurun
+
+```bash
+ssh root@server
+sudo /tmp/bedrud install --tls --domain meet.example.com --email admin@example.com
+```
+
+Tüm kurulum senaryoları için [Kurulum Rehberi](/tr/docs/getting-started/installation) sayfasına bakın.
+
+### 4. Yönetici Kullanıcısı Oluşturun
+
+<CreateAdmin />
+
+---
+
+## Docker Dağıtımı
+
+Docker ile derleyin ve çalıştırın:
+
+```bash
+docker build -t bedrud .
+docker run -d --name bedrud -p 8090:8090 -p 7880:7880 -v bedrud-data:/var/lib/bedrud bedrud
+```
+
+Önceden oluşturulmuş bir imaj da mevcuttur:
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+```
+
+Birimler, yapılandırma ve Docker Compose dahil tüm ayrıntılar için [Docker Rehberi](/tr/docs/guides/docker) sayfasına bakın.
+
+---
+
+## Üretim Mimarisi
+
+```mermaid
+flowchart TB
+    NET[Internet] --> TRAEFIK["Traefik (443)<br/>TLS termination, reverse proxy"]
+    TRAEFIK --> BEDRUD["Bedrud (8090)<br/>API + Web UI"]
+    TRAEFIK --> LIVEKIT["LiveKit (7880)<br/>WebRTC media"]
+    BEDRUD --> DB["SQLite<br/>(or PostgreSQL)"]
+```
+
+WebRTC bağlantısı için güvenlik duvarında şu portları da açın:
+
+| Port         | Protokol | Amaç                     |
+|--------------|----------|--------------------------|
+| 3478         | UDP      | TURN/UDP + STUN          |
+| 5349         | TCP      | TURN/TLS (veya 443 kullanın) |
+| 7881         | TCP      | ICE/TCP yedek            |
+| 50000-60000  | UDP      | RTC medya akışları       |
+
+Tam bağlantı yığını için [WebRTC Bağlantısı](/tr/docs/architecture/webrtc-connectivity) sayfasına bakın.
+
+<SystemdServices />
+
+### Servisleri Yönetme
+
+```bash
+# Durumu kontrol edin
+systemctl status bedrud livekit
+
+# Yeniden başlatın
+systemctl restart bedrud
+
+# Günlükleri görüntüleyin
+journalctl -u bedrud -f
+tail -f /var/log/bedrud/bedrud.log
+```
+
+---
+
+## Dosya Konumları (Üretim)
+
+| Yol                               | İçerik                  |
+|------------------------------------|-------------------------|
+| `/usr/local/bin/bedrud`            | İkili dosya             |
+| `/etc/bedrud/config.yaml`          | Sunucu yapılandırması   |
+| `/etc/bedrud/livekit.yaml`         | LiveKit yapılandırması  |
+| `/var/lib/bedrud/bedrud.db`        | SQLite veritabanı       |
+| `/var/log/bedrud/bedrud.log`       | Uygulama günlükleri     |
+
+---
+
+## CI/CD
+
+### Sürüm Boru Hattı
+
+`release.yml` iş akışı sürüm etiketlerinde (`v*`) tetiklenir ve şu çıktıları üretir:
+
+| Çıktı                                                  | Açıklama                                          |
+|--------------------------------------------------------|---------------------------------------------------|
+| `bedrud_linux_amd64.tar.xz` / `bedrud_linux_arm64.tar.xz` | Sunucu ikilileri (Linux x86_64 / ARM64)          |
+| `bedrud_amd64.deb` / `bedrud_arm64.deb`                | Debian/Ubuntu paketleri (sunucu)                  |
+| Docker imajı (`ghcr.io/bedrud-ir/bedrud`)              | GHCR'a gönderilen çok mimarili konteyner imajı    |
+| `bedrud-desktop-linux-x86_64.AppImage`                 | Masaüstü - evrensel Linux AppImage                |
+| `bedrud-desktop-linux-x86_64.deb`                      | Masaüstü - Debian/Ubuntu paketi                   |
+| `bedrud-desktop-linux-x86_64.tar.xz`                   | Masaüstü - Linux taşınabilir arşivi               |
+| `bedrud-desktop-windows-x86_64-setup.exe` / `-arm64-setup.exe` | Masaüstü - Windows NSIS yükleyicisi       |
+| `bedrud-desktop-windows-x86_64.zip` / `-arm64.zip`     | Masaüstü - Windows taşınabilir                    |
+| `bedrud-desktop-macos-x86_64.tar.gz` / `-arm64.tar.gz` | Masaüstü - macOS taşınabilir (imzasız)            |
+| Android APK (debug + release, mimari başına)           | Android istemci derlemeleri                       |
+| iOS IPA (isteğe bağlı, imzalama gerektirir)            | iOS istemci arşivi                                |
+
+Tüm çıktılar GitHub sürümüne eklenir.
+
+### Gecelik Derlemeler
+
+`dev-nightly.yml` iş akışı planlı olarak geliştirme derlemeleri üretir.
+
+### CI Kontrolleri
+
+`main` dalına her push ve her pull request şu kontrolleri çalıştırır:
+
+| Kontrol                           | Platform             |
+|------------------------------------|-----------------------|
+| `go vet` + derleme + testler       | ubuntu-latest (Go 1.24) |
+| Tip kontrolü + derleme             | ubuntu-latest (Bun)  |
+| Lint + birim testleri              | ubuntu-latest (JDK 17) |
+| Derleme + test                     | macos-15 (Xcode)     |

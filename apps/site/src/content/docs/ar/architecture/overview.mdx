@@ -1,0 +1,251 @@
+---
+title: نظرة عامة على البنية
+description: بنية النظام عالية المستوى لمنصة بدرود
+order: 6
+---
+
+بدرود هو مستودع أحادي (monorepo) يحتوي على خادم Go، وثلاثة تطبيقات عميل، ووكلاء بوت Python، وحزم مشتركة. تصف هذه الصفحة كيف ترتبط المكونات ببعضها.
+
+## المخطط العام
+
+```mermaid
+flowchart TB
+    subgraph Clients ["Clients"]
+        Web["Web<br/>React"]
+        Android["Android<br/>Compose"]
+        iOS["iOS<br/>SwiftUI"]
+        Desktop["Desktop<br/>Rust + Slint"]
+    end
+
+    subgraph Server ["Bedrud Server"]
+        Router["Fiber HTTP Router<br/>/api/auth/* /api/room/* /api/admin/*"]
+        DB["GORM / SQLite<br/>(or PostgreSQL)"]
+        LKSDK["LiveKit Protocol SDK<br/>(token generation, room management)"]
+        LiveKit["Embedded LiveKit<br/>Media Server (WebRTC)"]
+    end
+
+    Clients -->|"REST API + WebSocket"| Router
+    Router --> DB
+    Router --> LKSDK
+    LKSDK --> LiveKit
+```
+
+## المكونات
+
+### الخادم (`server/`)
+
+خلفية Go هي نواة بدرود. تتولى ما يلي:
+
+- **REST API** - المصادقة، إدارة الغرف، عمليات المسؤول
+- **خدمة الملفات الثابتة** - واجهة الويب المُجمَّعة مدمجة عبر `//go:embed`
+- **تكامل LiveKit** - ينشئ الرموز ويدير الغرف عبر LiveKit Protocol SDK
+- **خادم LiveKit المدمج** - يعمل كعملية فرعية للخادم
+
+يستخدم الخادم إطار عمل الويب **Fiber** (مشابه لـ Express.js في Node.js) و**GORM** كطبقة ORM. يدعم SQLite للتطوير وPostgreSQL للإنتاج.
+
+للتفاصيل راجع [بنية الخادم](/ar/docs/architecture/server).
+
+### واجهة الويب (`apps/web/`)
+
+تطبيق **React** مبني بـ TanStack Start وTailwindCSS v4 وshadcn/ui. في الإنتاج، يُعرَض مسبقًا على الخادم وتُدمَج أصول العميل في الملف الثنائي Go.
+
+القدرات الأساسية:
+
+- واجهة اجتماعات الفيديو مع LiveKit Client SDK
+- مصادقة قائمة على JWT مع تحديث تلقائي للرموز
+- لوحة تحكم المسؤول لإدارة المستخدمين والغرف
+- نظام تصميم مع مكتبة مكونات متسقة
+
+للتفاصيل راجع [واجهة الويب](/ar/docs/architecture/web).
+
+### تطبيق Android (`apps/android/`)
+
+تطبيق Android أصلي مبني بـ **Jetpack Compose** و**Kotlin**. يستخدم Koin لحقن التبعية وRetrofit لـ HTTP.
+
+القدرات الأساسية:
+
+- تجربة اجتماعات فيديو كاملة مع LiveKit Android SDK
+- وضع الصورة داخل الصورة
+- معالجة الروابط العميقة (`bedrud.com/m/*` و`bedrud.com/c/*`)
+- إدارة المكالمات مع ConnectionService في Android
+- دعم تعدد المثيلات (الاتصال بعدة خوادم)
+
+للتفاصيل راجع [تطبيق Android](/ar/docs/architecture/android).
+
+### تطبيق iOS (`apps/ios/`)
+
+تطبيق iOS أصلي مبني بـ **SwiftUI**. يستخدم KeychainAccess لتخزين بيانات الاعتماد بأمان وLiveKit Swift SDK للوسائط.
+
+القدرات الأساسية:
+
+- تجربة اجتماعات فيديو كاملة
+- دعم تعدد المثيلات
+- معالجة الروابط العميقة
+- تخزين آمن قائم على Keychain
+
+للتفاصيل راجع [تطبيق iOS](/ar/docs/architecture/ios).
+
+### تطبيق سطح المكتب (`apps/desktop/`)
+
+تطبيق أصلي لـ Windows وLinux مبني بـ **Rust** وأدوات واجهة المستخدم **Slint**. يُجمَّع كملف ثنائي واحد بدون تبعيات وقت التشغيل.
+
+القدرات الأساسية:
+
+- تجربة اجتماعات فيديو كاملة عبر LiveKit Rust SDK
+- عرض أصلي لـ Windows (Direct3D 11) وLinux (OpenGL/Vulkan)
+- دعم تعدد المثيلات (الاتصال بعدة خوادم بدرود)
+- تكامل مع keyring نظام التشغيل لتخزين بيانات الاعتماد بأمان
+
+للتفاصيل راجع [تطبيق سطح المكتب](/ar/docs/architecture/desktop).
+
+### وكلاء البوت (`agents/`)
+
+سكربتات Python تنضم إلى غرف الاجتماعات كبوتات وتقوم ببث محتوى الوسائط:
+
+- **وكيل الموسيقى** - يشغل ملفات الصوت
+- **وكيل الراديو** - يبث محطات الراديو عبر الإنترنت
+- **وكيل بث الفيديو** - يشارك محتوى الفيديو (HLS، MP4)
+
+للتفاصيل راجع [وكلاء البوت](/ar/docs/architecture/agents).
+
+## مسار المصادقة
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Server
+    participant Database
+
+    Client->>Server: POST /api/auth/login
+    Server->>Database: verify credentials
+    Database-->>Server: credentials valid
+    Server-->>Client: access + refresh JWT
+
+    Client->>Server: GET /api/room/list
+    Note right of Server: "Authorization: Bearer <access_token>"
+    Server-->>Client: room list
+```
+
+جميع الطلبات المصادَق عليها تستخدم رموز JWT في ترويسة `Authorization`. مغلف `authFetch` في واجهة الويب يتولى إرفاق الرموز وتحديثها تلقائيًا.
+
+طرق المصادقة المدعومة:
+
+| الطريقة | نقطة النهاية | الوصف |
+|--------|----------|-------------|
+| البريد/كلمة المرور | `POST /api/auth/login` | بيانات اعتماد تقليدية |
+| التسجيل | `POST /api/auth/register` | إنشاء حساب جديد |
+| ضيف | `POST /api/auth/guest-login` | وصول مؤقت بالاسم فقط |
+| OAuth | `GET /api/auth/:provider/login` | Google، GitHub، Twitter |
+| مفاتيح المرور | `POST /api/auth/passkey/*` | القياسات الحيوية FIDO2/WebAuthn |
+
+## مسار اتصال الاجتماع
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Bedrud Server
+    participant LK as LiveKit SFU
+
+    C->>S: POST /api/room/join
+    S->>S: Validate permissions
+    S->>C: LiveKit JWT token
+    C->>LK: WebSocket connect (with token)
+    LK->>C: SDP offer + join response
+
+    Note over C,LK: ICE connectivity check
+    C->>LK: Host + STUN + TURN candidates
+
+    alt Direct path (UDP)
+        C-->>LK: Media via UDP 50000-60000
+    else TURN relay
+        C-->>LK: Media via TURN relay
+    end
+
+    Note over C,LK: Audio/video tracks flow through SFU
+```
+
+١. يطلب العميل الانضمام إلى غرفة عبر REST API
+٢. يتحقق الخادم من الصلاحيات وينشئ رمز LiveKit موقّعًا
+٣. يتصل العميل مباشرة بـ LiveKit عبر WebSocket باستخدام الرمز
+٤. يجمع `ICE` المرشحين (host، `STUN`، `TURN`) ويختار أفضل مسار
+٥. تتدفق مسارات الصوت/الفيديو عبر `SFU` الخاص بـ LiveKit
+
+للمسار الكامل للاتصال راجع [اتصال WebRTC](/ar/docs/architecture/webrtc-connectivity).
+
+## نموذج البيانات
+
+### المستخدم
+
+| الحقل | النوع | الوصف |
+|-------|------|-------------|
+| ID | uint | المفتاح الأساسي |
+| Email | string | عنوان بريد إلكتروني فريد |
+| Name | string | الاسم المعروض |
+| Password | string | كلمة المرور المشفرة (فارغ لـ OAuth/ضيف) |
+| Avatar | string | رابط الصورة الرمزية |
+| Provider | string | مزود المصادقة (`local`، `google`، `github`، `twitter`، `guest`) |
+| Role | string | `user` أو `admin` |
+
+### الغرفة
+
+| الحقل | النوع | الوصف |
+|-------|------|-------------|
+| ID | uint | المفتاح الأساسي |
+| AdminID | uint | مفتاح خارجي ← User.ID (منشئ الغرفة) |
+| Name | string | اسم الغرفة / slug الرابط |
+| IsPublic | bool | هل يمكن للضيوف الانضمام بدون دعوة |
+| ChatEnabled | bool | هل الدردشة في الغرفة مفعّلة |
+| VideoEnabled | bool | هل الفيديو مسموح |
+| Participants | []User | المستخدمون المتواجدون حاليًا في الغرفة |
+
+### مفتاح المرور
+
+| الحقل | النوع | الوصف |
+|-------|------|-------------|
+| ID | uint | المفتاح الأساسي |
+| UserID | uint | مفتاح خارجي ← User.ID |
+| CredentialID | []byte | معرّف بيانات اعتماد WebAuthn |
+| PublicKey | []byte | المفتاح العام WebAuthn |
+| Counter | uint32 | عداد توقيعات WebAuthn |
+
+### رمز التحديث
+
+| الحقل | النوع | الوصف |
+|-------|------|-------------|
+| Token | string | سلسلة رمز التحديث |
+| UserID | uint | مفتاح خارجي ← User.ID |
+| ExpiresAt | time | طابع زمني لانتهاء الرمز |
+
+## بنية النشر
+
+في الإنتاج، يعمل بدرود كخدمتين systemd:
+
+| الخدمة | الملف الثنائي | الغرض |
+|---------|--------|---------|
+| `bedrud.service` | `bedrud --run` | خادم API + واجهة الويب المدمجة |
+| `livekit.service` | `bedrud --livekit` | خادم وسائط WebRTC |
+
+كلاهما يُدار بملف ثنائي واحد. يتولى Traefik أو وكيل عكسي آخر إنهاء TLS وتوجيه حركة المرور.
+
+للتفاصيل راجع [دليل النشر](/ar/docs/guides/deployment).
+
+## المصطلحات الأساسية
+
+تظهر هذه المصطلحات في أنحاء وثائق البنية:
+
+| المصطلح | الاسم الكامل | المعنى |
+|------|-----------|---------|
+| **SFU** | وحدة الإرسال الانتقائي | خادم وسائط يستقبل التدفقات من كل مشارك ويعيد توجيهها للآخرين. يتصل العملاء بالخادم، وليس ببعضهم. |
+| **SDP** | بروتوكول وصف الجلسة | التنسيق المستخدم لوصف معلمات اتصال WebRTC (الترميزات، الدقات، أنواع الوسائط). |
+| **ICE** | إنشاء الاتصال التفاعلي | إطار عمل يجمع جميع مسارات الشبكة الممكنة بين العميل والخادم، ثم يختار أفضلها. |
+| **STUN** | أدوات عبور الجلسة لـ NAT | بروتوكول خفيف يساعد العميل على اكتشاف عنوان IP العام الخاص به. يعمل لمعظم الاتصالات. |
+| **TURN** | العبور باستخدام المرحلات حول NAT | بروتوكول يُرحِّل جميع الوسائط عبر الخادم عندما يكون الاتصال المباشر مستحيلًا. الملاذ الأخير، أعلى تكلفة عرض نطاق. |
+| **NAT** | ترجمة عناوين الشبكة | ميزة في الموجه تربط العناوين الخاصة الداخلية بعنوان عام واحد. قد تمنع اتصال WebRTC المباشر حسب النوع. |
+| **srflx** | الانعكاسي الخادمي | نوع من مرشحي `ICE` يمثل عنوان IP العام للعميل، المكتشف عبر `STUN`. |
+| **WebRTC** | اتصال الويب في الوقت الفعلي | معيار API للمتصفح والهاتف المحمول لنقل الصوت والفيديو والبيانات في الوقت الفعلي. |
+
+## انظر أيضًا
+
+- [اتصال WebRTC](/ar/docs/architecture/webrtc-connectivity) - مسار الاتصال الكامل `STUN`/`ICE`/`TURN`/`SFU`
+- [دليل خادم TURN](/ar/docs/architecture/turn-server) - بنية وتهيئة مرحل `TURN`
+- [تكامل LiveKit](/ar/docs/backend/livekit) - كيف يُدمَج LiveKit في بدرود

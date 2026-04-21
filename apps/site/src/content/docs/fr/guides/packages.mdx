@@ -1,0 +1,390 @@
+---
+title: Installation par paquet
+description: Installer depuis les gestionnaires de paquets
+order: 32
+---
+
+Ce guide couvre toutes les méthodes d'installation disponibles via gestionnaires de paquets et binaires pour Bedrud - à la fois le **serveur** et le **client de bureau**.
+
+---
+
+## Installation du serveur
+
+### Dépôt apt (Ubuntu / Debian)
+
+Le moyen le plus simple d'installer le serveur Bedrud sur les systèmes basés sur Debian est via le dépôt apt auto-hébergé sur GitHub Pages.
+
+**1. Ajoutez le dépôt et la clé GPG :**
+
+```bash
+curl -fsSL https://bedrud-ir.github.io/bedrud/bedrud.gpg.key \
+  | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/bedrud.gpg
+
+echo "deb https://bedrud-ir.github.io/bedrud stable main" \
+  | sudo tee /etc/apt/sources.list.d/bedrud.list
+```
+
+**2. Installez :**
+
+```bash
+sudo apt update && sudo apt install bedrud
+```
+
+Le paquet installe le binaire dans `/usr/local/bin/bedrud` et enregistre un service systemd. Après l'installation, exécutez l'installateur interactif :
+
+```bash
+sudo bedrud install
+```
+
+Consultez le [Guide d'installation](/fr/docs/getting-started/installation) pour toutes les options de configuration.
+
+---
+
+### AUR (Arch Linux)
+
+```bash
+yay -S bedrud-bin
+```
+
+Après l'installation, exécutez :
+
+```bash
+sudo bedrud install
+```
+
+---
+
+### Dépôt DNF / RPM (Fedora / RHEL / openSUSE)
+
+**1. Ajoutez le dépôt :**
+
+```bash
+sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.gpg.key \
+  -o /etc/pki/rpm-gpg/RPM-GPG-KEY-bedrud
+
+sudo curl -fsSL https://bedrud-ir.github.io/bedrud/dnf/bedrud.repo \
+  -o /etc/yum.repos.d/bedrud.repo
+```
+
+**2. Installez :**
+
+```bash
+sudo dnf install bedrud
+```
+
+---
+
+### Téléchargement direct .deb
+
+Téléchargez le paquet `.deb` directement depuis la [dernière release GitHub](https://github.com/bedrud-ir/bedrud/releases/latest) :
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="x86-64">x86_64 (amd64)</TabsTrigger>
+    <TabsTrigger value="arm64">ARM64</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="x86-64">
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_amd64.deb
+    sudo dpkg -i bedrud_amd64.deb
+    sudo apt-get install -f   # résoudre les dépendances manquantes
+    ```
+  </TabsContent>
+
+  <TabsContent value="arm64">
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_arm64.deb
+    sudo dpkg -i bedrud_arm64.deb
+    sudo apt-get install -f
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### Téléchargement direct .rpm
+
+Téléchargez le paquet `.rpm` depuis la [dernière release GitHub](https://github.com/bedrud-ir/bedrud/releases/latest) :
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="x86-64">x86_64</TabsTrigger>
+    <TabsTrigger value="aarch64">aarch64</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="x86-64">
+    ```bash
+    sudo dnf install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-*.x86_64.rpm
+    ```
+  </TabsContent>
+
+  <TabsContent value="aarch64">
+    ```bash
+    sudo dnf install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-*.aarch64.rpm
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### Téléchargement manuel de binaire
+
+Téléchargez l'archive compressée et extrayez-la n'importe où sur votre `$PATH` :
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="linux-x86-64">Linux x86_64</TabsTrigger>
+    <TabsTrigger value="linux-arm64">Linux ARM64</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="linux-x86-64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_amd64.tar.xz \
+      | tar xJ
+    sudo mv bedrud /usr/local/bin/
+    ```
+  </TabsContent>
+
+  <TabsContent value="linux-arm64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud_linux_arm64.tar.xz \
+      | tar xJ
+    sudo mv bedrud /usr/local/bin/
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### Docker
+
+Tirez l'image préconstruite depuis GitHub Container Registry :
+
+```bash
+docker pull ghcr.io/bedrud-ir/bedrud:latest
+docker run -d \
+  --name bedrud \
+  -p 8090:8090 \
+  -p 7880:7880 \
+  -v bedrud-data:/var/lib/bedrud \
+  ghcr.io/bedrud-ir/bedrud:latest
+```
+
+Consultez le [Guide Docker](/fr/docs/guides/docker) pour tous les détails, y compris les montages de volumes et la configuration du reverse proxy.
+
+---
+
+## Installation du client de bureau
+
+### Linux
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="apt">Ubuntu/Debian (apt)</TabsTrigger>
+    <TabsTrigger value="aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="dnf">Fedora / RHEL (DNF)</TabsTrigger>
+    <TabsTrigger value="snap">Snap (toute distribution)</TabsTrigger>
+    <TabsTrigger value="flatpak">Flatpak (toute distribution)</TabsTrigger>
+    <TabsTrigger value="appimage">AppImage (toute distribution)</TabsTrigger>
+    <TabsTrigger value="tarball">Portable tar.xz</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="apt">
+    Ajoutez d'abord le dépôt apt (voir [Serveur - Dépôt apt](#dépôt-apt-ubuntu--debian) ci-dessus), puis :
+
+    ```bash
+    sudo apt install bedrud-desktop
+    ```
+
+    Le paquet installe un lanceur `.desktop` et enregistre l'application dans votre menu d'application.
+  </TabsContent>
+
+  <TabsContent value="aur">
+    ```bash
+    yay -S bedrud-desktop-bin
+    ```
+  </TabsContent>
+
+  <TabsContent value="dnf">
+    Ajoutez d'abord le dépôt DNF (voir [Serveur - Dépôt DNF](#dépôt-dnf--rpm-fedora--rhel--opensuse) ci-dessus), puis :
+
+    ```bash
+    sudo dnf install bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="snap">
+    ```bash
+    sudo snap install bedrud-desktop
+    ```
+
+    Snap est disponible sur toute distribution Linux qui prend en charge le démon Snap (snapd).
+  </TabsContent>
+
+  <TabsContent value="flatpak">
+    Installez depuis le bundle Flatpak :
+
+    ```bash
+    flatpak install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.flatpak
+    flatpak run ir.bedrud.Desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="appimage">
+    L'AppImage est autonome et fonctionne sur toute distribution Linux sans installation.
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
+    chmod +x bedrud-desktop-linux-x86_64.AppImage
+    ./bedrud-desktop-linux-x86_64.AppImage
+    ```
+
+    <Callout type="tip">
+      Pour intégrer l'AppImage dans votre lanceur d'application, utilisez un outil comme [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher).
+    </Callout>
+  </TabsContent>
+
+  <TabsContent value="tarball">
+    Extrayez et exécutez depuis n'importe quel répertoire :
+
+    ```bash
+    tar xf bedrud-desktop-linux-x86_64.tar.xz
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+### macOS
+
+Des archives portables préconstruites sont disponibles pour Intel et Apple Silicon. L'application est **non signée** - après l'extraction, vous devrez peut-être l'autoriser dans **Paramètres système → Confidentialité et sécurité**.
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="arm64">Apple Silicon (arm64)</TabsTrigger>
+    <TabsTrigger value="x86-64">Intel (x86_64)</TabsTrigger>
+    <TabsTrigger value="homebrew">Homebrew Tap</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="arm64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz \
+      | tar xz
+    # Autorisez le binaire si macOS le bloque :
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="x86-64">
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz \
+      | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="homebrew">
+    ```bash
+    brew tap bedrud-ir/bedrud
+    brew install bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="info">
+  Les releases macOS sont **signées par le code et notarisées** lorsque `MACOS_CERTIFICATE` est configuré dans CI (voir [Référence des secrets](#référence-des-secrets)). Sans ces secrets, le binaire est non signé - utilisez la solution de contournement `xattr` ci-dessus ou faites un clic droit → Ouvrir dans le Finder.
+</Callout>
+
+<Callout type="warning">
+  Avertissement Gatekeeper macOS non signé : exécutez soit la commande `xattr` ci-dessus, soit ouvrez **Paramètres système → Confidentialité et sécurité** et cliquez sur **Ouvrir quand même** après la première tentative de lancement bloquée.
+</Callout>
+
+---
+
+### Windows
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="nsis">Installateur NSIS (recommandé)</TabsTrigger>
+    <TabsTrigger value="zip">Portable .zip</TabsTrigger>
+    <TabsTrigger value="chocolatey">Chocolatey</TabsTrigger>
+    <TabsTrigger value="winget">WinGet</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="nsis">
+    Téléchargez et exécutez l'installateur depuis la [dernière release](https://github.com/bedrud-ir/bedrud/releases/latest) :
+
+    | Architecture | Fichier |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64-setup.exe` |
+    | ARM64 | `bedrud-desktop-windows-arm64-setup.exe` |
+
+    L'installateur enregistre l'application dans le menu Démarrer et Ajout/Suppression de programmes.
+  </TabsContent>
+
+  <TabsContent value="zip">
+    Aucune installation requise - extrayez et exécutez :
+
+    | Architecture | Fichier |
+    |---|---|
+    | x86_64 | `bedrud-desktop-windows-x86_64.zip` |
+    | ARM64 | `bedrud-desktop-windows-arm64.zip` |
+  </TabsContent>
+
+  <TabsContent value="chocolatey">
+    ```powershell
+    choco install bedrud-desktop
+    ```
+  </TabsContent>
+
+  <TabsContent value="winget">
+    ```powershell
+    winget install Bedrud.BedrudDesktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## Tableau récapitulatif
+
+| Plateforme | Serveur | Client de bureau |
+|---|---|---|
+| Ubuntu / Debian (apt) | `apt install bedrud` | `apt install bedrud-desktop` |
+| Fedora / RHEL (dnf) | `dnf install bedrud` | `dnf install bedrud-desktop` |
+| Arch Linux (AUR) | `yay -S bedrud-bin` | `yay -S bedrud-desktop-bin` |
+| Toute Linux | AppImage / binaire `tar.xz` | AppImage / Flatpak / Snap / `tar.xz` |
+| macOS | Binaire `tar.xz` | Homebrew tap / portable `tar.gz` |
+| Windows | - | WinGet / Chocolatey / installateur NSIS / portable `.zip` |
+| Docker | `ghcr.io/bedrud-ir/bedrud` | - |
+
+---
+
+## Référence des secrets
+
+Ces secrets GitHub Actions déverrouillent les canaux de distribution optionnels :
+
+| Secret | Canal | Description |
+|---|---|---|
+| `AUR_SSH_PRIVATE_KEY` | AUR | Clé SSH pour le push vers `aur.archlinux.org` |
+| `APT_GPG_PRIVATE_KEY` | dépôt apt | Clé GPG pour signer le fichier `Release` |
+| `APT_GPG_KEY_ID` | dépôt apt | ID de clé de ce qui précède |
+| `RPM_GPG_PRIVATE_KEY` | dépôt DNF | Clé GPG pour signer les paquets RPM |
+| `SNAPCRAFT_STORE_CREDENTIALS` | Snap Store | Connexion depuis `snapcraft export-login` |
+| `CHOCOLATEY_API_KEY` | Chocolatey | Clé API depuis chocolatey.org |
+| `HOMEBREW_TAP_TOKEN` | Homebrew tap | GitHub PAT avec accès en écriture à `bedrud-ir/homebrew-bedrud` |
+| `WINGET_GITHUB_TOKEN` | WinGet | GitHub PAT pour soumettre une PR à `microsoft/winget-pkgs` |
+| `MACOS_CERTIFICATE` | signature macOS | Certificat `.p12` Developer ID encodé en base64 |
+| `MACOS_CERTIFICATE_PWD` | signature macOS | Mot de passe pour le fichier `.p12` |
+| `MACOS_TEAM_ID` | signature / notarisation macOS | Apple Developer Team ID |
+| `MACOS_APPLE_ID` | notarisation macOS | Adresse e-mail Apple ID |
+| `MACOS_APP_PWD` | notarisation macOS | Mot de passe spécifique à l'application pour notarytool |
+| `IOS_P12_BASE64` | IPA iOS | Certificat de distribution iOS |
+| `TELEGRAM_BOT_TOKEN` | Telegram | Token de bot pour les notifications de release |
+| `TELEGRAM_CHAT_ID` | Telegram | ID du canal/groupe cible |
+
+Tous les secrets sont optionnels - si absents, le travail de ce canal est ignoré silencieusement.

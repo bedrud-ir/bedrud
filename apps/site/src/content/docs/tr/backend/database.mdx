@@ -1,0 +1,64 @@
+---
+title: Veritabanı ve Modeller
+description: Veri modelleri ve veritabanı şeması
+order: 17
+---
+
+Bedrud ORM olarak **GORM**'u kullanır ve hem SQLite hem de PostgreSQL'i destekler.
+
+## Desteklenen Veritabanları
+- **SQLite:** Kolay geliştirme ve küçük kurulumlar için varsayılan olarak kullanılır. Veritabanı bir dosyada saklanır (genellikle `bedrud.db`).
+- **PostgreSQL:** Çok sayıda kullanıcısı olan üretim ortamları için önerilir.
+
+Veritabanı türünü ve bağlantı detaylarını `config.yaml` dosyasındaki `database:` bölümünden yapılandırabilirsiniz.
+
+## Çekirdek Modeller
+
+Modeller `internal/models/` dizininde bulunur. En önemlileri şunlardır:
+
+### User (`user.go`)
+
+Kimlik bilgileri ve roller dahil hesap bilgilerini saklar.
+
+### Room (`room.go`)
+Bir toplantı oturumunu temsil eder. Ayarları organize etmek için GORM'un **Gömülü Yapılarını (Embedded Structs)** kullanır.
+Ayrı bir tablo veya JSON blob'u yerine, `RoomSettings` alanları (ör. `allow_chat`, `allow_video`) doğrudan `rooms` tablosuna `settings_` önekiyle kaydedilir (ör. `settings_allow_chat`). Bu, Go tarafında temiz bir model sağlarken düz ve performanslı bir veritabanı yapısını korur.
+
+### Passkey (`passkey.go`)
+
+Parolasız giriş için FIDO2/WebAuthn açık anahtarlarını saklar.
+
+### Özel Türler: `StringArray`
+
+Standart SQL veritabanları dizileri farklı şekilde işler (PostgreSQL yerel dizi desteğine sahiptir, SQLite'ın yoktur). Uyumluluğu sağlamak için Bedrud, `internal/models/user.go` dosyasında bir `StringArray` türü tanımlar.
+
+- `sql.Scanner` ve `driver.Valuer` arayüzlerini uygular.
+- **PostgreSQL**'de yerel `text[]` türünü kullanır.
+- **SQLite**'ta diziyi depolama için bir dizeye dönüştürür (ör. `{admin,user}`).
+
+### Yabancı Anahtar Yönetimi
+
+GORM'un `AutoMigrate` özelliği bileşik birincil anahtarları (ör. `room_participants`) işlemez.
+
+`internal/database/migrations.go` dosyasında Bedrud, yabancı anahtar kısıtlamalarının (ör. `ON DELETE CASCADE`) üretimde (PostgreSQL) doğru şekilde uygulandığından emin olmak için `ALTER TABLE` ifadelerini manuel olarak çalıştırır.
+
+## Depo Örüntüsü (Repository Pattern)
+
+Arka uç, veritabanı erişimi için **Depo Örüntüsü** kullanır. İşleyiciler GORM'u doğrudan çağırmaz - bir depo kullanırlar.
+
+Örnek:
+```go
+// İşleyici içinde:
+user, err := h.userRepo.GetByEmail(email)
+
+// Depo içinde:
+func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+    var user models.User
+    err := r.db.Where("email = ?", email).First(&user).Error
+    return &user, err
+}
+```
+
+## Otomatik Göçler (Migrations)
+
+Sunucu başladığında otomatik olarak "AutoMigrate" çalıştırır. Bu, `internal/models` içindeki Go yapılarına dayalı olarak veritabanı tablolarını oluşturur veya günceller. Basit şema değişiklikleri için manuel `CREATE TABLE` ifadeleri gerekmez.

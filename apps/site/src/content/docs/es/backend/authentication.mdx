@@ -1,0 +1,90 @@
+---
+title: Autenticación
+description: Detalles de implementación de la autenticación
+order: 18
+---
+
+Bedrud admite múltiples métodos de autenticación.
+
+## JWT (JSON Web Tokens)
+Bedrud utiliza JWT para la gestión de sesiones. Al iniciar sesión, el servidor devuelve dos tokens:
+
+1.  **Token de Acceso:** De corta duración (por ejemplo, 1 hora). Se utiliza para acceder a los endpoints protegidos de la API.
+2.  **Token de Refresco:** De larga duración (por ejemplo, 30 días). Se utiliza para obtener un nuevo Token de Acceso sin necesidad de volver a iniciar sesión.
+
+El backend valida estos tokens en el archivo `internal/middleware/auth.go`.
+
+## Gestión y Seguridad de Tokens
+
+### 1. Estrategia de Par de Tokens (Rotación)
+Bedrud utiliza una estrategia segura de rotación de tokens. Cuando un usuario se autentica, recibe:
+
+- **Token de Acceso:** Firmado con HS256, contiene el ID de usuario, nombre y permisos. Válido por un periodo corto (configurado mediante `tokenDuration`).
+- **Token de Refresco:** Un token separado de larga duración.
+
+**Rotación:** Cuando el Token de Acceso expira, el cliente envía el Token de Refresco a `/api/auth/refresh`. El servidor entonces emite un **par completamente nuevo** de tokens y actualiza el token de refresco almacenado en la base de datos. Esto limita la ventana de oportunidad incluso si un token es robado.
+
+### 2. Revocación de Tokens (Lista Negra)
+Para admitir el cierre de sesión de forma segura, Bedrud implementa una **Lista Negra de Tokens**.
+
+- Cuando un usuario cierra sesión, su Token de Refresco actual se añade a la tabla `blocked_refresh_tokens`.
+- Antes de refrescar cualquier sesión, el servidor verifica esta tabla. Si un token está bloqueado, la solicitud se rechaza inmediatamente.
+- Una tarea en segundo plano (Scheduler) está diseñada para limpiar estos tokens bloqueados una vez que expiran naturalmente.
+
+### 3. Estructura de los Claims JWT
+Los tokens contienen metadatos que permiten al backend y al frontend tomar decisiones rápidas sin consultas a la base de datos:
+```json
+{
+  "userId": "uuid-string",
+  "email": "user@example.com",
+  "name": "Display Name",
+  "accesses": ["user", "admin"],
+  "exp": 123456789,
+  "iat": 123456780
+}
+```
+
+## Métodos de Autenticación
+
+### 1. Correo Electrónico y Contraseña Local
+
+- Las contraseñas se hashean mediante **bcrypt** - nunca se almacenan en texto plano.
+- Al registrarte, se crea un nuevo registro de usuario en la base de datos.
+
+### 2. Inicio de Sesión Social (OAuth2)
+Bedrud utiliza la librería `Goth` para admitir:
+
+- **Google**
+- **GitHub**
+- **Twitter**
+
+Puedes habilitarlos rellenando la sección `auth:` en tu `config.yaml` con tu Client ID y API Secret.
+
+### 3. Passkeys (WebAuthn/FIDO2)
+Bedrud admite autenticación sin contraseña mediante el estándar FIDO2 (WebAuthn).
+
+- **Ceremonia de Registro:**
+  1.  **Inicio:** El servidor genera un **Challenge** criptográficamente seguro y lo almacena en la sesión del usuario.
+  2.  **Finalización:** El autenticador del cliente (por ejemplo, TouchID, YubiKey) firma el challenge. El servidor verifica la atestación, extrae la **Clave Pública** y la guarda en la tabla `passkeys`.
+- **Ceremonia de Autenticación:**
+  1.  **Inicio:** El servidor emite un nuevo challenge.
+  2.  **Finalización:** El cliente firma el challenge con su clave privada. El servidor recupera la Clave Pública de la base de datos, verifica la firma y comprueba el **Contador de Signatura**.
+- **Seguridad:** La verificación del campo `Counter` previene **Ataques de Reproducción**. Si el contador del autenticador no es superior al contador almacenado, el inicio de sesión se rechaza.
+
+### 4. Inicio de Sesión como Invitado
+Permite a los usuarios unirse a una reunión al instante con solo un nombre. El servidor crea un registro de usuario temporal con el rol `guest`.
+
+## Interoperabilidad y CORS
+Bedrud está diseñado para ser accesible desde múltiples orígenes, lo cual es fundamental tanto para el desarrollo (servidor de desarrollo de React) como para producción (diferentes subdominios).
+
+- **Política CORS:** Definida en `config.yaml`. Admite `AllowCredentials: true`, lo cual es necesario para las cookies de sesión utilizadas durante las ceremonias de OAuth y Passkeys.
+- **Orígenes Permitidos:** Por defecto, permite el dominio propio del servidor y `localhost:3000` (el puerto del servidor de desarrollo de React).
+
+## Roles de Usuario (Control de Acceso)
+Cada usuario tiene una lista de "accesses" (roles).
+
+- `user`: Usuario estándar. Puede unirse a salas y crearlas.
+- `guest`: Usuario temporal. Puede unirse a salas.
+- `superadmin`: Puede gestionar todos los usuarios y salas a través del panel `/admin`.
+
+El guard `middleware.RequireAccess("superadmin")` protege las rutas de administración.

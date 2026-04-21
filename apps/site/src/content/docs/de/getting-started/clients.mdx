@@ -1,0 +1,242 @@
+---
+title: Client-Installation
+description: Desktop- und mobile Apps installieren
+order: 3
+---
+
+Öffnen Sie den Meeting-Link in einem Browser, um beizutreten - keine Installation erforderlich. Für ein natives App-Erlebnis installieren Sie den Client für Ihre Plattform unten.
+
+---
+
+## Browser (keine Installation)
+
+Öffnen Sie die Meeting-URL in **Chrome**, **Firefox**, **Edge** oder **Safari**. Kamera- und Mikrofonzugriff erfordert HTTPS (Ihr Server-Administrator kümmert sich darum).
+
+Keine Downloads, keine Erweiterungen, kein Konto erforderlich, wenn Gastzugriff aktiviert ist.
+
+---
+
+## Android
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="google-play">Google Play</TabsTrigger>
+    <TabsTrigger value="apk-sideload">APK (Sideloading)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="google-play">
+
+    Suchen Sie nach **Bedrud** auf Google Play oder folgen Sie dem direkten Link Ihres Server-Administrators.
+  </TabsContent>
+  <TabsContent value="apk-sideload">
+
+    Laden Sie die neueste APK von [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) herunter:
+
+    ```bash
+    # Transfer to your phone, then open to install
+    ```
+
+    Möglicherweise müssen Sie **Installation aus unbekannten Quellen** in Ihren Geräteeinstellungen aktivieren.
+  </TabsContent>
+</Tabs>
+
+---
+
+## iOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="app-store">App Store</TabsTrigger>
+    <TabsTrigger value="ipa-sideload">IPA (Sideloading)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="app-store">
+
+    Suchen Sie nach **Bedrud** im App Store oder folgen Sie dem direkten Link Ihres Server-Administrators.
+  </TabsContent>
+  <TabsContent value="ipa-sideload">
+
+    Laden Sie die neueste IPA von [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) herunter. Sideloading mit AltStore oder einem ähnlichen Tool durchführen.
+  </TabsContent>
+</Tabs>
+
+---
+
+## Linux-Desktop
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="appimage-recommended">AppImage (empfohlen)</TabsTrigger>
+    <TabsTrigger value="flatpak">Flatpak</TabsTrigger>
+    <TabsTrigger value="snap">Snap</TabsTrigger>
+    <TabsTrigger value="ubuntu-debian-apt">Ubuntu / Debian (apt)</TabsTrigger>
+    <TabsTrigger value="arch-linux-aur">Arch Linux (AUR)</TabsTrigger>
+    <TabsTrigger value="fedora-rhel-dnf">Fedora / RHEL (DNF)</TabsTrigger>
+    <TabsTrigger value="portable-tarxz">Portables tar.xz</TabsTrigger>
+  </TabsList>
+  <TabsContent value="appimage-recommended">
+
+    Keine Installation erforderlich. Herunterladen, ausführbar machen, starten:
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.AppImage
+    chmod +x bedrud-desktop-linux-x86_64.AppImage
+    ./bedrud-desktop-linux-x86_64.AppImage
+    ```
+
+    <Callout type="tip">
+        Um AppImage in Ihren Anwendungsstarter zu integrieren, verwenden Sie [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher).
+    </Callout>
+  </TabsContent>
+  <TabsContent value="flatpak">
+
+    ```bash
+    flatpak install https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.flatpak
+    flatpak run ir.bedrud.Desktop
+    ```
+  </TabsContent>
+  <TabsContent value="snap">
+
+    ```bash
+    sudo snap install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="ubuntu-debian-apt">
+
+    Wenn das Bedrud-apt-Repository bereits auf Ihrem System konfiguriert ist:
+
+    ```bash
+    sudo apt install bedrud-desktop
+    ```
+
+    Siehe die [Paketinstallationsanleitung](/de/docs/guides/packages) für die Repository-Einrichtung.
+  </TabsContent>
+  <TabsContent value="arch-linux-aur">
+
+    ```bash
+    yay -S bedrud-desktop-bin
+    ```
+  </TabsContent>
+  <TabsContent value="fedora-rhel-dnf">
+
+    Wenn das Bedrud-DNF-Repository bereits konfiguriert ist:
+
+    ```bash
+    sudo dnf install bedrud-desktop
+    ```
+
+    Siehe die [Paketinstallationsanleitung](/de/docs/guides/packages) für die Repository-Einrichtung.
+  </TabsContent>
+  <TabsContent value="portable-tarxz">
+
+    ```bash
+    wget https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-linux-x86_64.tar.xz
+    tar xf bedrud-desktop-linux-x86_64.tar.xz
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+---
+
+## macOS
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="homebrew-recommended">Homebrew (empfohlen)</TabsTrigger>
+    <TabsTrigger value="apple-silicon-arm64">Apple Silicon (arm64)</TabsTrigger>
+    <TabsTrigger value="intel-x8664">Intel (x86_64)</TabsTrigger>
+  </TabsList>
+  <TabsContent value="homebrew-recommended">
+
+    ```bash
+    brew tap bedrud-ir/bedrud
+    brew install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="apple-silicon-arm64">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-arm64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="intel-x8664">
+
+    ```bash
+    curl -L https://github.com/bedrud-ir/bedrud/releases/latest/download/bedrud-desktop-macos-x86_64.tar.gz | tar xz
+    xattr -d com.apple.quarantine bedrud-desktop
+    ./bedrud-desktop
+    ```
+  </TabsContent>
+</Tabs>
+
+<Callout type="warning">
+    macOS-Builds sind möglicherweise **nicht signiert**. Wenn Gatekeeper die App blockiert, führen Sie den obigen `xattr`-Befehl aus oder gehen Sie zu **Systemeinstellungen → Datenschutz & Sicherheit** und klicken Sie auf **Trotzdem öffnen**.
+</Callout>
+
+---
+
+## Windows
+
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="winget">WinGet</TabsTrigger>
+    <TabsTrigger value="chocolatey">Chocolatey</TabsTrigger>
+    <TabsTrigger value="nsis-installer">NSIS-Installer</TabsTrigger>
+    <TabsTrigger value="portable-zip">Portables .zip</TabsTrigger>
+  </TabsList>
+  <TabsContent value="winget">
+
+    ```powershell
+    winget install Bedrud.BedrudDesktop
+    ```
+  </TabsContent>
+  <TabsContent value="chocolatey">
+
+    ```powershell
+    choco install bedrud-desktop
+    ```
+  </TabsContent>
+  <TabsContent value="nsis-installer">
+
+    Laden Sie den Installer von [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) herunter:
+
+    | Architektur | Datei |
+    |-------------|-------|
+    | x86_64 | `bedrud-desktop-windows-x86_64-setup.exe` |
+    | ARM64 | `bedrud-desktop-windows-arm64-setup.exe` |
+
+    Führen Sie den Installer aus. Die App erscheint im Startmenü und unter Programme hinzufügen/entfernen.
+  </TabsContent>
+  <TabsContent value="portable-zip">
+
+    Von [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest) herunterladen und entpacken:
+
+    | Architektur | Datei |
+    |-------------|-------|
+    | x86_64 | `bedrud-desktop-windows-x86_64.zip` |
+    | ARM64 | `bedrud-desktop-windows-arm64.zip` |
+
+    Keine Installation erforderlich - `bedrud-desktop.exe` aus dem entpackten Ordner starten.
+  </TabsContent>
+</Tabs>
+
+---
+
+## Verbindung zu einem Server
+
+Beim ersten Öffnen der Desktop-App werden Sie nach einer Server-URL gefragt.
+
+1. Geben Sie die URL ein, die Ihr Server-Administrator Ihnen bereitgestellt hat (z. B. `https://meet.example.com`)
+2. Registrieren Sie ein Konto oder melden Sie sich an
+3. Erstellen Sie einen Meetingraum oder treten Sie einem bei
+
+Die Desktop-App unterstützt Verbindungen zu **mehreren Servern**. Weitere können unter **Einstellungen** hinzugefügt werden.
+
+---
+
+## Alle Downloads
+
+Alle Client-Installer und Binärdateien sind auf der [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases/latest)-Seite verfügbar.
+
+Für die vollständige Referenz aller Paketmanager, Repositories und Plattformen siehe die [Paketinstallationsanleitung](/de/docs/guides/packages).

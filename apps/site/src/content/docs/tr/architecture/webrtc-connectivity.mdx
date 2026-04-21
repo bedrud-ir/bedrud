@@ -1,0 +1,215 @@
+---
+title: WebRTC Bağlantısı
+description: STUN/ICE/TURN ve medya yönlendirme
+order: 13
+---
+
+İstemcilerin Bedrud'da gerçek zamanlı medya bağlantılarını nasıl kurduğu. Tam bağlantı yığınını kapsar: sinyalleşme, ICE, STUN, TURN ve SFU medya yolu.
+
+---
+
+## Genel Bakış
+
+WebRTC, ses ve video istemci ile sunucu arasında akmadan önce bir dizi adım gerektirir. Bedrud, LiveKit'in SFU (Selective Forwarding Unit) mimarisini kullanır - istemciler birbirine değil sunucuya bağlanır. **Bu, yalnızca istemciden sunucuya olan ağ yolunun önemli olduğu anlamına gelir**, bireysel katılımcılar arasındaki bağlantı değil.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Bedrud Server
+    participant LK as LiveKit SFU
+
+    C->>S: POST /api/room/join
+    S->>S: Validate permissions
+    S->>C: LiveKit JWT token
+
+    C->>LK: WebSocket connect (with token)
+    LK->>C: Join response + SDP offer
+
+    Note over C,LK: ICE Candidate Gathering
+    C->>LK: Host candidates (local IPs)
+    C->>LK: STUN candidates (public IPs)
+    C->>LK: TURN candidates (relay addresses)
+
+    alt Direct path available
+        Note over C,LK: ICE/UDP - direct media
+        C-->>LK: Media via UDP 50000-60000
+    else UDP blocked, TURN available
+        Note over C,LK: TURN - relayed media
+        C-->>LK: Media via TURN relay (3478/5349)
+    else Corporate firewall
+        Note over C,LK: TURN/TLS - relayed via 443
+        C-->>LK: Media via TLS tunnel
+    end
+
+    Note over C,LK: Audio/video tracks flow through SFU
+```
+
+---
+
+## Bağlantı Yığını
+
+Medya yolunu kurmak için beş katman birlikte çalışır:
+
+```mermaid
+flowchart TB
+    subgraph Layers["Connectivity Stack"]
+        direction TB
+        SIG["1. Signaling<br/>WebSocket - exchange SDP offers/answers"]
+        ICE["2. ICE<br/>Orchestrate all candidate paths"]
+        STUN["3. STUN<br/>Discover public IP/port"]
+        TURN["4. TURN<br/>Relay when direct fails"]
+        SFU["5. SFU<br/>Route media between participants"]
+    end
+
+    SIG --> ICE
+    ICE --> STUN
+    ICE --> TURN
+    STUN --> SFU
+    TURN --> SFU
+```
+
+### Katman Ayrıntıları
+
+**1. Sinyalleşme** - İstemci ve sunucu WebSocket üzerinden SDP (Session Description Protocol) teklif ve yanıtlarıyla bağlantı üst verilerini takas eder. Bu medya değil, kurulum aşamasıdır. Bedrud sinyalleşmeyi API sunucusu üzerinden gömülü LiveKit örneğine vekil olarak iletir.
+
+**2. ICE (Interactive Connectivity Establishment)** - Aday adı verilen tüm olası bağlantı yollarını toplar ve öncelik sırasına göre sınar. ICE bir çerçevedir - bağlantı girişimlerini koordine eder ama kendisi bir protokol değildir.
+
+**3. STUN (Session Traversal Utilities for NAT)** - Hafif bir protokoldür. İstemci STUN sunucusuna bir bağlama isteği gönderir, sunucu istemcinin genel IP'si ve portu ile yanıt verir. Bu "sunucu yansımalı" aday daha sonra doğrudan bağlantı için sınanır. Bağlantıların ~%80'inde çalışır.
+
+**4. TURN (Traversal Using Relays around NAT)** - Doğrudan bağlantı başarısız olduğunda TURN sunucuda bir aktarma adresi ayırır. Tüm medya paketleri bu aktarma üzerinden iletilir. En yüksek maliyet - sunucu bant genişliği aktarılan kullanıcılarla ölçeklenir. Ayrıntılı bilgi için bkz. [TURN Sunucusu Kılavuzu](turn-server.mdx).
+
+**5. SFU (Selective Forwarding Unit)** - Aktarım yolu kurulduktan sonra LiveKit'in SFU'su katılımcılar arasında medyayı yönlendirir. Her katılımcı bir yayın gönderir; SFU kopyalarını diğer katılımcılara iletir. Bu eşler arası değildir - sunucu her zaman yoldadır.
+
+---
+
+## ICE Aday Toplama
+
+```mermaid
+flowchart TD
+    START[Start ICE Gathering] --> HOST
+    START --> SRFLX
+    START --> TURN_C
+    HOST["Host candidates<br/>Local interface IPs<br/>e.g. 192.168.1.5:50001"]
+    SRFLX["STUN candidates (srflx)<br/>Public IP discovered via STUN<br/>e.g. 203.0.113.5:50001"]
+    TURN_C["TURN candidates (relay)<br/>Relay address on server<br/>e.g. 203.0.113.10:30001"]
+    HOST --> TEST
+    SRFLX --> TEST
+    TURN_C --> TEST
+    TEST{Test candidate<br/>connectivity}
+    TEST -->|"Host works"| CONNECTED[Connected via host]
+    TEST -->|"srflx works"| CONNECTED2[Connected via STUN<br/>direct P2P]
+    TEST -->|"Only relay works"| CONNECTED3[Connected via TURN relay]
+    TEST -->|"None work"| FAIL[Connection failed]
+```
+
+ICE aynı anda üç aday türü toplar:
+
+| Tür | Kaynak | Öncelik | Nasıl çalışır |
+|-----|--------|----------|---------------|
+| **host** | Yerel ağ arayüzleri | En yüksek | Makineden doğrudan IP. LAN'da çalışır. |
+| **srflx** (sunucu yansımalı) | STUN sunucusu yanıtı | Orta | STUN ile keşfedilen genel IP. Çoğu NAT türünde çalışır. |
+| **relay** | TURN sunucusu ayırması | En düşük | TURN sunucusundaki adres. Her zaman çalışır. En yüksek maliyet. |
+
+ICE tüm adayları sınar ve başarılı olan en yüksek öncelikli çifti seçer. `srflx` çalışırsa `relay`'i atlar.
+
+---
+
+## NAT Türleri ve Bağlantı
+
+Farklı NAT türleri doğrudan bağlantının çalışıp çalışmadığını etkiler:
+
+```mermaid
+flowchart LR
+    subgraph NAT1["Client A NAT"]
+        direction TB
+        F["Full Cone"]
+        R["Restricted Cone"]
+        PR["Port Restricted"]
+        S["Symmetric"]
+    end
+
+    subgraph NAT2["Client B / Server NAT"]
+        direction TB
+        F2["Full Cone"]
+        R2["Restricted Cone"]
+        PR2["Port Restricted"]
+        S2["Symmetric"]
+    end
+
+    F -->|"Direct"| F2
+    R -->|"Direct"| R2
+    PR -->|"Direct"| PR2
+    S -->|"TURN required"| S2
+    S -.->|"TURN required"| PR2
+    PR -.->|"TURN required"| S2
+
+
+```
+
+| NAT Türü | Açıklama | Doğrudan P2P | TURN Gerekli |
+|----------|----------|--------------|-------------|
+| **Full Cone** | Aynı iç IP/port'tan gelen tüm istekler aynı genel IP/port'a eşlenir. Herhangi bir dış ana bilgisayar buna gönderebilir. | Evet | Hayır |
+| **Restricted Cone** | Full Cone ile aynı eşleme, ancak yalnızca paket almış dış ana bilgisayarlar geri gönderebilir. | Genellikle | Hayır |
+| **Port Restricted Cone** | Restricted Cone'a benzer, ancak NAT dış port numarasını da kısıtlar. En yaygın ev yönlendirici türü. | Genellikle | Nadiren |
+| **Simetrik** | Hedef başına farklı genel IP/port eşlemesi. STUN ile keşfedilen adres yeniden kullanılamaz. | Hayır (her iki taraf simetrik olduğunda) | **Evet** |
+
+**Temel çıkarım:** Sunucunun genel IP'si ve öngörülebilir port aralığı olduğu için çoğu NAT türü doğrudan çalışır. TURN genellikle istemcinin güvenlik duvarı giden UDP'yi tamamen engellediğinde gerekir.
+
+---
+
+## Yapılandırma Özeti
+
+Hangi Bedrud/LiveKit yapılandırma anahtarları WebRTC bağlantısını etkiler:
+
+**`livekit.yaml` anahtarları:**
+
+```yaml
+rtc:
+  port_range_start: 50000       # UDP medya port aralığı başlangıcı
+  port_range_end: 60000         # UDP medya port aralığı sonu
+  tcp_port: 7881                # ICE/TCP yedek portu
+  stun_servers:                 # Harici STUN sunucuları (isteğe bağlı)
+    - stun:stun.l.google.com:19302
+  use_external_ip: true         # ICE adaylarında genel IP'yi duyur
+
+turn:
+  enabled: true                 # Gömülü TURN'ü etkinleştir
+  domain: "turn.example.com"    # TURN etki alanı (DNS çözümlenmeli)
+  udp_port: 3478                # TURN/UDP + STUN portu
+  tls_port: 5349                # TURN/TLS portu (veya 443)
+  cert_file: /path/to/turn.crt  # TURN/TLS için TLS sertifikası
+  key_file: /path/to/turn.key   # TURN/TLS için TLS anahtarı
+  relay_range_start: 30000      # Aktarma port aralığı başlangıcı
+  relay_range_end: 40000        # Aktarma port aralığı sonu
+  external_tls: false           # L4 LB TLS'yi sonlandırır
+```
+
+**`config.yaml` anahtarları (Bedrud sunucusu):**
+
+```yaml
+server:
+  port: 8090                    # API portu (sinyalleşme buradan vekil olarak iletilir)
+  enableTLS: true               # Sinyalleşme için HTTPS
+  domain: "meet.example.com"    # Genel etki alanı
+```
+
+### Bağlantı Sorunlarını Hata Ayıklama
+
+| Belirti | Denetle |
+|---------|---------|
+| Hiç bağlanamıyor | `rtc.use_external_ip: true` mı? Güvenlik duvarı 443 + UDP aralığında açık mı? |
+| Bağlanıyor ama ses/video yok | UDP 50000-60000 engelli mü? Tarayıcıda ICE adaylarını denetle. |
+| Yavaş bağlantı | TURN aktarma aktif (adayları denetle). İstemci katı NAT arkasındaysa beklenir. |
+| Kurumsal ağda başarısız | TURN/TLS yapılandırılmamış. Geçerli sertifika ile `turn.tls_port: 443` ayarla. |
+| LAN'da çalışıyor, uzaktan başarısız | Genel IP duyurulmuyor. `rtc.use_external_ip: true` ayarla. |
+
+TURN sorun giderme detayları için bkz. [TURN Sunucusu Kılavuzu](/tr/docs/architecture/turn-server).
+
+---
+
+## Ayrıca bakınız
+
+- [TURN Sunucusu Kılavuzu](/tr/docs/architecture/turn-server) - TURN mimarisi, yapılandırma, TLS, hata ayıklama
+- [LiveKit Entegrasyonu](/tr/docs/backend/livekit) - Bedrud'un LiveKit'i nasıl gömdüğü
+- [Mimari Genel Bakış](/tr/docs/architecture/overview) - tam sistem mimarisi
+- [İç TLS](/tr/docs/guides/internal-tls) - İzole ağlar için TLS

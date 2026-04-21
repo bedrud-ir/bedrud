@@ -1,0 +1,188 @@
+---
+title: مرجع Makefile
+description: أوامر أتمتة البناء
+order: 31
+---
+
+ملف `Makefile` الرئيسي هو أداة تنسيق البناء المركزية لمستودع Bedrud الأحادي. يوفر أوامر للتطوير والبناء والنشر عبر جميع المنصات.
+
+## الاستخدام
+
+```bash
+make <target>
+make help       # Show all available targets
+```
+
+## أهداف التطوير
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make init` | تثبيت جميع التبعيات (LiveKit + الإعدادات + bun + Go) |
+| `make dev` | تشغيل LiveKit + الخادم (إعادة التحميل التلقائي) + الويب بشكل متزامن |
+| `make dev-web` | تشغيل خادم تطوير الواجهة فقط |
+| `make dev-server` | تشغيل خادم الخلفية + LiveKit |
+| `make dev-server-hot` | تشغيل الخلفية مع Air (إعادة التحميل التلقائي) |
+| `make dev-api` | تشغيل الخلفية فقط، بدون LiveKit |
+| `make dev-livekit` | تشغيل خادم LiveKit المحلي |
+| `make dev-site` | تشغيل خادم تطوير موقع Astro |
+| `make dev-ios` | فتح مشروع iOS في Xcode |
+| `make dev-android` | فتح مشروع Android في Android Studio |
+
+### `make init`
+
+إعداد كامل لبيئة تطوير جديدة:
+
+1. تنزيل ملف LiveKit الثنائي إلى `~/.local/bin/` (إذا لم يكن في PATH)
+2. إنشاء `server/config.yaml` من قالب `config.local.yaml` (إذا لم يكن موجودًا)
+3. إنشاء عنصر نائب لـ LiveKit المدمج في `server/internal/livekit/bin/livekit-server`
+4. تثبيت `air` لإعادة التحميل التلقائي لـ Go (إذا لم يكن مثبتًا)
+5. تثبيت التبعيات: `apps/web` (bun)، `apps/site` (bun)، `server` (go mod)
+
+### `make dev`
+
+يُشغّل خدمات التطوير الثلاث بشكل متزامن. اضغط `Ctrl+C` لإيقاف الكل:
+
+- **LiveKit** على `localhost:7880`
+- **الخادم** على `localhost:8090`
+- **الويب** على `localhost:3000`
+
+## أهداف البناء
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make build` | بناء الواجهة + الخلفية (مضمنة) |
+| `make build-front` | بناء الواجهة فقط |
+| `make build-back` | بناء الخلفية فقط |
+| `make build-dist` | بناء أرشيف إنتاج linux/amd64 |
+| `make build-site` | بناء موقع Astro (SSG) |
+
+### `make build`
+
+بناء إنتاجي كامل:
+
+1. يُشغّل `bun run build` في `apps/web` — يبني تطبيق React
+2. ينسخ `apps/web/dist/client/*` → `server/frontend/`
+3. يبني الملف الثنائي Go مع الواجهة المضمنة
+
+المخرجات: `server/dist/bedrud`
+
+### `make build-dist`
+
+ينشئ توزيعة إنتاجية مضغوطة:
+
+1. يُشغّل `make build`
+2. يُترجم تصادريًا لـ `linux/amd64` مع إزالة رموز التنقيح
+3. ينشئ `dist/bedrud_linux_amd64.tar.xz`
+
+## أهداف سطح المكتب
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make dev-desktop` | بناء وتشغيل تطبيق سطح المكتب (تصحيح) |
+| `make build-desktop` | بناء ملف ثنائي release محسّن |
+
+## ملف ثنائي محلي واحد
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make local-build` | بناء الواجهة + الخلفية في ملف ثنائي واحد |
+| `make local-run` | بناء + تشغيل محلي (SQLite، LiveKit مضمن) |
+
+### `make local-run`
+
+يبني ويبدأ الملف الثنائي الواحد بالإعدادات المحلية:
+
+```bash
+CONFIG_PATH=server/config.local.yaml server/dist/bedrud run
+```
+
+افتح `http://localhost:8090` عند الاستعداد.
+
+## توثيق API
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make swagger-gen` | إعادة توليد توثيق Swagger من التعليقات التوضيحية |
+| `make swagger-open` | فتح Swagger UI في المتصفح |
+| `make scalar-open` | فتح Scalar UI في المتصفح |
+
+يتطلب CLI `swag` (`go install github.com/swaggo/swag/cmd/swag@latest`). يجب أن يكون الخادم قيد التشغيل لاستخدام `swagger-open` و `scalar-open`.
+
+## أهداف Android
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make build-android-debug` | بناء APK تصحيح |
+| `make build-android` | بناء APK إصدار (يتطلب مخزن مفاتيح) |
+| `make install-android` | تثبيت APK الإصدار على الجهاز المتصل |
+| `make release-android` | بناء + تثبيت APK الإصدار |
+
+### مسارات مخرجات APK
+
+- التصحيح: `apps/android/app/build/outputs/apk/debug/app-debug.apk`
+- الإصدار: `apps/android/app/build/outputs/apk/release/app-release.apk`
+
+## أهداف iOS
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make build-ios` | بناء أرشيف iOS (إصدار) |
+| `make export-ios` | تصدير IPA من الأرشيف |
+| `make build-ios-sim` | بناء لمحاكي iOS (تصحيح) |
+
+### مسارات المخرجات
+
+- الأرشيف: `apps/ios/build/Bedrud.xcarchive`
+- IPA: `apps/ios/build/export/Bedrud.ipa`
+
+## هدف النشر
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make deploy ARGS=...` | تشغيل أداة نشر CLI |
+
+### مثال
+
+```bash
+make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
+```
+
+يُشغّل أداة CLI في Python عند `tools/cli/bedrud.py` بالمعطيات المقدمة.
+
+## الاختبار
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make test-back` | تشغيل اختبارات الخلفية (`go test -v -count=1 ./...`) |
+
+## أهداف التنظيف
+
+| الهدف | الوصف |
+|--------|-------------|
+| `make clean` | إزالة مُنتَجات البناء والملفات الثنائية المُترجمة |
+| `make full-clean` | إزالة المُنتَجات + جميع التبعيات المثبتة |
+
+### `make clean`
+
+يزيل:
+
+- `dist/` — أرشيفات التوزيعة
+- `server/dist/` — الملف الثنائي المُترجم للخادم
+- `apps/web/dist/` — مخرجات بناء React
+- محتويات `server/frontend/` — أصول الواجهة المضمنة
+- `apps/android/app/build/` — مخرجات بناء Android
+- `apps/ios/build/` — مخرجات بناء iOS
+- `apps/site/dist/` — مخرجات بناء موقع Astro
+- `target/` — مخرجات بناء Rust/Cargo
+
+### `make full-clean`
+
+كل ما يفعله `clean`، بالإضافة إلى:
+
+- `apps/web/node_modules/`
+- `apps/site/node_modules/`
+- `apps/android/.gradle/`
+- `apps/android/build/`
+- ذاكرة تخزين وحدات Go (`go clean -modcache`)
+
+شغّل `make init` بعدها لإعادة تثبيت التبعيات.

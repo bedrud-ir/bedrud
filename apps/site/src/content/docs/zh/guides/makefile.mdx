@@ -1,0 +1,188 @@
+---
+title: Makefile Reference
+description: Build automation commands
+order: 31
+---
+
+根目录的 `Makefile` 是 Bedrud monorepo 的中央构建编排工具。它提供了跨所有平台的开发、构建和部署命令。
+
+## 用法
+
+```bash
+make <target>
+make help       # Show all available targets
+```
+
+## 开发目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make init` | 安装所有依赖（LiveKit + 配置 + bun + Go） |
+| `make dev` | 同时运行 LiveKit + 服务器（热重载） + Web |
+| `make dev-web` | 仅运行前端开发服务器 |
+| `make dev-server` | 运行后端服务器 + LiveKit |
+| `make dev-server-hot` | 使用 Air 热重载运行后端 |
+| `make dev-api` | 仅运行后端，不启动 LiveKit |
+| `make dev-livekit` | 运行本地 LiveKit 服务器 |
+| `make dev-site` | 运行 Astro 站点开发服务器 |
+| `make dev-ios` | 在 Xcode 中打开 iOS 项目 |
+| `make dev-android` | 在 Android Studio 中打开 Android 项目 |
+
+### `make init`
+
+全新开发环境的完整设置：
+
+1. 下载 LiveKit 服务器二进制文件到 `~/.local/bin/`（如果不在 PATH 中）
+2. 从 `config.local.yaml` 模板创建 `server/config.yaml`（如果不存在）
+3. 在 `server/internal/livekit/bin/livekit-server` 创建 LiveKit 嵌入占位符
+4. 安装 `air` 用于 Go 热重载（如果未安装）
+5. 安装依赖：`apps/web`（bun）、`apps/site`（bun）、`server`（go mod）
+
+### `make dev`
+
+同时启动三个开发服务。按 `Ctrl+C` 停止所有：
+
+- **LiveKit** 在 `localhost:7880`
+- **服务器** 在 `localhost:8090`
+- **Web** 在 `localhost:3000`
+
+## 构建目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make build` | 构建前端 + 后端（嵌入） |
+| `make build-front` | 仅构建前端 |
+| `make build-back` | 仅构建后端 |
+| `make build-dist` | 构建生产版 linux/amd64 tar 包 |
+| `make build-site` | 构建 Astro 站点（SSG） |
+
+### `make build`
+
+完整的生产构建：
+
+1. 在 `apps/web` 中运行 `bun run build` — 构建 React 应用
+2. 将 `apps/web/dist/client/*` 复制到 `server/frontend/`
+3. 构建嵌入了前端的 Go 二进制文件
+
+输出：`server/dist/bedrud`
+
+### `make build-dist`
+
+创建压缩的、生产就绪的分发包：
+
+1. 运行 `make build`
+2. 交叉编译 `linux/amd64`，去除调试符号
+3. 创建 `dist/bedrud_linux_amd64.tar.xz`
+
+## 桌面端目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make dev-desktop` | 构建并运行桌面应用（debug） |
+| `make build-desktop` | 构建优化后的 release 二进制文件 |
+
+## 本地单二进制文件
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make local-build` | 将前端 + 后端构建为一个二进制文件 |
+| `make local-run` | 构建 + 本地运行（SQLite，嵌入 LiveKit） |
+
+### `make local-run`
+
+使用本地配置构建并启动单二进制文件：
+
+```bash
+CONFIG_PATH=server/config.local.yaml server/dist/bedrud run
+```
+
+启动后打开 `http://localhost:8090`。
+
+## API 文档
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make swagger-gen` | 从注释重新生成 Swagger 文档 |
+| `make swagger-open` | 在浏览器中打开 Swagger UI |
+| `make scalar-open` | 在浏览器中打开 Scalar UI |
+
+需要 `swag` CLI（`go install github.com/swaggo/swag/cmd/swag@latest`）。使用 `swagger-open` 和 `scalar-open` 需先启动服务器。
+
+## Android 目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make build-android-debug` | 构建 debug APK |
+| `make build-android` | 构建 release APK（需要 keystore） |
+| `make install-android` | 在已连接的设备上安装 release APK |
+| `make release-android` | 构建 + 安装 release APK |
+
+### APK 输出路径
+
+- Debug：`apps/android/app/build/outputs/apk/debug/app-debug.apk`
+- Release：`apps/android/app/build/outputs/apk/release/app-release.apk`
+
+## iOS 目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make build-ios` | 构建 iOS 归档（Release） |
+| `make export-ios` | 从归档导出 IPA |
+| `make build-ios-sim` | 为 iOS 模拟器构建（Debug） |
+
+### 输出路径
+
+- 归档：`apps/ios/build/Bedrud.xcarchive`
+- IPA：`apps/ios/build/export/Bedrud.ipa`
+
+## 部署目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make deploy ARGS=...` | 运行部署 CLI 工具 |
+
+### 示例
+
+```bash
+make deploy ARGS="--auto-config --ip 1.2.3.4 --user root --domain meet.example.com"
+```
+
+使用提供的参数运行 `tools/cli/bedrud.py` Python CLI。
+
+## 测试
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make test-back` | 运行后端测试（`go test -v -count=1 ./...`） |
+
+## 清理目标
+
+| 目标 | 说明 |
+|--------|-------------|
+| `make clean` | 删除构建产物和编译后的二进制文件 |
+| `make full-clean` | 删除产物 + 所有已安装的依赖 |
+
+### `make clean`
+
+删除：
+
+- `dist/` — 分发包
+- `server/dist/` — 编译后的服务器二进制文件
+- `apps/web/dist/` — React 构建输出
+- `server/frontend/` 内容 — 嵌入的前端资源
+- `apps/android/app/build/` — Android 构建输出
+- `apps/ios/build/` — iOS 构建输出
+- `apps/site/dist/` — Astro 站点构建输出
+- `target/` — Rust/Cargo 构建输出
+
+### `make full-clean`
+
+执行 `clean` 的所有操作，另外还包括：
+
+- `apps/web/node_modules/`
+- `apps/site/node_modules/`
+- `apps/android/.gradle/`
+- `apps/android/build/`
+- Go 模块缓存（`go clean -modcache`）
+
+之后运行 `make init` 以重新安装依赖。

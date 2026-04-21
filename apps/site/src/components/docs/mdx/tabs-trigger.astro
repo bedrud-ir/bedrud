@@ -1,0 +1,11 @@
+---
+interface Props {
+	value?: string;
+}
+
+const { value } = Astro.props;
+---
+
+<button type="button" role="tab" data-tab-trigger={value}>
+	<slot />
+</button>
