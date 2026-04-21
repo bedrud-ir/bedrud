@@ -12,7 +12,7 @@ order: 2
 
 ## Что делает установщик
 
-1. Определяет ОС, архитектуру процессора и варианты платформы (Rosetta 2)
+1. Определяет ОС, архитектуру процессора, варианты платформы (Rosetta 2) и систему инициализации (systemd/OpenRC/SysV)
 2. Загружает нужный бинарный файл из [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases)
 3. Устанавливает в `~/bin` (настраивается через `--install-dir`)
 4. Добавляет директорию установки в `PATH` через конфигурацию оболочки
@@ -171,6 +171,20 @@ uname -m → "x86_64" | "amd64"  → amd64
 
 ---
 
+## Поддержка систем инициализации
+
+Установщик автоматически определяет систему инициализации и создаёт соответствующие сервис-файлы для настройки сервера:
+
+| Система | Определение | Сервис-файлы | Управление |
+|---------|-------------|--------------|------------|
+| systemd | существует `/run/systemd/system` | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | существует `/sbin/openrc` | `/etc/init.d/*` (формат OpenRC) | `rc-service`, `rc-update` |
+| SysV init | доступна команда `service` | `/etc/init.d/*` (формат LSB) | `service`, `update-rc.d` |
+
+Поддерживается: Ubuntu, Debian, Devuan, Alpine, WSL1 и большинство Linux-контейнеров.
+
+---
+
 ## Порядок установки
 
 1. **Проверка Windows** — обнаружен MINGW/MSYS/CYGWIN? Вывести команду PowerShell, выйти
@@ -255,7 +269,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-Для установки сервера через systemd:
+Для установки сервера через systemd, OpenRC, SysV init:
 
 ```bash
 sudo bedrud uninstall

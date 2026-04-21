@@ -30,7 +30,7 @@ echo "deb https://bedrud-ir.github.io/bedrud stable main" \
 sudo apt update && sudo apt install bedrud
 ```
 
-Пакет устанавливает бинарник в `/usr/local/bin/bedrud` и регистрирует сервис systemd. После установки запустите интерактивный установщик:
+Пакет устанавливает бинарник в `/usr/local/bin/bedrud` и регистрирует init-сервис (systemd/OpenRC/SysV автоопределение). После установки запустите интерактивный установщик:
 
 ```bash
 sudo bedrud install
