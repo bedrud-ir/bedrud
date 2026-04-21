@@ -49,7 +49,7 @@ bedrud/
 - **`/livekit`**：与 LiveKit Go SDK 的集成。管理房间创建并为参与者生成"加入令牌"。
 - **`/middleware`**：自定义 Fiber middleware，用于认证检查、日志记录和 CORS。
 - **`/server`**：将所有内容组合在一起的粘合代码。它初始化数据库、repository，并启动 Fiber 服务器。
-- **`/install`**：`bedrud install` 命令的逻辑，用于在 Linux 上自动化 systemd 和 TLS 配置。
+- **`/install`**：`bedrud install` 命令的逻辑，用于在 Linux 上自动化 init 服务（systemd/OpenRC/SysV）和 TLS 配置。
 - **`/scheduler`**：后台任务（如有）。
 - **`/utils`**：小型辅助函数（如密码哈希、随机字符串）。
 

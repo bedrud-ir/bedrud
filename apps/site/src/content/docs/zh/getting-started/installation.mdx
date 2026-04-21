@@ -15,7 +15,7 @@ order: 2
 | **操作系统** | Debian 12+、Ubuntu 22.04+、Arch Linux (rolling)、Fedora 39+ |
 | **架构** | amd64 (x86_64) 或 arm64 (aarch64) |
 | **权限** | Root 或 sudo |
-| **初始化系统** | systemd |
+| **初始化系统** | systemd、OpenRC 或 SysV init（自动检测） |
 | **硬件** | 最低 1 vCPU、512 MB RAM。10+ 并发房间建议 2 vCPU、2 GB RAM |
 | **端口** | `8090`（API + Web UI）、`7880`（LiveKit WebSocket）、`50000–60000/udp`（WebRTC 媒体） |
 | **自动 TLS** | 需额外开放 `80` 和 `443`。需要域名配置 DNS A record 指向此服务器 |
@@ -126,7 +126,7 @@ bedrud --version
 
 ## 3. Docker
 
-在容器中运行 Bedrud - 无需 Linux 服务器配置、无需 systemd、无需下载二进制文件。
+在容器中运行 Bedrud - 无需 Linux 服务器配置、无需 init 系统、无需下载二进制文件。
 
 ### 预构建镜像（最快）
 
@@ -478,7 +478,7 @@ docker compose up -d
 sudo bedrud uninstall
 ```
 
-此操作会停止服务、删除 systemd 单元文件、从 `/usr/local/bin` 中删除二进制文件，并清理 `/etc/bedrud`、`/var/lib/bedrud` 和 `/var/log/bedrud`。
+此操作会停止服务、删除所有 init 系统的服务文件、从 `/usr/local/bin` 中删除二进制文件，并清理 `/etc/bedrud`、`/var/lib/bedrud` 和 `/var/log/bedrud`。
 
 ---
 

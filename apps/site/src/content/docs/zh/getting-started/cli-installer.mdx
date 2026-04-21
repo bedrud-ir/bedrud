@@ -12,7 +12,7 @@ order: 2
 
 ## 功能说明
 
-1. 检测操作系统、CPU 架构和平台变体（Rosetta 2）
+1. 检测操作系统、CPU 架构、平台变体（Rosetta 2）和 init 系统（systemd/OpenRC/SysV init）
 2. 从 [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) 下载对应的二进制文件
 3. 安装到 `~/bin`（可通过 `--install-dir` 自定义）
 4. 通过 shell 配置将安装目录添加到 `PATH`
@@ -171,6 +171,20 @@ uname -m → "x86_64" | "amd64"  → amd64
 
 ---
 
+## Init 系统支持
+
+安装程序会自动检测你的 init 系统，并为服务器配置创建对应的服务文件：
+
+| Init 系统 | 检测方式 | 服务文件 | 管理命令 |
+|-----------|----------|----------|----------|
+| systemd | `/run/systemd/system` 存在 | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | `/sbin/openrc` 存在 | `/etc/init.d/*`（OpenRC 格式） | `rc-service`、`rc-update` |
+| SysV init | `service` 命令可用 | `/etc/init.d/*`（LSB 格式） | `service`、`update-rc.d` |
+
+支持的系统：Ubuntu、Debian、Devuan、Alpine、WSL1 及大多数 Linux 容器。
+
+---
+
 ## 安装流程
 
 1. **Windows 检查** — 检测到 MINGW/MSYS/CYGWIN？输出 PowerShell 命令并退出
@@ -255,7 +269,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-systemd 服务器安装：
+服务器安装（systemd、OpenRC、SysV init）：
 
 ```bash
 sudo bedrud uninstall
