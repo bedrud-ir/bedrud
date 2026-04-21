@@ -30,7 +30,7 @@ echo "deb https://bedrud-ir.github.io/bedrud stable main" \
 sudo apt update && sudo apt install bedrud
 ```
 
-パッケージはバイナリを `/usr/local/bin/bedrud` にインストールし、systemd サービスを登録します。インストール後、インタラクティブインストーラーを実行します：
+パッケージはバイナリを `/usr/local/bin/bedrud` にインストールし、イニットサービス（systemd/OpenRC/SysV 自動検出）を登録します。インストール後、インタラクティブインストーラーを実行します：
 
 ```bash
 sudo bedrud install

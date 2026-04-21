@@ -15,7 +15,7 @@ order: 2
 | **OS** | Debian 12+、Ubuntu 22.04+、Arch Linux (rolling)、Fedora 39+ |
 | **アーキテクチャ** | amd64 (x86_64) または arm64 (aarch64) |
 | **アクセス権限** | root または sudo |
-| **init システム** | systemd |
+| **init システム** | systemd、OpenRC、SysV init（自動検出） |
 | **ハードウェア** | 最低 1 vCPU、512 MB RAM。10部屋以上の同時利用には 2 vCPU、2 GB RAM を推奨 |
 | **ポート** | `8090`（API + Web UI）、`7880`（LiveKit WebSocket）、`50000–60000/udp`（WebRTC メディア） |
 | **自動 TLS** | さらに `80` と `443` を開放。このサーバーを指す DNS A レコードを持つドメインが必要 |
@@ -126,7 +126,7 @@ bedrud --version
 
 ## 3. Docker
 
-コンテナで Bedrud を実行します。Linux サーバーのセットアップ、systemd、バイナリのダウンロードは不要です。
+コンテナで Bedrud を実行します。Linux サーバーのセットアップ、イニットシステムの設定不要、バイナリのダウンロードは不要です。
 
 ### プレビルドイメージ（最速）
 
@@ -478,7 +478,7 @@ Bedrud を完全に削除するには：
 sudo bedrud uninstall
 ```
 
-サービスの停止、systemd ユニットの削除、`/usr/local/bin` からのバイナリ削除、および `/etc/bedrud`、`/var/lib/bedrud`、`/var/log/bedrud` のクリーンアップを行います。
+サービスの停止、すべてのイニットシステムのサービスファイルを削除、`/usr/local/bin` からのバイナリ削除、および `/etc/bedrud`、`/var/lib/bedrud`、`/var/log/bedrud` のクリーンアップを行います。
 
 ---
 

@@ -12,7 +12,7 @@ order: 2
 
 ## インストーラーの動作
 
-1. OS、CPU アーキテクチャ、プラットフォームバリアント（Rosetta 2）を検出
+1. OS、CPU アーキテクチャ、プラットフォームバリアント（Rosetta 2）、イニットシステム（systemd/OpenRC/SysV init）を検出
 2. [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) から正しいバイナリをダウンロード
 3. `~/bin` にインストール（`--install-dir` でカスタマイズ可能）
 4. シェル設定を通じてインストールディレクトリを `PATH` に追加
@@ -171,6 +171,20 @@ uname -m → "x86_64" | "amd64"  → amd64
 
 ---
 
+## イニットシステムのサポート
+
+インストーラーはイニットシステムを自動検出し、サーバーセットアップに適切なサービスファイルを作成します：
+
+| イニットシステム | 検出方法 | サービスファイル | 管理コマンド |
+|-------------|-----------|---------------|------------|
+| systemd | `/run/systemd/system` が存在 | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | `/sbin/openrc` が存在 | `/etc/init.d/*`（OpenRC 形式） | `rc-service`、`rc-update` |
+| SysV init | `service` コマンドが利用可能 | `/etc/init.d/*`（LSB 形式） | `service`、`update-rc.d` |
+
+対応環境：Ubuntu、Debian、Devuan、Alpine、WSL1、およびほとんどのLinuxコンテナ。
+
+---
+
 ## インストールフロー
 
 1. **Windows チェック** — MINGW/MSYS/CYGWIN を検出? PowerShell コマンドを表示して終了
@@ -255,7 +269,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-systemd サーバーインストールの場合:
+サーバーインストール（systemd、OpenRC、SysV init）の場合:
 
 ```bash
 sudo bedrud uninstall
