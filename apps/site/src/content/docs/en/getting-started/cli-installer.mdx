@@ -12,7 +12,7 @@ For server setup after installing, see [Quick Start](/en/docs/getting-started/qu
 
 ## What It Does
 
-1. Detects OS, CPU architecture, and platform variants (Rosetta 2)
+1. Detects OS, CPU architecture, platform variants (Rosetta 2), and init system (systemd/OpenRC/SysV)
 2. Downloads the correct binary from [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases)
 3. Installs to `~/bin` (customizable via `--install-dir`)
 4. Adds install directory to `PATH` via shell config
@@ -171,6 +171,20 @@ uname -m → "x86_64" | "amd64"  → amd64
 
 ---
 
+## Init System Support
+
+The installer auto-detects your init system and creates appropriate service files for server setup:
+
+| Init System | Detection | Service Files | Management |
+|-------------|-----------|---------------|------------|
+| systemd | `/run/systemd/system` exists | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | `/sbin/openrc` exists | `/etc/init.d/*` (OpenRC format) | `rc-service`, `rc-update` |
+| SysV init | `service` command available | `/etc/init.d/*` (LSB format) | `service`, `update-rc.d` |
+
+Supported on: Ubuntu, Debian, Devuan, Alpine, WSL1, and most Linux containers.
+
+---
+
 ## Install Flow
 
 1. **Windows check** — MINGW/MSYS/CYGWIN detected? Print PowerShell command, exit
@@ -181,9 +195,10 @@ uname -m → "x86_64" | "amd64"  → amd64
 6. **Download** — download `bedrud_{TARGET}.tar.xz`
 7. **Extract & install** — temp dir, extract, `mv → $INSTALL_DIR/bedrud`, `chmod +x`
 8. **Verify** — run `bedrud --version`
-9. **PATH check** — already in PATH? Skip. `--skip-shell`? Print manual command. Otherwise → modify RC file
-10. **Completions** — run `bedrud completions`
-11. **Done** — print success + reload instructions
+9. **Init system detection** — detects systemd, OpenRC, or SysV init (Linux only, for server setup)
+10. **PATH check** — already in PATH? Skip. `--skip-shell`? Print manual command. Otherwise → modify RC file
+11. **Completions** — run `bedrud completions`
+12. **Done** — print success + reload instructions
 
 Download URL format: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
 
@@ -255,7 +270,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-For systemd server installs:
+For server installs (systemd, OpenRC, SysV init):
 
 ```bash
 sudo bedrud uninstall
