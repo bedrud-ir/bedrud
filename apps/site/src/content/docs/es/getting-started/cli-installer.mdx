@@ -12,7 +12,7 @@ Para la configuración del servidor después de la instalación, consulta [Inici
 
 ## Lo que Hace
 
-1. Detecta el sistema operativo, arquitectura de CPU y variantes de plataforma (Rosetta 2)
+1. Detecta el sistema operativo, arquitectura de CPU, variantes de plataforma (Rosetta 2) y sistema de inicialización
 2. Descarga el binario correcto desde [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases)
 3. Instala en `~/bin` (personalizable con `--install-dir`)
 4. Añade el directorio de instalación al `PATH` mediante la configuración del shell
@@ -171,6 +171,20 @@ uname -m → "x86_64" | "amd64"  → amd64
 
 ---
 
+## Soporte de sistemas de inicialización
+
+El instalador detecta automáticamente el sistema de inicialización y crea los archivos de servicio apropiados para la configuración del servidor:
+
+| Sistema de inicialización | Detección | Archivos de servicio | Gestión |
+|---------------------------|-----------|---------------------|---------|
+| systemd | existe `/run/systemd/system` | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | existe `/sbin/openrc` | `/etc/init.d/*` (formato OpenRC) | `rc-service`, `rc-update` |
+| SysV init | comando `service` disponible | `/etc/init.d/*` (formato LSB) | `service`, `update-rc.d` |
+
+Compatible con: Ubuntu, Debian, Devuan, Alpine, WSL1 y la mayoría de contenedores Linux.
+
+---
+
 ## Flujo de Instalación
 
 1. **Comprobación de Windows** — ¿MINGW/MSYS/CYGWIN detectado? Mostrar comando de PowerShell, salir
@@ -255,7 +269,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-Para instalaciones de servidor con systemd:
+Para instalaciones de servidor con systemd, OpenRC o SysV init:
 
 ```bash
 sudo bedrud uninstall

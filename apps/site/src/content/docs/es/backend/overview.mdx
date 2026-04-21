@@ -13,14 +13,14 @@ El backend de Bedrud es una plataforma de reuniones en un solo binario escrita e
 - **Motor de Medios:** [LiveKit](https://livekit.io/) (integrado como binario hermano).
 - **Sistema de Autenticación:** Autenticación multicapa compatible con JWT, OAuth2 (Google/GitHub/Twitter) y Passkeys FIDO2 sin contraseña.
 - **Recursos Estáticos Integrados:** Utiliza el paquete `embed` de Go 1.16+ para empaquetar el frontend de React (recursos del cliente pre-renderizados con SSR).
-- **Despliegue:** Instalador automático integrado para Debian/Ubuntu con orquestación mediante systemd y soporte para ACME (Let's Encrypt).
+- **Despliegue:** Instalador automático integrado para Debian/Ubuntu con orquestación del sistema de inicialización (systemd, OpenRC, SysV init) y soporte para ACME (Let's Encrypt).
 
 ## ¿Por qué esta arquitectura?
 Las plataformas WebRTC normalmente ejecutan servicios separados para señalización, TURN, servicio web y gestión de base de datos. Bedrud consolida todos estos en un solo binario al:
 
 1.  **Extraer** el binario del servidor de medios en tiempo de ejecución.
 2.  **Proxyar** el tráfico de medios a través del puerto HTTP(S) principal.
-3.  **Automatizar** la configuración a nivel de sistema operativo (SSL, systemd) desde el propio binario.
+3.  **Automatizar** la configuración a nivel de sistema operativo (SSL, servicios init) desde el propio binario.
 
 ## Arquitectura General
 El backend sigue una arquitectura por capas estándar:
