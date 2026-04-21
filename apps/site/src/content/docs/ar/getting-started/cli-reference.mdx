@@ -57,7 +57,7 @@ bedrud --livekit --config <path>
 |-------------|-------------|-----------------------------------|
 | `--config`  | (مطلوب)     | مسار ملف تهيئة YAML لـ LiveKit |
 
-**يُستخدم من قبل:** systemd `livekit.service` الذي ينشئه `bedrud install`
+**يُستخدم من قبل:** خدمة init `livekit` التي ينشئها `bedrud install`
 
 **التنفيذ:** `server/internal/livekit/server.go`
 
@@ -65,7 +65,7 @@ bedrud --livekit --config <path>
 
 ### `--run`
 
-اسم مستعار لـ `bedrud run` بنفس سلوك علامة `--config`. يُستخدم من قبل systemd `bedrud.service`.
+اسم مستعار لـ `bedrud run` بنفس سلوك علامة `--config`. يُستخدم من قبل خدمة init `bedrud`.
 
 ```bash
 bedrud --run --config <path>
@@ -75,7 +75,7 @@ bedrud --run --config <path>
 
 ### `install`
 
-ثبّت بدرود على نظام Debian/Linux. ينشئ خدمات systemd وملفات التهيئة والأدلة وشهادات TLS.
+ثبّت بدرود على نظام Debian/Linux. ينشئ خدمات init (systemd أو OpenRC أو SysV init — كشف تلقائي) وملفات التهيئة والأدلة وشهادات TLS.
 
 ```bash
 bedrud install [flags]
@@ -108,9 +108,9 @@ bedrud install [flags]
 ٥. يولّد تهيئة خادم بدرود في `/etc/bedrud/config.yaml`
 ٦. يولّد تهيئة خادم وسائط LiveKit في `/etc/bedrud/livekit.yaml`
 ٧. يولّد شهادات موقّعة ذاتياً في `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` (إذا كان TLS مُفعّلاً ولا توجد شهادات مخصصة)
-٨. ينشئ systemd `livekit.service` (إلا إذا كنت تستخدم LiveKit خارجي)
-٩. ينشئ systemd `bedrud.service`
-١٠. يشغّل `systemctl daemon-reload`، يُفعّل ويبدأ كلتا الخدمتين
+٨. ينشئ خدمة init لـ LiveKit (إلا إذا كنت تستخدم LiveKit خارجي)
+٩. ينشئ خدمة init لـ Bedrud
+١٠. يُفعّل ويبدأ الخدمات عبر نظام التهيئة المكتشف
 ١١. يطبع روابط الوصول
 
 **خيارات TLS:**
@@ -139,8 +139,8 @@ bedrud uninstall
 ```
 
 **يزيل:**
-- يوقف ويعطّل خدمات systemd: `bedrud`، `livekit`
-- يزيل ملفات وحدات systemd من `/etc/systemd/system/`
+- يوقف ويعطّل الخدمات عبر جميع أنظمة التهيئة: `bedrud`، `livekit`
+- يزيل ملفات خدمة systemd وOpenRC وSysV init
 - يزيل الملف الثنائي: `/usr/local/bin/bedrud`، `/tmp/bedrud`، `/tmp/bedrud-livekit-server`
 - يزيل الأدلة: `/etc/bedrud`، `/var/lib/bedrud`، `/var/log/bedrud`
 
@@ -289,4 +289,4 @@ bedrud user demote --email admin@example.com
 - [دليل التثبيت](/ar/docs/getting-started/installation) - شرح مفصّل لـ `bedrud install`، طوبولوجيات TLS، خطوات ما بعد التثبيت
 - [مرجع التهيئة](/ar/docs/getting-started/configuration) - بنية ملف تهيئة الخادم و LiveKit
 - [منطق نشر الخلفية](/ar/docs/backend/deployment) - كيف يعمل `install` و `uninstall` داخلياً
-- [دليل النشر](/ar/docs/guides/deployment) - خيارات النشر الكاملة بما في ذلك خدمات systemd
+- [دليل النشر](/ar/docs/guides/deployment) - خيارات النشر الكاملة بما في ذلك خدمات نظام التهيئة

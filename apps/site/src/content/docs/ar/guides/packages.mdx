@@ -30,7 +30,7 @@ echo "deb https://bedrud-ir.github.io/bedrud stable main" \
 sudo apt update && sudo apt install bedrud
 ```
 
-تثبّت الحزمة الملف الثنائي في `/usr/local/bin/bedrud` وتُسجّل خدمة systemd. بعد التثبيت، شغّل المثبّت التفاعلي:
+تثبّت الحزمة الملف الثنائي في `/usr/local/bin/bedrud` وتُسجّل خدمة init (systemd/OpenRC/SysV كشف تلقائي). بعد التثبيت، شغّل المثبّت التفاعلي:
 
 ```bash
 sudo bedrud install

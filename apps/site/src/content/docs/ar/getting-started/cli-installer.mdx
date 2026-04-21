@@ -12,7 +12,7 @@ order: 2
 
 ## ما يفعله المُثبّت
 
-١. يكتشف نظام التشغيل وبنية المعالج وتفاوتات المنصة (Rosetta ٢)
+١. يكتشف نظام التشغيل وبنية المعالج وتفاوتات المنصة (Rosetta ٢) ونظام التهيئة
 ٢. يُنزّل الملف الثنائي الصحيح من [إصدارات GitHub](https://github.com/bedrud-ir/bedrud/releases)
 ٣. يُثبّت في `~/bin` (قابل للتخصيص عبر `--install-dir`)
 ٤. يُضيف مجلد التثبيت إلى `PATH` عبر تهيئة الصدفة
@@ -171,6 +171,20 @@ uname -m → "x86_64" | "amd64"  → amd64
 
 ---
 
+## دعم أنظمة التهيئة
+
+يكتشف المثبّت نظام التهيئة تلقائيًا وينشئ ملفات الخدمة المناسبة لإعداد الخادم:
+
+| نظام التهيئة | الكشف | ملفات الخدمة | الإدارة |
+|--------------|-------|-------------|---------|
+| systemd | وجود `/run/systemd/system` | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | وجود `/sbin/openrc` | `/etc/init.d/*` (تنسيق OpenRC) | `rc-service`, `rc-update` |
+| SysV init | توفر أمر `service` | `/etc/init.d/*` (تنسيق LSB) | `service`, `update-rc.d` |
+
+مدعوم في: Ubuntu وDebian وDevuan وAlpine وWSL1 ومعظم حاويات Linux.
+
+---
+
 ## تدفق التثبيت
 
 ١. **فحص Windows** — تم اكتشاف MINGW/MSYS/CYGWIN؟ يطبع أمر PowerShell ويخرج
@@ -255,7 +269,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-لتثبيتات الخادم عبر systemd:
+لتثبيتات الخادم عبر systemd أو OpenRC أو SysV init:
 
 ```bash
 sudo bedrud uninstall
