@@ -49,7 +49,7 @@ bedrud/
 - **`/livekit`** : Intégration avec le SDK Go LiveKit. Gère la création de salles et génère des "Jetons de Rejoindre" pour les participants.
 - **`/middleware`** : Middleware Fiber personnalisé pour les vérifications d'authentification, la journalisation et CORS.
 - **`/server`** : Le code colle qui rassemble tout. Il initialise la base de données, les référentiels, et démarre le serveur Fiber.
-- **`/install`** : Logique pour la commande `bedrud install` qui automatise la configuration systemd et TLS sur Linux.
+- **`/install`** : Logique pour la commande `bedrud install` qui automatise la configuration des services init (systemd/OpenRC/SysV) et TLS sur Linux.
 - **`/scheduler`** : Tâches en arrière-plan (si présentes).
 - **`/utils`** : Petites fonctions d'aide (ex: hachage de mot de passe, chaînes aléatoires).
 

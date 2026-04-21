@@ -15,7 +15,7 @@ Bedrud est conçu pour fonctionner en tant qu'"appliance" autonome pour les réu
 | Frontend intégré | Interface React compilée et pré-rendue SSR dans le binaire Go |
 | Stockage SQLite | Aucun serveur de base de données requis |
 | TLS intégré | Certificats auto-signés ou Let's Encrypt |
-| Installateur intégré | Configure systemd, les répertoires et les configurations |
+| Installateur intégré | Configure les services init (systemd/OpenRC/SysV), les répertoires et les configurations |
 
 ## Exécution du binaire
 
@@ -52,7 +52,7 @@ sudo ./bedrud install --ip 1.2.3.4
 
 ### Architecture du service
 
-Après l'installation, deux services systemd s'exécutent :
+Après l'installation, deux services init (systemd, OpenRC ou SysV init) s'exécutent :
 
 ```mermaid
 flowchart LR
@@ -102,7 +102,7 @@ sudo ./bedrud uninstall
 
 Cela supprime complètement :
 
-- Les fichiers de service systemd
+- Les fichiers de service init (systemd/OpenRC/SysV)
 - Le binaire de `/usr/local/bin/`
 - La configuration dans `/etc/bedrud/`
 - Les données dans `/var/lib/bedrud/`

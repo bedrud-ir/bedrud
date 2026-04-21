@@ -15,7 +15,7 @@ Ce guide couvre l'installation du **serveur Bedrud** (API, interface web, serveu
 | **Système d'exploitation** | Debian 12+, Ubuntu 22.04+, Arch Linux (rolling), Fedora 39+ |
 | **Architecture** | amd64 (x86_64) ou arm64 (aarch64) |
 | **Accès** | Root ou sudo |
-| **Système d'initialisation** | systemd |
+| **Système d'initialisation** | systemd, OpenRC ou SysV init (détection automatique) |
 | **Matériel** | 1 vCPU, 512 Mo RAM minimum. 2 vCPU, 2 Go RAM recommandé pour 10+ salles simultanées |
 | **Ports** | `8090` (API + interface web), `7880` (LiveKit WebSocket), `50000–60000/udp` (médias WebRTC) |
 | **TLS automatique** | Ouvrez également `80` et `443`. Nécessite un domaine avec un enregistrement DNS A pointant vers ce serveur |
@@ -126,7 +126,7 @@ Installez via le gestionnaire de packages de votre distribution.
 
 ## 3. Docker
 
-Exécutez Bedrud dans un conteneur - pas de configuration de serveur Linux, pas de systemd, pas de téléchargement de binaire.
+Exécutez Bedrud dans un conteneur - pas de configuration de serveur Linux, pas de configuration de système d'initialisation, pas de téléchargement de binaire.
 
 ### Image préconstruite (le plus rapide)
 
@@ -478,7 +478,7 @@ Pour supprimer complètement Bedrud :
 sudo bedrud uninstall
 ```
 
-Cela arrête les services, supprime les unités systemd, supprime le binaire de `/usr/local/bin` et nettoie `/etc/bedrud`, `/var/lib/bedrud` et `/var/log/bedrud`.
+Cela arrête les services, supprime les fichiers de service de tous les systèmes d'initialisation, supprime le binaire de `/usr/local/bin` et nettoie `/etc/bedrud`, `/var/lib/bedrud` et `/var/log/bedrud`.
 
 ---
 
