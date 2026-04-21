@@ -303,7 +303,15 @@ fi
 # ════════════════════════════════════════════════════════════════
 
 CAN_SETUP=false
-if [[ "$os" == "linux" ]] && [[ "$NO_SETUP" != true ]] && [[ -d /run/systemd/system ]]; then
+SKIP_REASON=""
+
+if [[ "$os" != "linux" ]]; then
+  SKIP_REASON="Interactive setup only supports Linux (Ubuntu/Debian) with systemd."
+elif [[ "$NO_SETUP" == true ]]; then
+  SKIP_REASON=""
+elif [[ ! -d /run/systemd/system ]]; then
+  SKIP_REASON="systemd not detected. bedrud install requires systemd for service management."
+else
   CAN_SETUP=true
 fi
 
@@ -671,7 +679,14 @@ if [[ "$CAN_SETUP" == true ]]; then
 # ── Non-Linux / no systemd: download-only output ────────────────
 # ════════════════════════════════════════════════════════════════
 else
-  printf "\n${GREEN}${BOLD}bedrud installed!${RESET}\n\n"
+  if [[ -n "$SKIP_REASON" ]]; then
+    printf "\n${YELLOW}${BOLD}Setup skipped:${RESET} %s\n" "$SKIP_REASON"
+    echo ""
+    echo "  To set up bedrud as a system service later:"
+    echo "    bedrud install --help"
+    echo ""
+  fi
+  printf "${GREEN}${BOLD}bedrud installed!${RESET}\n\n"
   if $READY; then
     echo "  Get started:"
     echo ""
