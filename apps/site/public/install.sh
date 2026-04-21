@@ -330,20 +330,24 @@ else
 fi
 
 # ════════════════════════════════════════════════════════════════
-# ── Interactive Server Setup (Linux + systemd only) ─────────────
+# ── Interactive Server Setup (Linux, systemd or sysvinit) ───────
 # ════════════════════════════════════════════════════════════════
 
 CAN_SETUP=false
+HAS_SYSTEMD=false
 SKIP_REASON=""
 
 if [[ "$os" != "linux" ]]; then
-  SKIP_REASON="Interactive setup only supports Linux (Ubuntu/Debian) with systemd."
+  SKIP_REASON="Interactive setup only supports Linux."
 elif [[ "$NO_SETUP" == true ]]; then
   SKIP_REASON=""
-elif [[ ! -d /run/systemd/system ]]; then
-  SKIP_REASON="systemd not detected. bedrud install requires systemd for service management."
-else
+elif [[ -d /run/systemd/system ]]; then
+  HAS_SYSTEMD=true
   CAN_SETUP=true
+elif command -v service >/dev/null 2>&1; then
+  CAN_SETUP=true
+else
+  SKIP_REASON="No supported init system found (need systemd or sysvinit service)."
 fi
 
 if [[ "$CAN_SETUP" == true ]]; then
@@ -588,12 +592,34 @@ if [[ "$CAN_SETUP" == true ]]; then
   info "Running: ${INSTALL_CMD}"
   echo ""
 
-  if ! eval "$INSTALL_CMD"; then
-    echo ""
-    error "bedrud install failed. Check output above for details."
-  fi
+  if [[ "$HAS_SYSTEMD" == true ]]; then
+    if ! eval "$INSTALL_CMD"; then
+      echo ""
+      error "bedrud install failed. Check output above for details."
+    fi
+    info "bedrud install completed"
+  else
+    info "No systemd — skipping bedrud install (service creation requires systemd)"
+    mkdir -p /etc/bedrud
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+      cat > "$CONFIG_FILE" <<CONF
+server:
+  port: "8090"
+  domain: "${DOMAIN}"
+  behind_proxy: ${BEHIND_PROXY}
 
-  info "bedrud install completed"
+database:
+  type: "sqlite"
+  path: "/etc/bedrud/bedrud.db"
+
+tls:
+  mode: "${TLS_MODE}"
+CONF
+      info "Config written to ${CONFIG_FILE}"
+    fi
+    warn "Auto-start not available without systemd."
+    warn "Start manually with: bedrud run"
+  fi
 
   # ── Phase 5: Postgres config swap ──────────────────────────────
   if [[ "$DB_TYPE" == "postgres" && -f "$CONFIG_FILE" ]]; then
@@ -624,7 +650,11 @@ if [[ "$CAN_SETUP" == true ]]; then
       warn "sed not found. Edit ${CONFIG_FILE} manually for Postgres settings."
     fi
 
-    systemctl restart bedrud 2>/dev/null || true
+    if [[ "$HAS_SYSTEMD" == true ]]; then
+      systemctl restart bedrud 2>/dev/null || true
+    elif command -v service >/dev/null 2>&1; then
+      service bedrud restart 2>/dev/null || true
+    fi
   fi
 
   # ── Phase 6: Create admin user ─────────────────────────────────
@@ -652,19 +682,30 @@ if [[ "$CAN_SETUP" == true ]]; then
 
   VERIFY_OK=true
 
-  if systemctl is-active --quiet bedrud 2>/dev/null; then
-    info "bedrud service: active"
-  else
-    warn "bedrud service: NOT active"
-    VERIFY_OK=false
-  fi
-
-  if systemctl is-active --quiet livekit 2>/dev/null; then
-    info "livekit service: active"
-  else
-    if systemctl list-unit-files livekit.service 2>/dev/null | grep -q livekit; then
-      warn "livekit service: NOT active"
+  if [[ "$HAS_SYSTEMD" == true ]]; then
+    if systemctl is-active --quiet bedrud 2>/dev/null; then
+      info "bedrud service: active"
+    else
+      warn "bedrud service: NOT active"
       VERIFY_OK=false
+    fi
+
+    if systemctl is-active --quiet livekit 2>/dev/null; then
+      info "livekit service: active"
+    else
+      if systemctl list-unit-files livekit.service 2>/dev/null | grep -q livekit; then
+        warn "livekit service: NOT active"
+        VERIFY_OK=false
+      fi
+    fi
+  else
+    if command -v service >/dev/null 2>&1; then
+      if service bedrud status >/dev/null 2>&1; then
+        info "bedrud service: active"
+      else
+        warn "bedrud service: NOT active (or not yet registered)"
+        VERIFY_OK=false
+      fi
     fi
   fi
 
@@ -696,13 +737,22 @@ if [[ "$CAN_SETUP" == true ]]; then
     printf "  ${BOLD}Postgres:${RESET}     Docker (bedrud-postgres, 127.0.0.1:5432)\n"
   fi
   printf "  ${BOLD}Config:${RESET}       %s\n" "$CONFIG_FILE"
-  printf "  ${BOLD}Logs:${RESET}         journalctl -u bedrud -f\n"
+  if [[ "$HAS_SYSTEMD" == true ]]; then
+    printf "  ${BOLD}Logs:${RESET}         journalctl -u bedrud -f\n"
+  else
+    printf "  ${BOLD}Start:${RESET}        bedrud run\n"
+  fi
   printf "\n"
   if [[ "$VERIFY_OK" != true ]]; then
-    printf "  ${YELLOW}${BOLD}Some services not yet active.${RESET} Check:\n"
-    printf "    systemctl status bedrud\n"
-    printf "    systemctl status livekit\n"
-    printf "    journalctl -u bedrud --no-pager -n 50\n"
+    if [[ "$HAS_SYSTEMD" == true ]]; then
+      printf "  ${YELLOW}${BOLD}Some services not yet active.${RESET} Check:\n"
+      printf "    systemctl status bedrud\n"
+      printf "    systemctl status livekit\n"
+      printf "    journalctl -u bedrud --no-pager -n 50\n"
+    else
+      printf "  ${YELLOW}${BOLD}No systemd — auto-start unavailable.${RESET}\n"
+      printf "    Start manually: bedrud run\n"
+    fi
     printf "\n"
   fi
 
