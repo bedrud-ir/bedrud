@@ -15,7 +15,7 @@ order: 2
 | **سیستم‌عامل** | Debian 12+، Ubuntu 22.04+، Arch Linux (rolling)، Fedora 39+ |
 | **معماری** | amd64 (x86_64) یا arm64 (aarch64) |
 | **دسترسی** | Root یا sudo |
-| **سیستم init** | systemd |
+| **سیستم init** | systemd، OpenRC یا SysV init (تشخیص خودکار) |
 | **سخت‌افزار** | حداقل ۱ vCPU، ۵۱۲ MB RAM. برای ۱۰+ اتاق همزمان ۲ vCPU، ۲ GB RAM توصیه می‌شود |
 | **پورت‌ها** | `8090` (API + Web UI)، `7880` (LiveKit WebSocket)، `50000–60000/udp` (مدیا WebRTC) |
 | **TLS خودکار** | همچنین پورت‌های `80` و `443` را باز کنید. نیاز دامنه با رکورد DNS A که به این سرور اشاره می‌کند |
@@ -126,7 +126,7 @@ bedrud --version
 
 ## ۳. Docker
 
-بدرود را در یک container اجرا کنید — بدون نصب مستقیم روی سرور لینوکس، بدون systemd، بدون دانلود باینری.
+بدرود را در یک container اجرا کنید — بدون نصب مستقیم روی سرور لینوکس، بدون تنظیم سیستم init، بدون دانلود باینری.
 
 ### ایمیج از پیش ساخته‌شده (سریع‌ترین)
 
@@ -478,7 +478,7 @@ docker compose up -d
 sudo bedrud uninstall
 ```
 
-این سرویس‌ها را متوقف می‌کند، واحدهای systemd را حذف می‌کند، باینری را از `/usr/local/bin` حذف می‌کند، و `/etc/bedrud`، `/var/lib/bedrud`، و `/var/log/bedrud` را پاک می‌کند.
+این سرویس‌ها را متوقف می‌کند، فایل‌های سرویس تمام سیستم‌های init را حذف می‌کند، باینری را از `/usr/local/bin` حذف می‌کند، و `/etc/bedrud`، `/var/lib/bedrud`، و `/var/log/bedrud` را پاک می‌کند.
 
 ---
 

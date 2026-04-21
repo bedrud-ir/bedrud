@@ -12,7 +12,7 @@ order: 2
 
 ## چه کاری انجام می‌دهد
 
-۱. سیستم‌عامل، معماری پردازنده و گونه‌های پلتفرم (Rosetta 2) را تشخیص می‌دهد
+۱. سیستم‌عامل، معماری پردازنده، گونه‌های پلتفرم (Rosetta 2) و سیستم init را تشخیص می‌دهد
 ۲. باینری صحیح را از [انتشارات GitHub](https://github.com/bedrud-ir/bedrud/releases) دانلود می‌کند
 ۳. در `~/bin` نصب می‌کند (قابل تنظیم از طریق `--install-dir`)
 ۴. دایرکتوری نصب را از طریق تنظیمات shell به `PATH` اضافه می‌کند
@@ -171,6 +171,20 @@ uname -m → "x86_64" | "amd64"  → amd64
 
 ---
 
+## پشتیبانی از سیستم init
+
+نصب‌کننده سیستم init را خودکار تشخیص می‌دهد و فایل‌های سرویس مناسب برای راه‌اندازی سرور ایجاد می‌کند:
+
+| سیستم init | تشخیص | فایل‌های سرویس | مدیریت |
+|------------|-------|----------------|--------|
+| systemd | `/run/systemd/system` موجود باشد | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | `/sbin/openrc` موجود باشد | `/etc/init.d/*` (فرمت OpenRC) | `rc-service`, `rc-update` |
+| SysV init | دستور `service` موجود باشد | `/etc/init.d/*` (فرمت LSB) | `service`, `update-rc.d` |
+
+پشتیبانی از: Ubuntu، Debian، Devuan، Alpine، WSL1 و اکثر کانتینرهای Linux.
+
+---
+
 ## جریان نصب
 
 ۱. **بررسی Windows** — MINGW/MSYS/CYGWIN تشخیص داده شد؟ دستور PowerShell را چاپ کنید، خارج شوید
@@ -255,7 +269,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-برای نصب‌های سرور systemd:
+برای نصب‌های سرور (systemd، OpenRC یا SysV init):
 
 ```bash
 sudo bedrud uninstall

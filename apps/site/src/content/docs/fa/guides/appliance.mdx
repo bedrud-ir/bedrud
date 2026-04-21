@@ -15,7 +15,7 @@ Bedrud برای اجرا به عنوان یک appliance مستقل برای جل
 | فرانت‌اند جاسازی‌شده | UI React کامپایل و SSR از پیش رندرشده در باینری Go |
 | ذخیره‌سازی SQLite | نیازی به سرور دیتابیس نیست |
 | TLS داخلی | self-signed certificates یا Let's Encrypt |
-| نصب‌کننده داخلی | پیکربندی systemd، دایرکتوری‌ها و تنظیمات |
+| نصب‌کننده داخلی | پیکربندی init سرویس‌ها (systemd/OpenRC/SysV)، دایرکتوری‌ها و تنظیمات |
 
 ## اجرای باینری
 
@@ -52,7 +52,7 @@ sudo ./bedrud install --ip 1.2.3.4
 
 ### معماری سرویس
 
-پس از نصب، دو سرویس systemd اجرا می‌شوند:
+پس از نصب، دو init سرویس (systemd، OpenRC یا SysV init) اجرا می‌شوند:
 
 ```mermaid
 flowchart LR
@@ -102,7 +102,7 @@ sudo ./bedrud uninstall
 
 این به طور کامل حذف می‌کند:
 
-- فایل‌های سرویس systemd
+- فایل‌های init سرویس (systemd/OpenRC/SysV)
 - باینری از `/usr/local/bin/`
 - پیکربندی در `/etc/bedrud/`
 - داده‌ها در `/var/lib/bedrud/`
