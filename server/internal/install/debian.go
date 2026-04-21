@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"runtime"
 )
 
@@ -306,12 +305,23 @@ turn:
 		}
 	}
 
-	// 4. Create Systemd Services
-	services := []string{"bedrud"}
+	// 4. Detect init system and install services
+	initSystem := detectInitSystem()
+	fmt.Println("➜ Detected init system:", initSystem)
 
-	if !isExternalLK { // livekit.service needed for both embedded and separate-domain modes
-		// LiveKit Service (using bedrud binary)
-		lkService := `[Unit]
+	cfg := buildServiceConfig(isExternalLK)
+
+	stopAllInitSystems(cfg.Services)
+	cleanupStaleServiceFiles(initSystem)
+
+	lkManagedEnv := ""
+	bedrudAfter := "network.target"
+	if !isExternalLK {
+		lkManagedEnv = "\nEnvironment=LIVEKIT_MANAGED=true"
+		bedrudAfter = "network.target livekit.service"
+	}
+
+	lkService := `[Unit]
 Description=LiveKit Server (Embedded in Bedrud)
 After=network.target
 
@@ -323,20 +333,7 @@ WorkingDirectory=/etc/bedrud
 [Install]
 WantedBy=multi-user.target
 `
-		_ = os.WriteFile("/etc/systemd/system/livekit.service", []byte(lkService), 0644)
-		services = append([]string{"livekit"}, services...)
-	}
 
-	// Bedrud Service
-	// LIVEKIT_MANAGED=true tells Bedrud not to start LK itself (systemd handles it).
-	// Not needed when livekit.external=true (externalLKURL) since LK runs elsewhere.
-	lkManagedEnv := ""
-	bedrudAfter := "network.target"
-	if !isExternalLK {
-		// For both embedded and separate-domain modes livekit.service manages the process.
-		lkManagedEnv = "\nEnvironment=LIVEKIT_MANAGED=true"
-		bedrudAfter = "network.target livekit.service"
-	}
 	serviceContent := fmt.Sprintf(`[Unit]
 Description=Bedrud Meeting Server
 After=%s
@@ -349,12 +346,11 @@ Environment=CONFIG_PATH=/etc/bedrud/config.yaml%s
 [Install]
 WantedBy=multi-user.target
 `, bedrudAfter, lkManagedEnv)
-	_ = os.WriteFile("/etc/systemd/system/bedrud.service", []byte(serviceContent), 0644)
+
+	writeServiceFiles(initSystem, cfg, bedrudAfter, lkManagedEnv, lkService, serviceContent)
 
 	fmt.Println("➜ Enabling and starting services...")
-	exec.Command("systemctl", "daemon-reload").Run()
-	exec.Command("systemctl", append([]string{"enable"}, services...)...).Run()
-	exec.Command("systemctl", append([]string{"restart"}, services...)...).Run()
+	enableAndStartServices(initSystem, cfg)
 
 	fmt.Println("✓ Installation complete!")
 	accessURL := fmt.Sprintf("%s://%s:%s", protocol, ip, port)
@@ -367,11 +363,6 @@ WantedBy=multi-user.target
 	}
 	fmt.Println("  LiveKit Host:", livekitPublicHost)
 	return nil
-}
-
-func copyFile(src, dst string) error {
-	input, _ := os.ReadFile(src)
-	return os.WriteFile(dst, input, 0644)
 }
 
 func getLocalIP() string {
@@ -394,25 +385,24 @@ func DebianUninstall() error {
 	fmt.Println("\n--- Bedrud Uninstallation ---")
 	fmt.Println("➜ Stopping and disabling services...")
 
-	// Stop and disable services
-	exec.Command("systemctl", "stop", "bedrud", "livekit").Run()
-	exec.Command("systemctl", "disable", "bedrud", "livekit").Run()
+	svcs := []string{"bedrud", "livekit"}
 
-	// Remove systemd files
-	fmt.Println("➜ Removing systemd services...")
-	os.Remove("/etc/systemd/system/bedrud.service")
-	os.Remove("/etc/systemd/system/livekit.service")
-	os.Remove("/etc/systemd/system/multi-user.target.wants/bedrud.service")
-	os.Remove("/etc/systemd/system/multi-user.target.wants/livekit.service")
+	stopAllInitSystems(svcs)
+	disableAllInitSystems(svcs)
 
-	exec.Command("systemctl", "daemon-reload").Run()
-	exec.Command("systemctl", "reset-failed").Run()
+	fmt.Println("➜ Removing service files...")
+	cleanupAllServiceFiles()
 
 	// Remove binaries
 	fmt.Println("➜ Removing binaries...")
 	os.Remove("/usr/local/bin/bedrud")
 	os.Remove("/tmp/bedrud")
 	os.Remove("/tmp/bedrud-livekit-server")
+
+	// Remove PID files
+	for _, svc := range svcs {
+		os.Remove(fmt.Sprintf("/var/run/%s.pid", svc))
+	}
 
 	// Remove config and data
 	fmt.Println("➜ Removing configurations and data...")
