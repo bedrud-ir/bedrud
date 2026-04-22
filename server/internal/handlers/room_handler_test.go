@@ -357,6 +357,107 @@ func TestJoinRoom_NotBannedAllowed(t *testing.T) {
 	}
 }
 
+// setupModTestApp builds a Fiber app with moderation endpoints wired and
+// an adjustable-claims middleware, returning the app, roomRepo, and a pointer
+// that callers can swap to change who is "logged in".
+func setupModTestApp(t *testing.T, claims *auth.Claims) (*fiber.App, *repository.RoomRepository) {
+	t.Helper()
+	db := testutil.SetupTestDB(t)
+	roomRepo := repository.NewRoomRepository(db)
+
+	lkCfg := config.LiveKitConfig{
+		Host:      "http://localhost:9999",
+		APIKey:    "test-key",
+		APISecret: "test-secret",
+	}
+	handler := NewRoomHandler(lkCfg, config.ChatConfig{}, roomRepo)
+
+	app := fiber.New()
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("user", claims)
+		return c.Next()
+	})
+	// Wire the endpoints that use the "moderator" check
+	app.Post("/rooms/:roomId/participants/:identity/block-chat", handler.BlockChat)
+	app.Post("/rooms/:roomId/participants/:identity/deafen", handler.DeafenParticipant)
+	app.Post("/rooms/:roomId/participants/:identity/spotlight", handler.SpotlightParticipant)
+
+	// Seed user records to satisfy FK constraints
+	db.Create(&models.User{ID: "owner-user", Email: "owner@ex.com", Name: "Owner", Provider: "local", IsActive: true, Accesses: models.StringArray{"user"}})
+	db.Create(&models.User{ID: "mod-user", Email: "mod@ex.com", Name: "Mod", Provider: "local", IsActive: true, Accesses: models.StringArray{"user"}})
+	db.Create(&models.User{ID: "other-user", Email: "other@ex.com", Name: "Other", Provider: "local", IsActive: true, Accesses: models.StringArray{"user"}})
+
+	return app, roomRepo
+}
+
+// TestModeratorCannotActInOtherRoom verifies that a JWT "moderator" claim does NOT
+// grant moderation rights in a room where the user has not been promoted.
+// Before the fix this returns 200 (wrong); after the fix it must return 403.
+func TestModeratorCannotActInOtherRoom(t *testing.T) {
+	// modUserClaims has the "moderator" JWT claim but is NOT the room owner
+	// and has NOT been promoted in roomB via the DB.
+	modClaims := &auth.Claims{
+		UserID:   "mod-user",
+		Email:    "mod@ex.com",
+		Name:     "Mod",
+		Accesses: []string{"user", "moderator"}, // global JWT claim
+	}
+	app, roomRepo := setupModTestApp(t, modClaims)
+
+	// Create roomB owned by "owner-user".
+	roomB, err := roomRepo.CreateRoom("owner-user", "room-b", true, "standard", models.RoomSettings{})
+	if err != nil {
+		t.Fatalf("failed to create roomB: %v", err)
+	}
+
+	// mod-user tries to spotlight a participant in roomB (a room they don't own
+	// and haven't been promoted in).
+	req := httptest.NewRequest("POST", "/rooms/"+roomB.ID+"/participants/some-victim/spotlight", nil)
+	resp, _ := app.Test(req, -1)
+
+	// After the fix: must be 403. Before the fix: would be non-403 (LiveKit call
+	// fails with 500 because the server is fake, but the auth check passes first).
+	if resp.StatusCode != 403 {
+		t.Fatalf("expected 403 (mod in other room), got %d — global moderator claim must not grant cross-room access", resp.StatusCode)
+	}
+}
+
+// TestRoomModeratorCanActInOwnRoom verifies that a user promoted via the DB
+// (is_moderator=true in room_participants) CAN moderate their assigned room.
+func TestRoomModeratorCanActInOwnRoom(t *testing.T) {
+	modClaims := &auth.Claims{
+		UserID:   "mod-user",
+		Email:    "mod@ex.com",
+		Name:     "Mod",
+		Accesses: []string{"user"}, // no global moderator JWT claim
+	}
+	app, roomRepo := setupModTestApp(t, modClaims)
+
+	// Create roomA owned by "owner-user".
+	roomA, err := roomRepo.CreateRoom("owner-user", "room-a", true, "standard", models.RoomSettings{})
+	if err != nil {
+		t.Fatalf("failed to create roomA: %v", err)
+	}
+
+	// Add mod-user as a participant and promote them.
+	if err := roomRepo.AddParticipant(roomA.ID, "mod-user"); err != nil {
+		t.Fatalf("failed to add participant: %v", err)
+	}
+	if err := roomRepo.SetRoomModerator(roomA.ID, "mod-user", true); err != nil {
+		t.Fatalf("failed to promote moderator: %v", err)
+	}
+
+	// mod-user tries to spotlight someone in roomA — should pass the auth gate.
+	// The LiveKit call will fail (fake server), but we'll see 500 NOT 403.
+	req := httptest.NewRequest("POST", "/rooms/"+roomA.ID+"/participants/some-user/spotlight", nil)
+	resp, _ := app.Test(req, -1)
+
+	// Auth passes → LiveKit call is attempted → fake server → 500 (not 403)
+	if resp.StatusCode == 403 {
+		t.Fatalf("room-scoped moderator should be allowed to act in their room, got 403")
+	}
+}
+
 func TestGuestJoinRoom_PrivateRoomBlocked(t *testing.T) {
 	claims := &auth.Claims{
 		UserID:   "room-creator",

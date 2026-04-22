@@ -370,6 +370,8 @@ func (h *RoomHandler) PromoteParticipant(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	// Persist room-scoped moderator flag in DB so isRoomModerator checks work.
+	_ = h.roomRepo.SetRoomModerator(room.ID, identity, true)
 	return c.JSON(fiber.Map{"status": "success"})
 }
 
@@ -407,6 +409,8 @@ func (h *RoomHandler) DemoteParticipant(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	// Clear room-scoped moderator flag in DB.
+	_ = h.roomRepo.SetRoomModerator(room.ID, identity, false)
 	return c.JSON(fiber.Map{"status": "success"})
 }
 
@@ -417,8 +421,8 @@ func (h *RoomHandler) BlockChat(c *fiber.Ctx) error {
 	if err != nil {
 		return nil
 	}
-	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
-		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	if !isRoomModerator(claims, adminId, room.ID, h.roomRepo) {
+		return c.Status(403).JSON(fiber.Map{"error": "not authorized for this room"})
 	}
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
 	p, err := h.client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
@@ -447,8 +451,8 @@ func (h *RoomHandler) DeafenParticipant(c *fiber.Ctx) error {
 	if err != nil {
 		return nil
 	}
-	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
-		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	if !isRoomModerator(claims, adminId, room.ID, h.roomRepo) {
+		return c.Status(403).JSON(fiber.Map{"error": "not authorized for this room"})
 	}
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
 	h.sendTargetedSystemMessage(ctx, room.Name, "deafen", claims.UserID, identity)
@@ -462,8 +466,8 @@ func (h *RoomHandler) UndeafenParticipant(c *fiber.Ctx) error {
 	if err != nil {
 		return nil
 	}
-	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
-		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	if !isRoomModerator(claims, adminId, room.ID, h.roomRepo) {
+		return c.Status(403).JSON(fiber.Map{"error": "not authorized for this room"})
 	}
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
 	h.sendTargetedSystemMessage(ctx, room.Name, "undeafen", claims.UserID, identity)
@@ -480,8 +484,8 @@ func (h *RoomHandler) AskParticipantAction(c *fiber.Ctx) error {
 	if err != nil {
 		return nil
 	}
-	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
-		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	if !isRoomModerator(claims, adminId, room.ID, h.roomRepo) {
+		return c.Status(403).JSON(fiber.Map{"error": "not authorized for this room"})
 	}
 	event := "ask_" + action
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
@@ -496,8 +500,8 @@ func (h *RoomHandler) SpotlightParticipant(c *fiber.Ctx) error {
 	if err != nil {
 		return nil
 	}
-	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
-		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	if !isRoomModerator(claims, adminId, room.ID, h.roomRepo) {
+		return c.Status(403).JSON(fiber.Map{"error": "not authorized for this room"})
 	}
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
 	// Broadcast to entire room so all clients pin this participant
@@ -512,8 +516,8 @@ func (h *RoomHandler) StopScreenShare(c *fiber.Ctx) error {
 	if err != nil {
 		return nil
 	}
-	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
-		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	if !isRoomModerator(claims, adminId, room.ID, h.roomRepo) {
+		return c.Status(403).JSON(fiber.Map{"error": "not authorized for this room"})
 	}
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
 	p, err := h.client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
@@ -537,10 +541,9 @@ func (h *RoomHandler) GetParticipantInfo(c *fiber.Ctx) error {
 	if err != nil {
 		return nil
 	}
-	// Self-access always allowed; admin/mod can view anyone
-	if claims.UserID != identity && claims.UserID != adminId &&
-		!containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
-		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	// Self-access always allowed; room moderator/owner/superadmin can view anyone
+	if claims.UserID != identity && !isRoomModerator(claims, adminId, room.ID, h.roomRepo) {
+		return c.Status(403).JSON(fiber.Map{"error": "not authorized for this room"})
 	}
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
 	p, err := h.client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})
@@ -710,8 +713,8 @@ func (h *RoomHandler) DisableParticipantVideo(c *fiber.Ctx) error {
 	if err != nil {
 		return nil
 	}
-	if claims.UserID != adminId && !containsAccess(claims.Accesses, "moderator") && !containsAccess(claims.Accesses, "superadmin") {
-		return c.Status(403).JSON(fiber.Map{"error": "Insufficient permissions"})
+	if !isRoomModerator(claims, adminId, room.ID, h.roomRepo) {
+		return c.Status(403).JSON(fiber.Map{"error": "not authorized for this room"})
 	}
 	ctx := h.withAuth(c.Context(), &lkauth.VideoGrant{RoomAdmin: true, Room: room.Name})
 	p, err := h.client.GetParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room.Name, Identity: identity})

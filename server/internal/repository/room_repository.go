@@ -380,3 +380,20 @@ func (r *RoomRepository) IsParticipantBanned(roomID, userID string) (bool, error
 		Count(&count).Error
 	return count > 0, err
 }
+
+// IsRoomModerator returns true when the user has is_moderator=true in room_participants
+// for this specific room.
+func (r *RoomRepository) IsRoomModerator(roomID, userID string) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.RoomParticipant{}).
+		Where("room_id = ? AND user_id = ? AND is_moderator = ?", roomID, userID, true).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// SetRoomModerator sets or clears the is_moderator flag for a participant.
+func (r *RoomRepository) SetRoomModerator(roomID, userID string, isMod bool) error {
+	return r.db.Model(&models.RoomParticipant{}).
+		Where("room_id = ? AND user_id = ?", roomID, userID).
+		Update("is_moderator", isMod).Error
+}
