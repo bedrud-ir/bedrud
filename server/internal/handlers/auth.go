@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
 
 	"bedrud/config"
 	"bedrud/internal/auth"
@@ -250,21 +249,27 @@ func CallbackHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Set token in cookie
-	cookie := fiber.Cookie{
-		Name:     "jwt",
-		Value:    token,
-		Expires:  time.Now().Add(time.Duration(cfg.Auth.TokenDuration) * time.Hour),
-		HTTPOnly: true,
-		Secure:   c.Protocol() == "https",
-		SameSite: "Lax",
+	// Set token as HTTP-only cookie instead of URL parameter so JS cannot access it.
+	// TODO: web client must read tokens from cookies instead of URL params (see web plan)
+	secure := cfg.Server.EnableTLS || cfg.Server.BehindProxy
+	sameSite := "Lax"
+	if secure {
+		sameSite = "None"
 	}
-	c.Cookie(&cookie)
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    token,
+		MaxAge:   cfg.Auth.TokenDuration * 3600,
+		HTTPOnly: true,
+		Secure:   secure,
+		SameSite: sameSite,
+		Path:     "/",
+	})
 
 	// frontend url debug print
 	log.Debug().Str("frontend url", cfg.Auth.FrontendURL).Msg("frontend url")
 
-	// If frontend URL is provided in config, redirect there with token
+	// If frontend URL is provided in config, redirect there without token in URL
 	if cfg.Auth.FrontendURL != "" {
 		frontendURL, err := url.Parse(cfg.Auth.FrontendURL)
 		if err != nil {
@@ -275,9 +280,7 @@ func CallbackHandler(c *fiber.Ctx) error {
 		}
 
 		frontendURL.Path = "/auth/callback"
-		q := frontendURL.Query()
-		q.Set("token", token)
-		frontendURL.RawQuery = q.Encode()
+		// Token is delivered via HTTP-only cookie; do not expose it in the URL
 		return c.Redirect(frontendURL.String())
 	}
 
