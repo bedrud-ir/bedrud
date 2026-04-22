@@ -269,3 +269,114 @@ func TestRoomHandler_AdminGetRoomParticipants_LiveKitUnavailable(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 }
+
+// setupJoinTestApp creates a minimal Fiber app with JoinRoom and GuestJoinRoom wired
+// and the authenticated user set to the given claims.
+func setupJoinTestApp(t *testing.T, claims *auth.Claims) (*fiber.App, *repository.RoomRepository) {
+	t.Helper()
+	db := testutil.SetupTestDB(t)
+	roomRepo := repository.NewRoomRepository(db)
+
+	lkCfg := config.LiveKitConfig{
+		Host:      "http://localhost:9999",
+		APIKey:    "test-key",
+		APISecret: "test-secret",
+	}
+	handler := NewRoomHandler(lkCfg, config.ChatConfig{}, roomRepo)
+
+	app := fiber.New()
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("user", claims)
+		return c.Next()
+	})
+	app.Post("/rooms/join", handler.JoinRoom)
+	app.Post("/rooms/guest-join", handler.GuestJoinRoom)
+
+	// Seed the user record to satisfy FK constraints
+	db.Create(&models.User{
+		ID: claims.UserID, Email: claims.Email, Name: claims.Name,
+		Provider: "local", IsActive: true, Accesses: models.StringArray{"user"},
+	})
+
+	return app, roomRepo
+}
+
+func TestJoinRoom_BannedUserRejected(t *testing.T) {
+	bannedClaims := &auth.Claims{
+		UserID:   "banned-user",
+		Email:    "banned@ex.com",
+		Name:     "Banned",
+		Accesses: []string{"user"},
+	}
+	app, roomRepo := setupJoinTestApp(t, bannedClaims)
+
+	// Create a room (seeded as a different creator so FK passes)
+	room, err := roomRepo.CreateRoom("banned-user", "ban-test-room", true, "standard", models.RoomSettings{})
+	if err != nil {
+		t.Fatalf("failed to create room: %v", err)
+	}
+
+	// Ban the user by marking their participant record
+	if err := roomRepo.KickParticipant(room.ID, "banned-user"); err != nil {
+		t.Fatalf("failed to ban user: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]string{"roomName": "ban-test-room"})
+	req := httptest.NewRequest("POST", "/rooms/join", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+
+	if resp.StatusCode != 403 {
+		t.Fatalf("expected 403 for banned user, got %d", resp.StatusCode)
+	}
+}
+
+func TestJoinRoom_NotBannedAllowed(t *testing.T) {
+	claims := &auth.Claims{
+		UserID:   "normal-user",
+		Email:    "normal@ex.com",
+		Name:     "Normal",
+		Accesses: []string{"user"},
+	}
+	app, roomRepo := setupJoinTestApp(t, claims)
+
+	_, err := roomRepo.CreateRoom("normal-user", "open-room", true, "standard", models.RoomSettings{})
+	if err != nil {
+		t.Fatalf("failed to create room: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]string{"roomName": "open-room"})
+	req := httptest.NewRequest("POST", "/rooms/join", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+
+	// LiveKit token generation still works (no live server needed for signing)
+	// so this should succeed with 200
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected 200 for non-banned user, got %d", resp.StatusCode)
+	}
+}
+
+func TestGuestJoinRoom_PrivateRoomBlocked(t *testing.T) {
+	claims := &auth.Claims{
+		UserID:   "room-creator",
+		Email:    "creator@ex.com",
+		Name:     "Creator",
+		Accesses: []string{"user"},
+	}
+	app, roomRepo := setupJoinTestApp(t, claims)
+
+	_, err := roomRepo.CreateRoom("room-creator", "private-room", false /* not public */, "standard", models.RoomSettings{})
+	if err != nil {
+		t.Fatalf("failed to create room: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]string{"roomName": "private-room", "guestName": "Visitor"})
+	req := httptest.NewRequest("POST", "/rooms/guest-join", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req, -1)
+
+	if resp.StatusCode != 403 {
+		t.Fatalf("expected 403 for guest joining private room, got %d", resp.StatusCode)
+	}
+}

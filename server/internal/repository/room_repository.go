@@ -370,3 +370,13 @@ func (r *RoomRepository) CountActiveParticipants() (int64, error) {
 	err := r.db.Model(&models.RoomParticipant{}).Where("is_active = ?", true).Distinct("user_id").Count(&count).Error
 	return count, err
 }
+
+// IsParticipantBanned returns true when a participant record exists for the given
+// room and user identity with is_banned = true.
+func (r *RoomRepository) IsParticipantBanned(roomID, userID string) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.RoomParticipant{}).
+		Where("room_id = ? AND user_id = ? AND is_banned = ?", roomID, userID, true).
+		Count(&count).Error
+	return count > 0, err
+}

@@ -159,7 +159,18 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
 	}
 
-	_ = h.roomRepo.AddParticipant(room.ID, claims.UserID)
+	banned, err := h.roomRepo.IsParticipantBanned(room.ID, claims.UserID)
+	if err != nil {
+		log.Error().Err(err).Str("roomID", room.ID).Str("userID", claims.UserID).Msg("Failed to check ban status")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to check ban status"})
+	}
+	if banned {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "you are banned from this room"})
+	}
+
+	if err := h.roomRepo.AddParticipant(room.ID, claims.UserID); err != nil {
+		log.Error().Err(err).Str("roomID", room.ID).Str("userID", claims.UserID).Msg("AddParticipant failed")
+	}
 
 	at := lkauth.NewAccessToken(h.apiKey, h.apiSecret)
 	at.AddGrant(&lkauth.VideoGrant{RoomJoin: true, Room: req.RoomName, CanUpdateOwnMetadata: boolPtr(true)}).SetIdentity(claims.UserID).SetName(claims.Name).SetValidFor(time.Hour)
@@ -210,6 +221,15 @@ func (h *RoomHandler) GuestJoinRoom(c *fiber.Ctx) error {
 	}
 	if !room.IsPublic {
 		return c.Status(403).JSON(fiber.Map{"error": "This room is private"})
+	}
+
+	banned, err := h.roomRepo.IsParticipantBanned(room.ID, req.GuestName)
+	if err != nil {
+		log.Error().Err(err).Str("roomID", room.ID).Str("guestName", req.GuestName).Msg("Failed to check guest ban status")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to check ban status"})
+	}
+	if banned {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "you are banned from this room"})
 	}
 
 	guestID := "guest-" + generateShortID()
