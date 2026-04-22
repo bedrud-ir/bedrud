@@ -176,7 +176,7 @@ func TestUserRepository_GetAllUsers(t *testing.T) {
 	_ = repo.CreateUser(&models.User{ID: "u2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 	_ = repo.CreateUser(&models.User{ID: "u3", Email: "u3@ex.com", Name: "U3", Provider: "google", IsActive: true})
 
-	users, err := repo.GetAllUsers()
+	users, _, err := repo.GetAllUsers(PaginationParams{Page: 1, Limit: 50})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestUserRepository_GetAllUsers_Empty(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewUserRepository(db)
 
-	users, err := repo.GetAllUsers()
+	users, _, err := repo.GetAllUsers(PaginationParams{Page: 1, Limit: 50})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

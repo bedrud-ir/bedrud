@@ -5,8 +5,10 @@ import (
 	"bedrud/internal/auth"
 	"bedrud/internal/repository"
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,6 +17,8 @@ import (
 	"github.com/markbates/goth/gothic"
 	"github.com/rs/zerolog/log"
 )
+
+const minPasswordLength = 12
 
 type AuthHandler struct {
 	authService     *auth.AuthService
@@ -131,6 +135,12 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 				c.Locals("pendingInviteToken", tok.ID)
 			}
 		}
+	}
+
+	if len(input.Password) < minPasswordLength {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("Password must be at least %d characters", minPasswordLength),
+		})
 	}
 
 	user, err := h.authService.Register(input.Email, input.Password, input.Name)
@@ -344,8 +354,8 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
-	if len(input.NewPassword) < 6 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "New password must be at least 6 characters"})
+	if len(input.NewPassword) < minPasswordLength {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("New password must be at least %d characters", minPasswordLength)})
 	}
 	if err := h.authService.ChangePassword(claims.UserID, input.CurrentPassword, input.NewPassword); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
@@ -375,11 +385,20 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 		input.RefreshToken = c.Cookies("refresh_token")
 	}
 
-	// Block refresh token (best-effort; clear cookies regardless)
+	// Extract the raw access token from Authorization header or cookie
+	accessToken := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if accessToken == "" {
+		accessToken = c.Cookies("access_token")
+	}
+
+	// Revoke access token and block refresh token (best-effort; clear cookies regardless)
 	if input.RefreshToken != "" {
-		if err := h.authService.BlockRefreshToken(claims.UserID, input.RefreshToken); err != nil {
-			log.Error().Err(err).Msg("Failed to block refresh token on logout")
+		if err := h.authService.Logout(claims.UserID, input.RefreshToken, accessToken); err != nil {
+			log.Error().Err(err).Msg("Failed to invalidate tokens on logout")
 		}
+	} else if accessToken != "" {
+		// No refresh token provided — at least revoke the access token
+		auth.RevokeAccessToken(accessToken, h.config)
 	}
 
 	clearAuthCookies(c, h.config)

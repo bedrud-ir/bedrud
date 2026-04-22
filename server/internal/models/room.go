@@ -113,6 +113,7 @@ type RoomParticipant struct {
 	IsChatBlocked bool             `json:"isChatBlocked" gorm:"not null;default:false"`
 	IsBanned      bool             `json:"isBanned" gorm:"not null;default:false"`
 	IsOnStage     bool             `json:"isOnStage" gorm:"not null;default:false"`
+	IsModerator   bool             `json:"isModerator" gorm:"not null;default:false"`
 	User          *User            `json:"user" gorm:"foreignKey:UserID"`
 	Room          *Room            `json:"room" gorm:"foreignKey:RoomID"`
 	Permission    *RoomPermissions `json:"permission" gorm:"-"`

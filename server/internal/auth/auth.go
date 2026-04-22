@@ -281,19 +281,12 @@ func (s *AuthService) ChangePassword(userID, currentPassword, newPassword string
 // @Success 200 {object} map[string]string
 // @Failure 401 {object} ErrorResponse
 // @Router /auth/logout [post]
-func (s *AuthService) Logout(userID string, refreshToken string) error {
-	// Parse the refresh token to get expiration
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(config.Get().Auth.JWTSecret), nil
-	})
-
-	if err != nil || !token.Valid {
-		return errors.New("invalid refresh token")
+func (s *AuthService) Logout(userID string, refreshToken string, accessToken string) error {
+	if err := s.BlockRefreshToken(userID, refreshToken); err != nil {
+		return err
 	}
-
-	// Block the refresh token
-	return s.userRepo.BlockRefreshToken(userID, refreshToken, time.Unix(claims.ExpiresAt.Unix(), 0))
+	RevokeAccessToken(accessToken, config.Get())
+	return nil
 }
 
 // @Summary Block refresh token
@@ -321,6 +314,10 @@ func (s *AuthService) BlockRefreshToken(userID string, refreshToken string) erro
 	return s.userRepo.BlockRefreshToken(userID, refreshToken, time.Unix(claims.ExpiresAt.Unix(), 0))
 }
 
+// ErrRefreshTokenMismatch is returned when the presented refresh token does not
+// match the token currently stored for the user (e.g. it was rotated on another device).
+var ErrRefreshTokenMismatch = errors.New("refresh token does not match stored token for user")
+
 // Updated refresh token validation
 func (s *AuthService) ValidateRefreshToken(refreshToken string) (*Claims, error) {
 	// Check if token is blocked
@@ -328,10 +325,23 @@ func (s *AuthService) ValidateRefreshToken(refreshToken string) (*Claims, error)
 		return nil, errors.New("refresh token has been revoked")
 	}
 
-	// Validate the token
+	// Validate the token signature and claims
 	claims, err := ValidateToken(refreshToken, config.Get())
 	if err != nil {
 		return nil, err
+	}
+
+	// Verify the token matches what is currently stored for this user.
+	// This prevents replay of a token that was rotated on another device.
+	user, err := s.userRepo.GetUserByID(claims.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	if user.RefreshToken != refreshToken {
+		return nil, ErrRefreshTokenMismatch
 	}
 
 	return claims, nil
@@ -532,7 +542,18 @@ func (s *AuthService) FinishLoginPasskey(challengeStr string, credentialID, clie
 func Init(cfg *config.Config) {
 	providers := []goth.Provider{}
 
-	log.Debug().Interface("auth_config", cfg.Auth).Msg("Auth configuration")
+	log.Debug().
+		Strs("providers", func() []string {
+			var p []string
+			if cfg.Auth.Google.ClientID != "" {
+				p = append(p, "google")
+			}
+			if cfg.Auth.Github.ClientID != "" {
+				p = append(p, "github")
+			}
+			return p
+		}()).
+		Msg("Auth configuration loaded")
 
 	// Initialize Google provider if credentials are provided
 	if cfg.Auth.Google.ClientID != "" && cfg.Auth.Google.ClientSecret != "" {
@@ -554,8 +575,6 @@ func Init(cfg *config.Config) {
 	// Initialize GitHub provider if credentials are provided
 	if cfg.Auth.Github.ClientID != "" && cfg.Auth.Github.ClientSecret != "" {
 		log.Debug().Msg("Initializing GitHub provider")
-		log.Debug().Msg("Client ID: " + cfg.Auth.Github.ClientID)
-		log.Debug().Msg("Redirect URL: " + cfg.Auth.Github.RedirectURL)
 		providers = append(providers, github.New(
 			cfg.Auth.Github.ClientID,
 			cfg.Auth.Github.ClientSecret,

@@ -307,6 +307,24 @@ func (r *RoomRepository) GetAllRooms() ([]models.Room, error) {
 	return rooms, err
 }
 
+// GetAllRoomsPaginated returns a paginated list of rooms and the total count.
+func (r *RoomRepository) GetAllRoomsPaginated(p PaginationParams) ([]models.Room, int64, error) {
+	if p.Limit <= 0 || p.Limit > 100 {
+		p.Limit = 50
+	}
+	if p.Page <= 0 {
+		p.Page = 1
+	}
+	offset := (p.Page - 1) * p.Limit
+	var total int64
+	var rooms []models.Room
+	if err := r.db.Model(&models.Room{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := r.db.Limit(p.Limit).Offset(offset).Find(&rooms).Error
+	return rooms, total, err
+}
+
 func (r *RoomRepository) GetAllActiveRooms() ([]models.Room, error) {
 	var rooms []models.Room
 	err := r.db.Where("is_active = ?", true).Find(&rooms).Error
@@ -369,4 +387,40 @@ func (r *RoomRepository) CountActiveParticipants() (int64, error) {
 	var count int64
 	err := r.db.Model(&models.RoomParticipant{}).Where("is_active = ?", true).Distinct("user_id").Count(&count).Error
 	return count, err
+}
+
+// IsParticipantBanned returns true when a participant record exists for the given
+// room and user identity with is_banned = true.
+func (r *RoomRepository) IsParticipantBanned(roomID, userID string) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.RoomParticipant{}).
+		Where("room_id = ? AND user_id = ? AND is_banned = ?", roomID, userID, true).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// IsRoomModerator returns true when the user has is_moderator=true in room_participants
+// for this specific room.
+func (r *RoomRepository) IsRoomModerator(roomID, userID string) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.RoomParticipant{}).
+		Where("room_id = ? AND user_id = ? AND is_moderator = ?", roomID, userID, true).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// SetRoomModerator sets or clears the is_moderator flag for a participant.
+func (r *RoomRepository) SetRoomModerator(roomID, userID string, isMod bool) error {
+	return r.db.Model(&models.RoomParticipant{}).
+		Where("room_id = ? AND user_id = ?", roomID, userID).
+		Update("is_moderator", isMod).Error
+}
+
+// GetParticipantCount returns the number of non-banned participants for a room.
+func (r *RoomRepository) GetParticipantCount(roomID string) (int, error) {
+	var count int64
+	err := r.db.Model(&models.RoomParticipant{}).
+		Where("room_id = ? AND is_banned = ?", roomID, false).
+		Count(&count).Error
+	return int(count), err
 }
