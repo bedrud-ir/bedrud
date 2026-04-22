@@ -441,7 +441,7 @@ func TestAuthService_Logout_Success(t *testing.T) {
 	user, _ := svc.Register("logout@example.com", "pass", "Logout User")
 	loginResp, _ := svc.Login("logout@example.com", "pass")
 
-	err := svc.Logout(user.ID, loginResp.Token.RefreshToken)
+	err := svc.Logout(user.ID, loginResp.Token.RefreshToken, loginResp.Token.AccessToken)
 	if err != nil {
 		t.Fatalf("unexpected error during logout: %v", err)
 	}
@@ -453,7 +453,7 @@ func TestAuthService_Logout_InvalidToken(t *testing.T) {
 
 	user, _ := svc.Register("logout2@example.com", "pass", "Logout User 2")
 
-	err := svc.Logout(user.ID, "not-a-real-jwt")
+	err := svc.Logout(user.ID, "not-a-real-jwt", "")
 	if err == nil {
 		t.Fatal("expected error for invalid token")
 	}

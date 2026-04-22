@@ -124,6 +124,15 @@ func main() {
 	// Initialize Goth providers (after session store is initialized)
 	auth.Init(cfg)
 
+	// Periodically prune expired entries from the in-memory access token revocation set.
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			auth.PruneRevokedTokens()
+		}
+	}()
+
 	// Create new Fiber instance
 	app := fiber.New(fiber.Config{
 		AppName:      "Bedrud API",

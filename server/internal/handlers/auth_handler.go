@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -375,11 +376,20 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 		input.RefreshToken = c.Cookies("refresh_token")
 	}
 
-	// Block refresh token (best-effort; clear cookies regardless)
+	// Extract the raw access token from Authorization header or cookie
+	accessToken := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
+	if accessToken == "" {
+		accessToken = c.Cookies("access_token")
+	}
+
+	// Revoke access token and block refresh token (best-effort; clear cookies regardless)
 	if input.RefreshToken != "" {
-		if err := h.authService.BlockRefreshToken(claims.UserID, input.RefreshToken); err != nil {
-			log.Error().Err(err).Msg("Failed to block refresh token on logout")
+		if err := h.authService.Logout(claims.UserID, input.RefreshToken, accessToken); err != nil {
+			log.Error().Err(err).Msg("Failed to invalidate tokens on logout")
 		}
+	} else if accessToken != "" {
+		// No refresh token provided — at least revoke the access token
+		auth.RevokeAccessToken(accessToken, h.config)
 	}
 
 	clearAuthCookies(c, h.config)

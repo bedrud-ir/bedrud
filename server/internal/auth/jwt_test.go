@@ -221,6 +221,38 @@ func TestGenerateTokenPair_AccessTokenContainsAccesses(t *testing.T) {
 	}
 }
 
+// --- Revocation Tests ---
+
+func TestAccessTokenRevocation(t *testing.T) {
+	cfg := testConfig()
+
+	token, err := GenerateToken("user-123", "test@example.com", "Test User", "local", []string{"user"}, cfg)
+	if err != nil {
+		t.Fatalf("unexpected error generating token: %v", err)
+	}
+
+	// Token should be valid before revocation
+	claims, err := ValidateToken(token, cfg)
+	if err != nil {
+		t.Fatalf("expected valid token before revocation, got error: %v", err)
+	}
+	if claims.UserID != "user-123" {
+		t.Fatalf("expected UserID 'user-123', got '%s'", claims.UserID)
+	}
+
+	// Revoke it
+	RevokeAccessToken(token, cfg)
+
+	// Token should be invalid after revocation
+	_, err = ValidateToken(token, cfg)
+	if err == nil {
+		t.Fatal("expected error after revocation, got nil")
+	}
+	if err != ErrTokenRevoked {
+		t.Fatalf("expected ErrTokenRevoked, got: %v", err)
+	}
+}
+
 // --- Claims Tests ---
 
 func TestClaims_Structure(t *testing.T) {

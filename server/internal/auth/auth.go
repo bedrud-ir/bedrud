@@ -281,19 +281,12 @@ func (s *AuthService) ChangePassword(userID, currentPassword, newPassword string
 // @Success 200 {object} map[string]string
 // @Failure 401 {object} ErrorResponse
 // @Router /auth/logout [post]
-func (s *AuthService) Logout(userID string, refreshToken string) error {
-	// Parse the refresh token to get expiration
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(config.Get().Auth.JWTSecret), nil
-	})
-
-	if err != nil || !token.Valid {
-		return errors.New("invalid refresh token")
+func (s *AuthService) Logout(userID string, refreshToken string, accessToken string) error {
+	if err := s.BlockRefreshToken(userID, refreshToken); err != nil {
+		return err
 	}
-
-	// Block the refresh token
-	return s.userRepo.BlockRefreshToken(userID, refreshToken, time.Unix(claims.ExpiresAt.Unix(), 0))
+	RevokeAccessToken(accessToken, config.Get())
+	return nil
 }
 
 // @Summary Block refresh token
