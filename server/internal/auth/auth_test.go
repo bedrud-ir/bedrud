@@ -500,3 +500,30 @@ func TestAuthService_ValidateRefreshToken_Invalid(t *testing.T) {
 		t.Fatal("expected error for invalid token")
 	}
 }
+
+func TestRefreshTokenBoundToUser(t *testing.T) {
+	svc, cfg := setupAuthService(t)
+	config.SetForTest(cfg)
+
+	// Register and login to get a valid refresh token
+	_, _ = svc.Register("bound@example.com", "pass", "Bound User")
+	loginResp, err := svc.Login("bound@example.com", "pass")
+	if err != nil {
+		t.Fatalf("unexpected login error: %v", err)
+	}
+	oldRefreshToken := loginResp.Token.RefreshToken
+
+	// Simulate token rotation on another device: update stored token to a new value
+	if err := svc.UpdateRefreshToken(loginResp.User.ID, "rotated-token-from-other-device"); err != nil {
+		t.Fatalf("failed to rotate token: %v", err)
+	}
+
+	// The old refresh token should now be rejected with ErrRefreshTokenMismatch
+	_, err = svc.ValidateRefreshToken(oldRefreshToken)
+	if err == nil {
+		t.Fatal("expected error: old refresh token should be rejected after rotation")
+	}
+	if err != ErrRefreshTokenMismatch {
+		t.Fatalf("expected ErrRefreshTokenMismatch, got: %v", err)
+	}
+}

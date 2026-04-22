@@ -314,6 +314,10 @@ func (s *AuthService) BlockRefreshToken(userID string, refreshToken string) erro
 	return s.userRepo.BlockRefreshToken(userID, refreshToken, time.Unix(claims.ExpiresAt.Unix(), 0))
 }
 
+// ErrRefreshTokenMismatch is returned when the presented refresh token does not
+// match the token currently stored for the user (e.g. it was rotated on another device).
+var ErrRefreshTokenMismatch = errors.New("refresh token does not match stored token for user")
+
 // Updated refresh token validation
 func (s *AuthService) ValidateRefreshToken(refreshToken string) (*Claims, error) {
 	// Check if token is blocked
@@ -321,10 +325,23 @@ func (s *AuthService) ValidateRefreshToken(refreshToken string) (*Claims, error)
 		return nil, errors.New("refresh token has been revoked")
 	}
 
-	// Validate the token
+	// Validate the token signature and claims
 	claims, err := ValidateToken(refreshToken, config.Get())
 	if err != nil {
 		return nil, err
+	}
+
+	// Verify the token matches what is currently stored for this user.
+	// This prevents replay of a token that was rotated on another device.
+	user, err := s.userRepo.GetUserByID(claims.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	if user.RefreshToken != refreshToken {
+		return nil, ErrRefreshTokenMismatch
 	}
 
 	return claims, nil
