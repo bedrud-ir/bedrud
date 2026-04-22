@@ -762,9 +762,11 @@ func (h *RoomHandler) DisableParticipantVideo(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"status": "success"})
 }
-func (h *RoomHandler) BringToStage(c *fiber.Ctx) error { return c.JSON(fiber.Map{"status": "success"}) }
+func (h *RoomHandler) BringToStage(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{"error": "not yet implemented"})
+}
 func (h *RoomHandler) RemoveFromStage(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"status": "success"})
+	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{"error": "not yet implemented"})
 }
 func (h *RoomHandler) UpdateSettings(c *fiber.Ctx) error {
 	roomID := c.Params("roomId")
@@ -823,7 +825,7 @@ func (h *RoomHandler) AdminListRooms(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"rooms": rooms, "total": total, "page": page, "limit": limit})
 }
 func (h *RoomHandler) AdminGenerateToken(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"status": "success"})
+	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{"error": "not yet implemented"})
 }
 
 func (h *RoomHandler) AdminCloseRoom(c *fiber.Ctx) error {

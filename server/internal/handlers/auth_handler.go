@@ -5,6 +5,7 @@ import (
 	"bedrud/internal/auth"
 	"bedrud/internal/repository"
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -16,6 +17,8 @@ import (
 	"github.com/markbates/goth/gothic"
 	"github.com/rs/zerolog/log"
 )
+
+const minPasswordLength = 12
 
 type AuthHandler struct {
 	authService     *auth.AuthService
@@ -132,6 +135,12 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 				c.Locals("pendingInviteToken", tok.ID)
 			}
 		}
+	}
+
+	if len(input.Password) < minPasswordLength {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("Password must be at least %d characters", minPasswordLength),
+		})
 	}
 
 	user, err := h.authService.Register(input.Email, input.Password, input.Name)
@@ -345,8 +354,8 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
-	if len(input.NewPassword) < 6 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "New password must be at least 6 characters"})
+	if len(input.NewPassword) < minPasswordLength {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("New password must be at least %d characters", minPasswordLength)})
 	}
 	if err := h.authService.ChangePassword(claims.UserID, input.CurrentPassword, input.NewPassword); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
