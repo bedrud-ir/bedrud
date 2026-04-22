@@ -159,6 +159,22 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
 	}
 
+	// Enforce room active state
+	if !room.IsActive {
+		return c.Status(fiber.StatusGone).JSON(fiber.Map{"error": "room is no longer active"})
+	}
+
+	// Enforce participant limit
+	if room.MaxParticipants > 0 {
+		count, err := h.roomRepo.GetParticipantCount(room.ID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to check capacity"})
+		}
+		if count >= room.MaxParticipants {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "room is full"})
+		}
+	}
+
 	banned, err := h.roomRepo.IsParticipantBanned(room.ID, claims.UserID)
 	if err != nil {
 		log.Error().Err(err).Str("roomID", room.ID).Str("userID", claims.UserID).Msg("Failed to check ban status")
@@ -221,6 +237,22 @@ func (h *RoomHandler) GuestJoinRoom(c *fiber.Ctx) error {
 	}
 	if !room.IsPublic {
 		return c.Status(403).JSON(fiber.Map{"error": "This room is private"})
+	}
+
+	// Enforce room active state
+	if !room.IsActive {
+		return c.Status(fiber.StatusGone).JSON(fiber.Map{"error": "room is no longer active"})
+	}
+
+	// Enforce participant limit
+	if room.MaxParticipants > 0 {
+		count, err := h.roomRepo.GetParticipantCount(room.ID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to check capacity"})
+		}
+		if count >= room.MaxParticipants {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "room is full"})
+		}
 	}
 
 	banned, err := h.roomRepo.IsParticipantBanned(room.ID, req.GuestName)

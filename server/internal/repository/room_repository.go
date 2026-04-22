@@ -397,3 +397,12 @@ func (r *RoomRepository) SetRoomModerator(roomID, userID string, isMod bool) err
 		Where("room_id = ? AND user_id = ?", roomID, userID).
 		Update("is_moderator", isMod).Error
 }
+
+// GetParticipantCount returns the number of non-banned participants for a room.
+func (r *RoomRepository) GetParticipantCount(roomID string) (int, error) {
+	var count int64
+	err := r.db.Model(&models.RoomParticipant{}).
+		Where("room_id = ? AND is_banned = ?", roomID, false).
+		Count(&count).Error
+	return int(count), err
+}
