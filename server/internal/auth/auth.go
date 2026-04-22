@@ -532,7 +532,18 @@ func (s *AuthService) FinishLoginPasskey(challengeStr string, credentialID, clie
 func Init(cfg *config.Config) {
 	providers := []goth.Provider{}
 
-	log.Debug().Interface("auth_config", cfg.Auth).Msg("Auth configuration")
+	log.Debug().
+		Strs("providers", func() []string {
+			var p []string
+			if cfg.Auth.Google.ClientID != "" {
+				p = append(p, "google")
+			}
+			if cfg.Auth.Github.ClientID != "" {
+				p = append(p, "github")
+			}
+			return p
+		}()).
+		Msg("Auth configuration loaded")
 
 	// Initialize Google provider if credentials are provided
 	if cfg.Auth.Google.ClientID != "" && cfg.Auth.Google.ClientSecret != "" {
