@@ -814,11 +814,13 @@ func (h *RoomHandler) UpdateSettings(c *fiber.Ctx) error {
 	return c.JSON(room)
 }
 func (h *RoomHandler) AdminListRooms(c *fiber.Ctx) error {
-	rooms, err := h.roomRepo.GetAllRooms()
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 50)
+	rooms, total, err := h.roomRepo.GetAllRoomsPaginated(repository.PaginationParams{Page: page, Limit: limit})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch rooms"})
 	}
-	return c.JSON(fiber.Map{"rooms": rooms})
+	return c.JSON(fiber.Map{"rooms": rooms, "total": total, "page": page, "limit": limit})
 }
 func (h *RoomHandler) AdminGenerateToken(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "success"})

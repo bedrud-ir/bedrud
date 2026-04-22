@@ -170,9 +170,26 @@ func (r *UserRepository) DeleteUser(userID string) error {
 	return r.db.Delete(&models.User{}, "id = ?", userID).Error
 }
 
-// GetAllUsers returns all users in the system
-func (r *UserRepository) GetAllUsers() ([]models.User, error) {
+// PaginationParams holds page and limit for paginated queries.
+type PaginationParams struct {
+	Page  int
+	Limit int
+}
+
+// GetAllUsers returns a paginated list of users and the total count.
+func (r *UserRepository) GetAllUsers(p PaginationParams) ([]models.User, int64, error) {
+	if p.Limit <= 0 || p.Limit > 100 {
+		p.Limit = 50
+	}
+	if p.Page <= 0 {
+		p.Page = 1
+	}
+	offset := (p.Page - 1) * p.Limit
+	var total int64
 	var users []models.User
-	err := r.db.Find(&users).Error
-	return users, err
+	if err := r.db.Model(&models.User{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := r.db.Limit(p.Limit).Offset(offset).Find(&users).Error
+	return users, total, err
 }
