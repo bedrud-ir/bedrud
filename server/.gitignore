@@ -28,7 +28,7 @@ vendor/
 
 config.yaml
 config.local.yaml
-livekit.yaml
+**/livekit.yaml
 data.db
 *.db
 
