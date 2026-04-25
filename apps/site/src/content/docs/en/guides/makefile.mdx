@@ -27,6 +27,7 @@ make help       # Show all available targets
 | `make dev-site` | Run Astro site dev server |
 | `make dev-ios` | Open iOS project in Xcode |
 | `make dev-android` | Open Android project in Android Studio |
+| `make livekit-download` | Download LiveKit server for current OS/arch |
 
 ### `make init`
 
@@ -54,6 +55,9 @@ Starts all three development services concurrently. Press `Ctrl+C` to stop all:
 | `make build-front` | Build frontend only |
 | `make build-back` | Build backend only |
 | `make build-dist` | Build production linux/amd64 tarball |
+| `make build-back-win` | Build backend for Windows |
+| `make build-dist-win` | Build production Windows distribution |
+| `make prep-livekit-win` | Ensure LiveKit Windows binary is available for embedding |
 | `make build-site` | Build Astro site (SSG) |
 
 ### `make build`

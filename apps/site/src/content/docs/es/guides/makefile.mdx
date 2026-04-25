@@ -27,6 +27,7 @@ make help       # Mostrar todos los targets disponibles
 | `make dev-site` | Ejecutar el servidor de desarrollo del sitio Astro |
 | `make dev-ios` | Abrir el proyecto de iOS en Xcode |
 | `make dev-android` | Abrir el proyecto de Android en Android Studio |
+| `make livekit-download` | Descargar el servidor LiveKit para el SO/arquitectura actual |
 
 ### `make init`
 
@@ -54,6 +55,9 @@ Inicia los tres servicios de desarrollo simultáneamente. Presiona `Ctrl+C` para
 | `make build-front` | Compilar solo el frontend |
 | `make build-back` | Compilar solo el backend |
 | `make build-dist` | Compilar tarball de producción para linux/amd64 |
+| `make build-back-win` | Compilar backend para Windows |
+| `make build-dist-win` | Compilar distribución de producción para Windows |
+| `make prep-livekit-win` | Asegurar que el binario de LiveKit para Windows esté disponible para ser embebido |
 | `make build-site` | Compilar sitio Astro (SSG) |
 
 ### `make build`

@@ -27,6 +27,7 @@ make help       # Показать все доступные цели
 | `make dev-site` | Запустить dev-сервер Astro-сайта |
 | `make dev-ios` | Открыть iOS-проект в Xcode |
 | `make dev-android` | Открыть Android-проект в Android Studio |
+| `make livekit-download` | Скачать сервер LiveKit для текущей ОС/архитектуры |
 
 ### `make init`
 
@@ -54,6 +55,9 @@ make help       # Показать все доступные цели
 | `make build-front` | Собрать только фронтенд |
 | `make build-back` | Собрать только backend |
 | `make build-dist` | Собрать продакшен-тарболл linux/amd64 |
+| `make build-back-win` | Собрать бэкенд для Windows |
+| `make build-dist-win` | Собрать дистрибутив продакшена для Windows |
+| `make prep-livekit-win` | Убедиться, что бинарный файл LiveKit для Windows доступен для встраивания |
 | `make build-site` | Собрать Astro-сайт (SSG) |
 
 ### `make build`
