@@ -93,13 +93,13 @@ func main() {
 		installCmd.Parse(os.Args[2:])
 
 		tls := (*enableTLS || *selfSigned) && !*noTLS
-		if err := install.DebianInstall(tls, *noTLS, *selfSigned && !*noTLS, *ipOverride, *domainFlag, *emailFlag, *portFlag, *certFlag, *keyFlag, *lkPortFlag, *lkTcpPortFlag, *lkUdpPortFlag, *freshFlag, *behindProxyFlag, *externalLKFlag, *lkDomainFlag); err != nil {
+		if err := install.LinuxInstall(tls, *noTLS, *selfSigned && !*noTLS, *ipOverride, *domainFlag, *emailFlag, *portFlag, *certFlag, *keyFlag, *lkPortFlag, *lkTcpPortFlag, *lkUdpPortFlag, *freshFlag, *behindProxyFlag, *externalLKFlag, *lkDomainFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "Installation error: %v\n", err)
 			os.Exit(1)
 		}
 
 	case "uninstall":
-		if err := install.DebianUninstall(); err != nil {
+		if err := install.LinuxUninstall(); err != nil {
 			fmt.Fprintf(os.Stderr, "Uninstallation error: %v\n", err)
 			os.Exit(1)
 		}

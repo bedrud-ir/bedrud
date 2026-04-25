@@ -380,16 +380,6 @@ if [[ "$CAN_SETUP" == true ]]; then
   info "Distro: ${DETECTED_DISTRO}"
   info "Init: ${INIT_SYSTEM}"
 
-  if [[ "$DETECTED_DISTRO" != "ubuntu" && "$DETECTED_DISTRO" != "debian" ]]; then
-    warn "bedrud install is designed for Ubuntu/Debian."
-    warn "Other distros may work but are untested."
-    ask_yn "Continue anyway?" "N" CONTINUE_ANYWAY
-    if [[ "$CONTINUE_ANYWAY" != true ]]; then
-      info "Setup cancelled. Binary installed at ${INSTALL_DIR}/${BINARY_NAME}"
-      exit 0
-    fi
-  fi
-
   if [[ "$(id -u)" -ne 0 ]]; then
     error "Server setup requires root. Re-run with sudo or as root."
   fi
@@ -607,24 +597,11 @@ if [[ "$CAN_SETUP" == true ]]; then
     step "Configuring Postgres"
 
     if command -v sed >/dev/null 2>&1; then
-      sed -i \
-        -e 's|type: "sqlite"|type: "postgres"|' \
-        -e 's|path: ".*"|# path removed (postgres)|' \
-        "$CONFIG_FILE"
+      sed -i -e 's|type: "sqlite"|type: "postgres"|' -e '/path: /d' "$CONFIG_FILE"
 
-      if ! grep -q 'host:.*# pg' "$CONFIG_FILE" 2>/dev/null; then
-        sed -i "/database:/,/^[a-z]/{ \
-          s|host: \"\"|host: \"${PG_HOST}\"|; \
-          s|port: \"\"|port: \"${PG_PORT}\"|; \
-          s|dbname: \"\"|dbname: \"${PG_DBNAME}\"|; \
-          s|sslmode: \"\"|sslmode: \"disable\"|; \
-        }" "$CONFIG_FILE"
+      if ! grep -q 'host:' "$CONFIG_FILE" 2>/dev/null; then
+        sed -i "/type: \"postgres\"/a \\  host: \"${PG_HOST}\"\n  port: \"${PG_PORT}\"\n  dbname: \"${PG_DBNAME}\"\n  user: \"${PG_USER}\"\n  password: \"${PG_PASS}\"\n  sslmode: \"disable\"" "$CONFIG_FILE"
       fi
-
-      sed -i \
-        -e "s|user: \"\"|user: \"${PG_USER}\"|; \
-            s|password: \"\"|password: \"${PG_PASS}\"|" \
-        "$CONFIG_FILE"
 
       info "Config updated for Postgres"
     else
