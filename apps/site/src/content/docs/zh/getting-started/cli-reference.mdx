@@ -124,7 +124,7 @@ bedrud install [flags]
 - `--livekit-domain`：LiveKit 本地运行但客户端通过其独立域名直连
 - `--external-livekit`：无本地 LiveKit；连接到远程服务器
 
-**实现：** `server/internal/install/debian.go`
+**实现：** `server/internal/install/linux.go`
 
 **相关文档：** [安装指南](/zh/docs/getting-started/installation) • [部署指南](/zh/docs/guides/deployment) • [后端部署逻辑](/zh/docs/backend/deployment)
 
@@ -143,8 +143,9 @@ bedrud uninstall
 - 删除 systemd、OpenRC 和 SysV init 的服务文件
 - 删除二进制文件：`/usr/local/bin/bedrud`、`/tmp/bedrud`、`/tmp/bedrud-livekit-server`
 - 删除目录：`/etc/bedrud`、`/var/lib/bedrud`、`/var/log/bedrud`
+- 删除系统用户: bedrud
 
-**实现：** `server/internal/install/debian.go`
+**实现：** `server/internal/install/` (linux.go, init.go, sysv.go, openrc.go)
 
 **相关文档：** [安装指南 - 卸载](/zh/docs/getting-started/installation#uninstallation)
 

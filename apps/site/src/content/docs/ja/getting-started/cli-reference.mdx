@@ -124,7 +124,7 @@ bedrud install [flags]
 - `--livekit-domain`: LiveKit はローカルで実行されるが、クライアントは独自ドメインで直接接続
 - `--external-livekit`: ローカル LiveKit なし。リモートサーバーに接続
 
-**実装:** `server/internal/install/debian.go`
+**実装:** `server/internal/install/linux.go`
 
 **関連ドキュメント:** [インストールガイド](/ja/docs/getting-started/installation) • [デプロイメントガイド](/ja/docs/guides/deployment) • [バックエンドデプロイメントロジック](/ja/docs/backend/deployment)
 
@@ -143,8 +143,9 @@ bedrud uninstall
 - systemd、OpenRC、SysV init のサービスファイルを削除
 - バイナリを削除: `/usr/local/bin/bedrud`、`/tmp/bedrud`、`/tmp/bedrud-livekit-server`
 - ディレクトリを削除: `/etc/bedrud`、`/var/lib/bedrud`、`/var/log/bedrud`
+- システムユーザーを削除: bedrud
 
-**実装:** `server/internal/install/debian.go`
+**実装:** `server/internal/install/` (linux.go, init.go, sysv.go, openrc.go)
 
 **関連ドキュメント:** [インストールガイド - アンインストール](/ja/docs/getting-started/installation#uninstallation)
 

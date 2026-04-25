@@ -124,7 +124,7 @@ bedrud install [flags]
 - `--livekit-domain`: LiveKit به صورت محلی اجرا می‌شود اما کلاینت‌ها مستقیماً از طریق دامنه خود متصل می‌شوند
 - `--external-livekit`: بدون LiveKit محلی؛ به سرور راه دور متصل می‌شود
 
-**پیاده‌سازی:** `server/internal/install/debian.go`
+**پیاده‌سازی:** `server/internal/install/linux.go`
 
 **اسناد مرتبط:** [راهنمای نصب](/fa/docs/getting-started/installation) • [راهنمای استقرار](/fa/docs/guides/deployment) • [منطق استقرار بک‌اند](/fa/docs/backend/deployment)
 
@@ -143,8 +143,9 @@ bedrud uninstall
 - فایل‌های سرویس systemd، OpenRC و SysV init را حذف می‌کند
 - باینری را حذف می‌کند: `/usr/local/bin/bedrud`، `/tmp/bedrud`، `/tmp/bedrud-livekit-server`
 - دایرکتوری‌ها را حذف می‌کند: `/etc/bedrud`، `/var/lib/bedrud`، `/var/log/bedrud`
+- حذف کاربر سیستم: bedrud
 
-**پیاده‌سازی:** `server/internal/install/debian.go`
+**پیاده‌سازی:** `server/internal/install/` (linux.go, init.go, sysv.go, openrc.go)
 
 **اسناد مرتبط:** [راهنمای نصب - حذف](/fa/docs/getting-started/installation#uninstallation)
 

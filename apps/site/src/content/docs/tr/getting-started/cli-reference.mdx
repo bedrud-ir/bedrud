@@ -124,7 +124,7 @@ bedrud install [bayraklar]
 - `--livekit-domain`: LiveKit yerel olarak çalışır ama istemciler kendi alan adı üzerinden doğrudan bağlanır
 - `--external-livekit`: Yerel LiveKit yok; uzak sunucuya bağlanır
 
-**Uygulama:** `server/internal/install/debian.go`
+**Uygulama:** `server/internal/install/linux.go`
 
 **İlgili belgeler:** [Kurulum Kılavuzu](/tr/docs/getting-started/installation) • [Dağıtım Kılavuzu](/tr/docs/guides/deployment) • [Arka Uç Dağıtım Mantığı](/tr/docs/backend/deployment)
 
@@ -143,8 +143,9 @@ bedrud uninstall
 - systemd, OpenRC ve SysV init servis dosyalarını kaldırır
 - İkili dosyaları kaldırır: `/usr/local/bin/bedrud`, `/tmp/bedrud`, `/tmp/bedrud-livekit-server`
 - Dizinleri kaldırır: `/etc/bedrud`, `/var/lib/bedrud`, `/var/log/bedrud`
+- Sistem kullanıcısını siler: bedrud
 
-**Uygulama:** `server/internal/install/debian.go`
+**Uygulama:** `server/internal/install/` (linux.go, init.go, sysv.go, openrc.go)
 
 **İlgili belgeler:** [Kurulum Kılavuzu - Kaldırma](/tr/docs/getting-started/installation#uninstallation)
 
