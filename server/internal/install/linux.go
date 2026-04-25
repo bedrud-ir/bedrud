@@ -2,16 +2,89 @@ package install
 
 import (
 	"bedrud/internal/utils"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
+	"os/exec"
 	"runtime"
+
+	"gopkg.in/yaml.v3"
 )
 
-func LinuxInstall(enableTLS bool, disableTLS bool, selfSigned bool, overrideIP string, domainArg string, emailArg string, portArg string, certPathArg string, keyPathArg string, lkPortArg string, lkTcpPortArg string, lkUdpPortArg string, fresh bool, behindProxy bool, externalLKURL string, lkDomain string) error {
-	if fresh {
+type installConfigYAML struct {
+	Server struct {
+		Port           string `yaml:"port"`
+		Host           string `yaml:"host"`
+		EnableTLS      bool   `yaml:"enableTLS"`
+		CertFile       string `yaml:"certFile"`
+		KeyFile        string `yaml:"keyFile"`
+		Domain         string `yaml:"domain"`
+		Email          string `yaml:"email"`
+		UseACME        bool   `yaml:"useACME"`
+		BehindProxy    bool   `yaml:"behindProxy,omitempty"`
+		TrustedProxies []string `yaml:"trustedProxies,omitempty"`
+		ProxyHeader    string `yaml:"proxyHeader,omitempty"`
+	} `yaml:"server"`
+	Database struct {
+		Type string `yaml:"type"`
+		Path string `yaml:"path"`
+	} `yaml:"database"`
+	LiveKit struct {
+		Host          string `yaml:"host"`
+		InternalHost  string `yaml:"internalHost"`
+		APIKey        string `yaml:"apiKey"`
+		APISecret     string `yaml:"apiSecret"`
+		ConfigPath    string `yaml:"configPath,omitempty"`
+		SkipTLSVerify bool   `yaml:"skipTLSVerify"`
+		External      bool   `yaml:"external"`
+	} `yaml:"livekit"`
+	Auth struct {
+		JWTSecret     string `yaml:"jwtSecret"`
+		SessionSecret string `yaml:"sessionSecret"`
+		TokenDuration int    `yaml:"tokenDuration"`
+	} `yaml:"auth"`
+	Logger struct {
+		Level      string `yaml:"level"`
+		OutputPath string `yaml:"outputPath"`
+	} `yaml:"logger"`
+	CORS struct {
+		AllowedOrigins   string `yaml:"allowedOrigins"`
+		AllowCredentials bool   `yaml:"allowCredentials"`
+	} `yaml:"cors"`
+}
+
+type livekitConfigYAML struct {
+	Port          string            `yaml:"port"`
+	BindAddresses []string          `yaml:"bind_addresses"`
+	Keys          map[string]string `yaml:"keys"`
+	RTC           struct {
+		TCPPort       string `yaml:"tcp_port"`
+		UDPPort       string `yaml:"udp_port"`
+		UseExternalIP bool   `yaml:"use_external_ip"`
+		NodeIP        string `yaml:"node_ip"`
+	} `yaml:"rtc"`
+	TURN struct {
+		Enabled bool   `yaml:"enabled"`
+		Domain  string `yaml:"domain"`
+		UDPPort int    `yaml:"udp_port"`
+		TLSPort int    `yaml:"tls_port,omitempty"`
+		CertFile string `yaml:"cert_file,omitempty"`
+		KeyFile  string `yaml:"key_file,omitempty"`
+	} `yaml:"turn"`
+	Logging struct {
+		JSON  bool   `yaml:"json"`
+		Level string `yaml:"level"`
+	} `yaml:"logging"`
+}
+
+func LinuxInstall(cfg InstallConfig) error {
+	if cfg.Fresh {
 		fmt.Println("➜ Fresh install: removing previous deployment...")
-		_ = LinuxUninstall()
+		if err := LinuxUninstall(); err != nil {
+			return fmt.Errorf("failed to uninstall previous deployment: %w", err)
+		}
 		fmt.Println()
 	}
 	if runtime.GOOS != "linux" {
@@ -19,88 +92,55 @@ func LinuxInstall(enableTLS bool, disableTLS bool, selfSigned bool, overrideIP s
 	}
 
 	isTerm := true
-	if stat, _ := os.Stdin.Stat(); (stat.Mode() & os.ModeCharDevice) == 0 {
+	if stat, err := os.Stdin.Stat(); err != nil {
+		isTerm = false
+	} else if (stat.Mode() & os.ModeCharDevice) == 0 {
 		isTerm = false
 	}
 
-	// 0. Interactive Prompts
-	fmt.Println("\n--- Bedrud Configuration ---")
-
-	ip := overrideIP
-	if ip == "" {
-		detectedIP := getLocalIP()
-		fmt.Printf("➜ Detect IP address [%s]: ", detectedIP)
-		var inputIP string
-		if isTerm {
-			fmt.Scanln(&inputIP)
-		} else {
-			fmt.Println("(Non-interactive mode, using detected IP)")
-		}
-
-		if inputIP != "" {
-			ip = inputIP
-		} else {
-			ip = detectedIP
-		}
+	if isTerm {
+		promptConfig(os.Stdin, os.Stdout, &cfg)
 	}
 
-	domain := domainArg
-	if domain == "" && isTerm {
-		fmt.Printf("➜ Enter Domain (leave empty for IP-only): ")
-		fmt.Scanln(&domain)
-	}
-
-	email := emailArg
-	useACME := false
-	if domain != "" {
-		if email == "" && isTerm {
-			fmt.Printf("➜ Enter Email for Let's Encrypt: ")
-			fmt.Scanln(&email)
-		}
-		// --no-tls suppresses ACME even when a domain+email are provided
-		if email != "" && !disableTLS {
-			useACME = true
-			enableTLS = true
-		}
-	}
-
-	// If providing custom cert/key, we should enable TLS
-	if certPathArg != "" && keyPathArg != "" && !disableTLS {
-		enableTLS = true
-	}
-
-	// --self-signed explicitly requests self-signed cert generation
-	if selfSigned && !disableTLS {
-		enableTLS = true
-	}
-
-	if !enableTLS && !useACME && !disableTLS && !selfSigned && isTerm {
-		fmt.Printf("➜ Enable Self-Signed TLS? [Y/n]: ")
-		var secure string
-		fmt.Scanln(&secure)
-		if secure == "" || secure == "y" || secure == "Y" {
-			enableTLS = true
-		}
-	}
+	cfg.SetDefaults()
 
 	fmt.Println("➜ Preparing Bedrud installation...")
-	fmt.Println("➜ Using IP:", ip)
-	if domain != "" {
-		fmt.Println("➜ Using Domain:", domain)
+	fmt.Println("➜ Using IP:", cfg.OverrideIP)
+	if cfg.Domain != "" {
+		fmt.Println("➜ Using Domain:", cfg.Domain)
 	}
 
-	_ = os.MkdirAll("/etc/bedrud", 0755)
-	_ = os.MkdirAll("/var/lib/bedrud", 0755)
-	_ = os.MkdirAll("/var/lib/bedrud/certs", 0750)
-	_ = os.MkdirAll("/var/log/bedrud", 0755)
+	if err := os.MkdirAll("/etc/bedrud", 0755); err != nil {
+		return fmt.Errorf("failed to create /etc/bedrud: %w", err)
+	}
+	if err := os.MkdirAll("/var/lib/bedrud", 0755); err != nil {
+		return fmt.Errorf("failed to create /var/lib/bedrud: %w", err)
+	}
+	if err := os.MkdirAll("/var/lib/bedrud/certs", 0750); err != nil {
+		return fmt.Errorf("failed to create /var/lib/bedrud/certs: %w", err)
+	}
+	if err := os.MkdirAll("/var/log/bedrud", 0755); err != nil {
+		return fmt.Errorf("failed to create /var/log/bedrud: %w", err)
+	}
+
+	if err := createBedrudUser(); err != nil {
+		fmt.Printf("⚠ Warning: could not create 'bedrud' user: %v\n", err)
+	}
+
+	// Chown directories to bedrud:bedrud
+	for _, dir := range []string{"/etc/bedrud", "/var/lib/bedrud", "/var/log/bedrud"} {
+		if out, err := exec.Command("chown", "-R", "bedrud:bedrud", dir).CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to chown %s: %s %w", dir, string(out), err)
+		}
+	}
 
 	// 1. Install Bedrud Binary
-	// Read via /proc/self/exe so the binary is accessible even if --fresh deleted
-	// the file we were launched from (os.Executable path may already be unlinked).
 	selfBytes, err := os.ReadFile("/proc/self/exe")
 	if err != nil {
-		// Fallback: try the reported executable path (works when not self-overwriting)
-		execPath, _ := os.Executable()
+		execPath, errFallback := os.Executable()
+		if errFallback != nil {
+			return fmt.Errorf("failed to get executable path: %w", errFallback)
+		}
 		selfBytes, err = os.ReadFile(execPath)
 	}
 	if err != nil || len(selfBytes) == 0 {
@@ -110,198 +150,153 @@ func LinuxInstall(enableTLS bool, disableTLS bool, selfSigned bool, overrideIP s
 		return fmt.Errorf("failed to install binary to /usr/local/bin/bedrud: %w", err)
 	}
 
+	apiKey := generateSecret(32)
+	apiSecret := generateSecret(48)
+	jwtSecret := generateSecret(32)
+	sessionSecret := generateSecret(32)
+
 	protocol := "http"
-	if enableTLS {
+	if cfg.EnableTLS {
 		protocol = "https"
 	}
 
-	apiKey := "bedrud_api_key_system_default_long"
-	apiSecret := "bedrud_secret_key_must_be_over_32_characters_for_livekit"
-
-	lkPort := lkPortArg
-	if lkPort == "" {
-		lkPort = "7880"
-	}
-	lkTcpPort := lkTcpPortArg
-	if lkTcpPort == "" {
-		lkTcpPort = "7881"
-	}
-	lkUdpPort := lkUdpPortArg
-	if lkUdpPort == "" {
-		lkUdpPort = "7882"
-	}
-
-	// 2. Create Bedrud Config
-	// We now proxy LiveKit through port 443 /livekit prefix
-	port := portArg
-	if port == "" {
-		port = "443"
-		if !enableTLS {
-			port = "8090"
-		}
-	}
-
-	certFile := certPathArg
+	certFile := cfg.CertPath
 	if certFile == "" {
 		certFile = "/etc/bedrud/cert.pem"
 	}
-	keyFile := keyPathArg
+	keyFile := cfg.KeyPath
 	if keyFile == "" {
 		keyFile = "/etc/bedrud/key.pem"
 	}
 
-	hostForLK := ip
-	if domain != "" {
-		hostForLK = domain
+	hostForLK := cfg.OverrideIP
+	if cfg.Domain != "" {
+		hostForLK = cfg.Domain
 	}
 
-	livekitPublicHost := fmt.Sprintf("%s://%s:%s/livekit", protocol, hostForLK, port)
-	if port == "443" {
+	livekitPublicHost := fmt.Sprintf("%s://%s:%s/livekit", protocol, hostForLK, cfg.Port)
+	if cfg.Port == "443" {
 		livekitPublicHost = fmt.Sprintf("https://%s/livekit", hostForLK)
 	}
 
-	// CORS: when a domain is known, lock down to that origin so credentials work.
-	// With wildcard origins, credentials must be false (browsers and Fiber both reject it).
 	corsOrigins := "*"
-	corsCredentials := "false"
-	if domain != "" {
-		corsOrigins = fmt.Sprintf("%s://%s", protocol, domain)
-		corsCredentials = "true"
+	corsCredentials := false
+	if cfg.Domain != "" {
+		corsOrigins = fmt.Sprintf("%s://%s", protocol, cfg.Domain)
+		corsCredentials = true
 	}
 
-	// Reverse-proxy / CDN support.
-	// behindProxy=true means TLS is terminated by the CDN (e.g. Cloudflare) so
-	// the server runs plain HTTP but must trust X-Forwarded-* headers.
-	proxyConfig := ""
-	if behindProxy || (!enableTLS && domain != "") {
-		proxyConfig = `  behindProxy: true
-  trustedProxies:
-    - "127.0.0.1"
-    - "0.0.0.0/0"
-  proxyHeader: "X-Forwarded-For"
-`
-	}
-
-	// Determine LiveKit topology:
-	//   externalLKURL  → fully external (different machine), no local LK process
-	//   lkDomain       → local LK process, but clients connect via separate domain (bypasses CDN)
-	//   default        → LK runs locally, proxied through Bedrud at /livekit
-	isExternalLK := externalLKURL != ""
-	hasSeparateLKDomain := lkDomain != "" && !isExternalLK
+	isExternalLK := cfg.ExternalLKURL != ""
+	hasSeparateLKDomain := cfg.LKDomain != "" && !isExternalLK
 
 	if isExternalLK {
-		livekitPublicHost = externalLKURL
-		fmt.Println("➜ Using external LiveKit:", livekitPublicHost)
+		livekitPublicHost = cfg.ExternalLKURL
 	} else if hasSeparateLKDomain {
-		livekitPublicHost = fmt.Sprintf("https://%s", lkDomain)
-		fmt.Println("➜ LiveKit domain (direct, no CDN):", livekitPublicHost)
+		livekitPublicHost = fmt.Sprintf("https://%s", cfg.LKDomain)
 	}
 
-	// external=true tells Bedrud: don't start/proxy LK internally.
-	// For hasSeparateLKDomain the livekit.service still runs it locally.
-	lkExternalFlag := "false"
-	if isExternalLK || hasSeparateLKDomain {
-		lkExternalFlag = "true"
+	// Build config.yaml
+	var configYAML installConfigYAML
+	configYAML.Server.Port = cfg.Port
+	configYAML.Server.Host = "0.0.0.0"
+	configYAML.Server.EnableTLS = cfg.EnableTLS
+	configYAML.Server.CertFile = certFile
+	configYAML.Server.KeyFile = keyFile
+	configYAML.Server.Domain = cfg.Domain
+	configYAML.Server.Email = cfg.Email
+	configYAML.Server.UseACME = (cfg.Email != "" && !cfg.DisableTLS && cfg.Domain != "")
+	
+	if cfg.BehindProxy || (!cfg.EnableTLS && cfg.Domain != "") {
+		configYAML.Server.BehindProxy = true
+		configYAML.Server.TrustedProxies = []string{"127.0.0.1", "::1"}
+		configYAML.Server.ProxyHeader = "X-Forwarded-For"
+		if !cfg.BehindProxy {
+			fmt.Println("⚠ Warning: behindProxy enabled because domain is set without TLS. Defaulting trustedProxies to localhost.")
+		}
 	}
-	lkInternalHost := fmt.Sprintf("http://127.0.0.1:%s", lkPort)
+
+	configYAML.Database.Type = "sqlite"
+	configYAML.Database.Path = "/var/lib/bedrud/bedrud.db"
+
+	configYAML.LiveKit.Host = livekitPublicHost
+	configYAML.LiveKit.InternalHost = fmt.Sprintf("http://127.0.0.1:%s", cfg.LKPort)
 	if isExternalLK {
-		lkInternalHost = livekitPublicHost
+		configYAML.LiveKit.InternalHost = livekitPublicHost
 	}
-	lkConfigPath := `  configPath: "/etc/bedrud/livekit.yaml"`
-	if isExternalLK {
-		lkConfigPath = ""
-	}
-
-	configContent := fmt.Sprintf(`server:
-  port: "%s"
-  host: "0.0.0.0"
-  enableTLS: %v
-  certFile: "%s"
-  keyFile: "%s"
-  domain: "%s"
-  email: "%s"
-  useACME: %v
-%s
-database:
-  type: "sqlite"
-  path: "/var/lib/bedrud/bedrud.db"
-
-livekit:
-  host: "%s"
-  internalHost: "%s"
-  apiKey: "%s"
-  apiSecret: "%s"
-%s
-  skipTLSVerify: true
-  external: %s
-
-auth:
-  jwtSecret: "bedrud_jwt_secret_at_least_32_chars_long_now"
-  sessionSecret: "bedrud_session_secret_at_least_32_chars_long_now"
-  tokenDuration: 24
-
-logger:
-  level: "debug"
-  outputPath: "/var/log/bedrud/bedrud.log"
-
-cors:
-  allowedOrigins: "%s"
-  allowCredentials: %s
-`, port, enableTLS, certFile, keyFile, domain, email, useACME, proxyConfig,
-		livekitPublicHost, lkInternalHost, apiKey, apiSecret, lkConfigPath, lkExternalFlag,
-		corsOrigins, corsCredentials)
-
-	_ = os.WriteFile("/etc/bedrud/config.yaml", []byte(configContent), 0644)
-
-	// 3. Create LiveKit Config (only needed for embedded LiveKit)
+	configYAML.LiveKit.APIKey = apiKey
+	configYAML.LiveKit.APISecret = apiSecret
 	if !isExternalLK {
-		// Use explicit node_ip and disable external discovery to avoid LXC network issues.
-		// TURN is enabled so WebRTC works through VPNs and restrictive firewalls.
-		// When a separate LK domain is set, use it for TURN so clients can reach it directly.
+		configYAML.LiveKit.ConfigPath = "/etc/bedrud/livekit.yaml"
+	}
+	configYAML.LiveKit.SkipTLSVerify = true
+	configYAML.LiveKit.External = isExternalLK || hasSeparateLKDomain
+
+	configYAML.Auth.JWTSecret = jwtSecret
+	configYAML.Auth.SessionSecret = sessionSecret
+	configYAML.Auth.TokenDuration = 24
+
+	configYAML.Logger.Level = "debug"
+	configYAML.Logger.OutputPath = "/var/log/bedrud/bedrud.log"
+
+	configYAML.CORS.AllowedOrigins = corsOrigins
+	configYAML.CORS.AllowCredentials = corsCredentials
+
+	configData, err := yaml.Marshal(&configYAML)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config.yaml: %w", err)
+	}
+	if err := os.WriteFile("/etc/bedrud/config.yaml", configData, 0600); err != nil {
+		return fmt.Errorf("failed to write config.yaml: %w", err)
+	}
+	_ = exec.Command("chown", "bedrud:bedrud", "/etc/bedrud/config.yaml").Run()
+
+	// 3. Create LiveKit Config
+	if !isExternalLK {
 		turnDomain := hostForLK
 		if hasSeparateLKDomain {
-			turnDomain = lkDomain
-		}
-		// TURN TLS requires cert files; omit tls_port entirely when TLS is disabled
-		// to avoid "TURN tls cert required" error on LiveKit startup.
-		turnTLSSection := ""
-		if enableTLS {
-			turnTLSSection = fmt.Sprintf("  tls_port: 5349\n  cert_file: \"%s\"\n  key_file: \"%s\"\n", certFile, keyFile)
+			turnDomain = cfg.LKDomain
 		}
 
-		// When clients connect directly (separate domain), LK must listen on a public interface.
-		// In the default embedded mode it only needs loopback.
 		lkBindAddr := "127.0.0.1"
 		if hasSeparateLKDomain {
 			lkBindAddr = "0.0.0.0"
 		}
 
-		lkContent := fmt.Sprintf(`port: %s
-bind_addresses:
-  - %s
-keys:
-  %s: %s
-rtc:
-  tcp_port: %s
-  udp_port: %s
-  use_external_ip: false
-  node_ip: %s
-turn:
-  enabled: true
-  domain: %s
-  udp_port: 3478
-%slogging:
-  json: true
-  level: debug
-`, lkPort, lkBindAddr, apiKey, apiSecret, lkTcpPort, lkUdpPort, ip, turnDomain, turnTLSSection)
+		var lkYAML livekitConfigYAML
+		lkYAML.Port = cfg.LKPort
+		lkYAML.BindAddresses = []string{lkBindAddr}
+		lkYAML.Keys = map[string]string{apiKey: apiSecret}
+		lkYAML.RTC.TCPPort = cfg.LKTcpPort
+		lkYAML.RTC.UDPPort = cfg.LKUdpPort
+		lkYAML.RTC.UseExternalIP = false
+		lkYAML.RTC.NodeIP = cfg.OverrideIP
+		lkYAML.TURN.Enabled = true
+		lkYAML.TURN.Domain = turnDomain
+		lkYAML.TURN.UDPPort = 3478
+		if cfg.EnableTLS {
+			lkYAML.TURN.TLSPort = 5349
+			lkYAML.TURN.CertFile = certFile
+			lkYAML.TURN.KeyFile = keyFile
+		}
+		lkYAML.Logging.JSON = true
+		lkYAML.Logging.Level = "debug"
 
-		_ = os.WriteFile("/etc/bedrud/livekit.yaml", []byte(lkContent), 0644)
+		lkData, err := yaml.Marshal(&lkYAML)
+		if err != nil {
+			return fmt.Errorf("failed to marshal livekit.yaml: %w", err)
+		}
+		if err := os.WriteFile("/etc/bedrud/livekit.yaml", lkData, 0600); err != nil {
+			return fmt.Errorf("failed to write livekit.yaml: %w", err)
+		}
+		_ = exec.Command("chown", "bedrud:bedrud", "/etc/bedrud/livekit.yaml").Run()
 	}
 
-	if enableTLS && certPathArg == "" && keyPathArg == "" {
+	if cfg.EnableTLS && cfg.CertPath == "" && cfg.KeyPath == "" {
 		cp, kp := "/etc/bedrud/cert.pem", "/etc/bedrud/key.pem"
 		if _, err := os.Stat(cp); os.IsNotExist(err) {
-			_ = utils.GenerateSelfSignedCert(cp, kp)
+			if err := utils.GenerateSelfSignedCert(cp, kp); err != nil {
+				return fmt.Errorf("failed to generate self-signed cert: %w", err)
+			}
 		}
 	}
 
@@ -309,9 +304,9 @@ turn:
 	initSystem := detectInitSystem()
 	fmt.Println("➜ Detected init system:", initSystem)
 
-	cfg := buildServiceConfig(isExternalLK)
+	serviceCfg := buildServiceConfig(isExternalLK)
 
-	stopAllInitSystems(cfg.Services)
+	stopAllInitSystems(serviceCfg.Services)
 	cleanupStaleServiceFiles(initSystem)
 
 	lkManagedEnv := ""
@@ -322,46 +317,149 @@ turn:
 	}
 
 	lkService := `[Unit]
-Description=LiveKit Server (Embedded in Bedrud)
-After=network.target
+Description=Bedrud Video Meeting Server (LiveKit)
+Documentation=https://docs.bedrud.com
+After=network.target network-online.target
+Wants=network-online.target
 
 [Service]
+User=bedrud
+Group=bedrud
+Type=simple
 ExecStart=/usr/local/bin/bedrud --livekit --config /etc/bedrud/livekit.yaml
-Restart=always
+Restart=on-failure
+RestartSec=5s
 WorkingDirectory=/etc/bedrud
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=livekit
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/bedrud /var/log/bedrud /etc/bedrud
 
 [Install]
 WantedBy=multi-user.target
 `
 
 	serviceContent := fmt.Sprintf(`[Unit]
-Description=Bedrud Meeting Server
-After=%s
+Description=Bedrud Video Meeting Server
+Documentation=https://docs.bedrud.com
+After=%s network-online.target
+Wants=network-online.target
 
 [Service]
+User=bedrud
+Group=bedrud
+Type=simple
 ExecStart=/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
-Restart=always
+Restart=on-failure
+RestartSec=5s
 Environment=CONFIG_PATH=/etc/bedrud/config.yaml%s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bedrud
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/bedrud /var/log/bedrud /etc/bedrud
 
 [Install]
 WantedBy=multi-user.target
 `, bedrudAfter, lkManagedEnv)
 
-	writeServiceFiles(initSystem, cfg, bedrudAfter, lkManagedEnv, lkService, serviceContent)
+	if err := writeServiceFiles(initSystem, serviceCfg, bedrudAfter, lkManagedEnv, lkService, serviceContent); err != nil {
+		return fmt.Errorf("failed to write service files: %w", err)
+	}
 
 	fmt.Println("➜ Enabling and starting services...")
-	enableAndStartServices(initSystem, cfg)
+	if err := enableAndStartServices(initSystem, serviceCfg); err != nil {
+		return fmt.Errorf("failed to enable/start services: %w", err)
+	}
 
-	fmt.Println("✓ Installation complete!")
-	accessURL := fmt.Sprintf("%s://%s:%s", protocol, ip, port)
-	if port == "443" || port == "80" {
-		accessURL = fmt.Sprintf("%s://%s", protocol, ip)
+	fmt.Println("\n✓ Installation complete!")
+	fmt.Println("--------------------------------------------------")
+	fmt.Println("Generated Secrets (Save these!):")
+	fmt.Println("  LiveKit API Key:   ", apiKey)
+	fmt.Println("  LiveKit API Secret:", apiSecret)
+	fmt.Println("  JWT Secret:        ", jwtSecret)
+	fmt.Println("  Session Secret:    ", sessionSecret)
+	fmt.Println("--------------------------------------------------")
+
+	accessURL := fmt.Sprintf("%s://%s:%s", protocol, cfg.OverrideIP, cfg.Port)
+	if cfg.Port == "443" || cfg.Port == "80" {
+		accessURL = fmt.Sprintf("%s://%s", protocol, cfg.OverrideIP)
 	}
 	fmt.Println("  Access URL: ", accessURL)
-	if domain != "" {
-		fmt.Println("  Domain URL: ", fmt.Sprintf("%s://%s", protocol, domain))
+	if cfg.Domain != "" {
+		fmt.Println("  Domain URL: ", fmt.Sprintf("%s://%s", protocol, cfg.Domain))
 	}
 	fmt.Println("  LiveKit Host:", livekitPublicHost)
+	return nil
+}
+
+func promptConfig(r io.Reader, w io.Writer, cfg *InstallConfig) {
+	fmt.Fprintln(w, "\n--- Bedrud Configuration ---")
+
+	if cfg.OverrideIP == "" {
+		detectedIP := getLocalIP()
+		fmt.Fprintf(w, "➜ Detect IP address [%s]: ", detectedIP)
+		var inputIP string
+		fmt.Fscanln(r, &inputIP)
+
+		if inputIP != "" {
+			cfg.OverrideIP = inputIP
+		} else {
+			cfg.OverrideIP = detectedIP
+		}
+	}
+
+	if cfg.Domain == "" {
+		fmt.Fprintf(w, "➜ Enter Domain (leave empty for IP-only): ")
+		fmt.Fscanln(r, &cfg.Domain)
+	}
+
+	if cfg.Domain != "" {
+		if cfg.Email == "" {
+			fmt.Fprintf(w, "➜ Enter Email for Let's Encrypt: ")
+			fmt.Fscanln(r, &cfg.Email)
+		}
+		if cfg.Email != "" && !cfg.DisableTLS {
+			cfg.EnableTLS = true
+		}
+	}
+
+	if cfg.CertPath != "" && cfg.KeyPath != "" && !cfg.DisableTLS {
+		cfg.EnableTLS = true
+	}
+
+	if cfg.SelfSigned && !cfg.DisableTLS {
+		cfg.EnableTLS = true
+	}
+
+	if !cfg.EnableTLS && cfg.Email == "" && !cfg.DisableTLS && !cfg.SelfSigned {
+		fmt.Fprintf(w, "➜ Enable Self-Signed TLS? [Y/n]: ")
+		var secure string
+		fmt.Fscanln(r, &secure)
+		if secure == "" || secure == "y" || secure == "Y" {
+			cfg.EnableTLS = true
+		}
+	}
+}
+
+func createBedrudUser() error {
+	// Check if user exists
+	if _, err := exec.Command("getent", "passwd", "bedrud").Output(); err == nil {
+		return nil // Already exists
+	}
+
+	// Create system user: no-login, home at /var/lib/bedrud
+	cmd := exec.Command("useradd", "-r", "-s", "/usr/sbin/nologin", "-d", "/var/lib/bedrud", "bedrud")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to create bedrud user: %s %w", string(out), err)
+	}
 	return nil
 }
 
@@ -395,21 +493,49 @@ func LinuxUninstall() error {
 
 	// Remove binaries
 	fmt.Println("➜ Removing binaries...")
-	os.Remove("/usr/local/bin/bedrud")
-	os.Remove("/tmp/bedrud")
-	os.Remove("/tmp/bedrud-livekit-server")
+	var errs []error
+	if err := os.Remove("/usr/local/bin/bedrud"); err != nil && !os.IsNotExist(err) {
+		errs = append(errs, fmt.Errorf("failed to remove /usr/local/bin/bedrud: %w", err))
+	}
+	if err := os.Remove("/tmp/bedrud"); err != nil && !os.IsNotExist(err) {
+		errs = append(errs, fmt.Errorf("failed to remove /tmp/bedrud: %w", err))
+	}
+	if err := os.Remove("/tmp/bedrud-livekit-server"); err != nil && !os.IsNotExist(err) {
+		errs = append(errs, fmt.Errorf("failed to remove /tmp/bedrud-livekit-server: %w", err))
+	}
 
 	// Remove PID files
 	for _, svc := range svcs {
-		os.Remove(fmt.Sprintf("/var/run/%s.pid", svc))
+		pidFile := fmt.Sprintf("/var/run/%s.pid", svc)
+		if err := os.Remove(pidFile); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, fmt.Errorf("failed to remove %s: %w", pidFile, err))
+		}
 	}
 
 	// Remove config and data
 	fmt.Println("➜ Removing configurations and data...")
-	os.RemoveAll("/etc/bedrud")
-	os.RemoveAll("/var/lib/bedrud")
-	os.RemoveAll("/var/log/bedrud")
+	if err := os.RemoveAll("/etc/bedrud"); err != nil {
+		errs = append(errs, fmt.Errorf("failed to remove /etc/bedrud: %w", err))
+	}
+	if err := os.RemoveAll("/var/lib/bedrud"); err != nil {
+		errs = append(errs, fmt.Errorf("failed to remove /var/lib/bedrud: %w", err))
+	}
+	if err := os.RemoveAll("/var/log/bedrud"); err != nil {
+		errs = append(errs, fmt.Errorf("failed to remove /var/log/bedrud: %w", err))
+	}
+
+	if _, err := exec.Command("getent", "passwd", "bedrud").Output(); err == nil {
+		fmt.Println("➜ Removing bedrud system user...")
+		if out, err := exec.Command("userdel", "-r", "bedrud").CombinedOutput(); err != nil {
+			fmt.Printf("⚠ Warning: failed to remove bedrud user: %s %v\n", string(out), err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 
 	fmt.Println("✓ Uninstallation complete!")
 	return nil
 }
+

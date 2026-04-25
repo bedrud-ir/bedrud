@@ -26,58 +26,85 @@ SCRIPTNAME=/etc/init.d/$NAME
 
 [ -x "$DAEMON" ] || exit 0
 
-. /lib/lsb/init-functions
+# Compat Shim
+if [ -f /lib/lsb/init-functions ]; then
+    . /lib/lsb/init-functions
+    start_daemon() {
+        start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile \
+            --background --chuid bedrud:bedrud --exec $DAEMON -- "$@"
+    }
+    stop_daemon() {
+        start-stop-daemon --stop --quiet --pidfile $PIDFILE --exec $DAEMON --retry 30
+    }
+    log_msg() { log_daemon_msg "$1" "$NAME"; }
+    log_end() { log_end_msg "$1"; }
+elif [ -f /etc/rc.d/init.d/functions ]; then
+    . /etc/rc.d/init.d/functions
+    start_daemon() {
+        daemon --pidfile=$PIDFILE --user=bedrud "nohup $DAEMON $@ > /dev/null 2>&1 &"
+        [ $? -eq 0 ] && touch /var/lock/subsys/$NAME
+    }
+    stop_daemon() {
+        killproc -p $PIDFILE "$DAEMON"
+        rm -f /var/lock/subsys/$NAME
+    }
+    log_msg() { echo -n "$1: "; }
+    log_end() { [ "$1" -eq 0 ] && echo "OK" || echo "FAILED"; }
+else
+    start_daemon() {
+        sudo -u bedrud nohup "$DAEMON" "$@" > /dev/null 2>&1 &
+        echo $! > $PIDFILE
+    }
+    stop_daemon() {
+        kill $(cat $PIDFILE) 2>/dev/null
+    }
+    log_msg() { echo -n "$1: "; }
+    log_end() { [ "$1" -eq 0 ] && echo "OK" || echo "FAILED"; }
+fi
+
+%s
 
 do_start() {
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
-		|| return 1
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile \
-		--background --exec $DAEMON -- $DAEMON_ARGS \
-		|| return 2
+    cd /etc/bedrud
+    start_daemon $DAEMON_ARGS || return 2
 }
 
 do_stop() {
-	start-stop-daemon --stop --quiet --pidfile $PIDFILE --exec $DAEMON --retry 30 \
-		|| return 1
-	rm -f $PIDFILE
-	return 0
+    stop_daemon || return 1
+    rm -f $PIDFILE
+    return 0
 }
 
 case "$1" in
 	start)
-		log_daemon_msg "Starting $DESC" "$NAME"
+		log_msg "Starting $DESC"
 		do_start
-		case "$?" in
-			0|1) log_end_msg 0 ;;
-			2)   log_end_msg 1 ;;
-		esac
+		log_end $?
 		;;
 	stop)
-		log_daemon_msg "Stopping $DESC" "$NAME"
+		log_msg "Stopping $DESC"
 		do_stop
-		case "$?" in
-			0|1) log_end_msg 0 ;;
-			2)   log_end_msg 1 ;;
-		esac
+		log_end $?
 		;;
 	restart)
-		log_daemon_msg "Restarting $DESC" "$NAME"
-		do_stop
-		case "$?" in
-			0|1)
-				do_start
-				case "$?" in
-					0) log_end_msg 0 ;;
-					*) log_end_msg 1 ;;
-				esac
-				;;
-			*)
-				log_end_msg 1
-				;;
-		esac
+		$0 stop
+		sleep 1
+		$0 start
 		;;
 	status)
-		status_of_proc -p $PIDFILE "$DAEMON" "$NAME" && exit 0 || exit $?
+		if [ -f /lib/lsb/init-functions ]; then
+            status_of_proc -p $PIDFILE "$DAEMON" "$NAME" && exit 0 || exit $?
+        elif [ -f /etc/rc.d/init.d/functions ]; then
+            status -p $PIDFILE "$DAEMON"
+        else
+            if [ -f $PIDFILE ] && kill -0 $(cat $PIDFILE) 2>/dev/null; then
+                echo "$NAME is running"
+                exit 0
+            else
+                echo "$NAME is stopped"
+                exit 1
+            fi
+        fi
 		;;
 	*)
 		echo "Usage: $SCRIPTNAME {start|stop|restart|status}" >&2
@@ -108,58 +135,83 @@ SCRIPTNAME=/etc/init.d/$NAME
 
 [ -x "$DAEMON" ] || exit 0
 
-. /lib/lsb/init-functions
+# Compat Shim
+if [ -f /lib/lsb/init-functions ]; then
+    . /lib/lsb/init-functions
+    start_daemon() {
+        start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile \
+            --background --chuid bedrud:bedrud --exec $DAEMON -- "$@"
+    }
+    stop_daemon() {
+        start-stop-daemon --stop --quiet --pidfile $PIDFILE --exec $DAEMON --retry 30
+    }
+    log_msg() { log_daemon_msg "$1" "$NAME"; }
+    log_end() { log_end_msg "$1"; }
+elif [ -f /etc/rc.d/init.d/functions ]; then
+    . /etc/rc.d/init.d/functions
+    start_daemon() {
+        daemon --pidfile=$PIDFILE --user=bedrud "nohup $DAEMON $@ > /dev/null 2>&1 &"
+        [ $? -eq 0 ] && touch /var/lock/subsys/$NAME
+    }
+    stop_daemon() {
+        killproc -p $PIDFILE "$DAEMON"
+        rm -f /var/lock/subsys/$NAME
+    }
+    log_msg() { echo -n "$1: "; }
+    log_end() { [ "$1" -eq 0 ] && echo "OK" || echo "FAILED"; }
+else
+    start_daemon() {
+        sudo -u bedrud nohup "$DAEMON" "$@" > /dev/null 2>&1 &
+        echo $! > $PIDFILE
+    }
+    stop_daemon() {
+        kill $(cat $PIDFILE) 2>/dev/null
+    }
+    log_msg() { echo -n "$1: "; }
+    log_end() { [ "$1" -eq 0 ] && echo "OK" || echo "FAILED"; }
+fi
 
 do_start() {
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
-		|| return 1
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --make-pidfile \
-		--background --exec $DAEMON -- $DAEMON_ARGS \
-		|| return 2
+    cd /etc/bedrud
+    start_daemon $DAEMON_ARGS || return 2
 }
 
 do_stop() {
-	start-stop-daemon --stop --quiet --pidfile $PIDFILE --exec $DAEMON --retry 30 \
-		|| return 1
-	rm -f $PIDFILE
-	return 0
+    stop_daemon || return 1
+    rm -f $PIDFILE
+    return 0
 }
 
 case "$1" in
 	start)
-		log_daemon_msg "Starting $DESC" "$NAME"
+		log_msg "Starting $DESC"
 		do_start
-		case "$?" in
-			0|1) log_end_msg 0 ;;
-			2)   log_end_msg 1 ;;
-		esac
+		log_end $?
 		;;
 	stop)
-		log_daemon_msg "Stopping $DESC" "$NAME"
+		log_msg "Stopping $DESC"
 		do_stop
-		case "$?" in
-			0|1) log_end_msg 0 ;;
-			2)   log_end_msg 1 ;;
-		esac
+		log_end $?
 		;;
 	restart)
-		log_daemon_msg "Restarting $DESC" "$NAME"
-		do_stop
-		case "$?" in
-			0|1)
-				do_start
-				case "$?" in
-					0) log_end_msg 0 ;;
-					*) log_end_msg 1 ;;
-				esac
-				;;
-			*)
-				log_end_msg 1
-				;;
-		esac
+		$0 stop
+		sleep 1
+		$0 start
 		;;
 	status)
-		status_of_proc -p $PIDFILE "$DAEMON" "$NAME" && exit 0 || exit $?
+		if [ -f /lib/lsb/init-functions ]; then
+            status_of_proc -p $PIDFILE "$DAEMON" "$NAME" && exit 0 || exit $?
+        elif [ -f /etc/rc.d/init.d/functions ]; then
+            status -p $PIDFILE "$DAEMON"
+        else
+            if [ -f $PIDFILE ] && kill -0 $(cat $PIDFILE) 2>/dev/null; then
+                echo "$NAME is running"
+                exit 0
+            else
+                echo "$NAME is stopped"
+                exit 1
+            fi
+        fi
 		;;
 	*)
 		echo "Usage: $SCRIPTNAME {start|stop|restart|status}" >&2
@@ -171,16 +223,25 @@ esac
 
 func writeSysVFiles(cfg serviceConfig, lkManagedEnv string, bedrudAfter string) error {
 	if cfg.HasLivekit {
-		lkScript := sysvLivekitTemplate
-		_ = os.WriteFile("/etc/init.d/livekit", []byte(lkScript), 0755)
+		if err := os.WriteFile("/etc/init.d/livekit", []byte(sysvLivekitTemplate), 0755); err != nil {
+			return fmt.Errorf("failed to write livekit init script: %w", err)
+		}
 	}
 
 	lkDep := ""
 	if cfg.HasLivekit {
 		lkDep = "$livekit"
 	}
-	bedrudScript := fmt.Sprintf(sysvBedrudTemplate, lkDep, lkDep, cfg.ConfigPath)
-	_ = os.WriteFile("/etc/init.d/bedrud", []byte(bedrudScript), 0755)
+
+	envExports := "export CONFIG_PATH=" + cfg.ConfigPath
+	if lkManagedEnv != "" {
+		envExports += "\nexport LIVEKIT_MANAGED=true"
+	}
+
+	bedrudScript := fmt.Sprintf(sysvBedrudTemplate, lkDep, lkDep, cfg.ConfigPath, envExports)
+	if err := os.WriteFile("/etc/init.d/bedrud", []byte(bedrudScript), 0755); err != nil {
+		return fmt.Errorf("failed to write bedrud init script: %w", err)
+	}
 
 	return nil
 }

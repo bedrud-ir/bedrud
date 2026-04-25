@@ -164,8 +164,12 @@ func writeServiceFiles(initSystem string, cfg serviceConfig, bedrudAfter string,
 
 func writeSystemdFiles(cfg serviceConfig, lkService string, serviceContent string) error {
 	if cfg.HasLivekit {
-		_ = os.WriteFile("/etc/systemd/system/livekit.service", []byte(lkService), 0644)
+		if err := os.WriteFile("/etc/systemd/system/livekit.service", []byte(lkService), 0644); err != nil {
+			return fmt.Errorf("failed to write livekit.service: %w", err)
+		}
 	}
-	_ = os.WriteFile("/etc/systemd/system/bedrud.service", []byte(serviceContent), 0644)
+	if err := os.WriteFile("/etc/systemd/system/bedrud.service", []byte(serviceContent), 0644); err != nil {
+		return fmt.Errorf("failed to write bedrud.service: %w", err)
+	}
 	return nil
 }
