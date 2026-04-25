@@ -92,8 +92,26 @@ func main() {
 		lkDomainFlag := installCmd.String("livekit-domain", "", "Separate domain for the local LiveKit server (e.g. lk.example.com, bypasses CDN)")
 		installCmd.Parse(os.Args[2:])
 
-		tls := (*enableTLS || *selfSigned) && !*noTLS
-		if err := install.LinuxInstall(tls, *noTLS, *selfSigned && !*noTLS, *ipOverride, *domainFlag, *emailFlag, *portFlag, *certFlag, *keyFlag, *lkPortFlag, *lkTcpPortFlag, *lkUdpPortFlag, *freshFlag, *behindProxyFlag, *externalLKFlag, *lkDomainFlag); err != nil {
+		cfg := install.InstallConfig{
+			EnableTLS:     (*enableTLS || *selfSigned) && !*noTLS,
+			DisableTLS:    *noTLS,
+			SelfSigned:    *selfSigned && !*noTLS,
+			OverrideIP:    *ipOverride,
+			Domain:        *domainFlag,
+			Email:         *emailFlag,
+			Port:          *portFlag,
+			CertPath:      *certFlag,
+			KeyPath:       *keyFlag,
+			LKPort:        *lkPortFlag,
+			LKTcpPort:     *lkTcpPortFlag,
+			LKUdpPort:     *lkUdpPortFlag,
+			Fresh:         *freshFlag,
+			BehindProxy:   *behindProxyFlag,
+			ExternalLKURL: *externalLKFlag,
+			LKDomain:      *lkDomainFlag,
+		}
+
+		if err := install.LinuxInstall(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Installation error: %v\n", err)
 			os.Exit(1)
 		}
