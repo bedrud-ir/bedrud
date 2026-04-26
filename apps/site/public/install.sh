@@ -10,6 +10,8 @@ else
   INSTALL_DIR="${BEDRUD_INSTALL:-$HOME/.local/bin}"
 fi
 VERSION="latest"
+BUILD=false
+BRANCH="main"
 SKIP_SHELL=false
 NO_SETUP=false
 CONFIG_FILE="/etc/bedrud/config.yaml"
@@ -101,6 +103,13 @@ esac
 command -v curl >/dev/null 2>&1 || error "curl is required (https://curl.se)"
 command -v tar >/dev/null 2>&1 || error "tar is required"
 
+if [[ "$BUILD" == true ]]; then
+  command -v git >/dev/null 2>&1 || error "git is required for --build mode"
+  command -v go >/dev/null 2>&1 || error "Go is required for --build mode (https://go.dev/dl)"
+  command -v make >/dev/null 2>&1 || error "make is required for --build mode"
+  command -v bun >/dev/null 2>&1 || error "Bun is required for --build mode (https://bun.sh)"
+fi
+
 # ── Arg parse ───────────────────────────────────────────────────
 usage() {
   cat <<EOF
@@ -111,6 +120,8 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 Options:
   --install-dir <dir>   Install directory (default: ~/.local/bin, /usr/local/bin if root)
   --version <ver>       Install specific version (default: latest)
+  --build               Build from source instead of downloading a release
+  --branch <name>       Git branch to clone (default: main, requires --build)
   --skip-shell          Skip shell RC / PATH modification
   --no-setup            Download only, skip interactive server setup
   -h, --help            Show this help
@@ -123,6 +134,8 @@ Examples:
   curl -fsSL https://get.bedrud.org | bash
   curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
   curl -fsSL https://get.bedrud.org | bash -s -- --install-dir /usr/local/bin
+  curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+  BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
   curl -fsSL https://get.bedrud.org | bash -s -- --no-setup
 EOF
   exit 0
@@ -132,6 +145,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --install-dir) INSTALL_DIR="$2"; shift 2 ;;
     --version)     VERSION="$2"; shift 2 ;;
+    --build)       BUILD=true; shift ;;
+    --branch)      BRANCH="$2"; shift 2 ;;
     --skip-shell)  SKIP_SHELL=true; shift ;;
     --no-setup)    NO_SETUP=true; shift ;;
     -h|--help)     usage ;;
@@ -213,28 +228,54 @@ fi
 SKIP_DOWNLOAD="${SKIP_DOWNLOAD:-false}"
 
 if [[ "$SKIP_DOWNLOAD" != true ]]; then
-  ARCHIVE="${TMP_DIR}/bedrud.tar.xz"
+  if [[ "$BUILD" == true ]]; then
+    # ── Build from source ───────────────────────────────────────────
+    step "Building from source"
 
-  info "Downloading bedrud..."
-curl --fail --location --progress-bar --output "$ARCHIVE" "${RELEASE_URL}/bedrud_${TARGET}.tar.xz" \
-  || error "Failed to download bedrud for ${TARGET}. Check https://github.com/${REPO}/releases for available builds."
+    info "Cloning ${REPO} (branch: ${BRANCH})..."
+    git clone --branch "$BRANCH" --depth 1 "https://github.com/${REPO}.git" "$TMP_DIR/src" \
+      || error "Failed to clone ${REPO} branch '${BRANCH}'"
 
-mkdir -p "$TMP_DIR/extracted"
-tar -xf "$ARCHIVE" -C "$TMP_DIR/extracted"
+    mkdir -p "$INSTALL_DIR"
 
-# ── Find and install binary ─────────────────────────────────────
-BINARY_PATH="$(find "$TMP_DIR/extracted" -type f -name "$BINARY_NAME" -o -name "${BINARY_NAME}.*" 2>/dev/null | head -1)"
+    info "Building bedrud (this may take a few minutes)..."
+    make -C "$TMP_DIR/src" build \
+      || error "Build failed. Check output above for errors."
 
-if [[ -z "$BINARY_PATH" ]]; then
-  warn "Archive contents:"
-  ls -laR "$TMP_DIR/extracted" >&2
-  error "Could not find '${BINARY_NAME}' binary in archive"
-fi
+    BINARY_PATH="$TMP_DIR/src/server/dist/${BINARY_NAME}"
+    if [[ ! -x "$BINARY_PATH" ]]; then
+      error "Build succeeded but binary not found at ${BINARY_PATH}"
+    fi
 
-mv "$BINARY_PATH" "${INSTALL_DIR}/${BINARY_NAME}"
-chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+    mv "$BINARY_PATH" "${INSTALL_DIR}/${BINARY_NAME}"
+    chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
 
-info "Installed bedrud to ${INSTALL_DIR}/${BINARY_NAME}"
+    info "Installed bedrud to ${INSTALL_DIR}/${BINARY_NAME}"
+  else
+    # ── Download pre-built binary ───────────────────────────────────
+    ARCHIVE="${TMP_DIR}/bedrud.tar.xz"
+
+    info "Downloading bedrud..."
+    curl --fail --location --progress-bar --output "$ARCHIVE" "${RELEASE_URL}/bedrud_${TARGET}.tar.xz" \
+      || error "Failed to download bedrud for ${TARGET}. Check https://github.com/${REPO}/releases for available builds."
+
+    mkdir -p "$TMP_DIR/extracted"
+    tar -xf "$ARCHIVE" -C "$TMP_DIR/extracted"
+
+    # ── Find and install binary ─────────────────────────────────────
+    BINARY_PATH="$(find "$TMP_DIR/extracted" -type f -name "$BINARY_NAME" -o -name "${BINARY_NAME}.*" 2>/dev/null | head -1)"
+
+    if [[ -z "$BINARY_PATH" ]]; then
+      warn "Archive contents:"
+      ls -laR "$TMP_DIR/extracted" >&2
+      error "Could not find '${BINARY_NAME}' binary in archive"
+    fi
+
+    mv "$BINARY_PATH" "${INSTALL_DIR}/${BINARY_NAME}"
+    chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+
+    info "Installed bedrud to ${INSTALL_DIR}/${BINARY_NAME}"
+  fi
 fi
 
 if [[ -x "${INSTALL_DIR}/${BINARY_NAME}" ]]; then
