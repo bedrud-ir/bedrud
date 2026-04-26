@@ -105,9 +105,7 @@ command -v tar >/dev/null 2>&1 || error "tar is required"
 
 if [[ "$BUILD" == true ]]; then
   command -v git >/dev/null 2>&1 || error "git is required for --build mode"
-  command -v go >/dev/null 2>&1 || error "Go is required for --build mode (https://go.dev/dl)"
   command -v make >/dev/null 2>&1 || error "make is required for --build mode"
-  command -v bun >/dev/null 2>&1 || error "Bun is required for --build mode (https://bun.sh)"
 fi
 
 # ── Arg parse ───────────────────────────────────────────────────
@@ -231,6 +229,42 @@ if [[ "$SKIP_DOWNLOAD" != true ]]; then
   if [[ "$BUILD" == true ]]; then
     # ── Build from source ───────────────────────────────────────────
     step "Building from source"
+
+    # Install bun if missing
+    if ! command -v bun >/dev/null 2>&1; then
+      info "Installing Bun..."
+      curl -fsSL https://bun.sh/install | bash || error "Failed to install Bun"
+      export BUN_INSTALL="$HOME/.bun"
+      export PATH="$BUN_INSTALL/bin:$PATH"
+    fi
+
+    # Install go if missing
+    if ! command -v go >/dev/null 2>&1; then
+      GO_VERSION="1.25.0"
+      GO_ARCH="$arch"
+      if [[ "$GO_ARCH" == "armv7" ]]; then GO_ARCH="armv6l"; fi
+      GO_TAR="go${GO_VERSION}.${os}-${GO_ARCH}.tar.gz"
+
+      if [[ "$(id -u)" -eq 0 ]]; then
+        GO_DEST="/usr/local"
+      else
+        GO_DEST="$HOME/.local"
+        mkdir -p "$GO_DEST"
+      fi
+
+      info "Installing Go ${GO_VERSION} to ${GO_DEST}/go..."
+      curl -fsSL --progress-bar -o "$TMP_DIR/$GO_TAR" "https://go.dev/dl/$GO_TAR" \
+        || error "Failed to download Go ${GO_VERSION} for ${os}-${GO_ARCH}. Check https://go.dev/dl for available builds."
+      
+      # Remove old Go if it exists in the destination
+      if [[ -d "${GO_DEST}/go" ]]; then
+        rm -rf "${GO_DEST}/go"
+      fi
+
+      tar -C "${GO_DEST}" -xzf "$TMP_DIR/$GO_TAR" || error "Failed to extract Go"
+      export PATH="${GO_DEST}/go/bin:$PATH"
+      info "Go installed successfully"
+    fi
 
     info "Cloning ${REPO} (branch: ${BRANCH})..."
     git clone --branch "$BRANCH" --depth 1 "https://github.com/${REPO}.git" "$TMP_DIR/src" \
