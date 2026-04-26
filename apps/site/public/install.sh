@@ -643,6 +643,12 @@ fi
 # ── Interactive Server Setup (Linux: systemd / openrc / sysvinit) ──
 # ════════════════════════════════════════════════════════════════
 
+IS_CONTAINER=false
+if [[ -f /.dockerenv ]] || [[ -f /run/.containerenv ]] \
+   || grep -qa 'container' /proc/1/cgroup 2>/dev/null; then
+  IS_CONTAINER=true
+fi
+
 CAN_SETUP=false
 INIT_SYSTEM="none"
 SKIP_REASON=""
@@ -656,6 +662,9 @@ elif [[ -d /run/systemd/system ]]; then
   CAN_SETUP=true
 elif [[ -x /sbin/openrc ]]; then
   INIT_SYSTEM="openrc"
+  CAN_SETUP=true
+elif [[ "$IS_CONTAINER" == true ]]; then
+  INIT_SYSTEM="none"
   CAN_SETUP=true
 elif command -v service >/dev/null 2>&1; then
   INIT_SYSTEM="sysv"
@@ -678,6 +687,9 @@ if [[ "$CAN_SETUP" == true ]]; then
   fi
   info "Distro: ${DETECTED_DISTRO}"
   info "Init: ${INIT_SYSTEM}"
+  if [[ "$IS_CONTAINER" == true ]]; then
+    info "Container: yes (service file installation will be skipped)"
+  fi
 
   if [[ "$(id -u)" -ne 0 ]]; then
     error "Server setup requires root. Re-run with sudo or as root."
@@ -864,36 +876,40 @@ if [[ "$CAN_SETUP" == true ]]; then
   fi
 
   # ── Phase 4: Run bedrud install ────────────────────────────────
-  step "Running bedrud install"
+  if [[ -f "$CONFIG_FILE" ]] && [[ -z "$FRESH_FLAG" ]]; then
+    info "Existing installation found — skipping bedrud install"
+  else
+    step "Running bedrud install"
 
-  INSTALL_CMD="${INSTALL_DIR}/${BINARY_NAME} install ${FRESH_FLAG}"
+    INSTALL_CMD="${INSTALL_DIR}/${BINARY_NAME} install ${FRESH_FLAG}"
 
-  if [[ -n "$DOMAIN" ]]; then
-    INSTALL_CMD+=" --domain ${DOMAIN}"
-  fi
-  if [[ -n "$EMAIL" ]]; then
-    INSTALL_CMD+=" --email ${EMAIL}"
-  fi
-  INSTALL_CMD+=" --ip ${BEDRUD_IP}"
+    if [[ -n "$DOMAIN" ]]; then
+      INSTALL_CMD+=" --domain ${DOMAIN}"
+    fi
+    if [[ -n "$EMAIL" ]]; then
+      INSTALL_CMD+=" --email ${EMAIL}"
+    fi
+    INSTALL_CMD+=" --ip ${BEDRUD_IP}"
 
-  case "$TLS_MODE" in
-    acme)       ;;
-    selfsigned) INSTALL_CMD+=" --self-signed" ;;
-    none)       INSTALL_CMD+=" --no-tls" ;;
-  esac
+    case "$TLS_MODE" in
+      acme)       ;;
+      selfsigned) INSTALL_CMD+=" --self-signed" ;;
+      none)       INSTALL_CMD+=" --no-tls" ;;
+    esac
 
-  if [[ "$BEHIND_PROXY" == true ]]; then
-    INSTALL_CMD+=" --behind-proxy"
-  fi
+    if [[ "$BEHIND_PROXY" == true ]]; then
+      INSTALL_CMD+=" --behind-proxy"
+    fi
 
-  info "Running: ${INSTALL_CMD}"
-  echo ""
-
-  if ! eval "$INSTALL_CMD"; then
+    info "Running: ${INSTALL_CMD}"
     echo ""
-    error "bedrud install failed. Check output above for details."
+
+    if ! eval "$INSTALL_CMD"; then
+      echo ""
+      error "bedrud install failed. Check output above for details."
+    fi
+    info "bedrud install completed"
   fi
-  info "bedrud install completed"
 
   # ── Phase 5: Postgres config swap ──────────────────────────────
   if [[ "$DB_TYPE" == "postgres" && -f "$CONFIG_FILE" ]]; then
@@ -919,124 +935,112 @@ if [[ "$CAN_SETUP" == true ]]; then
   fi
 
   # ── Phase 5.5: Wait for service to be ready ────────────────────
-  step "Waiting for bedrud service"
+  if [[ "$IS_CONTAINER" == true ]]; then
+    info "Container detected — skipping service wait"
+  else
+    step "Waiting for bedrud service"
 
-  WAIT_URL=""
-  case "$TLS_MODE" in
-    acme)       WAIT_URL="https://${DOMAIN}" ;;
-    selfsigned) WAIT_URL="https://${BEDRUD_IP}" ;;
-    none)       WAIT_URL="http://${BEDRUD_IP}:8090" ;;
-  esac
+    WAIT_URL=""
+    case "$TLS_MODE" in
+      acme)       WAIT_URL="https://${DOMAIN}" ;;
+      selfsigned) WAIT_URL="https://${BEDRUD_IP}" ;;
+      none)       WAIT_URL="http://${BEDRUD_IP}:8090" ;;
+    esac
 
-  WAIT_OK=false
-  for i in $(seq 1 30); do
-    WAIT_CODE="$(curl -sk -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 "${WAIT_URL}" 2>/dev/null || true)"
-    if [[ "$WAIT_CODE" =~ ^[23] ]]; then
-      info "Service ready (HTTP ${WAIT_CODE})"
-      WAIT_OK=true
-      break
+    WAIT_OK=false
+    for i in $(seq 1 30); do
+      WAIT_CODE="$(curl -sk -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 "${WAIT_URL}" 2>/dev/null || true)"
+      if [[ "$WAIT_CODE" =~ ^[23] ]]; then
+        info "Service ready (HTTP ${WAIT_CODE})"
+        WAIT_OK=true
+        break
+      fi
+      sleep 1
+    done
+    if [[ "$WAIT_OK" != true ]]; then
+      warn "Service not responding after 30s. User creation may fail."
     fi
-    sleep 1
-  done
-  if [[ "$WAIT_OK" != true ]]; then
-    warn "Service not responding after 30s. User creation may fail."
   fi
 
   # ── Phase 6: Create admin user ─────────────────────────────────
   step "Creating admin user"
 
-  USER_CREATED=false
-  for i in 1 2 3; do
-    if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" create \
-      --email "$ADMIN_EMAIL" \
-      --password "$ADMIN_PASS" \
-      --name "$ADMIN_NAME"; then
-      USER_CREATED=true
-      break
-    fi
-    if [[ $i -lt 3 ]]; then
-      warn "User creation failed (attempt $i/3). Retrying in 5s..."
-      sleep 5
-    fi
-  done
-  if [[ "$USER_CREATED" != true ]]; then
-    error "Failed to create admin user after 3 attempts"
+  if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" create \
+    --email "$ADMIN_EMAIL" \
+    --password "$ADMIN_PASS" \
+    --name "$ADMIN_NAME"; then
+    info "Admin user created"
+  else
+    error "Failed to create admin user"
   fi
-  info "Admin user created"
 
-  USER_PROMOTED=false
-  for i in 1 2 3; do
-    if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" promote \
-      --email "$ADMIN_EMAIL"; then
-      USER_PROMOTED=true
-      break
-    fi
-    if [[ $i -lt 3 ]]; then
-      warn "User promote failed (attempt $i/3). Retrying in 5s..."
-      sleep 5
-    fi
-  done
-  if [[ "$USER_PROMOTED" != true ]]; then
-    error "Failed to promote admin user after 3 attempts"
+  if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" promote \
+    --email "$ADMIN_EMAIL"; then
+    info "Admin promoted to superadmin"
+  else
+    error "Failed to promote admin user"
   fi
-  info "Admin promoted to superadmin"
   unset ADMIN_PASS
 
   # ── Phase 7: Verify ────────────────────────────────────────────
-  step "Verifying installation"
+  if [[ "$IS_CONTAINER" == true ]]; then
+    VERIFY_OK=true
+  else
+    step "Verifying installation"
 
-  VERIFY_OK=true
+    VERIFY_OK=true
 
-  case "$INIT_SYSTEM" in
-    systemd)
-      if systemctl is-active --quiet bedrud 2>/dev/null; then
-        info "bedrud service: active"
-      else
-        warn "bedrud service: NOT active"
-        VERIFY_OK=false
-      fi
-
-      if systemctl is-active --quiet livekit 2>/dev/null; then
-        info "livekit service: active"
-      else
-        if systemctl list-unit-files livekit.service 2>/dev/null | grep -q livekit; then
-          warn "livekit service: NOT active"
+    case "$INIT_SYSTEM" in
+      systemd)
+        if systemctl is-active --quiet bedrud 2>/dev/null; then
+          info "bedrud service: active"
+        else
+          warn "bedrud service: NOT active"
           VERIFY_OK=false
         fi
-      fi
-      ;;
-    openrc)
-      if rc-service bedrud status >/dev/null 2>&1; then
-        info "bedrud service: active"
-      else
-        warn "bedrud service: NOT active"
-        VERIFY_OK=false
-      fi
-      ;;
-    sysv)
-      if service bedrud status >/dev/null 2>&1; then
-        info "bedrud service: active"
-      else
-        warn "bedrud service: NOT active (or not yet registered)"
-        VERIFY_OK=false
-      fi
-      ;;
-  esac
 
-  VERIFY_URL=""
-  case "$TLS_MODE" in
-    acme)       VERIFY_URL="https://${DOMAIN}" ;;
-    selfsigned) VERIFY_URL="https://${BEDRUD_IP}" ;;
-    none)       VERIFY_URL="http://${BEDRUD_IP}:8090" ;;
-  esac
+        if systemctl is-active --quiet livekit 2>/dev/null; then
+          info "livekit service: active"
+        else
+          if systemctl list-unit-files livekit.service 2>/dev/null | grep -q livekit; then
+            warn "livekit service: NOT active"
+            VERIFY_OK=false
+          fi
+        fi
+        ;;
+      openrc)
+        if rc-service bedrud status >/dev/null 2>&1; then
+          info "bedrud service: active"
+        else
+          warn "bedrud service: NOT active"
+          VERIFY_OK=false
+        fi
+        ;;
+      sysv)
+        if service bedrud status >/dev/null 2>&1; then
+          info "bedrud service: active"
+        else
+          warn "bedrud service: NOT active (or not yet registered)"
+          VERIFY_OK=false
+        fi
+        ;;
+    esac
 
-  HEALTH_CODE=""
-  HEALTH_CODE="$(curl -sk -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "${VERIFY_URL}" 2>/dev/null || true)"
-  if [[ "$HEALTH_CODE" =~ ^[23] ]]; then
-    info "Health check: OK (HTTP ${HEALTH_CODE})"
-  else
-    warn "Health check: no response (HTTP ${HEALTH_CODE:-none})"
-    warn "Service may still be starting. Check: systemctl status bedrud"
+    VERIFY_URL=""
+    case "$TLS_MODE" in
+      acme)       VERIFY_URL="https://${DOMAIN}" ;;
+      selfsigned) VERIFY_URL="https://${BEDRUD_IP}" ;;
+      none)       VERIFY_URL="http://${BEDRUD_IP}:8090" ;;
+    esac
+
+    HEALTH_CODE=""
+    HEALTH_CODE="$(curl -sk -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "${VERIFY_URL}" 2>/dev/null || true)"
+    if [[ "$HEALTH_CODE" =~ ^[23] ]]; then
+      info "Health check: OK (HTTP ${HEALTH_CODE})"
+    else
+      warn "Health check: no response (HTTP ${HEALTH_CODE:-none})"
+      warn "Service may still be starting. Check: systemctl status bedrud"
+    fi
   fi
 
   # ── Final output ───────────────────────────────────────────────

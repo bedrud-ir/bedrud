@@ -36,6 +36,7 @@ func main() {
 		case "--run":
 			runCmd := flag.NewFlagSet("run", flag.ExitOnError)
 			configPath := runCmd.String("config", "", "Path to Bedrud config file")
+			skipMigrate := runCmd.Bool("skip-migrate", false, "Skip database migrations on startup")
 			_ = runCmd.Parse(os.Args[i+1:])
 			path := *configPath
 			if path == "" {
@@ -43,6 +44,9 @@ func main() {
 				if path == "" {
 					path = "config.yaml"
 				}
+			}
+			if *skipMigrate {
+				os.Setenv("BEDRUD_SKIP_MIGRATE", "1")
 			}
 			if err := server.Run(path); err != nil {
 				fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
@@ -57,6 +61,7 @@ func main() {
 	case "server", "run":
 		serverCmd := flag.NewFlagSet("server", flag.ExitOnError)
 		configPath := serverCmd.String("config", "", "Path to config file")
+		skipMigrate := serverCmd.Bool("skip-migrate", false, "Skip database migrations on startup")
 		_ = serverCmd.Parse(os.Args[2:])
 
 		path := *configPath
@@ -65,6 +70,10 @@ func main() {
 			if path == "" {
 				path = "config.yaml"
 			}
+		}
+
+		if *skipMigrate {
+			os.Setenv("BEDRUD_SKIP_MIGRATE", "1")
 		}
 
 		if err := server.Run(path); err != nil {

@@ -88,8 +88,12 @@ func Run(configPath string) error {
 		return err
 	}
 	defer database.Close()
-	if err := database.RunMigrations(); err != nil {
-		log.Error().Err(err).Msg("Failed to run database migrations")
+	if os.Getenv("BEDRUD_SKIP_MIGRATE") != "1" {
+		if err := database.RunMigrations(); err != nil {
+			log.Error().Err(err).Msg("Failed to run database migrations")
+		}
+	} else {
+		log.Info().Msg("Skipping database migrations (BEDRUD_SKIP_MIGRATE=1)")
 	}
 	roomRepo := repository.NewRoomRepository(database.GetDB())
 	scheduler.Initialize(roomRepo, &cfg.LiveKit)

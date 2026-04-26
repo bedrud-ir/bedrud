@@ -71,6 +71,16 @@ func CreateUser(configPath, email, password, name string) error {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
+	repo := repository.NewUserRepository(database.GetDB())
+	existing, checkErr := repo.GetUserByEmail(email)
+	if checkErr != nil {
+		return fmt.Errorf("failed to check existing user: %w", checkErr)
+	}
+	if existing != nil {
+		fmt.Printf("⚠ User %q already exists — skipping creation.\n", email)
+		return nil
+	}
+
 	user := &models.User{
 		ID:        uuid.New().String(),
 		Email:     email,
@@ -82,7 +92,6 @@ func CreateUser(configPath, email, password, name string) error {
 		UpdatedAt: time.Now(),
 	}
 
-	repo := repository.NewUserRepository(database.GetDB())
 	if err := repo.CreateUser(user); err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
