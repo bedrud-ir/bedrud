@@ -13,7 +13,7 @@ order: 2
 ## ما يفعله المُثبّت
 
 ١. يكتشف نظام التشغيل وبنية المعالج وتفاوتات المنصة (Rosetta ٢) ونظام التهيئة
-٢. يُنزّل الملف الثنائي الصحيح من [إصدارات GitHub](https://github.com/bedrud-ir/bedrud/releases)
+٢. يُنزّل الملف الثنائي الصحيح من [إصدارات GitHub](https://github.com/bedrud-ir/bedrud/releases) (أو يبني من المصدر مع `--build`)
 ٣. يُثبّت في `~/bin` (قابل للتخصيص عبر `--install-dir`)
 ٤. يُضيف مجلد التثبيت إلى `PATH` عبر تهيئة الصدفة
 ٥. يُنفّذ `bedrud completions` للاكتمال التلقائي في الصدفة
@@ -26,6 +26,7 @@ order: 2
 | المنصة | الاعتماديات |
 |--------|-------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (مضمّن مع Windows 10/11) |
 
 ---
@@ -73,6 +74,8 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 |---------|-----------|------|
 | `--install-dir <dir>` | `~/bin` | مكان وضع الملف الثنائي |
 | `--version <ver>` | `latest` | تثبيت إصدار محدد (مثال: `v1.2.0`) |
+| `--build` | off | بناء من المصدر بدلاً من تنزيل إصدار |
+| `--branch <name>` | `main` | فرع Git للنسخ (يتطلب `--build`) |
 | `--skip-shell` | off | عدم تعديل ملفات RC للصدفة أو PATH |
 | `-h`, `--help` | — | طباعة التعليمات والخروج |
 
@@ -84,6 +87,12 @@ curl -fsSL https://get.bedrud.org | bash
 
 # تثبيت إصدار محدد
 curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# بناء من المصدر (فرع مخصص)
+curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+
+# بناء من نسخة مطابقة
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
 
 # تثبيت على مستوى النظام
 curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
@@ -188,18 +197,21 @@ uname -m → "x86_64" | "amd64"  → amd64
 ## تدفق التثبيت
 
 ١. **فحص Windows** — تم اكتشاف MINGW/MSYS/CYGWIN؟ يطبع أمر PowerShell ويخرج
-٢. **فحص الاعتماديات** — يتطلب `curl` + `tar`
-٣. **تحليل المعاملات** — بحد أقصى ٣ علامات
+٢. **فحص الاعتماديات** — يتطلب `curl` + `tar` (و `git` + `go` + `bun` + `make` مع `--build`)
+٣. **تحليل المعاملات** — علامات بما في ذلك `--build` و `--branch`
 ٤. **اكتشاف المنصة** — نظام التشغيل + البنية عبر `uname`
 ٥. **اكتشاف التفاوتات** — Rosetta ٢
-٦. **التنزيل** — تنزيل `bedrud_{TARGET}.tar.xz`
-٧. **الاستخراج والتثبيت** — مجلد مؤقت، استخراج، `mv → $INSTALL_DIR/bedrud`، `chmod +x`
-٨. **التحقق** — يُنفّذ `bedrud --version`
-٩. **فحص PATH** — موجود بالفعل؟ يتخطى. `--skip-shell`؟ يطبع أمراً يدوياً. وإلا → يعدّل ملف RC
-١٠. **الاكتمالات** — يُنفّذ `bedrud completions`
-١١. **الانتهاء** — يطبع رسالة النجاح وتعليمات إعادة التحميل
+٦. **تثبيت الملف الثنائي** — أحد الخيارين:
+   - **وضع التنزيل** (الافتراضي): تنزيل `bedrud_{TARGET}.tar.xz`، استخراج، تثبيت
+   - **وضع البناء** (`--build`): `git clone --branch <branch> --depth 1`، تنفيذ `make build`، تثبيت الملف الثنائي
+٧. **التحقق** — يُنفّذ `bedrud --version`
+٨. **فحص PATH** — موجود بالفعل؟ يتخطى. `--skip-shell`؟ يطبع أمراً يدوياً. وإلا → يعدّل ملف RC
+٩. **الاكتمالات** — يُنفّذ `bedrud completions`
+١٠. **الانتهاء** — يطبع رسالة النجاح وتعليمات إعادة التحميل
 
 صيغة رابط التنزيل: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+وضع البناء يستنسخ من: `github.com/{repo}` وينفّذ `make build` (الناتج: `server/dist/bedrud`).
 
 ---
 

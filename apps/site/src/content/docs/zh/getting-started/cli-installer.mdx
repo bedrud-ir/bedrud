@@ -13,7 +13,7 @@ order: 2
 ## 功能说明
 
 1. 检测操作系统、CPU 架构、平台变体（Rosetta 2）和 init 系统（systemd/OpenRC/SysV init）
-2. 从 [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) 下载对应的二进制文件
+2. 从 [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) 下载对应的二进制文件（或使用 `--build` 从源码构建）
 3. 安装到 `~/bin`（可通过 `--install-dir` 自定义）
 4. 通过 shell 配置将安装目录添加到 `PATH`
 5. 运行 `bedrud completions` 启用 shell 补全
@@ -26,6 +26,7 @@ order: 2
 | 平台 | 依赖 |
 |------|------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+（Windows 10/11 自带） |
 
 ---
@@ -73,6 +74,8 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 |------|--------|------|
 | `--install-dir <dir>` | `~/bin` | 二进制文件安装位置 |
 | `--version <ver>` | `latest` | 固定到指定版本（如 `v1.2.0`） |
+| `--build` | 关闭 | 从源码构建而不下载预编译版本 |
+| `--branch <name>` | `main` | 要克隆的 Git 分支（需要 `--build`） |
 | `--skip-shell` | 关闭 | 不修改 shell RC 文件或 PATH |
 | `-h`, `--help` | — | 打印用法并退出 |
 
@@ -84,6 +87,12 @@ curl -fsSL https://get.bedrud.org | bash
 
 # 固定版本
 curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# 从源码构建（自定义分支）
+curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+
+# 从 fork 构建
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
 
 # 全局安装
 curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
@@ -188,18 +197,21 @@ uname -m → "x86_64" | "amd64"  → amd64
 ## 安装流程
 
 1. **Windows 检查** — 检测到 MINGW/MSYS/CYGWIN？输出 PowerShell 命令并退出
-2. **依赖检查** — 需要 `curl` + `tar`
-3. **参数解析** — 最多 3 个标志
+2. **依赖检查** — 需要 `curl` + `tar`（使用 `--build` 时还需 `git` + `go` + `bun` + `make`）
+3. **参数解析** — 包括 `--build` 和 `--branch` 的标志
 4. **平台检测** — 通过 `uname` 获取操作系统和架构
 5. **变体检测** — Rosetta 2
-6. **下载** — 下载 `bedrud_{TARGET}.tar.xz`
-7. **解压与安装** — 临时目录，解压，`mv → $INSTALL_DIR/bedrud`，`chmod +x`
-8. **验证** — 运行 `bedrud --version`
-9. **PATH 检查** — 已在 PATH 中？跳过。指定了 `--skip-shell`？输出手动命令。否则 → 修改 RC 文件
-10. **补全** — 运行 `bedrud completions`
-11. **完成** — 输出成功信息及重新加载说明
+6. **安装二进制文件** — 两种方式：
+   - **下载模式**（默认）：下载 `bedrud_{TARGET}.tar.xz`，解压，安装
+   - **构建模式**（`--build`）：`git clone --branch <branch> --depth 1`，运行 `make build`，安装二进制文件
+7. **验证** — 运行 `bedrud --version`
+8. **PATH 检查** — 已在 PATH 中？跳过。指定了 `--skip-shell`？输出手动命令。否则 → 修改 RC 文件
+9. **补全** — 运行 `bedrud completions`
+10. **完成** — 输出成功信息及重新加载说明
 
 下载 URL 格式：`github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+构建模式从 `github.com/{repo}` 克隆并运行 `make build`（输出：`server/dist/bedrud`）。
 
 ---
 

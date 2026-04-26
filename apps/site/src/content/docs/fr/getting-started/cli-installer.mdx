@@ -13,7 +13,7 @@ Pour la configuration du serveur après l'installation, voir [Démarrage rapide]
 ## Ce qu'il fait
 
 1. Détecte l'OS, l'architecture CPU, les variantes de plateforme (Rosetta 2) et le système d'initialisation
-2. Télécharge le bon binaire depuis [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases)
+2. Télécharge le bon binaire depuis [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) (ou compile depuis les sources avec `--build`)
 3. Installe dans `~/bin` (personnalisable via `--install-dir`)
 4. Ajoute le répertoire d'installation au `PATH` via la configuration du shell
 5. Exécute `bedrud completions` pour la complétion par tabulation du shell
@@ -26,6 +26,7 @@ Pour la configuration du serveur après l'installation, voir [Démarrage rapide]
 | Plateforme | Dépendances |
 |------------|-------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (inclus avec Windows 10/11) |
 
 ---
@@ -73,6 +74,8 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 |------|------------|-------------|
 | `--install-dir <dir>` | `~/bin` | Où placer le binaire |
 | `--version <ver>` | `latest` | Épingler à une version (ex. `v1.2.0`) |
+| `--build` | inactif | Compiler depuis les sources au lieu de télécharger |
+| `--branch <name>` | `main` | Branche Git à cloner (requiert `--build`) |
 | `--skip-shell` | inactif | Ne pas modifier les fichiers RC du shell ni le PATH |
 | `-h`, `--help` | — | Afficher l'aide et quitter |
 
@@ -84,6 +87,12 @@ curl -fsSL https://get.bedrud.org | bash
 
 # Version spécifique
 curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# Compiler depuis les sources (branche personnalisée)
+curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+
+# Compiler depuis un fork
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
 
 # Installation système
 curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
@@ -188,18 +197,21 @@ Pris en charge sur : La plupart des distributions Linux (systemd, OpenRC, SysV i
 ## Processus d'installation
 
 1. **Vérification Windows** — MINGW/MSYS/CYGWIN détecté ? Afficher la commande PowerShell, quitter
-2. **Vérification des dépendances** — nécessite `curl` + `tar`
-3. **Analyse des arguments** — max 3 flags
+2. **Vérification des dépendances** — nécessite `curl` + `tar` (et `git` + `go` + `bun` + `make` avec `--build`)
+3. **Analyse des arguments** — flags incluant `--build` et `--branch`
 4. **Détection de plateforme** — OS + architecture via `uname`
 5. **Détection des variantes** — Rosetta 2
-6. **Téléchargement** — télécharge `bedrud_{TARGET}.tar.xz`
-7. **Extraction et installation** — répertoire temporaire, extraction, `mv → $INSTALL_DIR/bedrud`, `chmod +x`
-8. **Vérification** — exécuter `bedrud --version`
-9. **Vérification du PATH** — déjà dans le PATH ? Ignorer. `--skip-shell` ? Afficher la commande manuelle. Sinon → modifier le fichier RC
-10. **Complétions** — exécuter `bedrud completions`
-11. **Terminé** — afficher le succès + instructions de rechargement
+6. **Installation du binaire** — soit :
+   - **Mode téléchargement** (par défaut) : télécharger `bedrud_{TARGET}.tar.xz`, extraire, installer
+   - **Mode compilation** (`--build`) : `git clone --branch <branch> --depth 1`, exécuter `make build`, installer le binaire
+7. **Vérification** — exécuter `bedrud --version`
+8. **Vérification du PATH** — déjà dans le PATH ? Ignorer. `--skip-shell` ? Afficher la commande manuelle. Sinon → modifier le fichier RC
+9. **Complétions** — exécuter `bedrud completions`
+10. **Terminé** — afficher le succès + instructions de rechargement
 
 Format de l'URL de téléchargement : `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+Mode compilation clone depuis : `github.com/{repo}` et exécute `make build` (sortie : `server/dist/bedrud`).
 
 ---
 

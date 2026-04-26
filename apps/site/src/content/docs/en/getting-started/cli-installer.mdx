@@ -13,7 +13,7 @@ For server setup after installing, see [Quick Start](/en/docs/getting-started/qu
 ## What It Does
 
 1. Detects OS, CPU architecture, platform variants (Rosetta 2), and init system (systemd/OpenRC/SysV)
-2. Downloads the correct binary from [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases)
+2. Downloads the correct binary from [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) (or builds from source with `--build`)
 3. Installs to `~/bin` (customizable via `--install-dir`)
 4. Adds install directory to `PATH` via shell config
 5. Runs `bedrud completions` for shell tab-completion
@@ -26,6 +26,7 @@ For server setup after installing, see [Quick Start](/en/docs/getting-started/qu
 | Platform | Dependencies |
 |----------|-------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (ships with Windows 10/11) |
 
 ---
@@ -73,6 +74,8 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 |------|---------|-------------|
 | `--install-dir <dir>` | `~/bin` | Where to place the binary |
 | `--version <ver>` | `latest` | Pin to a release (e.g. `v1.2.0`) |
+| `--build` | off | Build from source instead of downloading a release |
+| `--branch <name>` | `main` | Git branch to clone (requires `--build`) |
 | `--skip-shell` | off | Don't modify shell RC files or PATH |
 | `-h`, `--help` | — | Print usage and exit |
 
@@ -84,6 +87,12 @@ curl -fsSL https://get.bedrud.org | bash
 
 # Pin version
 curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# Build from source (custom branch)
+curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+
+# Build from a fork
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
 
 # System-wide install
 curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
@@ -188,19 +197,22 @@ Supported on: Most Linux distributions (systemd, OpenRC, SysV init), WSL1, and L
 ## Install Flow
 
 1. **Windows check** — MINGW/MSYS/CYGWIN detected? Print PowerShell command, exit
-2. **Dependency check** — requires `curl` + `tar`
-3. **Argument parsing** — max 3 flags
+2. **Dependency check** — requires `curl` + `tar` (and `git` + `go` + `bun` + `make` if `--build`)
+3. **Argument parsing** — flags including `--build` and `--branch`
 4. **Platform detection** — OS + architecture via `uname`
 5. **Variant detection** — Rosetta 2
-6. **Download** — download `bedrud_{TARGET}.tar.xz`
-7. **Extract & install** — temp dir, extract, `mv → $INSTALL_DIR/bedrud`, `chmod +x`
-8. **Verify** — run `bedrud --version`
-9. **Init system detection** — detects systemd, OpenRC, or SysV init (Linux only, for server setup)
-10. **PATH check** — already in PATH? Skip. `--skip-shell`? Print manual command. Otherwise → modify RC file
-11. **Completions** — run `bedrud completions`
-12. **Done** — print success + reload instructions
+6. **Install binary** — either:
+   - **Download mode** (default): download `bedrud_{TARGET}.tar.xz`, extract, install
+   - **Build mode** (`--build`): `git clone --branch <branch> --depth 1`, run `make build`, install binary
+7. **Verify** — run `bedrud --version`
+8. **Init system detection** — detects systemd, OpenRC, or SysV init (Linux only, for server setup)
+9. **PATH check** — already in PATH? Skip. `--skip-shell`? Print manual command. Otherwise → modify RC file
+10. **Completions** — run `bedrud completions`
+11. **Done** — print success + reload instructions
 
 Download URL format: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+Build mode clones from: `github.com/{repo}` and runs `make build` (outputs `server/dist/bedrud`).
 
 ---
 

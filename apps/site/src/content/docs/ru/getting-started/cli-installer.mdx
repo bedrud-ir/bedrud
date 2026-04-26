@@ -13,7 +13,7 @@ order: 2
 ## Что делает установщик
 
 1. Определяет ОС, архитектуру процессора, варианты платформы (Rosetta 2) и систему инициализации (systemd/OpenRC/SysV)
-2. Загружает нужный бинарный файл из [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases)
+2. Загружает нужный бинарный файл из [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) (или собирает из исходников с `--build`)
 3. Устанавливает в `~/bin` (настраивается через `--install-dir`)
 4. Добавляет директорию установки в `PATH` через конфигурацию оболочки
 5. Запускает `bedrud completions` для автодополнения команд в оболочке
@@ -26,6 +26,7 @@ order: 2
 | Платформа | Зависимости |
 |-----------|-------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (встроен в Windows 10/11) |
 
 ---
@@ -73,6 +74,8 @@ order: 2
 |------|--------------|----------|
 | `--install-dir <dir>` | `~/bin` | Куда поместить бинарный файл |
 | `--version <ver>` | `latest` | Зафиксировать версию (напр. `v1.2.0`) |
+| `--build` | выкл. | Собрать из исходников вместо загрузки релиза |
+| `--branch <name>` | `main` | Ветка Git для клонирования (требует `--build`) |
 | `--skip-shell` | выкл. | Не изменять RC-файлы оболочки и PATH |
 | `-h`, `--help` | — | Вывести справку и выйти |
 
@@ -84,6 +87,12 @@ curl -fsSL https://get.bedrud.org | bash
 
 # Фиксация версии
 curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# Сборка из исходников (пользовательская ветка)
+curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+
+# Сборка из форка
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
 
 # Установка для всей системы
 curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
@@ -188,18 +197,21 @@ uname -m → "x86_64" | "amd64"  → amd64
 ## Порядок установки
 
 1. **Проверка Windows** — обнаружен MINGW/MSYS/CYGWIN? Вывести команду PowerShell, выйти
-2. **Проверка зависимостей** — требуются `curl` + `tar`
-3. **Разбор аргументов** — до 3 флагов
+2. **Проверка зависимостей** — требуются `curl` + `tar` (и `git` + `go` + `bun` + `make` при `--build`)
+3. **Разбор аргументов** — флаги включая `--build` и `--branch`
 4. **Определение платформы** — ОС + архитектура через `uname`
 5. **Определение варианта** — Rosetta 2
-6. **Загрузка** — загрузка `bedrud_{TARGET}.tar.xz`
-7. **Распаковка и установка** — временная директория, распаковка, `mv → $INSTALL_DIR/bedrud`, `chmod +x`
-8. **Проверка** — запуск `bedrud --version`
-9. **Проверка PATH** — уже в PATH? Пропустить. `--skip-shell`? Вывести команду вручную. Иначе → изменить RC-файл
-10. **Автодополнение** — запуск `bedrud completions`
-11. **Готово** — вывод сообщения об успехе + инструкции по перезагрузке
+6. **Установка бинарного файла** — один из:
+   - **Режим загрузки** (по умолчанию): загрузка `bedrud_{TARGET}.tar.xz`, распаковка, установка
+   - **Режим сборки** (`--build`): `git clone --branch <branch> --depth 1`, выполнение `make build`, установка бинарного файла
+7. **Проверка** — запуск `bedrud --version`
+8. **Проверка PATH** — уже в PATH? Пропустить. `--skip-shell`? Вывести команду вручную. Иначе → изменить RC-файл
+9. **Автодополнение** — запуск `bedrud completions`
+10. **Готово** — вывод сообщения об успехе + инструкции по перезагрузке
 
 Формат URL загрузки: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+Режим сборки клонирует из: `github.com/{repo}` и выполняет `make build` (вывод: `server/dist/bedrud`).
 
 ---
 

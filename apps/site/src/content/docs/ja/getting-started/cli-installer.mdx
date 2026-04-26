@@ -13,7 +13,7 @@ order: 2
 ## インストーラーの動作
 
 1. OS、CPU アーキテクチャ、プラットフォームバリアント（Rosetta 2）、イニットシステム（systemd/OpenRC/SysV init）を検出
-2. [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) から正しいバイナリをダウンロード
+2. [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) から正しいバイナリをダウンロード（または `--build` でソースからビルド）
 3. `~/bin` にインストール（`--install-dir` でカスタマイズ可能）
 4. シェル設定を通じてインストールディレクトリを `PATH` に追加
 5. `bedrud completions` を実行してシェルのタブ補完を設定
@@ -26,6 +26,7 @@ order: 2
 | プラットフォーム | 依存関係 |
 |----------|-------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+（Windows 10/11 に同梱） |
 
 ---
@@ -73,6 +74,8 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 |------|---------|-------------|
 | `--install-dir <dir>` | `~/bin` | バイナリの配置先 |
 | `--version <ver>` | `latest` | リリースを固定（例: `v1.2.0`） |
+| `--build` | オフ | リリースをダウンロードせずソースからビルド |
+| `--branch <name>` | `main` | クローンするGitブランチ（`--build` 必須） |
 | `--skip-shell` | オフ | シェル RC ファイルや PATH を変更しない |
 | `-h`, `--help` | — | 使い方を表示して終了 |
 
@@ -84,6 +87,12 @@ curl -fsSL https://get.bedrud.org | bash
 
 # バージョン固定
 curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# ソースからビルド（カスタムブランチ）
+curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+
+# フォークからビルド
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
 
 # システム全体にインストール
 curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
@@ -188,18 +197,21 @@ uname -m → "x86_64" | "amd64"  → amd64
 ## インストールフロー
 
 1. **Windows チェック** — MINGW/MSYS/CYGWIN を検出? PowerShell コマンドを表示して終了
-2. **依存関係チェック** — `curl` + `tar` が必要
-3. **引数のパース** — 最大 3 フラグ
+2. **依存関係チェック** — `curl` + `tar` が必要（`--build` 時は `git` + `go` + `bun` + `make` も）
+3. **引数のパース** — `--build` と `--branch` を含むフラグ
 4. **プラットフォーム検出** — `uname` による OS + アーキテクチャ
 5. **バリアント検出** — Rosetta 2
-6. **ダウンロード** — `bedrud_{TARGET}.tar.xz` をダウンロード
-7. **展開とインストール** — 一時ディレクトリ、展開、`mv → $INSTALL_DIR/bedrud`、`chmod +x`
-8. **検証** — `bedrud --version` を実行
-9. **PATH チェック** — 既に PATH にある? スキップ。`--skip-shell`? 手動コマンドを表示。それ以外 → RC ファイルを変更
-10. **補完** — `bedrud completions` を実行
-11. **完了** — 成功メッセージ + 再読み込み手順を表示
+6. **バイナリのインストール** — いずれか:
+   - **ダウンロードモード** (デフォルト): `bedrud_{TARGET}.tar.xz` をダウンロード、展開、インストール
+   - **ビルドモード** (`--build`): `git clone --branch <branch> --depth 1`、`make build` を実行、バイナリをインストール
+7. **検証** — `bedrud --version` を実行
+8. **PATH チェック** — 既に PATH にある? スキップ。`--skip-shell`? 手動コマンドを表示。それ以外 → RC ファイルを変更
+9. **補完** — `bedrud completions` を実行
+10. **完了** — 成功メッセージ + 再読み込み手順を表示
 
 ダウンロード URL の形式: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+ビルドモードは `github.com/{repo}` からクローンし `make build` を実行します（出力: `server/dist/bedrud`）。
 
 ---
 

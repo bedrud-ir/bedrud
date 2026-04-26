@@ -13,7 +13,7 @@ Kurulum sonrası sunucu kurulumu için bkz. [Hızlı Başlangıç](/tr/docs/gett
 ## Ne Yapar
 
 1. İşletim sistemini, CPU mimarisini, platform varyantlarını (Rosetta 2) ve init sistemini (systemd/OpenRC/SysV) algılar
-2. [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases) adresinden doğru ikili dosyayı indirir
+2. [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases) adresinden doğru ikili dosyayı indirir (`--build` ile kaynak koddan derler)
 3. `~/bin` dizinine kurulum yapar (`--install-dir` ile özelleştirilebilir)
 4. Kabuk yapılandırması ile kurulum dizinini `PATH`'e ekler
 5. Kabuk sekme tamamlama için `bedrud completions` komutunu çalıştırır
@@ -26,6 +26,7 @@ Kurulum sonrası sunucu kurulumu için bkz. [Hızlı Başlangıç](/tr/docs/gett
 | Platform | Bağımlılıklar |
 |----------|--------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (Windows 10/11 ile birlikte gelir) |
 
 ---
@@ -73,6 +74,8 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 |--------|-----------|----------|
 | `--install-dir <dir>` | `~/bin` | İkili dosyanın yerleştirileceği dizin |
 | `--version <ver>` | `latest` | Bir sürüme sabitle (ör. `v1.2.0`) |
+| `--build` | kapalı | İndirmek yerine kaynak koddan derle |
+| `--branch <name>` | `main` | Klonlanacak Git dalı (`--build` gerekir) |
 | `--skip-shell` | kapalı | Kabuk RC dosyalarını veya PATH'ı değiştirme |
 | `-h`, `--help` | — | Kullanım bilgisini yazdır ve çık |
 
@@ -84,6 +87,12 @@ curl -fsSL https://get.bedrud.org | bash
 
 # Sürüm sabitleme
 curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# Kaynak koddan derle (özel dal)
+curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+
+# Fork'tan derle
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
 
 # Sistem geneli kurulum
 curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
@@ -188,18 +197,21 @@ Desteklenen: Çoğu Linux dağıtımı (systemd, OpenRC, SysV init), WSL1 ve Lin
 ## Kurulum Akışı
 
 1. **Windows kontrolü** — MINGW/MSYS/CYGWIN algılandı mı? PowerShell komutunu yazdır, çık
-2. **Bağımlılık kontrolü** — `curl` + `tar` gerektirir
-3. **Argüman ayrıştırma** — en fazla 3 bayrak
+2. **Bağımlılık kontrolü** — `curl` + `tar` gerektirir (`--build` ile `git` + `go` + `bun` + `make` de)
+3. **Argüman ayrıştırma** — `--build` ve `--branch` dahil bayraklar
 4. **Platform algılama** — `uname` ile işletim sistemi + mimari
 5. **Varyant algılama** — Rosetta 2
-6. **İndirme** — `bedrud_{TARGET}.tar.xz` dosyasını indir
-7. **Çıkarma ve kurulum** — geçici dizin, çıkar, `mv → $INSTALL_DIR/bedrud`, `chmod +x`
-8. **Doğrulama** — `bedrud --version` komutunu çalıştır
-9. **PATH kontrolü** — PATH'te zaten var mı? Atla. `--skip-shell`? Manuel komutu yazdır. Aksi halde → RC dosyasını düzenle
-10. **Tamamlamalar** — `bedrud completions` komutunu çalıştır
-11. **Tamamlandı** — başarı ve yeniden yükleme talimatlarını yazdır
+6. **İkili dosya kurulumu** — iki seçenek:
+   - **İndirme modu** (varsayılan): `bedrud_{TARGET}.tar.xz` indir, çıkar, kur
+   - **Derleme modu** (`--build`): `git clone --branch <branch> --depth 1`, `make build` çalıştır, ikili dosyayı kur
+7. **Doğrulama** — `bedrud --version` komutunu çalıştır
+8. **PATH kontrolü** — PATH'te zaten var mı? Atla. `--skip-shell`? Manuel komutu yazdır. Aksi halde → RC dosyasını düzenle
+9. **Tamamlamalar** — `bedrud completions` komutunu çalıştır
+10. **Tamamlandı** — başarı ve yeniden yükleme talimatlarını yazdır
 
 İndirme URL formatı: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+Derleme modu `github.com/{repo}` adresinden klonlar ve `make build` çalıştırır (çıktı: `server/dist/bedrud`).
 
 ---
 

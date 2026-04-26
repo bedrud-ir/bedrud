@@ -13,7 +13,7 @@ order: 2
 ## چه کاری انجام می‌دهد
 
 ۱. سیستم‌عامل، معماری پردازنده، گونه‌های پلتفرم (Rosetta 2) و سیستم init را تشخیص می‌دهد
-۲. باینری صحیح را از [انتشارات GitHub](https://github.com/bedrud-ir/bedrud/releases) دانلود می‌کند
+۲. باینری صحیح را از [انتشارات GitHub](https://github.com/bedrud-ir/bedrud/releases) دانلود می‌کند (یا با `--build` از کد منبع می‌سازد)
 ۳. در `~/bin` نصب می‌کند (قابل تنظیم از طریق `--install-dir`)
 ۴. دایرکتوری نصب را از طریق تنظیمات shell به `PATH` اضافه می‌کند
 ۵. `bedrud completions` را برای تکمیل خودکار زبانه shell اجرا می‌کند
@@ -26,6 +26,7 @@ order: 2
 | پلتفرم | وابستگی‌ها |
 |----------|-------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (در Windows 10/11 از پیش نصب شده است) |
 
 ---
@@ -73,6 +74,8 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 |------|---------|-------------|
 | `--install-dir <dir>` | `~/bin` | محل قرارگیری باینری |
 | `--version <ver>` | `latest` | ثابت نگه داشتن در یک نسخه (مثلاً `v1.2.0`) |
+| `--build` | خاموش | ساخت از کد منبع به جای دانلود انتشار |
+| `--branch <name>` | `main` | شاخه Git برای کلون (نیاز به `--build`) |
 | `--skip-shell` | خاموش | تغییر فایل‌های RC shell یا PATH انجام نشود |
 | `-h`, `--help` | — | نمایش نحوه استفاده و خروج |
 
@@ -84,6 +87,12 @@ curl -fsSL https://get.bedrud.org | bash
 
 # ثابت نگه داشتن نسخه
 curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+
+# ساخت از کد منبع (شاخه سفارشی)
+curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+
+# ساخت از یک fork
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
 
 # نصب سیستم‌واید
 curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
@@ -188,18 +197,21 @@ uname -m → "x86_64" | "amd64"  → amd64
 ## جریان نصب
 
 ۱. **بررسی Windows** — MINGW/MSYS/CYGWIN تشخیص داده شد؟ دستور PowerShell را چاپ کنید، خارج شوید
-۲. **بررسی وابستگی** — نیاز به `curl` + `tar`
-۳. **تجزیه آرگومان** — حداکثر ۳ پرچم
+۲. **بررسی وابستگی** — نیاز به `curl` + `tar` (و `git` + `go` + `bun` + `make` با `--build`)
+۳. **تجزیه آرگومان** — پرچم‌ها شامل `--build` و `--branch`
 ۴. **تشخیص پلتفرم** — سیستم‌عامل + معماری از طریق `uname`
 ۵. **تشخیص گونه** — Rosetta 2
-۶. **دانلود** — دانلود `bedrud_{TARGET}.tar.xz`
-۷. **استخراج و نصب** — دایرکتوری موقت، استخراج، `mv → $INSTALL_DIR/bedrud`، `chmod +x`
-۸. **تأیید** — اجرای `bedrud --version`
-۹. **بررسی PATH** — قبلاً در PATH است؟ رد شود. `--skip-shell`؟ دستور دستی چاپ شود. در غیر این صورت → تغییر فایل RC
-۱۰. **تکمیل‌ها** — اجرای `bedrud completions`
-۱۱. **تمام** — چاپ موفقیت + دستورالعمل‌های بارگذاری مجدد
+۶. **نصب باینری** — یکی از دو حالت:
+   - **حالت دانلود** (پیش‌فرض): دانلود `bedrud_{TARGET}.tar.xz`، استخراج، نصب
+   - **حالت ساخت** (`--build`): `git clone --branch <branch> --depth 1`، اجرای `make build`، نصب باینری
+۷. **تأیید** — اجرای `bedrud --version`
+۸. **بررسی PATH** — قبلاً در PATH است؟ رد شود. `--skip-shell`؟ دستور دستی چاپ شود. در غیر این صورت → تغییر فایل RC
+۹. **تکمیل‌ها** — اجرای `bedrud completions`
+۱۰. **تمام** — چاپ موفقیت + دستورالعمل‌های بارگذاری مجدد
 
 فرمت URL دانلود: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+حالت ساخت از `github.com/{repo}` کلون کرده و `make build` را اجرا می‌کند (خروجی: `server/dist/bedrud`).
 
 ---
 
