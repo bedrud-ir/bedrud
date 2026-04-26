@@ -44,7 +44,7 @@ export function SpotlightView({ participant, onClose }: Props) {
             ? '#000'
             : `radial-gradient(ellipse 80% 60% at 50% 35%, ${palette.glow.replace('0.5', '0.12')}, #0c0c1a 70%)`,
           boxShadow: isSpeaking
-            ? `0 0 0 3px rgba(99,102,241,0.8), 0 0 60px rgba(99,102,241,0.3)`
+            ? `0 0 0 3px color-mix(in oklab, var(--primary) 80%, transparent), 0 0 60px color-mix(in oklab, var(--primary) 30%, transparent)`
             : '0 0 0 1px rgba(255,255,255,0.06)',
           transition: 'box-shadow 0.3s ease',
         }}
@@ -94,7 +94,7 @@ export function SpotlightView({ participant, onClose }: Props) {
                       width: 4,
                       height: 22,
                       borderRadius: 2,
-                      background: '#6366f1',
+                      background: 'var(--primary)',
                       transformOrigin: 'bottom center',
                       animation: `meet-speak-bar 0.7s ease-in-out ${i * 0.12}s infinite`,
                     }}

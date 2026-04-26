@@ -26,7 +26,7 @@ export function AskActionBanner() {
         transform: 'translateX(-50%)',
         zIndex: 60,
         background: 'rgba(15,15,30,0.95)',
-        border: '1px solid rgba(99,102,241,0.4)',
+        border: '1px solid color-mix(in oklab, var(--primary) 40%, transparent)',
         borderRadius: 12,
         padding: '12px 16px',
         display: 'flex',
@@ -42,15 +42,19 @@ export function AskActionBanner() {
           width: 32,
           height: 32,
           borderRadius: 8,
-          background: 'rgba(99,102,241,0.15)',
-          border: '1px solid rgba(99,102,241,0.3)',
+          background: 'color-mix(in oklab, var(--primary) 15%, transparent)',
+          border: '1px solid color-mix(in oklab, var(--primary) 30%, transparent)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
         }}
       >
-        {isUnmute ? <Mic size={15} style={{ color: '#a5b4fc' }} /> : <Video size={15} style={{ color: '#a5b4fc' }} />}
+        {isUnmute ? (
+          <Mic size={15} style={{ color: 'var(--sky-300)' }} />
+        ) : (
+          <Video size={15} style={{ color: 'var(--sky-300)' }} />
+        )}
       </div>
       <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, flex: 1 }}>
         {isUnmute ? 'A moderator is asking you to unmute.' : 'A moderator is asking you to turn on your camera.'}

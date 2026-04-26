@@ -57,13 +57,13 @@ export function ParticipantsList({ onClose }: Props) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <Users size={14} style={{ color: 'rgba(165,180,252,0.7)' }} />
+          <Users size={14} style={{ color: 'color-mix(in oklab, var(--sky-300) 70%, transparent)' }} />
           <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: 600 }}>Participants</span>
           <span
             style={{
-              background: 'rgba(99,102,241,0.18)',
-              border: '1px solid rgba(99,102,241,0.25)',
-              color: 'rgba(165,180,252,0.8)',
+              background: 'color-mix(in oklab, var(--primary) 18%, transparent)',
+              border: '1px solid color-mix(in oklab, var(--primary) 25%, transparent)',
+              color: 'color-mix(in oklab, var(--sky-300) 80%, transparent)',
               borderRadius: 6,
               padding: '1px 6px',
               fontSize: 11,
@@ -180,9 +180,9 @@ function ParticipantRow({ p, adminId }: RowProps): React.ReactElement {
                   fontSize: 10,
                   fontWeight: 600,
                   letterSpacing: '0.04em',
-                  color: '#a5b4fc',
-                  background: 'rgba(99,102,241,0.2)',
-                  border: '1px solid rgba(99,102,241,0.3)',
+                  color: 'var(--sky-300)',
+                  background: 'color-mix(in oklab, var(--primary) 20%, transparent)',
+                  border: '1px solid color-mix(in oklab, var(--primary) 30%, transparent)',
                   borderRadius: 4,
                   padding: '1px 5px',
                 }}

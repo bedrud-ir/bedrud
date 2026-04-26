@@ -60,7 +60,7 @@ export function ChatToastNotifier({ chatOpen }: ChatToastNotifierProps) {
           className="chat-toast"
           style={{
             background: 'rgba(15,15,28,0.96)',
-            border: '1px solid rgba(99,102,241,0.35)',
+            border: '1px solid color-mix(in oklab, var(--primary) 35%, transparent)',
             borderRadius: 14,
             padding: '13px 16px',
             maxWidth: 'min(340px, calc(100vw - 32px))',
@@ -71,7 +71,7 @@ export function ChatToastNotifier({ chatOpen }: ChatToastNotifierProps) {
             gap: 5,
           }}
         >
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#a5b4fc' }}>{toast.sender}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sky-300)' }}>{toast.sender}</span>
           <span
             style={{
               fontSize: 14,

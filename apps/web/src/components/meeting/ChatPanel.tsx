@@ -70,7 +70,7 @@ export function ChatPanel({ onClose }: Props) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <MessageSquare size={14} style={{ color: 'rgba(165,180,252,0.7)' }} />
+          <MessageSquare size={14} style={{ color: 'color-mix(in oklab, var(--sky-300) 70%, transparent)' }} />
           <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: 600 }}>Chat</span>
         </div>
         <button

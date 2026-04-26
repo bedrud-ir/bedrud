@@ -36,14 +36,14 @@ export function MeetingHeader({ meetId }: MeetingHeaderProps) {
             display: 'flex',
             alignItems: 'center',
             gap: 5,
-            background: 'rgba(99,102,241,0.18)',
-            border: '1px solid rgba(99,102,241,0.35)',
+            background: 'color-mix(in oklab, var(--primary) 18%, transparent)',
+            border: '1px solid color-mix(in oklab, var(--primary) 35%, transparent)',
             borderRadius: 7,
             padding: '3px 9px',
           }}
         >
-          <Radio size={11} style={{ color: '#818cf8' }} />
-          <span style={{ color: '#a5b4fc', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>LIVE</span>
+          <Radio size={11} style={{ color: 'var(--sky-400)' }} />
+          <span style={{ color: 'var(--sky-300)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>LIVE</span>
         </div>
         <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>·</span>
         <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: 'monospace' }}>{meetId}</span>

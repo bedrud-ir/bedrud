@@ -27,7 +27,7 @@ export type DisplayItem = ClusterGroup | DateSeparatorItem | SystemItem
 const CLUSTER_GAP_MS = 5 * 60_000
 
 export const AVATAR_COLORS = [
-  'rgba(99,102,241,0.85)', // indigo
+  'rgba(79,70,229,0.85)', // indigo
   'rgba(139,92,246,0.85)', // violet
   'rgba(20,184,166,0.85)', // teal
   'rgba(244,63,94,0.85)', // rose

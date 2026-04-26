@@ -215,7 +215,7 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
                     ...(isSpeaking
                       ? {
                           height: 18,
-                          background: 'hsl(var(--primary))',
+                          background: 'var(--primary)',
                           animation: `meet-speak-bar 0.7s ease-in-out ${i * 0.12}s infinite`,
                         }
                       : {
@@ -279,7 +279,7 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
                       ...(isSpeaking
                         ? {
                             height: 12,
-                            background: 'hsl(var(--primary))',
+                            background: 'var(--primary)',
                             animation: `meet-speak-bar 0.7s ease-in-out ${i * 0.15}s infinite`,
                           }
                         : {
@@ -308,9 +308,9 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
               width: 30,
               height: 30,
               borderRadius: 8,
-              background: isPinned ? 'rgba(99,102,241,0.7)' : 'rgba(0,0,0,0.55)',
+              background: isPinned ? 'color-mix(in oklab, var(--primary) 70%, transparent)' : 'rgba(0,0,0,0.55)',
               backdropFilter: 'blur(8px)',
-              border: `1px solid ${isPinned ? 'rgba(165,180,252,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              border: `1px solid ${isPinned ? 'color-mix(in oklab, var(--sky-300) 50%, transparent)' : 'rgba(255,255,255,0.1)'}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

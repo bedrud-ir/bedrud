@@ -111,7 +111,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   return (
     <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px' }}>
       {error && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'rgba(248,113,113,0.9)' }}>{error}</p>}
-      {uploading && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'rgba(165,180,252,0.7)' }}>Uploading image…</p>}
+      {uploading && (
+        <p style={{ margin: '0 0 6px', fontSize: 11, color: 'color-mix(in oklab, var(--sky-300) 70%, transparent)' }}>
+          Uploading image…
+        </p>
+      )}
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
 
@@ -129,7 +133,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             flexShrink: 0,
             border: '1px solid rgba(255,255,255,0.09)',
             background: 'rgba(255,255,255,0.04)',
-            color: uploading || disabled ? 'rgba(255,255,255,0.15)' : 'rgba(165,180,252,0.7)',
+            color:
+              uploading || disabled ? 'rgba(255,255,255,0.15)' : 'color-mix(in oklab, var(--sky-300) 70%, transparent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -208,7 +213,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             borderRadius: 10,
             flexShrink: 0,
             border: 'none',
-            background: canSend ? 'rgba(99,102,241,0.8)' : 'rgba(255,255,255,0.06)',
+            background: canSend ? 'color-mix(in oklab, var(--primary) 80%, transparent)' : 'rgba(255,255,255,0.06)',
             color: canSend ? 'white' : 'rgba(255,255,255,0.25)',
             display: 'flex',
             alignItems: 'center',

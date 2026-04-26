@@ -100,14 +100,14 @@ export function ChatMessageList({ chatMessages, systemMessages, onScrollUnreadCh
                 width: 44,
                 height: 44,
                 borderRadius: '50%',
-                background: 'rgba(99,102,241,0.1)',
-                border: '1px solid rgba(99,102,241,0.2)',
+                background: 'color-mix(in oklab, var(--primary) 10%, transparent)',
+                border: '1px solid color-mix(in oklab, var(--primary) 20%, transparent)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <MessageSquare size={18} style={{ color: 'rgba(99,102,241,0.5)' }} />
+              <MessageSquare size={18} style={{ color: 'color-mix(in oklab, var(--primary) 50%, transparent)' }} />
             </div>
             <p style={{ color: 'rgba(255,255,255,0.22)', fontSize: 12, textAlign: 'center' }}>
               No messages yet.

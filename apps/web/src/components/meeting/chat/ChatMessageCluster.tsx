@@ -33,8 +33,8 @@ function bubblePosition(idx: number, total: number): 'only' | 'first' | 'middle'
 }
 
 function ChatMarkdown({ content, isLocal }: { content: string; isLocal: boolean }) {
-  const linkColor = isLocal ? 'rgba(255,255,255,0.9)' : 'rgba(165,180,252,0.9)'
-  const codeBg = isLocal ? 'rgba(0,0,0,0.25)' : 'rgba(99,102,241,0.15)'
+  const linkColor = isLocal ? 'rgba(255,255,255,0.9)' : 'color-mix(in oklab, var(--sky-300) 90%, transparent)'
+  const codeBg = isLocal ? 'rgba(0,0,0,0.25)' : 'color-mix(in oklab, var(--primary) 15%, transparent)'
 
   type C = { children?: ReactNode }
   type CA = { href?: string; children?: ReactNode }
@@ -86,7 +86,7 @@ function ChatMarkdown({ content, isLocal }: { content: string; isLocal: boolean 
         style={{
           margin: '4px 0',
           paddingLeft: 10,
-          borderLeft: `2px solid ${isLocal ? 'rgba(255,255,255,0.4)' : 'rgba(165,180,252,0.4)'}`,
+          borderLeft: `2px solid ${isLocal ? 'rgba(255,255,255,0.4)' : 'color-mix(in oklab, var(--sky-300) 40%, transparent)'}`,
           color: isLocal ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.5)',
         }}
       >
@@ -173,8 +173,10 @@ export function ChatMessageCluster({ cluster }: Props) {
                 maxWidth: '78%',
                 padding: hasAttachments && !msg.message ? '4px' : '7px 12px',
                 borderRadius: bubbleRadius(isLocal, pos),
-                background: isLocal ? 'rgba(99,102,241,0.75)' : 'rgba(255,255,255,0.07)',
-                border: isLocal ? '1px solid rgba(165,180,252,0.25)' : '1px solid rgba(255,255,255,0.06)',
+                background: isLocal ? 'color-mix(in oklab, var(--primary) 75%, transparent)' : 'rgba(255,255,255,0.07)',
+                border: isLocal
+                  ? '1px solid color-mix(in oklab, var(--sky-300) 25%, transparent)'
+                  : '1px solid rgba(255,255,255,0.06)',
                 color: isLocal ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.75)',
                 fontSize: 13,
                 lineHeight: 1.45,

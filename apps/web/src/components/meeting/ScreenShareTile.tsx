@@ -21,7 +21,7 @@ export function ScreenShareTile({ trackRef }: ScreenShareTileProps) {
         height: '100%',
         background: '#030308',
         borderRadius: 12,
-        border: '1px solid rgba(99,102,241,0.35)',
+        border: '1px solid color-mix(in oklab, var(--primary) 35%, transparent)',
         overflow: 'hidden',
       }}
     >
@@ -49,7 +49,7 @@ export function ScreenShareTile({ trackRef }: ScreenShareTileProps) {
           padding: '4px 10px',
         }}
       >
-        <Monitor size={12} style={{ color: '#a5b4fc', flexShrink: 0 }} />
+        <Monitor size={12} style={{ color: 'var(--sky-300)', flexShrink: 0 }} />
         <span style={{ color: 'white', fontSize: 12, fontWeight: 500 }}>{displayName} is presenting</span>
       </div>
     </div>

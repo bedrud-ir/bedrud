@@ -344,7 +344,7 @@ export function ParticipantMenuContent({ participant, Item, Separator, Label, on
               max={200}
               value={Math.round(volume * 100)}
               onChange={(e) => setVolume(identity, Number(e.target.value) / 100)}
-              style={{ flex: 1, accentColor: '#6366f1', height: 3, cursor: 'pointer' }}
+              style={{ flex: 1, accentColor: 'var(--primary)', height: 3, cursor: 'pointer' }}
             />
             <span
               style={{
