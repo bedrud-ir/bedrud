@@ -27,7 +27,8 @@ func Initialize(cfg *config.DatabaseConfig) error {
 
 	// Configure GORM
 	gormConfig := &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger:                                   logger.Default.LogMode(logger.Info),
+		DisableForeignKeyConstraintWhenMigrating: true,
 	}
 
 	// Determine database type and prepare dialector
