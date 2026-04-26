@@ -213,7 +213,7 @@ function RegisterPage() {
         {requiresToken && (
           <div className="space-y-1.5">
             <label htmlFor="reg-invite" className="text-sm font-medium flex items-center gap-1.5">
-              <KeyRound className="h-3.5 w-3.5" style={{ color: '#818cf8' }} />
+              <KeyRound className="h-3.5 w-3.5" style={{ color: 'var(--sky-300)' }} />
               Invite token <span className="text-destructive">*</span>
             </label>
             <Input

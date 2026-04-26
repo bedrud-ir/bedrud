@@ -140,8 +140,8 @@ function MeetingPage() {
             width: 48,
             height: 48,
             borderRadius: '50%',
-            border: '2px solid rgba(99,102,241,0.3)',
-            borderTopColor: '#6366f1',
+            border: '2px solid color-mix(in oklab, var(--primary) 30%, transparent)',
+            borderTopColor: 'var(--primary)',
             animation: 'meet-connecting-spin 0.9s linear infinite',
           }}
         />
@@ -177,7 +177,7 @@ function MeetingPage() {
           <div>
             <p style={{ color: 'white', fontSize: 17, fontWeight: 600, margin: 0 }}>Join as guest</p>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '6px 0 0' }}>
-              Enter your name to join <span style={{ color: '#a5b4fc' }}>{meetId}</span>
+              Enter your name to join <span style={{ color: 'var(--sky-300)' }}>{meetId}</span>
             </p>
           </div>
           <input
@@ -206,7 +206,9 @@ function MeetingPage() {
                 padding: '10px 0',
                 borderRadius: 9,
                 border: 'none',
-                background: guestInput.trim() ? '#6366f1' : 'rgba(99,102,241,0.3)',
+                background: guestInput.trim()
+                  ? 'var(--primary)'
+                  : 'color-mix(in oklab, var(--primary) 30%, transparent)',
                 color: 'white',
                 fontSize: 14,
                 fontWeight: 500,
@@ -272,8 +274,8 @@ function MeetingPage() {
             padding: '8px 20px',
             borderRadius: 10,
             border: 'none',
-            background: 'rgba(99,102,241,0.2)',
-            color: '#a5b4fc',
+            background: 'color-mix(in oklab, var(--primary) 20%, transparent)',
+            color: 'var(--sky-300)',
             fontSize: 13,
             cursor: 'pointer',
           }}
@@ -303,8 +305,8 @@ function MeetingPage() {
             width: 48,
             height: 48,
             borderRadius: '50%',
-            border: '2px solid rgba(99,102,241,0.3)',
-            borderTopColor: '#6366f1',
+            border: '2px solid color-mix(in oklab, var(--primary) 30%, transparent)',
+            borderTopColor: 'var(--primary)',
             animation: 'meet-connecting-spin 0.9s linear infinite',
           }}
         />
@@ -352,8 +354,8 @@ function MeetingPage() {
             padding: '8px 20px',
             borderRadius: 10,
             border: 'none',
-            background: 'rgba(99,102,241,0.2)',
-            color: '#a5b4fc',
+            background: 'color-mix(in oklab, var(--primary) 20%, transparent)',
+            color: 'var(--sky-300)',
             fontSize: 13,
             cursor: 'pointer',
           }}
@@ -383,7 +385,8 @@ function MeetingPage() {
                 width: 900,
                 height: 900,
                 borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(99,102,241,0.055) 0%, transparent 65%)',
+                background:
+                  'radial-gradient(circle, color-mix(in oklab, var(--primary) 5.5%, transparent) 0%, transparent 65%)',
                 top: '-300px',
                 left: '-300px',
               }}

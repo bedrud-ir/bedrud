@@ -372,7 +372,7 @@ function AudioPage() {
             onChange={(e) => setInputGain(Number(e.target.value))}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer outline-none"
             style={{
-              background: `linear-gradient(to right, hsl(var(--primary)) ${gainPct}%, hsl(var(--muted)) ${gainPct}%)`,
+              background: `linear-gradient(to right, var(--primary) ${gainPct}%, var(--muted) ${gainPct}%)`,
             }}
           />
           <p className="text-[11px] text-muted-foreground/50">100% = unity gain</p>
@@ -393,7 +393,7 @@ function AudioPage() {
             onChange={(e) => setNoiseGate(Number(e.target.value))}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer outline-none"
             style={{
-              background: `linear-gradient(to right, hsl(var(--primary)) ${gatePct}%, hsl(var(--muted)) ${gatePct}%)`,
+              background: `linear-gradient(to right, var(--primary) ${gatePct}%, var(--muted) ${gatePct}%)`,
             }}
           />
           <p className="text-[11px] text-muted-foreground/50">0% = disabled</p>
