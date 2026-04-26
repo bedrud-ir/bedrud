@@ -964,7 +964,6 @@ if [[ "$CAN_SETUP" == true ]]; then
 
   # ── Phase 6: Create admin user ─────────────────────────────────
   step "Creating admin user"
-  export BEDRUD_SKIP_MIGRATE=1
 
   if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" create \
     --email "$ADMIN_EMAIL" \
@@ -974,6 +973,8 @@ if [[ "$CAN_SETUP" == true ]]; then
   else
     error "Failed to create admin user"
   fi
+
+  export BEDRUD_SKIP_MIGRATE=1
 
   if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" promote \
     --email "$ADMIN_EMAIL"; then
