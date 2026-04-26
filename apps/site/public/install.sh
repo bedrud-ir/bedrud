@@ -108,6 +108,180 @@ if [[ "$BUILD" == true ]]; then
   command -v make >/dev/null 2>&1 || error "make is required for --build mode"
 fi
 
+# ── Auto-install missing dependencies ──────────────────────────
+detect_pkg_manager() {
+  if   command -v apt-get >/dev/null 2>&1; then echo "apt"
+  elif command -v dnf     >/dev/null 2>&1; then echo "dnf"
+  elif command -v yum     >/dev/null 2>&1; then echo "yum"
+  elif command -v apk     >/dev/null 2>&1; then echo "apk"
+  elif command -v pacman  >/dev/null 2>&1; then echo "pacman"
+  elif command -v zypper  >/dev/null 2>&1; then echo "zypper"
+  else echo ""
+  fi
+}
+
+install_pkg() {
+  local pkg="$1"
+  local pm
+  pm="$(detect_pkg_manager)"
+
+  if [[ -z "$pm" ]]; then return 1; fi
+
+  local cmd=""
+  case "$pm" in
+    apt)     cmd="apt-get install -y" ;;
+    dnf)     cmd="dnf install -y" ;;
+    yum)     cmd="yum install -y" ;;
+    apk)     cmd="apk add" ;;
+    pacman)  cmd="pacman -S --noconfirm" ;;
+    zypper)  cmd="zypper install -y" ;;
+  esac
+
+  local runner=""
+  if [[ "$(id -u)" -eq 0 ]]; then
+    runner=""
+  elif command -v sudo >/dev/null 2>&1; then
+    runner="sudo"
+  else
+    return 1
+  fi
+
+  info "Installing ${pkg}..."
+  $runner $cmd "$pkg" || return 1
+  return 0
+}
+
+pkg_name() {
+  local dep="$1" pm="$2"
+  case "$dep" in
+    xz)
+      case "$pm" in apt) echo "xz-utils" ;; *) echo "xz" ;; esac ;;
+    findutils)
+      case "$pm" in apt) echo "findutils" ;; dnf|yum) echo "findutils" ;; *) echo "findutils" ;; esac ;;
+    *)
+      echo "$dep"
+      ;;
+  esac
+}
+
+ensure_deps() {
+  local pm skip_auto reason
+  pm="$(detect_pkg_manager)"
+
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    skip_auto=true
+    reason="macOS — deps pre-installed"
+  elif [[ "$(uname -s)" == "FreeBSD" ]]; then
+    skip_auto=true
+    reason="FreeBSD — deps in base"
+  elif [[ -z "$pm" ]]; then
+    skip_auto=true
+    reason="no package manager found"
+  fi
+
+  # ── tar xz support check (critical) ──
+  if ! tar --xz -tf /dev/null 2>/dev/null; then
+    if [[ "$skip_auto" == true ]]; then
+      echo ""
+      warn "tar lacks xz support. Install manually:"
+      if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "    brew install xz"
+      elif [[ "$(uname -s)" == "FreeBSD" ]]; then
+        echo "    pkg install xz"
+      else
+        echo "    apt:   sudo apt-get install -y xz-utils"
+        echo "    dnf:   sudo dnf install -y xz"
+        echo "    apk:   sudo apk add xz"
+        echo "    pacman: sudo pacman -S xz"
+      fi
+      echo ""
+      error "xz support required for tar.xz extraction"
+    else
+      local xz_pkg
+      xz_pkg="$(pkg_name "xz" "$pm")"
+      if ! install_pkg "$xz_pkg"; then
+        if [[ "$(id -u)" -ne 0 ]] && ! command -v sudo >/dev/null 2>&1; then
+          warn "No sudo access. Install manually: ${xz_pkg}"
+          error "Cannot install ${xz_pkg} without root/sudo"
+        fi
+        error "Failed to install ${xz_pkg}"
+      fi
+      if ! tar --xz -tf /dev/null 2>/dev/null; then
+        error "xz package installed but tar still lacks xz support"
+      fi
+      info "tar xz support ready"
+    fi
+  fi
+
+  # ── Other deps (non-fatal, best-effort) ──
+  local deps=("grep" "sed" "find" "gawk" "coreutils")
+  local missing=()
+
+  for dep in "${deps[@]}"; do
+    local bins
+    case "$dep" in
+      grep)      bins=("grep") ;;
+      sed)       bins=("sed") ;;
+      find)      bins=("find") ;;
+      gawk)      bins=("awk" "gawk" "mawk") ;;
+      coreutils) bins=("cut" "tr" "head" "seq" "base64" "sort") ;;
+    esac
+
+    local found=false
+    for bin in "${bins[@]}"; do
+      if command -v "$bin" >/dev/null 2>&1; then
+        found=true
+        break
+      fi
+    done
+
+    if [[ "$found" == false ]]; then
+      missing+=("$dep")
+    fi
+  done
+
+  if [[ ${#missing[@]} -eq 0 ]]; then
+    return 0
+  fi
+
+  if [[ "$skip_auto" == true ]]; then
+    warn "Missing optional deps: ${missing[*]} ($reason)"
+    warn "Some features may not work. Install them manually."
+    return 0
+  fi
+
+  local install_names=()
+  for dep in "${missing[@]}"; do
+    install_names+=("$(pkg_name "$dep" "$pm")")
+  done
+
+  info "Installing missing deps: ${install_names[*]}"
+  if [[ "$(id -u)" -eq 0 ]]; then
+    case "$pm" in
+      apt)     apt-get install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      dnf)     dnf install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      yum)     yum install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      apk)     apk add "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      pacman)  pacman -S --noconfirm "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      zypper)  zypper install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+    esac
+  elif command -v sudo >/dev/null 2>&1; then
+    case "$pm" in
+      apt)     sudo apt-get install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      dnf)     sudo dnf install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      yum)     sudo yum install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      apk)     sudo apk add "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      pacman)  sudo pacman -S --noconfirm "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      zypper)  sudo zypper install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+    esac
+  else
+    warn "Missing deps: ${install_names[*]}"
+    warn "No sudo access. Install manually or re-run with sudo."
+  fi
+}
+
+ensure_deps
+
 # ── Arg parse ───────────────────────────────────────────────────
 usage() {
   cat <<EOF
