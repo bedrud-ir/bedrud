@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { api } from '#/lib/api'
 import { useAuthStore } from '#/lib/auth.store'
@@ -15,29 +15,20 @@ interface MeResponse {
 }
 
 export const Route = createFileRoute('/auth/callback')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    token: (search['token'] as string | undefined) ?? '',
-  }),
   component: OAuthCallback,
 })
 
 function OAuthCallback() {
   const navigate = useNavigate()
-  const { token } = useSearch({ from: '/auth/callback' })
-  const setTokens = useAuthStore((s) => s.setTokens)
   const clearTokens = useAuthStore((s) => s.clear)
   const setUser = useUserStore((s) => s.setUser)
 
   useEffect(() => {
-    if (!token) {
-      navigate({ to: '/auth' })
-      return
-    }
-
-    // Store the token first so api.get can attach it as Bearer,
-    // then verify via /auth/me — the server validates the JWT signature.
-    setTokens({ accessToken: token, refreshToken: null })
-
+    // The server's OAuth callback already set the access_token as an
+    // HTTP-only cookie (see server commit be894ef).  The auth middleware
+    // reads it from that cookie when no Authorization header is present,
+    // so /api/auth/me will authenticate purely via the cookie — no token
+    // in the URL, no JS-accessible token needed.
     api
       .get<MeResponse>('/api/auth/me')
       .then((me) => {
@@ -54,11 +45,11 @@ function OAuthCallback() {
         navigate({ to: '/dashboard' })
       })
       .catch(() => {
-        // Token rejected by server — clear it and send back to login
+        // Cookie missing, expired, or rejected — redirect to login
         clearTokens()
         navigate({ to: '/auth' })
       })
-  }, [token, navigate, setTokens, clearTokens, setUser])
+  }, [navigate, clearTokens, setUser])
 
   return (
     <div className="flex min-h-screen items-center justify-center">

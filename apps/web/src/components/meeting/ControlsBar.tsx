@@ -23,7 +23,7 @@ import { type NoiseSuppressionMode, useAudioPreferencesStore } from '#/lib/audio
 import { AudioProcessorService } from '#/lib/audio-processor.service'
 import { useAuthStore } from '#/lib/auth.store'
 import { DeviceSelector } from '@/components/meeting/DeviceSelector'
-import { useMeetingContext } from '@/components/meeting/MeetingContext'
+import { useMeetingRoomContext } from '@/components/meeting/MeetingContext'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -223,7 +223,7 @@ function useDeviceList(kind: 'audioinput' | 'audiooutput') {
 export function ControlsBar({ onLeave }: Props) {
   const isMobile = useIsMobile()
   const { localParticipant } = useLocalParticipant()
-  const { isSelfDeafened, toggleSelfDeafen } = useMeetingContext()
+  const { isSelfDeafened, toggleSelfDeafen } = useMeetingRoomContext()
 
   const micEnabled = localParticipant?.isMicrophoneEnabled ?? false
   const camEnabled = localParticipant?.isCameraEnabled ?? false

@@ -56,7 +56,7 @@ function RegisterPage() {
     const errs: typeof fieldErrors = {}
     if (name.length < 2) errs.name = 'At least 2 characters'
     if (!email || !/\S+@\S+\.\S+/.test(email)) errs.email = 'Enter a valid email'
-    if (password.length < 6) errs.password = 'At least 6 characters'
+    if (password.length < 12) errs.password = 'At least 12 characters'
     if (password !== confirm) errs.confirm = 'Passwords do not match'
     if (requiresToken && !inviteToken) errs.inviteToken = 'Invite token is required'
     if (Object.keys(errs).length) {

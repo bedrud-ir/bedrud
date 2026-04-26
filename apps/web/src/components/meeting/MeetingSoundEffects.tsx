@@ -3,7 +3,7 @@ import { RoomEvent } from 'livekit-client'
 import { useEffect, useRef } from 'react'
 import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
 import { playChat, playJoin, playLeave, playMutedBeep } from '#/lib/meeting-sounds'
-import { useMeetingContext } from './MeetingContext'
+import { useMeetingChatContext, useMeetingRoomContext } from './MeetingContext'
 
 /**
  * Invisible component that plays notification sounds for meeting events:
@@ -13,7 +13,7 @@ import { useMeetingContext } from './MeetingContext'
  */
 export function MeetingSoundEffects() {
   const room = useRoomContext()
-  const { chatMessages } = useMeetingContext()
+  const { chatMessages } = useMeetingChatContext()
 
   // ── Join / Leave sounds ──────────────────────────────────────
   // Use RoomEvent directly for accurate join/leave detection rather
@@ -73,7 +73,7 @@ export function MeetingSoundEffects() {
 const SPEECH_THRESHOLD = 0.035 // RMS amplitude — tuned to ignore background noise
 
 function useMutedMicMonitor() {
-  const { isSelfDeafened } = useMeetingContext()
+  const { isSelfDeafened } = useMeetingRoomContext()
   // useLocalParticipant is a reactive hook — re-renders when mic state changes.
   // room.localParticipant.isMicrophoneEnabled is a plain property that does NOT
   // trigger React re-renders, which caused the monitor to stay active after unmuting.

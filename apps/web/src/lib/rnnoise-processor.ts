@@ -44,11 +44,9 @@ class RNNoiseWorkletProcessor extends AudioWorkletProcessor {
       const mod = createRNNWasmModuleSync();
       if (typeof mod._rnnoise_create === 'function') {
         this._init(mod);
-      } else {
-        console.error('[RNNoise] WASM module loaded but _rnnoise_create not found — falling back to pass-through');
       }
-    } catch (err) {
-      console.error('[RNNoise] WASM init failed — falling back to pass-through:', err);
+    } catch {
+      // Gracefully fall back to pass-through if WASM init fails
     }
   }
 

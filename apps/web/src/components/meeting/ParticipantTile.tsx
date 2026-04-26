@@ -3,10 +3,16 @@ import type { Participant, RemoteParticipant } from 'livekit-client'
 import { ParticipantEvent, Track } from 'livekit-client'
 import { MicOff, Pin, VolumeX } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
 import { selectVolume, useParticipantOverridesStore } from '#/lib/participant-overrides.store'
+import { getPalette } from '#/lib/participant-palette'
 import { useLongPress } from '#/lib/useLongPress'
-import { useMeetingContext } from '@/components/meeting/MeetingContext'
+import { useMeetingRoomContext } from '@/components/meeting/MeetingContext'
 import { ParticipantContextMenu, ParticipantMenuButton } from '@/components/meeting/ParticipantContextMenu'
+
+// Prevents calling createMediaElementSource twice on the same <audio>/<video> element,
+// which throws an InvalidStateError. Keyed weakly so it garbage-collects with the element.
+const elementSourceUsed = new WeakMap<HTMLMediaElement, true>()
 
 interface Props {
   participant: Participant
@@ -16,27 +22,10 @@ interface Props {
   onTogglePin?: () => void
 }
 
-// Unique gradient per participant — determined by name hash
-const PALETTES = [
-  { tile: 'rgba(99,102,241,0.13)', avatar: 'linear-gradient(135deg,#6366f1,#8b5cf6)', glow: 'rgba(99,102,241,0.4)' },
-  { tile: 'rgba(6,182,212,0.13)', avatar: 'linear-gradient(135deg,#06b6d4,#3b82f6)', glow: 'rgba(6,182,212,0.4)' },
-  { tile: 'rgba(236,72,153,0.12)', avatar: 'linear-gradient(135deg,#ec4899,#f43f5e)', glow: 'rgba(236,72,153,0.4)' },
-  { tile: 'rgba(245,158,11,0.12)', avatar: 'linear-gradient(135deg,#f59e0b,#ef4444)', glow: 'rgba(245,158,11,0.4)' },
-  { tile: 'rgba(16,185,129,0.12)', avatar: 'linear-gradient(135deg,#10b981,#06b6d4)', glow: 'rgba(16,185,129,0.4)' },
-  { tile: 'rgba(168,85,247,0.12)', avatar: 'linear-gradient(135deg,#a855f7,#ec4899)', glow: 'rgba(168,85,247,0.4)' },
-  { tile: 'rgba(14,165,233,0.12)', avatar: 'linear-gradient(135deg,#0ea5e9,#6366f1)', glow: 'rgba(14,165,233,0.4)' },
-  { tile: 'rgba(244,63,94,0.12)', avatar: 'linear-gradient(135deg,#f43f5e,#fb923c)', glow: 'rgba(244,63,94,0.4)' },
-]
-
-function getPalette(name: string) {
-  const hash = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-  return PALETTES[Math.abs(hash) % PALETTES.length]
-}
-
 export function ParticipantTile({ participant, totalCount, index, isPinned = false, onTogglePin }: Props) {
   const { name, identity } = useParticipantInfo({ participant })
   const isSpeaking = useIsSpeaking(participant)
-  const { isSelfDeafened } = useMeetingContext()
+  const { isSelfDeafened } = useMeetingRoomContext()
 
   const volume = useParticipantOverridesStore(selectVolume(identity ?? ''))
 
@@ -51,6 +40,19 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
 
   // Web Audio boost: GainNode for volume > 100%
   const gainRef = useRef<{ ctx: AudioContext; gain: GainNode } | null>(null)
+  const cancelledRef = useRef(false)
+
+  // Cleanup AudioContext on unmount
+  useEffect(() => {
+    cancelledRef.current = false
+    return () => {
+      cancelledRef.current = true
+      if (gainRef.current) {
+        gainRef.current.ctx.close().catch(() => {})
+        gainRef.current = null
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (participant.isLocal) return
@@ -68,30 +70,32 @@ export function ParticipantTile({ participant, totalCount, index, isPinned = fal
       if (gainRef.current) {
         gainRef.current.gain.gain.value = effective
       } else {
-        // Lazily create AudioContext + GainNode on first boost
+        // Lazily create AudioContext + GainNode on first boost.
+        // Track lookup is async-adjacent (element may attach later), so
+        // guard against post-unmount writes with cancelledRef.
         const pub = remote.getTrackPublication(Track.Source.Microphone)
         const el = pub?.track?.attachedElements?.[0] as HTMLMediaElement | undefined
-        if (el) {
+        if (el && !cancelledRef.current) {
+          // Prevent double-creation on the same media element
+          if (elementSourceUsed.has(el)) return
+          elementSourceUsed.set(el, true)
+
           const ctx = new AudioContext()
           const source = ctx.createMediaElementSource(el)
           const gain = ctx.createGain()
           gain.gain.value = effective
           source.connect(gain).connect(ctx.destination)
+
+          // Final unmount check before mutating the ref
+          if (cancelledRef.current) {
+            ctx.close().catch(() => {})
+            return
+          }
           gainRef.current = { ctx, gain }
         }
       }
     }
   }, [participant, volume, isSelfDeafened])
-
-  // Cleanup AudioContext on unmount
-  useEffect(() => {
-    return () => {
-      if (gainRef.current) {
-        gainRef.current.ctx.close()
-        gainRef.current = null
-      }
-    }
-  }, [])
 
   const noopLongPress = useCallback(() => {
     // No-op: Radix ContextMenu handles contextmenu event natively on mobile long-press

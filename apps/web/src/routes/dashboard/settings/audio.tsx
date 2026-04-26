@@ -69,6 +69,7 @@ function useMicTest(mode: NoiseSuppressionMode, echoCancellation: boolean, input
   const gainNodeRef = useRef<GainNode | null>(null)
   const gateNodeRef = useRef<GainNode | null>(null)
   const rafRef = useRef<number>(0)
+  const cancelledRef = useRef(false)
   const noiseGateRef = useRef(noiseGate)
   useEffect(() => {
     noiseGateRef.current = noiseGate
@@ -89,6 +90,7 @@ function useMicTest(mode: NoiseSuppressionMode, echoCancellation: boolean, input
   }, [enumerateDevices])
 
   const stop = useCallback(() => {
+    cancelledRef.current = true
     cancelAnimationFrame(rafRef.current)
     streamRef.current?.getTracks().forEach((t) => t.stop())
     ctxRef.current?.close().catch(() => {})
@@ -100,7 +102,8 @@ function useMicTest(mode: NoiseSuppressionMode, echoCancellation: boolean, input
     setTesting(false)
   }, [])
 
-  const start = async () => {
+  const start = useCallback(async () => {
+    cancelledRef.current = false
     setError(null)
     try {
       const withSuppression = mode === 'browser'
@@ -112,8 +115,22 @@ function useMicTest(mode: NoiseSuppressionMode, echoCancellation: boolean, input
           autoGainControl: withSuppression,
         },
       })
+
+      // If stop() was called while awaiting getUserMedia, clean up and bail out
+      if (cancelledRef.current) {
+        stream.getTracks().forEach((t) => t.stop())
+        return
+      }
+
       streamRef.current = stream
       await enumerateDevices()
+
+      // If stop() was called while awaiting enumerateDevices, clean up and bail out
+      if (cancelledRef.current) {
+        stream.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+        return
+      }
 
       const ctx = new AudioContext()
       ctxRef.current = ctx
@@ -162,9 +179,11 @@ function useMicTest(mode: NoiseSuppressionMode, echoCancellation: boolean, input
       rafRef.current = requestAnimationFrame(tick)
       setTesting(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not access microphone')
+      if (!cancelledRef.current) {
+        setError(err instanceof Error ? err.message : 'Could not access microphone')
+      }
     }
-  }
+  }, [mode, echoCancellation, deviceId, inputGain, enumerateDevices])
 
   useEffect(
     () => () => {

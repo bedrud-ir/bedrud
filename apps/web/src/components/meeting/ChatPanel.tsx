@@ -1,7 +1,7 @@
 import { MessageSquare, X } from 'lucide-react'
 import { useCallback, useEffect, useRef } from 'react'
 import type { ChatAttachment } from '#/components/meeting/MeetingContext'
-import { useMeetingContext } from '#/components/meeting/MeetingContext'
+import { useMeetingChatContext, useMeetingRoomContext } from '#/components/meeting/MeetingContext'
 import { ChatInput, type ChatInputHandle } from './chat/ChatInput'
 import { ChatMessageList } from './chat/ChatMessageList'
 
@@ -26,7 +26,8 @@ const panel: React.CSSProperties = {
 }
 
 export function ChatPanel({ onClose }: Props) {
-  const { roomId, chatMessages, systemMessages, sendChat, markRead } = useMeetingContext()
+  const { roomId } = useMeetingRoomContext()
+  const { chatMessages, systemMessages, sendChat, markRead } = useMeetingChatContext()
   const inputRef = useRef<ChatInputHandle>(null)
   const noop = useCallback(() => {}, [])
 

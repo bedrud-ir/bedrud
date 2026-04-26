@@ -16,6 +16,15 @@ function bubbleRadius(isLocal: boolean, pos: 'only' | 'first' | 'middle' | 'last
   return '4px 14px 14px 14px'
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url, window.location.origin)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 function bubblePosition(idx: number, total: number): 'only' | 'first' | 'middle' | 'last' {
   if (total === 1) return 'only'
   if (idx === 0) return 'first'
@@ -32,16 +41,21 @@ function ChatMarkdown({ content, isLocal }: { content: string; isLocal: boolean 
   type CC = { children?: ReactNode; className?: string }
 
   const components = {
-    a: ({ href, children }: CA) => (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: linkColor, textDecoration: 'underline', wordBreak: 'break-all' }}
-      >
-        {children}
-      </a>
-    ),
+    a: ({ href, children }: CA) => {
+      if (!href || (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('/'))) {
+        return <span>{children}</span>
+      }
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: linkColor, textDecoration: 'underline', wordBreak: 'break-all' }}
+        >
+          {children}
+        </a>
+      )
+    },
     p: ({ children }: C) => <p style={{ margin: 0, lineHeight: 1.45 }}>{children}</p>,
     code: ({ children, className }: CC) => {
       const isBlock = Boolean(className)
@@ -169,8 +183,10 @@ export function ChatMessageCluster({ cluster }: Props) {
               }}
             >
               {/* Image attachments */}
-              {msg.attachments.map((att, ai) =>
-                att.kind === 'image' ? (
+              {msg.attachments.map((att, ai) => {
+                if (att.kind !== 'image') return null
+                if (!isSafeUrl(att.url)) return null
+                return (
                   <a key={ai} href={att.url} target="_blank" rel="noopener noreferrer">
                     <img
                       src={att.url}
@@ -185,8 +201,8 @@ export function ChatMessageCluster({ cluster }: Props) {
                       }}
                     />
                   </a>
-                ) : null,
-              )}
+                )
+              })}
               {/* Text */}
               {msg.message && (
                 <div style={{ padding: hasAttachments ? '6px 8px 2px' : '0' }}>

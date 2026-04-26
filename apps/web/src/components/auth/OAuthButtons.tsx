@@ -1,6 +1,27 @@
 // OAuth redirects must be absolute — the browser navigates there directly.
-// In dev this is always localhost:8090; in prod set VITE_OAUTH_URL.
-const OAUTH_BASE = (import.meta.env['VITE_OAUTH_URL'] as string | undefined) ?? 'http://localhost:8090'
+// Prefer VITE_OAUTH_URL, fall back to VITE_API_URL, and never silently
+// default to an insecure localhost URL in production.
+const _EXPLICIT_OAUTH = import.meta.env['VITE_OAUTH_URL'] as string | undefined
+const _API_URL = import.meta.env['VITE_API_URL'] as string | undefined
+
+function resolveOAuthBase(): string {
+  const base = _EXPLICIT_OAUTH || _API_URL || ''
+  if (!base) {
+    if (import.meta.env.DEV)
+      console.error(
+        'OAuthButtons: VITE_OAUTH_URL or VITE_API_URL must be configured. ' + 'OAuth login links will not work.',
+      )
+    return ''
+  }
+  // In production (page served over HTTPS), force the redirect URL to HTTPS
+  // to avoid sending auth tokens over a plaintext connection.
+  if (globalThis.location?.protocol === 'https:' && base.startsWith('http:')) {
+    return base.replace(/^http:/, 'https:')
+  }
+  return base
+}
+
+const OAUTH_BASE = resolveOAuthBase()
 
 const providers = [
   {
@@ -48,6 +69,15 @@ const providers = [
 ]
 
 export function OAuthButtons() {
+  if (!OAUTH_BASE) {
+    return (
+      <div className="rounded-md border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        OAuth is not configured. Set <code className="font-mono">VITE_OAUTH_URL</code> or{' '}
+        <code className="font-mono">VITE_API_URL</code> in your environment.
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-2">
       {providers.map(({ id, label, icon }) => (

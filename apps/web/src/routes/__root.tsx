@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { useAuthStore } from '#/lib/auth.store'
 import { applyTheme, useThemeStore } from '#/lib/theme.store'
 import appCss from '../styles.css?url'
 
@@ -51,6 +52,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     const handler = () => applyTheme(useThemeStore.getState().theme)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  // Restore session on page load via HTTP-only cookie refresh.
+  useEffect(() => {
+    useAuthStore.getState().initialize()
   }, [])
 
   return (

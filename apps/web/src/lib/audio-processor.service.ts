@@ -38,7 +38,7 @@ export class AudioProcessorService {
       try {
         await this.track.stopProcessor()
       } catch (err) {
-        console.warn('[AudioProcessorService] stopProcessor failed:', err)
+        if (import.meta.env.DEV) console.warn('[AudioProcessorService] stopProcessor failed:', err)
       }
     }
 
@@ -58,7 +58,7 @@ export class AudioProcessorService {
           autoGainControl: opts?.autoGainControl ?? mode === 'browser',
         })
         .catch((err) => {
-          console.warn('[AudioProcessorService] applyConstraints failed:', err)
+          if (import.meta.env.DEV) console.warn('[AudioProcessorService] applyConstraints failed:', err)
         })
     }
 
@@ -83,7 +83,7 @@ export class AudioProcessorService {
     const mediaTrack = this.track.mediaStreamTrack
     if (mediaTrack) {
       mediaTrack.applyConstraints({ echoCancellation: enabled }).catch((err) => {
-        console.warn('[AudioProcessorService] setEchoCancellation failed:', err)
+        if (import.meta.env.DEV) console.warn('[AudioProcessorService] setEchoCancellation failed:', err)
       })
     }
   }
@@ -94,7 +94,7 @@ export class AudioProcessorService {
       try {
         await this.track.stopProcessor()
       } catch (err) {
-        console.warn('[AudioProcessorService] detach stopProcessor failed:', err)
+        if (import.meta.env.DEV) console.warn('[AudioProcessorService] detach stopProcessor failed:', err)
       }
     }
     this.track = null

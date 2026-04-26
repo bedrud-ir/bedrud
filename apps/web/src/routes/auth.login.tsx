@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuthStore } from '#/lib/auth.store'
 import { useUserStore } from '#/lib/user.store'
+import { base64ToBuffer, bufferToBase64 } from '#/lib/webauthn'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,19 +19,6 @@ export const Route = createFileRoute('/auth/login')({
 interface AuthResponse {
   user: { id: string; email: string; name: string; provider: string; accesses: string[] | null; avatarUrl?: string }
   tokens: { accessToken: string; refreshToken: string }
-}
-
-function base64ToBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'))
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return bytes.buffer
-}
-function bufferToBase64(buffer: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '')
 }
 
 function LoginPage() {
@@ -66,7 +54,7 @@ function LoginPage() {
     const password = fd.get('password') as string
     const errs: typeof fieldErrors = {}
     if (!email || !/\S+@\S+\.\S+/.test(email)) errs.email = 'Enter a valid email'
-    if (!password || password.length < 6) errs.password = 'At least 6 characters'
+    if (!password || password.length < 12) errs.password = 'At least 12 characters'
     if (Object.keys(errs).length) {
       setFieldErrors(errs)
       return

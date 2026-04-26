@@ -1,7 +1,8 @@
 import { useParticipants } from '@livekit/components-react'
 import { Mic, MicOff, Users, Video, VideoOff, VolumeX, X } from 'lucide-react'
 import { useMemo } from 'react'
-import { useMeetingContext } from '@/components/meeting/MeetingContext'
+import { getPalette } from '#/lib/participant-palette'
+import { useMeetingRoomContext } from '@/components/meeting/MeetingContext'
 import { ParticipantContextMenu, ParticipantMenuButton } from '@/components/meeting/ParticipantContextMenu'
 
 interface Props {
@@ -19,21 +20,6 @@ function parseMeta(raw: string | undefined): ParticipantMeta {
   } catch {
     return {}
   }
-}
-
-const PALETTES = [
-  'linear-gradient(135deg,#6366f1,#8b5cf6)',
-  'linear-gradient(135deg,#06b6d4,#3b82f6)',
-  'linear-gradient(135deg,#ec4899,#f43f5e)',
-  'linear-gradient(135deg,#f59e0b,#ef4444)',
-  'linear-gradient(135deg,#10b981,#06b6d4)',
-  'linear-gradient(135deg,#a855f7,#ec4899)',
-  'linear-gradient(135deg,#0ea5e9,#6366f1)',
-  'linear-gradient(135deg,#f43f5e,#fb923c)',
-]
-function getPalette(name: string) {
-  const hash = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-  return PALETTES[Math.abs(hash) % PALETTES.length]
 }
 
 const panel: React.CSSProperties = {
@@ -54,7 +40,7 @@ const panel: React.CSSProperties = {
 
 export function ParticipantsList({ onClose }: Props) {
   const participants = useParticipants()
-  const { adminId } = useMeetingContext()
+  const { adminId } = useMeetingRoomContext()
 
   return (
     <aside className="meet-panel" style={panel}>
@@ -126,7 +112,7 @@ interface RowProps {
 function ParticipantRow({ p, adminId }: RowProps): React.ReactElement {
   const displayName = p.name ?? p.identity
   const initial = displayName.charAt(0).toUpperCase()
-  const gradient = useMemo(() => getPalette(displayName), [displayName])
+  const palette = useMemo(() => getPalette(displayName), [displayName])
 
   const meta = useMemo(() => parseMeta(p.metadata), [p.metadata])
   const participantAccesses = meta.accesses ?? []
@@ -155,7 +141,7 @@ function ParticipantRow({ p, adminId }: RowProps): React.ReactElement {
           width: 32,
           height: 32,
           borderRadius: '50%',
-          background: gradient,
+          background: palette.avatar,
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
