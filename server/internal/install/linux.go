@@ -15,17 +15,17 @@ import (
 
 type installConfigYAML struct {
 	Server struct {
-		Port           string `yaml:"port"`
-		Host           string `yaml:"host"`
-		EnableTLS      bool   `yaml:"enableTLS"`
-		CertFile       string `yaml:"certFile"`
-		KeyFile        string `yaml:"keyFile"`
-		Domain         string `yaml:"domain"`
-		Email          string `yaml:"email"`
-		UseACME        bool   `yaml:"useACME"`
-		BehindProxy    bool   `yaml:"behindProxy,omitempty"`
+		Port           string   `yaml:"port"`
+		Host           string   `yaml:"host"`
+		EnableTLS      bool     `yaml:"enableTLS"`
+		CertFile       string   `yaml:"certFile"`
+		KeyFile        string   `yaml:"keyFile"`
+		Domain         string   `yaml:"domain"`
+		Email          string   `yaml:"email"`
+		UseACME        bool     `yaml:"useACME"`
+		BehindProxy    bool     `yaml:"behindProxy,omitempty"`
 		TrustedProxies []string `yaml:"trustedProxies,omitempty"`
-		ProxyHeader    string `yaml:"proxyHeader,omitempty"`
+		ProxyHeader    string   `yaml:"proxyHeader,omitempty"`
 	} `yaml:"server"`
 	Database struct {
 		Type string `yaml:"type"`
@@ -66,10 +66,10 @@ type livekitConfigYAML struct {
 		NodeIP        string `yaml:"node_ip"`
 	} `yaml:"rtc"`
 	TURN struct {
-		Enabled bool   `yaml:"enabled"`
-		Domain  string `yaml:"domain"`
-		UDPPort int    `yaml:"udp_port"`
-		TLSPort int    `yaml:"tls_port,omitempty"`
+		Enabled  bool   `yaml:"enabled"`
+		Domain   string `yaml:"domain"`
+		UDPPort  int    `yaml:"udp_port"`
+		TLSPort  int    `yaml:"tls_port,omitempty"`
 		CertFile string `yaml:"cert_file,omitempty"`
 		KeyFile  string `yaml:"key_file,omitempty"`
 	} `yaml:"turn"`
@@ -79,7 +79,7 @@ type livekitConfigYAML struct {
 	} `yaml:"logging"`
 }
 
-func LinuxInstall(cfg InstallConfig) error {
+func LinuxInstall(cfg *InstallConfig) error {
 	if cfg.Fresh {
 		fmt.Println("➜ Fresh install: removing previous deployment...")
 		if err := LinuxUninstall(); err != nil {
@@ -99,7 +99,7 @@ func LinuxInstall(cfg InstallConfig) error {
 	}
 
 	if isTerm {
-		promptConfig(os.Stdin, os.Stdout, &cfg)
+		promptConfig(os.Stdin, os.Stdout, cfg)
 	}
 
 	cfg.SetDefaults()
@@ -110,16 +110,16 @@ func LinuxInstall(cfg InstallConfig) error {
 		fmt.Println("➜ Using Domain:", cfg.Domain)
 	}
 
-	if err := os.MkdirAll("/etc/bedrud", 0755); err != nil {
+	if err := os.MkdirAll("/etc/bedrud", 0o755); err != nil {
 		return fmt.Errorf("failed to create /etc/bedrud: %w", err)
 	}
-	if err := os.MkdirAll("/var/lib/bedrud", 0755); err != nil {
+	if err := os.MkdirAll("/var/lib/bedrud", 0o755); err != nil {
 		return fmt.Errorf("failed to create /var/lib/bedrud: %w", err)
 	}
-	if err := os.MkdirAll("/var/lib/bedrud/certs", 0750); err != nil {
+	if err := os.MkdirAll("/var/lib/bedrud/certs", 0o750); err != nil {
 		return fmt.Errorf("failed to create /var/lib/bedrud/certs: %w", err)
 	}
-	if err := os.MkdirAll("/var/log/bedrud", 0755); err != nil {
+	if err := os.MkdirAll("/var/log/bedrud", 0o755); err != nil {
 		return fmt.Errorf("failed to create /var/log/bedrud: %w", err)
 	}
 
@@ -146,7 +146,7 @@ func LinuxInstall(cfg InstallConfig) error {
 	if err != nil || len(selfBytes) == 0 {
 		return fmt.Errorf("failed to read current binary for installation: %w", err)
 	}
-	if err := os.WriteFile("/usr/local/bin/bedrud", selfBytes, 0755); err != nil {
+	if err := os.WriteFile("/usr/local/bin/bedrud", selfBytes, 0o755); err != nil {
 		return fmt.Errorf("failed to install binary to /usr/local/bin/bedrud: %w", err)
 	}
 
@@ -205,7 +205,7 @@ func LinuxInstall(cfg InstallConfig) error {
 	configYAML.Server.Domain = cfg.Domain
 	configYAML.Server.Email = cfg.Email
 	configYAML.Server.UseACME = (cfg.Email != "" && !cfg.DisableTLS && cfg.Domain != "")
-	
+
 	if cfg.BehindProxy || (!cfg.EnableTLS && cfg.Domain != "") {
 		configYAML.Server.BehindProxy = true
 		configYAML.Server.TrustedProxies = []string{"127.0.0.1", "::1"}
@@ -245,7 +245,7 @@ func LinuxInstall(cfg InstallConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal config.yaml: %w", err)
 	}
-	if err := os.WriteFile("/etc/bedrud/config.yaml", configData, 0600); err != nil {
+	if err := os.WriteFile("/etc/bedrud/config.yaml", configData, 0o600); err != nil {
 		return fmt.Errorf("failed to write config.yaml: %w", err)
 	}
 	_ = exec.Command("chown", "bedrud:bedrud", "/etc/bedrud/config.yaml").Run()
@@ -285,7 +285,7 @@ func LinuxInstall(cfg InstallConfig) error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal livekit.yaml: %w", err)
 		}
-		if err := os.WriteFile("/etc/bedrud/livekit.yaml", lkData, 0600); err != nil {
+		if err := os.WriteFile("/etc/bedrud/livekit.yaml", lkData, 0o600); err != nil {
 			return fmt.Errorf("failed to write livekit.yaml: %w", err)
 		}
 		_ = exec.Command("chown", "bedrud:bedrud", "/etc/bedrud/livekit.yaml").Run()
@@ -370,12 +370,12 @@ ReadWritePaths=/var/lib/bedrud /var/log/bedrud /etc/bedrud
 WantedBy=multi-user.target
 `, bedrudAfter, lkManagedEnv)
 
-	if err := writeServiceFiles(initSystem, serviceCfg, bedrudAfter, lkManagedEnv, lkService, serviceContent); err != nil {
+	if err := writeServiceFiles(initSystem, &serviceCfg, bedrudAfter, lkManagedEnv, lkService, serviceContent); err != nil {
 		return fmt.Errorf("failed to write service files: %w", err)
 	}
 
 	fmt.Println("➜ Enabling and starting services...")
-	if err := enableAndStartServices(initSystem, serviceCfg); err != nil {
+	if err := enableAndStartServices(initSystem, &serviceCfg); err != nil {
 		return fmt.Errorf("failed to enable/start services: %w", err)
 	}
 
@@ -407,7 +407,7 @@ func promptConfig(r io.Reader, w io.Writer, cfg *InstallConfig) {
 		detectedIP := getLocalIP()
 		fmt.Fprintf(w, "➜ Detect IP address [%s]: ", detectedIP)
 		var inputIP string
-		fmt.Fscanln(r, &inputIP)
+		_, _ = fmt.Fscanln(r, &inputIP)
 
 		if inputIP != "" {
 			cfg.OverrideIP = inputIP
@@ -418,13 +418,13 @@ func promptConfig(r io.Reader, w io.Writer, cfg *InstallConfig) {
 
 	if cfg.Domain == "" {
 		fmt.Fprintf(w, "➜ Enter Domain (leave empty for IP-only): ")
-		fmt.Fscanln(r, &cfg.Domain)
+		_, _ = fmt.Fscanln(r, &cfg.Domain)
 	}
 
 	if cfg.Domain != "" {
 		if cfg.Email == "" {
 			fmt.Fprintf(w, "➜ Enter Email for Let's Encrypt: ")
-			fmt.Fscanln(r, &cfg.Email)
+			_, _ = fmt.Fscanln(r, &cfg.Email)
 		}
 		if cfg.Email != "" && !cfg.DisableTLS {
 			cfg.EnableTLS = true
@@ -442,7 +442,7 @@ func promptConfig(r io.Reader, w io.Writer, cfg *InstallConfig) {
 	if !cfg.EnableTLS && cfg.Email == "" && !cfg.DisableTLS && !cfg.SelfSigned {
 		fmt.Fprintf(w, "➜ Enable Self-Signed TLS? [Y/n]: ")
 		var secure string
-		fmt.Fscanln(r, &secure)
+		_, _ = fmt.Fscanln(r, &secure)
 		if secure == "" || secure == "y" || secure == "Y" {
 			cfg.EnableTLS = true
 		}
@@ -538,4 +538,3 @@ func LinuxUninstall() error {
 	fmt.Println("✓ Uninstallation complete!")
 	return nil
 }
-

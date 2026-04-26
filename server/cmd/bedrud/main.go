@@ -27,7 +27,7 @@ func main() {
 		case "--livekit":
 			lkCmd := flag.NewFlagSet("livekit", flag.ExitOnError)
 			configPath := lkCmd.String("config", "", "Path to LiveKit config file")
-			lkCmd.Parse(os.Args[i+1:])
+			_ = lkCmd.Parse(os.Args[i+1:])
 			if err := livekit.RunLiveKit(*configPath); err != nil {
 				fmt.Fprintf(os.Stderr, "LiveKit error: %v\n", err)
 				os.Exit(1)
@@ -36,7 +36,7 @@ func main() {
 		case "--run":
 			runCmd := flag.NewFlagSet("run", flag.ExitOnError)
 			configPath := runCmd.String("config", "", "Path to Bedrud config file")
-			runCmd.Parse(os.Args[i+1:])
+			_ = runCmd.Parse(os.Args[i+1:])
 			path := *configPath
 			if path == "" {
 				path = os.Getenv("CONFIG_PATH")
@@ -57,7 +57,7 @@ func main() {
 	case "server", "run":
 		serverCmd := flag.NewFlagSet("server", flag.ExitOnError)
 		configPath := serverCmd.String("config", "", "Path to config file")
-		serverCmd.Parse(os.Args[2:])
+		_ = serverCmd.Parse(os.Args[2:])
 
 		path := *configPath
 		if path == "" {
@@ -90,7 +90,7 @@ func main() {
 		behindProxyFlag := installCmd.Bool("behind-proxy", false, "Running behind a CDN/reverse-proxy (Cloudflare, nginx, etc.)")
 		externalLKFlag := installCmd.String("external-livekit", "", "URL of a fully external LiveKit server (different machine, e.g. https://lk.example.com)")
 		lkDomainFlag := installCmd.String("livekit-domain", "", "Separate domain for the local LiveKit server (e.g. lk.example.com, bypasses CDN)")
-		installCmd.Parse(os.Args[2:])
+		_ = installCmd.Parse(os.Args[2:])
 
 		cfg := install.InstallConfig{
 			EnableTLS:     (*enableTLS || *selfSigned) && !*noTLS,
@@ -111,7 +111,7 @@ func main() {
 			LKDomain:      *lkDomainFlag,
 		}
 
-		if err := install.LinuxInstall(cfg); err != nil {
+		if err := install.LinuxInstall(&cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Installation error: %v\n", err)
 			os.Exit(1)
 		}
@@ -125,7 +125,7 @@ func main() {
 	case "user":
 		userCmd := flag.NewFlagSet("user", flag.ExitOnError)
 		configPath := userCmd.String("config", "/etc/bedrud/config.yaml", "Path to Bedrud config file")
-		userCmd.Parse(os.Args[2:])
+		_ = userCmd.Parse(os.Args[2:])
 
 		if len(userCmd.Args()) == 0 {
 			fmt.Println("Usage: bedrud user <subcommand> [flags]")
@@ -140,7 +140,7 @@ func main() {
 		emailFlag := subCmd.String("email", "", "User email address")
 		passwordFlag := subCmd.String("password", "", "User password")
 		nameFlag := subCmd.String("name", "", "User name")
-		subCmd.Parse(userCmd.Args()[1:])
+		_ = subCmd.Parse(userCmd.Args()[1:])
 
 		if *emailFlag == "" {
 			fmt.Fprintf(os.Stderr, "Error: --email is required\n")

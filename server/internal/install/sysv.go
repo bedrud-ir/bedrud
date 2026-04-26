@@ -221,9 +221,9 @@ esac
 :
 `
 
-func writeSysVFiles(cfg serviceConfig, lkManagedEnv string, bedrudAfter string) error {
+func writeSysVFiles(cfg *serviceConfig, lkManagedEnv, bedrudAfter string) error {
 	if cfg.HasLivekit {
-		if err := os.WriteFile("/etc/init.d/livekit", []byte(sysvLivekitTemplate), 0755); err != nil {
+		if err := os.WriteFile("/etc/init.d/livekit", []byte(sysvLivekitTemplate), 0o755); err != nil {
 			return fmt.Errorf("failed to write livekit init script: %w", err)
 		}
 	}
@@ -239,7 +239,7 @@ func writeSysVFiles(cfg serviceConfig, lkManagedEnv string, bedrudAfter string) 
 	}
 
 	bedrudScript := fmt.Sprintf(sysvBedrudTemplate, lkDep, lkDep, cfg.ConfigPath, envExports)
-	if err := os.WriteFile("/etc/init.d/bedrud", []byte(bedrudScript), 0755); err != nil {
+	if err := os.WriteFile("/etc/init.d/bedrud", []byte(bedrudScript), 0o755); err != nil {
 		return fmt.Errorf("failed to write bedrud init script: %w", err)
 	}
 

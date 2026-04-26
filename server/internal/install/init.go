@@ -13,8 +13,6 @@ type serviceConfig struct {
 	Services       []string
 }
 
-var allServices = []string{"livekit", "bedrud"}
-
 var systemdServiceFiles = []string{
 	"/etc/systemd/system/bedrud.service",
 	"/etc/systemd/system/livekit.service",
@@ -27,24 +25,30 @@ var initdScripts = []string{
 	"/etc/init.d/livekit",
 }
 
+const (
+	InitSystemSystemd = "systemd"
+	InitSystemOpenRC  = "openrc"
+	InitSystemSysV    = "sysv"
+)
+
 func detectInitSystem() string {
 	if _, err := exec.LookPath("systemctl"); err == nil {
-		return "systemd"
+		return InitSystemSystemd
 	}
 	if _, err := os.Stat("/sbin/openrc"); err == nil {
-		return "openrc"
+		return InitSystemOpenRC
 	}
-	return "sysv"
+	return InitSystemSysV
 }
 
 func stopAllInitSystems(services []string) {
 	for _, svc := range services {
 		if _, err := exec.LookPath("systemctl"); err == nil {
-			exec.Command("systemctl", "stop", svc).Run()
+			_ = exec.Command("systemctl", "stop", svc).Run()
 		}
-		exec.Command("service", svc, "stop").Run()
+		_ = exec.Command("service", svc, "stop").Run()
 		if _, err := exec.LookPath("rc-service"); err == nil {
-			exec.Command("rc-service", svc, "stop").Run()
+			_ = exec.Command("rc-service", svc, "stop").Run()
 		}
 	}
 }
@@ -52,47 +56,47 @@ func stopAllInitSystems(services []string) {
 func disableAllInitSystems(services []string) {
 	for _, svc := range services {
 		if _, err := exec.LookPath("systemctl"); err == nil {
-			exec.Command("systemctl", "disable", svc).Run()
+			_ = exec.Command("systemctl", "disable", svc).Run()
 		}
-		exec.Command("update-rc.d", svc, "remove").Run()
+		_ = exec.Command("update-rc.d", svc, "remove").Run()
 		if _, err := exec.LookPath("rc-update"); err == nil {
-			exec.Command("rc-update", "delete", svc, "default").Run()
+			_ = exec.Command("rc-update", "delete", svc, "default").Run()
 		}
 	}
 }
 
 func cleanupStaleServiceFiles(detected string) {
 	switch detected {
-	case "systemd":
+	case InitSystemSystemd:
 		for _, p := range initdScripts {
-			os.Remove(p)
+			_ = os.Remove(p)
 		}
-	case "sysv":
+	case InitSystemSysV:
 		for _, p := range systemdServiceFiles {
-			os.Remove(p)
+			_ = os.Remove(p)
 		}
-	case "openrc":
+	case InitSystemOpenRC:
 		for _, p := range systemdServiceFiles {
-			os.Remove(p)
+			_ = os.Remove(p)
 		}
 	}
-	if detected != "systemd" {
+	if detected != InitSystemSystemd {
 		if _, err := exec.LookPath("systemctl"); err == nil {
-			exec.Command("systemctl", "daemon-reload").Run()
+			_ = exec.Command("systemctl", "daemon-reload").Run()
 		}
 	}
 }
 
 func cleanupAllServiceFiles() {
 	for _, p := range systemdServiceFiles {
-		os.Remove(p)
+		_ = os.Remove(p)
 	}
 	for _, p := range initdScripts {
-		os.Remove(p)
+		_ = os.Remove(p)
 	}
 	if _, err := exec.LookPath("systemctl"); err == nil {
-		exec.Command("systemctl", "daemon-reload").Run()
-		exec.Command("systemctl", "reset-failed").Run()
+		_ = exec.Command("systemctl", "daemon-reload").Run()
+		_ = exec.Command("systemctl", "reset-failed").Run()
 	}
 }
 
@@ -109,66 +113,66 @@ func buildServiceConfig(isExternalLK bool) serviceConfig {
 	return cfg
 }
 
-func enableAndStartServices(initSystem string, cfg serviceConfig) error {
+func enableAndStartServices(initSystem string, cfg *serviceConfig) error {
 	switch initSystem {
-	case "systemd":
+	case InitSystemSystemd:
 		return enableStartSystemd(cfg)
-	case "sysv":
+	case InitSystemSysV:
 		return enableStartSysV(cfg)
-	case "openrc":
+	case InitSystemOpenRC:
 		return enableStartOpenRC(cfg)
 	default:
 		return fmt.Errorf("unsupported init system: %s", initSystem)
 	}
 }
 
-func enableStartSystemd(cfg serviceConfig) error {
-	exec.Command("systemctl", "daemon-reload").Run()
-	exec.Command("systemctl", append([]string{"enable"}, cfg.Services...)...).Run()
-	exec.Command("systemctl", append([]string{"restart"}, cfg.Services...)...).Run()
+func enableStartSystemd(cfg *serviceConfig) error {
+	_ = exec.Command("systemctl", "daemon-reload").Run()
+	_ = exec.Command("systemctl", append([]string{"enable"}, cfg.Services...)...).Run()
+	_ = exec.Command("systemctl", append([]string{"restart"}, cfg.Services...)...).Run()
 	return nil
 }
 
-func enableStartSysV(cfg serviceConfig) error {
+func enableStartSysV(cfg *serviceConfig) error {
 	for _, svc := range cfg.Services {
-		exec.Command("update-rc.d", svc, "defaults").Run()
+		_ = exec.Command("update-rc.d", svc, "defaults").Run()
 	}
 	for _, svc := range cfg.Services {
-		exec.Command("service", svc, "start").Run()
-	}
-	return nil
-}
-
-func enableStartOpenRC(cfg serviceConfig) error {
-	for _, svc := range cfg.Services {
-		exec.Command("rc-update", "add", svc, "default").Run()
-	}
-	for _, svc := range cfg.Services {
-		exec.Command("rc-service", svc, "start").Run()
+		_ = exec.Command("service", svc, "start").Run()
 	}
 	return nil
 }
 
-func writeServiceFiles(initSystem string, cfg serviceConfig, bedrudAfter string, lkManagedEnv string, lkService string, serviceContent string) error {
+func enableStartOpenRC(cfg *serviceConfig) error {
+	for _, svc := range cfg.Services {
+		_ = exec.Command("rc-update", "add", svc, "default").Run()
+	}
+	for _, svc := range cfg.Services {
+		_ = exec.Command("rc-service", svc, "start").Run()
+	}
+	return nil
+}
+
+func writeServiceFiles(initSystem string, cfg *serviceConfig, bedrudAfter, lkManagedEnv, lkService, serviceContent string) error {
 	switch initSystem {
-	case "systemd":
+	case InitSystemSystemd:
 		return writeSystemdFiles(cfg, lkService, serviceContent)
-	case "sysv":
+	case InitSystemSysV:
 		return writeSysVFiles(cfg, lkManagedEnv, bedrudAfter)
-	case "openrc":
+	case InitSystemOpenRC:
 		return writeOpenRCFiles(cfg, lkManagedEnv)
 	default:
 		return fmt.Errorf("unsupported init system: %s", initSystem)
 	}
 }
 
-func writeSystemdFiles(cfg serviceConfig, lkService string, serviceContent string) error {
+func writeSystemdFiles(cfg *serviceConfig, lkService, serviceContent string) error {
 	if cfg.HasLivekit {
-		if err := os.WriteFile("/etc/systemd/system/livekit.service", []byte(lkService), 0644); err != nil {
+		if err := os.WriteFile("/etc/systemd/system/livekit.service", []byte(lkService), 0o644); err != nil {
 			return fmt.Errorf("failed to write livekit.service: %w", err)
 		}
 	}
-	if err := os.WriteFile("/etc/systemd/system/bedrud.service", []byte(serviceContent), 0644); err != nil {
+	if err := os.WriteFile("/etc/systemd/system/bedrud.service", []byte(serviceContent), 0o644); err != nil {
 		return fmt.Errorf("failed to write bedrud.service: %w", err)
 	}
 	return nil

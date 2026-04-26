@@ -2,22 +2,22 @@ package install
 
 // InstallConfig holds all configuration parameters for the Bedrud installer.
 type InstallConfig struct {
-	EnableTLS      bool
-	DisableTLS     bool
-	SelfSigned     bool
-	OverrideIP     string
-	Domain         string
-	Email          string
-	Port           string
-	CertPath       string
-	KeyPath        string
-	LKPort         string
-	LKTcpPort      string
-	LKUdpPort      string
-	Fresh          bool
-	BehindProxy    bool
-	ExternalLKURL  string
-	LKDomain       string
+	EnableTLS     bool
+	DisableTLS    bool
+	SelfSigned    bool
+	OverrideIP    string
+	Domain        string
+	Email         string
+	Port          string
+	CertPath      string
+	KeyPath       string
+	LKPort        string
+	LKTcpPort     string
+	LKUdpPort     string
+	Fresh         bool
+	BehindProxy   bool
+	ExternalLKURL string
+	LKDomain      string
 }
 
 // SetDefaults populates empty fields with their default values.

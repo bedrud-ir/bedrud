@@ -44,9 +44,9 @@ depend() {
 }
 `
 
-func writeOpenRCFiles(cfg serviceConfig, lkManagedEnv string) error {
+func writeOpenRCFiles(cfg *serviceConfig, lkManagedEnv string) error {
 	if cfg.HasLivekit {
-		if err := os.WriteFile("/etc/init.d/livekit", []byte(openrcLivekitTemplate), 0755); err != nil {
+		if err := os.WriteFile("/etc/init.d/livekit", []byte(openrcLivekitTemplate), 0o755); err != nil {
 			return fmt.Errorf("failed to write livekit openrc script: %w", err)
 		}
 	}
@@ -62,7 +62,7 @@ func writeOpenRCFiles(cfg serviceConfig, lkManagedEnv string) error {
 	}
 
 	bedrudScript := fmt.Sprintf(openrcBedrudTemplate, cfg.ConfigPath, lkDep, envExports)
-	if err := os.WriteFile("/etc/init.d/bedrud", []byte(bedrudScript), 0755); err != nil {
+	if err := os.WriteFile("/etc/init.d/bedrud", []byte(bedrudScript), 0o755); err != nil {
 		return fmt.Errorf("failed to write bedrud openrc script: %w", err)
 	}
 
