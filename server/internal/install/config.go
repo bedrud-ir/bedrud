@@ -22,6 +22,9 @@ type InstallConfig struct {
 
 // SetDefaults populates empty fields with their default values.
 func (c *InstallConfig) SetDefaults() {
+	if c.OverrideIP == "" {
+		c.OverrideIP = getLocalIP()
+	}
 	if c.Port == "" {
 		if c.EnableTLS {
 			c.Port = "443"

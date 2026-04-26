@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -468,6 +471,23 @@ func createBedrudUser() error {
 }
 
 func getLocalIP() string {
+	// 1. Try to get public IP first
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := client.Get("https://ifconfig.me")
+	if err == nil {
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err == nil {
+			ip := strings.TrimSpace(string(body))
+			if net.ParseIP(ip) != nil {
+				return ip
+			}
+		}
+	}
+
+	// 2. Fallback to local interface
 	addrs, _ := net.InterfaceAddrs()
 	for _, a := range addrs {
 		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {

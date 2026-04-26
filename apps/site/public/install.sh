@@ -706,20 +706,66 @@ if [[ "$CAN_SETUP" == true ]]; then
     esac
   fi
 
+  # ── Phase 5.5: Wait for service to be ready ────────────────────
+  step "Waiting for bedrud service"
+
+  WAIT_URL=""
+  case "$TLS_MODE" in
+    acme)       WAIT_URL="https://${DOMAIN}" ;;
+    selfsigned) WAIT_URL="https://${PUBLIC_IP:-localhost}" ;;
+    none)       WAIT_URL="http://${PUBLIC_IP:-localhost}:8090" ;;
+  esac
+
+  WAIT_OK=false
+  for i in $(seq 1 30); do
+    WAIT_CODE="$(curl -sk -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 "${WAIT_URL}" 2>/dev/null || true)"
+    if [[ "$WAIT_CODE" =~ ^[23] ]]; then
+      info "Service ready (HTTP ${WAIT_CODE})"
+      WAIT_OK=true
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$WAIT_OK" != true ]]; then
+    warn "Service not responding after 30s. User creation may fail."
+  fi
+
   # ── Phase 6: Create admin user ─────────────────────────────────
   step "Creating admin user"
 
-  if ! "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" create \
-    --email "$ADMIN_EMAIL" \
-    --password "$ADMIN_PASS" \
-    --name "$ADMIN_NAME"; then
-    error "Failed to create admin user"
+  USER_CREATED=false
+  for i in 1 2 3; do
+    if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" create \
+      --email "$ADMIN_EMAIL" \
+      --password "$ADMIN_PASS" \
+      --name "$ADMIN_NAME"; then
+      USER_CREATED=true
+      break
+    fi
+    if [[ $i -lt 3 ]]; then
+      warn "User creation failed (attempt $i/3). Retrying in 5s..."
+      sleep 5
+    fi
+  done
+  if [[ "$USER_CREATED" != true ]]; then
+    error "Failed to create admin user after 3 attempts"
   fi
   info "Admin user created"
 
-  if ! "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" promote \
-    --email "$ADMIN_EMAIL"; then
-    error "Failed to promote admin user"
+  USER_PROMOTED=false
+  for i in 1 2 3; do
+    if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" promote \
+      --email "$ADMIN_EMAIL"; then
+      USER_PROMOTED=true
+      break
+    fi
+    if [[ $i -lt 3 ]]; then
+      warn "User promote failed (attempt $i/3). Retrying in 5s..."
+      sleep 5
+    fi
+  done
+  if [[ "$USER_PROMOTED" != true ]]; then
+    error "Failed to promote admin user after 3 attempts"
   fi
   info "Admin promoted to superadmin"
   unset ADMIN_PASS

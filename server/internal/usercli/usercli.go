@@ -62,6 +62,10 @@ func CreateUser(configPath, email, password, name string) error {
 	}
 	defer database.Close()
 
+	if err := database.RunMigrations(); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
@@ -98,6 +102,10 @@ func DeleteUser(configPath, email string) error {
 	}
 	defer database.Close()
 
+	if err := database.RunMigrations(); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
 	repo := repository.NewUserRepository(database.GetDB())
 	user, err := repo.GetUserByEmail(email)
 	if err != nil {
@@ -124,6 +132,10 @@ func withUser(configPath, email string, fn func(*repository.UserRepository, *mod
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer database.Close()
+
+	if err := database.RunMigrations(); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
 
 	repo := repository.NewUserRepository(database.GetDB())
 	user, err := repo.GetUserByEmail(email)
