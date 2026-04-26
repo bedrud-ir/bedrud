@@ -36,6 +36,7 @@ step()  { printf "\n${BLUE}${BOLD}── %s ──${RESET}\n" "$*" ; }
 
 ask() {
   local prompt="$1" default="${2:-}" var="$3" is_secret="${4:-false}"
+  eval "$var=\"\""
   if [[ "$is_secret" == "true" ]]; then
     if [[ -n "$default" ]]; then
       printf "${BOLD}%s [****]:${RESET} " "$prompt"
@@ -67,12 +68,13 @@ ask_yn() {
   else
     printf "${BOLD}%s [y/N]:${RESET} " "$prompt"
   fi
+  local answer=""
   read -r answer </dev/tty || true
   answer="${answer:-$default}"
-  case "${answer,,}" in
-    y|yes) eval "$var=true" ;;
-    n|no)  eval "$var=false" ;;
-    *)     eval "$var=$( [[ '$default' == 'Y' ]] && echo true || echo false )" ;;
+  case "$answer" in
+    [yY]|[yY][eE][sS]) eval "$var=true" ;;
+    [nN]|[nN][oO])     eval "$var=false" ;;
+    *)                 eval "$var=$( [[ "$default" == "Y" ]] && echo true || echo false )" ;;
   esac
 }
 
@@ -165,7 +167,7 @@ pkg_name() {
 }
 
 ensure_deps() {
-  local pm skip_auto reason
+  local pm="" skip_auto=false reason=""
   pm="$(detect_pkg_manager)"
 
   if [[ "$(uname -s)" == "Darwin" ]]; then
