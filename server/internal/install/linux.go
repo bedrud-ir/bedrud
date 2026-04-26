@@ -127,6 +127,11 @@ func LinuxInstall(cfg *InstallConfig) error {
 		fmt.Printf("⚠ Warning: could not create 'bedrud' user: %v\n", err)
 	}
 
+	// 1. Stop existing services and remove binary to avoid ETXTBSY
+	fmt.Println("➜ Stopping existing services...")
+	stopAllInitSystems([]string{"bedrud", "livekit"})
+	_ = os.Remove("/usr/local/bin/bedrud")
+
 	// Chown directories to bedrud:bedrud
 	for _, dir := range []string{"/etc/bedrud", "/var/lib/bedrud", "/var/log/bedrud"} {
 		if out, err := exec.Command("chown", "-R", "bedrud:bedrud", dir).CombinedOutput(); err != nil {
@@ -134,7 +139,7 @@ func LinuxInstall(cfg *InstallConfig) error {
 		}
 	}
 
-	// 1. Install Bedrud Binary
+	// 2. Install Bedrud Binary
 	selfBytes, err := os.ReadFile("/proc/self/exe")
 	if err != nil {
 		execPath, errFallback := os.Executable()
@@ -306,7 +311,6 @@ func LinuxInstall(cfg *InstallConfig) error {
 
 	serviceCfg := buildServiceConfig(isExternalLK)
 
-	stopAllInitSystems(serviceCfg.Services)
 	cleanupStaleServiceFiles(initSystem)
 
 	lkManagedEnv := ""

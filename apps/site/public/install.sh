@@ -296,8 +296,8 @@ if [[ "$SKIP_DOWNLOAD" != true ]]; then
       error "Build succeeded but binary not found at ${BINARY_PATH}"
     fi
 
+    rm -f "${INSTALL_DIR}/${BINARY_NAME}" 2>/dev/null || true
     mv "$BINARY_PATH" "${INSTALL_DIR}/${BINARY_NAME}"
-    chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
 
     info "Installed bedrud to ${INSTALL_DIR}/${BINARY_NAME}"
   else
@@ -320,11 +320,12 @@ if [[ "$SKIP_DOWNLOAD" != true ]]; then
       error "Could not find '${BINARY_NAME}' binary in archive"
     fi
 
+    rm -f "${INSTALL_DIR}/${BINARY_NAME}" 2>/dev/null || true
     mv "$BINARY_PATH" "${INSTALL_DIR}/${BINARY_NAME}"
-    chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
 
     info "Installed bedrud to ${INSTALL_DIR}/${BINARY_NAME}"
   fi
+  chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
 fi
 
 if [[ -x "${INSTALL_DIR}/${BINARY_NAME}" ]]; then
