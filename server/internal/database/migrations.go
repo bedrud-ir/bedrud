@@ -1,6 +1,8 @@
 package database
 
 import (
+	"os"
+
 	"bedrud/internal/models"
 
 	"github.com/rs/zerolog/log"
@@ -8,6 +10,11 @@ import (
 
 // RunMigrations performs all database migrations
 func RunMigrations() error {
+	if os.Getenv("BEDRUD_SKIP_MIGRATE") == "1" {
+		log.Info().Msg("Skipping database migrations (BEDRUD_SKIP_MIGRATE=1)")
+		return nil
+	}
+
 	db := GetDB()
 
 	// Disable foreign key checks during migration

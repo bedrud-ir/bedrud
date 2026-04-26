@@ -964,6 +964,7 @@ if [[ "$CAN_SETUP" == true ]]; then
 
   # ── Phase 6: Create admin user ─────────────────────────────────
   step "Creating admin user"
+  export BEDRUD_SKIP_MIGRATE=1
 
   if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" create \
     --email "$ADMIN_EMAIL" \
@@ -981,6 +982,13 @@ if [[ "$CAN_SETUP" == true ]]; then
     error "Failed to promote admin user"
   fi
   unset ADMIN_PASS
+
+  VERIFY_URL=""
+  case "$TLS_MODE" in
+    acme)       VERIFY_URL="https://${DOMAIN}" ;;
+    selfsigned) VERIFY_URL="https://${BEDRUD_IP}" ;;
+    none)       VERIFY_URL="http://${BEDRUD_IP}:8090" ;;
+  esac
 
   # ── Phase 7: Verify ────────────────────────────────────────────
   if [[ "$IS_CONTAINER" == true ]]; then
@@ -1024,13 +1032,6 @@ if [[ "$CAN_SETUP" == true ]]; then
           VERIFY_OK=false
         fi
         ;;
-    esac
-
-    VERIFY_URL=""
-    case "$TLS_MODE" in
-      acme)       VERIFY_URL="https://${DOMAIN}" ;;
-      selfsigned) VERIFY_URL="https://${BEDRUD_IP}" ;;
-      none)       VERIFY_URL="http://${BEDRUD_IP}:8090" ;;
     esac
 
     HEALTH_CODE=""
