@@ -670,7 +670,8 @@ elif command -v service >/dev/null 2>&1; then
   INIT_SYSTEM="sysv"
   CAN_SETUP=true
 else
-  SKIP_REASON="No supported init system found (need systemd, openrc, or sysvinit)."
+  INIT_SYSTEM="none"
+  CAN_SETUP=true
 fi
 
 if [[ "$CAN_SETUP" == true ]]; then
@@ -931,12 +932,13 @@ if [[ "$CAN_SETUP" == true ]]; then
       systemd) systemctl restart bedrud 2>/dev/null || true ;;
       openrc)  rc-service bedrud restart 2>/dev/null || true ;;
       sysv)    service bedrud restart 2>/dev/null || true ;;
+      none)    ;;
     esac
   fi
 
   # ── Phase 5.5: Wait for service to be ready ────────────────────
-  if [[ "$IS_CONTAINER" == true ]]; then
-    info "Container detected — skipping service wait"
+  if [[ "$IS_CONTAINER" == true || "$INIT_SYSTEM" == "none" ]]; then
+    info "No service management — skipping service wait"
   else
     step "Waiting for bedrud service"
 
@@ -992,7 +994,7 @@ if [[ "$CAN_SETUP" == true ]]; then
   esac
 
   # ── Phase 7: Verify ────────────────────────────────────────────
-  if [[ "$IS_CONTAINER" == true ]]; then
+  if [[ "$IS_CONTAINER" == true || "$INIT_SYSTEM" == "none" ]]; then
     VERIFY_OK=true
   else
     step "Verifying installation"
@@ -1068,6 +1070,10 @@ if [[ "$CAN_SETUP" == true ]]; then
     sysv)
       printf "  ${BOLD}Logs:${RESET}         tail -f /var/log/bedrud/bedrud.log\n"
       printf "  ${BOLD}Status:${RESET}       service bedrud status\n"
+      ;;
+    none)
+      printf "  ${BOLD}Run:${RESET}          bedrud run --config %s\n" "$CONFIG_FILE"
+      printf "  ${BOLD}Background:${RESET}   nohup bedrud run --config %s > /dev/null 2>&1 &\n" "$CONFIG_FILE"
       ;;
   esac
   printf "\n"
