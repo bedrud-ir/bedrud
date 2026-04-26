@@ -1,4 +1,4 @@
-.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android dev-desktop dev-site build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim build-desktop build-site deploy test-back push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open clean full-clean
+.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android dev-desktop dev-site build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim build-desktop build-site deploy test-back fmt lint lint-fix push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open clean full-clean
 
 GREEN  := \033[0;32m
 RED    := \033[0;31m
@@ -348,6 +348,22 @@ scalar-open:
 # Run backend tests
 test-back:
 	cd server && go test -v -count=1 ./...
+
+# Format Go code
+fmt:
+	@if ! command -v gofumpt >/dev/null 2>&1; then \
+		echo "➜ Installing gofumpt..."; \
+		go install mvdan.cc/gofumpt@latest; \
+	fi
+	cd server && gofumpt -l -w .
+
+# Run linters
+lint:
+	cd server && golangci-lint run ./...
+
+# Run linters and auto-fix issues
+lint-fix:
+	cd server && golangci-lint run --fix ./...
 
 # Run frontend dev proxy
 run-front-dev:

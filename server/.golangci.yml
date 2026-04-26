@@ -1,0 +1,56 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - staticcheck
+    - unused
+    - errcheck
+    - ineffassign
+    - unconvert
+    - goconst
+    - bodyclose
+    - sqlclosecheck
+    - rowserrcheck
+    - gocritic
+    - revive
+    - misspell
+    - gofumpt
+    - thelper
+    - testifylint
+    - intrange
+    - usestdlibvars
+    - nolintlint
+
+linters-settings:
+  gofumpt:
+    extra-rules: true
+  revive:
+    rules:
+      - name: exported
+        disabled: true
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - appendAssign
+
+issues:
+  exclude-rules:
+    - path: docs/
+      linters:
+        - all
+    - path: frontend/
+      linters:
+        - all
+    - path: magefile.go
+      linters:
+        - all
+  max-issues-per-linter: 0
+  max-same-issues: 0
