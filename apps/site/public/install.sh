@@ -272,6 +272,21 @@ if [[ "$SKIP_DOWNLOAD" != true ]]; then
 
     mkdir -p "$INSTALL_DIR"
 
+    info "Installing frontend dependencies..."
+    cd "$TMP_DIR/src/apps/web" && bun install \
+      || error "Failed to install frontend dependencies"
+
+    info "Installing Go dependencies..."
+    cd "$TMP_DIR/src/server" && go mod tidy && go mod download \
+      || error "Failed to install Go dependencies"
+
+    info "Downloading LiveKit server..."
+    make -C "$TMP_DIR/src" livekit-download \
+      || error "Failed to download LiveKit server"
+    mkdir -p "$TMP_DIR/src/server/internal/livekit/bin"
+    test -f "$TMP_DIR/src/server/internal/livekit/bin/livekit-server" \
+      || cp "$HOME/.local/bin/livekit-server" "$TMP_DIR/src/server/internal/livekit/bin/livekit-server"
+
     info "Building bedrud (this may take a few minutes)..."
     make -C "$TMP_DIR/src" build \
       || error "Build failed. Check output above for errors."
