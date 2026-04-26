@@ -47,7 +47,7 @@ type RoomHandler struct {
 	uploadMax   int64
 }
 
-func NewRoomHandler(lkCfg config.LiveKitConfig, chatCfg config.ChatConfig, roomRepo *repository.RoomRepository) *RoomHandler {
+func NewRoomHandler(lkCfg *config.LiveKitConfig, chatCfg *config.ChatConfig, roomRepo *repository.RoomRepository) *RoomHandler {
 	apiHost := lkCfg.InternalHost
 	if apiHost == "" {
 		apiHost = lkCfg.Host
@@ -73,7 +73,7 @@ func NewRoomHandler(lkCfg config.LiveKitConfig, chatCfg config.ChatConfig, roomR
 		apiKey:      lkCfg.APIKey,
 		apiSecret:   lkCfg.APISecret,
 		client:      client,
-		uploadStore: storage.NewChatUploadStore(chatCfg.Uploads),
+		uploadStore: storage.NewChatUploadStore(&chatCfg.Uploads),
 		uploadMax:   uploadMax,
 	}
 }
@@ -81,7 +81,7 @@ func NewRoomHandler(lkCfg config.LiveKitConfig, chatCfg config.ChatConfig, roomR
 func (h *RoomHandler) withAuth(ctx context.Context, grants ...*lkauth.VideoGrant) context.Context {
 	at := lkauth.NewAccessToken(h.apiKey, h.apiSecret)
 	for _, g := range grants {
-		at.AddGrant(g)
+		at.AddGrant(g) //nolint:staticcheck // AddGrant is deprecated but VideoGrant field is not available in this version of the protocol SDK
 	}
 	token, err := at.ToJWT()
 	if err != nil {
@@ -124,7 +124,7 @@ func (h *RoomHandler) CreateRoom(c *fiber.Ctx) error {
 		log.Error().Err(err).Str("room", req.Name).Msg("LiveKit CreateRoom failed")
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create media room"})
 	}
-	room, err := h.roomRepo.CreateRoom(claims.UserID, req.Name, req.IsPublic, req.Mode, req.Settings)
+	room, err := h.roomRepo.CreateRoom(claims.UserID, req.Name, req.IsPublic, req.Mode, &req.Settings)
 	if err != nil {
 		// Map specific errors to appropriate HTTP status codes
 		if errors.Is(err, models.ErrRoomNameTaken) {
@@ -162,7 +162,7 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 	_ = h.roomRepo.AddParticipant(room.ID, claims.UserID)
 
 	at := lkauth.NewAccessToken(h.apiKey, h.apiSecret)
-	at.AddGrant(&lkauth.VideoGrant{RoomJoin: true, Room: req.RoomName, CanUpdateOwnMetadata: boolPtr(true)}).SetIdentity(claims.UserID).SetName(claims.Name).SetValidFor(time.Hour)
+	at.AddGrant(&lkauth.VideoGrant{RoomJoin: true, Room: req.RoomName, CanUpdateOwnMetadata: boolPtr(true)}).SetIdentity(claims.UserID).SetName(claims.Name).SetValidFor(time.Hour) //nolint:staticcheck // AddGrant is deprecated but VideoGrant field is not available in this version of the protocol SDK
 	if meta, err := json.Marshal(map[string]interface{}{"accesses": claims.Accesses}); err == nil {
 		at.SetMetadata(string(meta))
 	}
@@ -214,7 +214,7 @@ func (h *RoomHandler) GuestJoinRoom(c *fiber.Ctx) error {
 
 	guestID := "guest-" + generateShortID()
 	at := lkauth.NewAccessToken(h.apiKey, h.apiSecret)
-	at.AddGrant(&lkauth.VideoGrant{
+	at.AddGrant(&lkauth.VideoGrant{ //nolint:staticcheck // AddGrant is deprecated but VideoGrant field is not available in this version of the protocol SDK
 		RoomJoin:             true,
 		Room:                 req.RoomName,
 		CanUpdateOwnMetadata: boolPtr(false),
@@ -290,11 +290,11 @@ func (h *RoomHandler) sendTargetedSystemMessage(ctx context.Context, roomName, e
 	b, _ := json.Marshal(sysMsg{Type: "system", Event: event, Actor: actor, Target: target})
 	topic := "system"
 	_, _ = h.client.SendData(ctx, &livekit.SendDataRequest{
-		Room:                    roomName,
-		Data:                    b,
-		Kind:                    livekit.DataPacket_RELIABLE,
-		Topic:                   &topic,
-		DestinationIdentities:   []string{target},
+		Room:                  roomName,
+		Data:                  b,
+		Kind:                  livekit.DataPacket_RELIABLE,
+		Topic:                 &topic,
+		DestinationIdentities: []string{target},
 	})
 }
 
@@ -683,6 +683,7 @@ func containsAccess(accesses []string, target string) bool {
 	}
 	return false
 }
+
 func (h *RoomHandler) DisableParticipantVideo(c *fiber.Ctx) error {
 	roomID, identity := c.Params("roomId"), c.Params("identity")
 	claims := c.Locals("user").(*auth.Claims)
@@ -711,6 +712,7 @@ func (h *RoomHandler) BringToStage(c *fiber.Ctx) error { return c.JSON(fiber.Map
 func (h *RoomHandler) RemoveFromStage(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "success"})
 }
+
 func (h *RoomHandler) UpdateSettings(c *fiber.Ctx) error {
 	roomID := c.Params("roomId")
 	claims := c.Locals("user").(*auth.Claims)
@@ -758,6 +760,7 @@ func (h *RoomHandler) UpdateSettings(c *fiber.Ctx) error {
 
 	return c.JSON(room)
 }
+
 func (h *RoomHandler) AdminListRooms(c *fiber.Ctx) error {
 	rooms, err := h.roomRepo.GetAllRooms()
 	if err != nil {
@@ -765,6 +768,7 @@ func (h *RoomHandler) AdminListRooms(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"rooms": rooms})
 }
+
 func (h *RoomHandler) AdminGenerateToken(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "success"})
 }
@@ -893,7 +897,7 @@ func (h *RoomHandler) AdminGetRoomParticipants(c *fiber.Ctx) error {
 		tracks := make([]TrackStat, 0, len(p.Tracks))
 		for _, t := range p.Tracks {
 			var bitrate uint32
-			for _, layer := range t.Layers {
+			for _, layer := range t.Layers { //nolint:staticcheck // Layers is deprecated but VideoLayers field is not available in this version of the protocol SDK
 				if layer.Bitrate > bitrate {
 					bitrate = layer.Bitrate
 				}

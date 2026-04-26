@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-co-op/gocron"
 	lkauth "github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/livekit"
-	"github.com/go-co-op/gocron"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 )
@@ -19,7 +19,7 @@ import (
 var scheduler *gocron.Scheduler
 
 // Initialize creates and starts the scheduler with idle room detection.
-func Initialize(roomRepo *repository.RoomRepository, lkCfg config.LiveKitConfig) {
+func Initialize(roomRepo *repository.RoomRepository, lkCfg *config.LiveKitConfig) {
 	scheduler = gocron.NewScheduler(time.Local)
 
 	apiHost := lkCfg.InternalHost
@@ -54,7 +54,7 @@ func Stop() {
 
 // checkIdleRooms marks active DB rooms as idle when they have 0 participants in LiveKit.
 // Rooms created within the last 5 minutes are skipped to avoid false positives.
-func checkIdleRooms(roomRepo *repository.RoomRepository, cfg config.LiveKitConfig, client livekit.RoomService) {
+func checkIdleRooms(roomRepo *repository.RoomRepository, cfg *config.LiveKitConfig, client livekit.RoomService) {
 	if roomRepo == nil {
 		return
 	}
@@ -64,7 +64,7 @@ func checkIdleRooms(roomRepo *repository.RoomRepository, cfg config.LiveKitConfi
 	}
 
 	at := lkauth.NewAccessToken(cfg.APIKey, cfg.APISecret)
-	at.AddGrant(&lkauth.VideoGrant{RoomList: true})
+	at.AddGrant(&lkauth.VideoGrant{RoomList: true}) //nolint:staticcheck // AddGrant is deprecated but VideoGrant field is not available in this version of the protocol SDK
 	token, err := at.ToJWT()
 	if err != nil {
 		log.Error().Err(err).Msg("Scheduler: failed to generate LiveKit token")
@@ -87,7 +87,8 @@ func checkIdleRooms(roomRepo *repository.RoomRepository, cfg config.LiveKitConfi
 	}
 
 	grace := 5 * time.Minute
-	for _, room := range rooms {
+	for i := range rooms {
+		room := &rooms[i]
 		if time.Since(room.CreatedAt) < grace {
 			continue
 		}

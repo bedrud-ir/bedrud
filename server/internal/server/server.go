@@ -16,9 +16,7 @@
 
 package server
 
-
 import (
-	root "bedrud"
 	"bedrud/config"
 	"bedrud/internal/auth"
 	"bedrud/internal/database"
@@ -37,6 +35,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	root "bedrud"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
@@ -88,9 +88,11 @@ func Run(configPath string) error {
 		return err
 	}
 	defer database.Close()
-	database.RunMigrations()
+	if err := database.RunMigrations(); err != nil {
+		log.Error().Err(err).Msg("Failed to run database migrations")
+	}
 	roomRepo := repository.NewRoomRepository(database.GetDB())
-	scheduler.Initialize(roomRepo, cfg.LiveKit)
+	scheduler.Initialize(roomRepo, &cfg.LiveKit)
 	defer scheduler.Stop()
 	auth.Init(cfg)
 
@@ -157,7 +159,7 @@ func Run(configPath string) error {
 	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
 	authService := auth.NewAuthService(userRepo, passkeyRepo)
 	authHandler := handlers.NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)
-	roomHandler := handlers.NewRoomHandler(cfg.LiveKit, cfg.Chat, roomRepo)
+	roomHandler := handlers.NewRoomHandler(&cfg.LiveKit, &cfg.Chat, roomRepo)
 
 	api.Post("/auth/register", authHandler.Register)
 	api.Post("/auth/login", authHandler.Login)
@@ -259,9 +261,9 @@ func Run(configPath string) error {
 		}
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 		if c.Path() == "/" {
-			return c.Status(200).Send(indexHTML)
+			return c.Status(http.StatusOK).Send(indexHTML)
 		}
-		return c.Status(200).Send(shellHTML)
+		return c.Status(http.StatusOK).Send(shellHTML)
 	})
 
 	go func() {

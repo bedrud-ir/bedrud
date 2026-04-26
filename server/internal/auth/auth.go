@@ -257,7 +257,7 @@ func (s *AuthService) ChangePassword(userID, currentPassword, newPassword string
 	if err != nil || user == nil {
 		return errors.New("user not found")
 	}
-	if user.Provider != "local" && user.Provider != "passkey" {
+	if user.Provider != models.ProviderLocal && user.Provider != "passkey" {
 		return errors.New("password change is only available for local accounts")
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword)); err != nil {
@@ -281,7 +281,7 @@ func (s *AuthService) ChangePassword(userID, currentPassword, newPassword string
 // @Success 200 {object} map[string]string
 // @Failure 401 {object} ErrorResponse
 // @Router /auth/logout [post]
-func (s *AuthService) Logout(userID string, refreshToken string) error {
+func (s *AuthService) Logout(userID, refreshToken string) error {
 	// Parse the refresh token to get expiration
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
@@ -306,7 +306,7 @@ func (s *AuthService) Logout(userID string, refreshToken string) error {
 // @Success 200 {object} map[string]string
 // @Failure 401 {object} ErrorResponse
 // @Router /auth/logout [post]
-func (s *AuthService) BlockRefreshToken(userID string, refreshToken string) error {
+func (s *AuthService) BlockRefreshToken(userID, refreshToken string) error {
 	// Parse the refresh token to get expiration
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
@@ -356,7 +356,7 @@ func (s *AuthService) BeginRegisterPasskey(userID string) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(challenge), nil
 }
 
-func (s *AuthService) FinishRegisterPasskey(userID string, challengeStr string, clientDataJSON, attestationObject []byte, rpID, origin string) error {
+func (s *AuthService) FinishRegisterPasskey(userID, challengeStr string, clientDataJSON, attestationObject []byte, rpID, origin string) error {
 	challenge, err := base64.RawURLEncoding.DecodeString(challengeStr)
 	if err != nil {
 		return err
@@ -383,12 +383,13 @@ func (s *AuthService) FinishRegisterPasskey(userID string, challengeStr string, 
 		CredentialID: authData.CredentialID,
 		PublicKey:    pub,
 		Algorithm:    int(authData.Algorithm),
-		Counter:      uint32(authData.Counter),
+		Counter:      authData.Counter,
 		Name:         "Passkey",
 	}
 
 	return s.passkeyRepo.CreatePasskey(passkey)
 }
+
 func (s *AuthService) FinishSignupPasskey(userID, email, name, challengeStr string, clientDataJSON, attestationObject []byte, rpID, origin string) (*LoginResponse, error) {
 	challenge, err := base64.RawURLEncoding.DecodeString(challengeStr)
 	if err != nil {
@@ -430,7 +431,7 @@ func (s *AuthService) FinishSignupPasskey(userID, email, name, challengeStr stri
 		CredentialID: authData.CredentialID,
 		PublicKey:    pub,
 		Algorithm:    int(authData.Algorithm),
-		Counter:      uint32(authData.Counter),
+		Counter:      authData.Counter,
 		Name:         "Passkey",
 	}
 
@@ -496,7 +497,7 @@ func (s *AuthService) FinishLoginPasskey(challengeStr string, credentialID, clie
 	}
 
 	// Update counter to prevent replay attacks
-	if err := s.passkeyRepo.UpdatePasskeyCounter(credentialID, uint32(assertion.Counter)); err != nil {
+	if err := s.passkeyRepo.UpdatePasskeyCounter(credentialID, assertion.Counter); err != nil {
 		log.Error().Err(err).Msg("Failed to update passkey counter")
 	}
 

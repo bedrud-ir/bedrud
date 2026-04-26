@@ -16,9 +16,18 @@
 
 package main
 
-
 import (
 	"bedrud/config"
+	"bedrud/internal/auth"
+	"bedrud/internal/database"
+	"bedrud/internal/handlers"
+	"bedrud/internal/middleware"
+	"bedrud/internal/repository"
+	"bedrud/internal/scheduler"
+	"fmt"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -26,26 +35,17 @@ import (
 	"time"
 
 	_ "bedrud/docs"
-	"bedrud/internal/auth"
-	"bedrud/internal/database"
-	"bedrud/internal/handlers"
-	"bedrud/internal/middleware"
-	"bedrud/internal/repository"
-	"bedrud/internal/scheduler"
 
 	root "bedrud"
-	"net/http"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/swagger"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"net/http/httputil"
-	"net/url"
 )
 
 // @title           Bedrud Backend API
@@ -90,7 +90,7 @@ func init() {
 
 	output := os.Stdout
 	if cfg.Logger.OutputPath != "" {
-		file, err := os.OpenFile(cfg.Logger.OutputPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		file, err := os.OpenFile(cfg.Logger.OutputPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
 		if err == nil {
 			output = file
 		}
@@ -103,6 +103,13 @@ func init() {
 }
 
 func main() {
+	if err := run(); err != nil {
+		log.Error().Err(err).Msg("Application failed")
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	cfg := config.Get()
 
 	// Initialize session store first
@@ -110,13 +117,13 @@ func main() {
 
 	// Initialize database connection
 	if err := database.Initialize(&cfg.Database); err != nil {
-		log.Fatal().Err(err).Msg("Failed to initialize database")
+		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 	defer database.Close()
 
 	// Run database migrations after database initialization
 	if err := database.RunMigrations(); err != nil {
-		log.Fatal().Err(err).Msg("Failed to run database migrations")
+		return fmt.Errorf("failed to run database migrations: %w", err)
 	}
 
 	// Scheduler is initialized after repositories are set up (see below)
@@ -147,7 +154,7 @@ func main() {
 			})
 		},
 	})
-	
+
 	// Proxy LiveKit traffic if we are using internal host
 	if strings.Contains(strings.ToLower(cfg.LiveKit.InternalHost), "127.0.0.1") ||
 		strings.Contains(strings.ToLower(cfg.LiveKit.InternalHost), "localhost") {
@@ -179,7 +186,7 @@ func main() {
 	settingsRepo := repository.NewSettingsRepository(database.GetDB())
 	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
 
-	scheduler.Initialize(roomRepo, cfg.LiveKit)
+	scheduler.Initialize(roomRepo, &cfg.LiveKit)
 	defer scheduler.Stop()
 
 	// ===============================
@@ -257,7 +264,7 @@ func main() {
 	api.Post("/auth/passkey/signup/finish", authHandler.PasskeySignupFinish)
 
 	// Initialize handlers
-	roomHandler := handlers.NewRoomHandler(cfg.LiveKit, cfg.Chat, roomRepo)
+	roomHandler := handlers.NewRoomHandler(&cfg.LiveKit, &cfg.Chat, roomRepo)
 
 	// Room routes
 	api.Post("/room/create", middleware.Protected(), roomHandler.CreateRoom)
@@ -359,7 +366,7 @@ func main() {
 	serverAddr := cfg.Server.Host + ":" + cfg.Server.Port
 	go func() {
 		if err := app.Listen(serverAddr); err != nil {
-			log.Fatal().Err(err).Msg("Failed to start server")
+			log.Error().Err(err).Msg("Failed to start server")
 		}
 	}()
 
@@ -369,9 +376,7 @@ func main() {
 	<-quit
 
 	log.Info().Msg("Shutting down server...")
-	if err := app.Shutdown(); err != nil {
-		log.Fatal().Err(err).Msg("Server forced to shutdown")
-	}
+	return app.Shutdown()
 }
 
 // @Summary Health check endpoint

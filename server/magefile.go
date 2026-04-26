@@ -23,7 +23,7 @@ func Build() error {
 	fmt.Println("Building...")
 
 	// Create dist directory if it doesn't exist
-	if err := os.MkdirAll(distDir, 0755); err != nil {
+	if err := os.MkdirAll(distDir, 0o755); err != nil {
 		return err
 	}
 

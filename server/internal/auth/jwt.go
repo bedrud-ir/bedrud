@@ -50,7 +50,6 @@ func ValidateToken(tokenString string, cfg *config.Config) (*Claims, error) {
 		}
 		return []byte(cfg.Auth.JWTSecret), nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -62,9 +61,9 @@ func ValidateToken(tokenString string, cfg *config.Config) (*Claims, error) {
 	return claims, nil
 }
 
-func GenerateTokenPair(userID, email, name string, accesses []string, cfg *config.Config) (string, string, error) {
+func GenerateTokenPair(userID, email, name string, accesses []string, cfg *config.Config) (accessToken, refreshToken string, err error) {
 	// Generate access token
-	accessToken, err := GenerateToken(userID, email, name, "local", accesses, cfg)
+	accessToken, err = GenerateToken(userID, email, name, "local", accesses, cfg)
 	if err != nil {
 		return "", "", err
 	}
@@ -83,11 +82,11 @@ func GenerateTokenPair(userID, email, name string, accesses []string, cfg *confi
 		},
 	}
 
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	refreshTokenString, err := refreshToken.SignedString([]byte(cfg.Auth.JWTSecret))
+	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	refreshToken, err = rt.SignedString([]byte(cfg.Auth.JWTSecret))
 	if err != nil {
 		return "", "", err
 	}
 
-	return accessToken, refreshTokenString, nil
+	return accessToken, refreshToken, nil
 }

@@ -3,11 +3,14 @@ package middleware
 import (
 	"bedrud/config"
 	"bedrud/internal/auth"
-	"bedrud/internal/models" // Add this import
 	"strings"
+
+	"bedrud/internal/models" // Add this import
 
 	"github.com/gofiber/fiber/v2"
 )
+
+const bearerPrefix = "bearer "
 
 // Protected middleware
 func Protected() fiber.Handler {
@@ -16,7 +19,7 @@ func Protected() fiber.Handler {
 
 		// Prefer Authorization header
 		if authHeader := c.Get("Authorization"); authHeader != "" {
-			if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+			if strings.HasPrefix(strings.ToLower(authHeader), bearerPrefix) {
 				token = authHeader[7:]
 			} else {
 				token = authHeader

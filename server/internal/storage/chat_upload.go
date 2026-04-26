@@ -44,7 +44,7 @@ var allowedMimeTypes = map[string]string{
 
 // imageDimensions extracts width/height from image bytes without fully decoding.
 // Returns 0,0 for formats that can't be decoded (e.g. WebP without the x/image package).
-func imageDimensions(data []byte) (int, int) {
+func imageDimensions(data []byte) (width, height int) {
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		return 0, 0
@@ -75,7 +75,7 @@ func contentHash(data []byte) string {
 
 // NewChatUploadStore creates the appropriate backend from config.
 // Selection rule: if data size < InlineMaxBytes → inline base64; else use configured backend.
-func NewChatUploadStore(cfg config.ChatUploadConfig) ChatUploadStore {
+func NewChatUploadStore(cfg *config.ChatUploadConfig) ChatUploadStore {
 	inlineMax := cfg.InlineMaxBytes
 	if inlineMax == 0 {
 		inlineMax = 512_000 // 500 KB default

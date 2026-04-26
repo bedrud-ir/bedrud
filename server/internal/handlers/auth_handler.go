@@ -256,7 +256,7 @@ type RefreshRequest struct {
 // @Router /auth/refresh [post]
 func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	var input RefreshRequest
-	c.BodyParser(&input) //nolint:errcheck — fallback to cookie below
+	_ = c.BodyParser(&input) // fallback to cookie below
 
 	// Fallback to HTTP-only cookie when body is empty (e.g. cookie-only clients)
 	if input.RefreshToken == "" {
@@ -392,7 +392,7 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 
 func (h *AuthHandler) getSession(c *fiber.Ctx) (*sessions.Session, *http.Request, error) {
 	req := &http.Request{
-		Method: "GET",
+		Method: http.MethodGet,
 		URL: &url.URL{
 			Scheme: c.Protocol(),
 			Host:   string(c.Context().Host()),
@@ -508,7 +508,7 @@ func (h *AuthHandler) PasskeyRegisterFinish(c *fiber.Ctx) error {
 	}
 
 	delete(sess.Values, "passkey_challenge")
-	h.saveSession(c, sess, req)
+	_ = h.saveSession(c, sess, req)
 
 	return c.JSON(fiber.Map{"message": "Passkey registered successfully"})
 }
@@ -577,7 +577,7 @@ func (h *AuthHandler) PasskeyLoginFinish(c *fiber.Ctx) error {
 	}
 
 	delete(sess.Values, "passkey_challenge")
-	h.saveSession(c, sess, req)
+	_ = h.saveSession(c, sess, req)
 
 	setAuthCookies(c, h.config, loginResponse.Token.AccessToken, loginResponse.Token.RefreshToken)
 	return c.JSON(loginResponse)
@@ -712,7 +712,7 @@ func (h *AuthHandler) PasskeySignupFinish(c *fiber.Ctx) error {
 	delete(sess.Values, "signup_name")
 	delete(sess.Values, "signup_user_id")
 	delete(sess.Values, "signup_invite_token")
-	h.saveSession(c, sess, req)
+	_ = h.saveSession(c, sess, req)
 
 	setAuthCookies(c, h.config, loginResponse.Token.AccessToken, loginResponse.Token.RefreshToken)
 	return c.JSON(loginResponse)

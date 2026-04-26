@@ -9,5 +9,7 @@ import "embed"
 //go:embed bin/livekit-server
 var Bin embed.FS
 
-const lkBinKey = "bin/livekit-server"
-const lkExeName = "bedrud-livekit-server"
+const (
+	lkBinKey  = "bin/livekit-server"
+	lkExeName = "bedrud-livekit-server"
+)
