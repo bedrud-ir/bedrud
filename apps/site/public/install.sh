@@ -182,10 +182,10 @@ ensure_deps() {
   fi
 
   # ── tar xz support check (critical) ──
-  if ! tar --xz -tf /dev/null 2>/dev/null; then
+  if ! tar --xz -tf /dev/null 2>/dev/null && ! command -v xz >/dev/null 2>&1; then
     if [[ "$skip_auto" == true ]]; then
       echo ""
-      warn "tar lacks xz support. Install manually:"
+      warn "tar lacks xz support and xz binary not found. Install manually:"
       if [[ "$(uname -s)" == "Darwin" ]]; then
         echo "    brew install xz"
       elif [[ "$(uname -s)" == "FreeBSD" ]]; then
@@ -208,8 +208,8 @@ ensure_deps() {
         fi
         error "Failed to install ${xz_pkg}"
       fi
-      if ! tar --xz -tf /dev/null 2>/dev/null; then
-        error "xz package installed but tar still lacks xz support"
+      if ! tar --xz -tf /dev/null 2>/dev/null && ! command -v xz >/dev/null 2>&1; then
+        error "xz package installed but extraction tools still missing"
       fi
       info "tar xz support ready"
     fi
@@ -513,7 +513,11 @@ if [[ "$SKIP_DOWNLOAD" != true ]]; then
       || error "Failed to download bedrud for ${TARGET}. Check https://github.com/${REPO}/releases for available builds."
 
     mkdir -p "$TMP_DIR/extracted"
-    tar -xf "$ARCHIVE" -C "$TMP_DIR/extracted"
+    if tar --xz -tf /dev/null 2>/dev/null; then
+      tar -xf "$ARCHIVE" -C "$TMP_DIR/extracted"
+    else
+      xz -d -c "$ARCHIVE" | tar -xf - -C "$TMP_DIR/extracted"
+    fi
 
     # ── Find and install binary ─────────────────────────────────────
     BINARY_PATH="$(find "$TMP_DIR/extracted" -type f -name "$BINARY_NAME" -o -name "${BINARY_NAME}.*" 2>/dev/null | head -1)"
