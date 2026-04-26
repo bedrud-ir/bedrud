@@ -33,7 +33,7 @@ function GuestPage() {
     setIsLoading(true)
     try {
       const res = await api.post<AuthResponse>('/api/auth/guest-login', { name: trimmed })
-      setTokens(res.tokens)
+      setTokens(res.tokens, 'ephemeral')
       setUser({
         id: res.user.id,
         email: res.user.email,

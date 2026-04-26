@@ -54,9 +54,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  // Restore session on page load via HTTP-only cookie refresh.
+  // Fire-and-forget: restore session via HTTP-only cookie refresh.
+  // Runs in the background — does NOT block initial render.
+  // Protected routes await the result in their beforeLoad guards.
   useEffect(() => {
-    useAuthStore.getState().initialize()
+    void useAuthStore.getState().initialize()
   }, [])
 
   return (

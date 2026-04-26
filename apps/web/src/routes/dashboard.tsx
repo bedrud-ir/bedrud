@@ -18,8 +18,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/dashboard')({
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (typeof window === 'undefined') return
+    await useAuthStore.getState().initialize()
     if (!useAuthStore.getState().tokens) throw redirect({ to: '/auth' })
   },
   // Loader runs before the component renders, eliminating the empty-profile flash.

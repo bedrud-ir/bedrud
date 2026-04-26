@@ -4,8 +4,9 @@ import { useAuthStore } from '#/lib/auth.store'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
 export const Route = createFileRoute('/auth')({
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (typeof window === 'undefined') return
+    await useAuthStore.getState().initialize()
     if (useAuthStore.getState().tokens) throw redirect({ to: '/dashboard' })
   },
   component: AuthLayout,
