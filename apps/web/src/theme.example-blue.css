@@ -1,0 +1,77 @@
+/*
+ * Example: Blue + Rose theme
+ *
+ * To apply: copy this file to src/theme.css (replacing the default).
+ *
+ * Only tokens that differ from the default are listed below.
+ * Tokens not overridden will inherit the default cobalt+gold values.
+ */
+
+:root {
+  /* Primary brand — blue */
+  --primary-50:  #EFF6FF;
+  --primary-100: #DBEAFE;
+  --primary-300: #93C5FD;
+  --primary-500: #3B82F6;
+  --primary-600: #2563EB;
+  --primary-700: #1D4ED8;
+  --primary-900: #1E3A8A;
+
+  /* Accent — rose */
+  --accent-100: #FFE4E6;
+  --accent-300: #FDA4AF;
+  --accent-500: #F43F5E;
+  --accent-700: #BE123C;
+
+  /* Semantic overrides */
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --primary-active: #1E3A8A;
+  --ring: #3B82F6;
+
+  --sky-50:  #EFF6FF;
+  --sky-100: #DBEAFE;
+  --sky-200: #BFDBFE;
+  --sky-300: #93C5FD;
+  --sky-400: #60A5FA;
+  --sky-500: #3B82F6;
+  --sky-600: #2563EB;
+  --sky-700: #1D4ED8;
+  --sky-800: #1E40AF;
+  --sky-900: #1E3A8A;
+
+  --fuchsia-50:  #FFF1F2;
+  --fuchsia-100: #FFE4E6;
+  --fuchsia-200: #FECDD3;
+  --fuchsia-300: #FDA4AF;
+  --fuchsia-400: #FB7185;
+  --fuchsia-500: #F43F5E;
+  --fuchsia-600: #E11D48;
+  --fuchsia-700: #BE123C;
+  --fuchsia-800: #9F1239;
+  --fuchsia-900: #881337;
+
+  --accent-bright: var(--fuchsia-500);
+  --accent-bright-hover: var(--fuchsia-600);
+  --spotlight-a: #3B82F6;
+  --spotlight-b: #60A5FA;
+  --spotlight-c: #F43F5E;
+}
+
+.dark {
+  --primary: #60A5FA;
+  --primary-foreground: #0E1220;
+  --primary-hover: #3B82F6;
+  --ring: #60A5FA;
+
+  --primary-500: #60A5FA;
+  --primary-600: #3B82F6;
+
+  --sky-300: #93C5FD;
+  --sky-500: #60A5FA;
+  --sky-600: #3B82F6;
+
+  --spotlight-a: #3B82F6;
+  --spotlight-b: #60A5FA;
+  --spotlight-c: #F43F5E;
+}

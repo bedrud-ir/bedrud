@@ -1,0 +1,193 @@
+/*
+ * Bedrud Theme — Cobalt + Gold (Accessible)
+ *
+ * To customize: edit the values below, or replace this entire file
+ * with your own. All token names must be preserved.
+ *
+ * Color format: hex (#RRGGBB). Browsers handle all modern formats.
+ *
+ * Quick brand change: update --primary-* scale + --bg/--fg-*/--line,
+ * then --accent-* for your highlight color.
+ *
+ * Accessibility rules:
+ * 1. Color is never the only signal — pair with icons, labels, or patterns.
+ * 2. Body text uses --fg-1 (14.5:1 on --bg). Muted text uses --fg-2 (4.7:1).
+ * 3. Primary CTA is --primary-600 (7.2:1 on white). Hover → --primary-700.
+ * 4. Accent gold (--accent-500) pairs with ink text (--fg-1), never white.
+ * 5. Focus ring: 3px --primary-500 @ 45% opacity on all interactive elements.
+ */
+
+/* ── Light theme ──────────────────────────────────────────────────────────── */
+:root {
+  /* Primary · cobalt */
+  --primary-50:  #F2F4FB;
+  --primary-100: #DDE3F4;
+  --primary-300: #8FA1D8;
+  --primary-500: #3B5BD9;
+  --primary-600: #2A47C8;
+  --primary-700: #1F37A8;
+  --primary-900: #13256E;
+
+  /* Accent · gold (always paired with ink text) */
+  --accent-100: #FBEFD2;
+  --accent-300: #F2C66B;
+  --accent-500: #F59E0B;
+  --accent-700: #A66A1D;
+
+  /* Status · color + icon, never color alone */
+  --success-500:     #22A06B;
+  --destructive-500: #DC2626;
+
+  /* Foreground / chrome */
+  --fg-1: #1A1F2E;
+  --fg-2: #6B7488;
+  --fg-3: #9AA0AE;
+  --bg:     #FFFFFF;
+  --bg-alt: #F7F8FB;
+  --line:   #E6E8EE;
+
+  /* ── Semantic mappings (used by Tailwind + components) ─────────────────── */
+  --background: #FFFFFF;
+  --foreground: #1A1F2E;
+
+  --card: #F7F8FB;
+  --card-foreground: #1A1F2E;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1F2E;
+
+  --primary: #2A47C8;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #1F37A8;
+  --primary-active: #13256E;
+
+  --secondary: #F2F4FB;
+  --secondary-foreground: #1A1F2E;
+
+  --muted: #F2F4FB;
+  --muted-foreground: #6B7488;
+
+  --accent: #F2F4FB;
+  --accent-foreground: #1A1F2E;
+
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #E6E8EE;
+  --input: #E6E8EE;
+  --ring: #3B5BD9;
+
+  --radius: 0.5rem;
+
+  /* ── Extended palette scales ───────────────────────────────────────────── */
+
+  /* Primary scale (mapped to --sky-* names for Tailwind compat) */
+  --sky-50:  #F2F4FB;
+  --sky-100: #DDE3F4;
+  --sky-200: #BCCAE8;
+  --sky-300: #8FA1D8;
+  --sky-400: #5E7ACC;
+  --sky-500: #3B5BD9;
+  --sky-600: #2A47C8;
+  --sky-700: #1F37A8;
+  --sky-800: #182D88;
+  --sky-900: #13256E;
+
+  /* Secondary scale (mapped to --cyan-* names) */
+  --cyan-50:  #EFF3FC;
+  --cyan-100: #D8E1F5;
+  --cyan-200: #B3C4EB;
+  --cyan-300: #8BA4DE;
+  --cyan-400: #6B88D2;
+  --cyan-500: #4D6DC5;
+  --cyan-600: #3B5BD9;
+  --cyan-700: #2A47C8;
+  --cyan-800: #1F37A8;
+  --cyan-900: #13256E;
+
+  /* Accent scale (mapped to --fuchsia-* names) */
+  --fuchsia-50:  #FFF9EB;
+  --fuchsia-100: #FBEFD2;
+  --fuchsia-200: #F8DCA3;
+  --fuchsia-300: #F2C66B;
+  --fuchsia-400: #F5B53A;
+  --fuchsia-500: #F59E0B;
+  --fuchsia-600: #D97706;
+  --fuchsia-700: #A66A1D;
+  --fuchsia-800: #8B5A1A;
+  --fuchsia-900: #6D4516;
+
+  /* ── Semantic aliases ──────────────────────────────────────────────────── */
+  --accent-bright: var(--accent-500);
+  --accent-bright-hover: var(--fuchsia-600);
+  --info: var(--primary-500);
+  --info-500: var(--primary-500);
+  --warning-500: var(--accent-500);
+  --success: var(--success-500);
+  --destructive: #DC2626;
+
+  /* Spotlight — hero background, aurora blobs */
+  --spotlight-a: #3B5BD9;
+  --spotlight-b: #5E7ACC;
+  --spotlight-c: #F59E0B;
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px color-mix(in oklab, var(--primary-500) 45%, transparent);
+
+  /* Tinted shadows */
+  --shadow-glow-primary: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px oklch(0.40 0.18 270 / 0.24);
+  --shadow-glow-cyan: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px oklch(0.55 0.14 265 / 0.22);
+  --shadow-glow-fuchsia: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px oklch(0.78 0.17 80 / 0.28);
+}
+
+/* ── Dark theme ───────────────────────────────────────────────────────────── */
+.dark {
+  --bg:     #0E1220;
+  --bg-alt: #161B2E;
+  --fg-1:   #EEF1F8;
+  --fg-2:   #A6ADC0;
+  --fg-3:   #6B7488;
+  --line:   #2A3047;
+
+  --background: #0E1220;
+  --foreground: #EEF1F8;
+
+  --card: #161B2E;
+  --card-foreground: #EEF1F8;
+
+  --popover: #161B2E;
+  --popover-foreground: #EEF1F8;
+
+  --primary: #7A8FE8;
+  --primary-foreground: #0E1220;
+  --primary-hover: #5C76DD;
+  --primary-active: #7A8FE8;
+
+  --primary-500: #7A8FE8;
+  --primary-600: #5C76DD;
+
+  --secondary: #1E2440;
+  --secondary-foreground: #EEF1F8;
+
+  --muted: #1E2440;
+  --muted-foreground: #A6ADC0;
+
+  --accent: #1E2440;
+  --accent-foreground: #EEF1F8;
+
+  --destructive: #F87171;
+  --destructive-foreground: #0E1220;
+
+  --border: #2A3047;
+  --input: #2A3047;
+  --ring: #7A8FE8;
+
+  --spotlight-a: #5C76DD;
+  --spotlight-b: #7A8FE8;
+  --spotlight-c: #F59E0B;
+
+  /* Dark mode scale overrides */
+  --sky-300: #8FA1D8;
+  --sky-500: #7A8FE8;
+  --sky-600: #5C76DD;
+}
