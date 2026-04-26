@@ -213,6 +213,34 @@ ensure_deps() {
     fi
   fi
 
+  # ── unzip (required for bun installer in --build mode) ──
+  if [[ "$BUILD" == true ]] && ! command -v unzip >/dev/null 2>&1; then
+    if [[ "$skip_auto" == true ]]; then
+      warn "unzip is required for Bun install (--build mode). Install manually:"
+      if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "    brew install unzip"
+      elif [[ "$(uname -s)" == "FreeBSD" ]]; then
+        echo "    pkg install unzip"
+      else
+        echo "    sudo apt-get install -y unzip"
+        echo "    sudo dnf install -y unzip"
+        echo "    sudo apk add unzip"
+        echo "    sudo pacman -S unzip"
+      fi
+      echo ""
+      error "unzip required for --build mode"
+    else
+      if ! install_pkg "unzip"; then
+        if [[ "$(id -u)" -ne 0 ]] && ! command -v sudo >/dev/null 2>&1; then
+          warn "No sudo access. Install manually: unzip"
+          error "Cannot install unzip without root/sudo"
+        fi
+        error "Failed to install unzip"
+      fi
+      info "unzip installed"
+    fi
+  fi
+
   # ── Other deps (non-fatal, best-effort) ──
   local deps=("grep" "sed" "find" "gawk" "coreutils")
   local missing=()
