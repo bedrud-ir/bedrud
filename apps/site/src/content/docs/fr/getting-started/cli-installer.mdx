@@ -12,7 +12,7 @@ Pour la configuration du serveur après l'installation, voir [Démarrage rapide]
 
 ## Ce qu'il fait
 
-1. Détecte l'OS, l'architecture CPU, les variantes de plateforme (Rosetta 2) et le système d'initialisation
+1. Détecte l'OS, l'architecture CPU, les variantes de plateforme (Rosetta 2) et le système d'initialisation (systemd/OpenRC/SysV/conteneur)
 2. Télécharge le bon binaire depuis [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) (ou compile depuis les sources avec `--build`)
 3. Installe dans `~/bin` (personnalisable via `--install-dir`)
 4. Ajoute le répertoire d'installation au `PATH` via la configuration du shell
@@ -178,6 +178,22 @@ uname -m → "x86_64" | "amd64"  → amd64
 **Détection :** `sysctl -n sysctl.proc_translated` renvoie `1`.
 **Effet :** Bascule `darwin_amd64` → `darwin_arm64` pour les performances ARM natives.
 
+### Environnements conteneur (Docker, Kubernetes, etc.)
+
+**Détection :** Vérifie `/.dockerenv`, `/run/.containerenv`, `/proc/1/comm` (pour `docker-init`, `tini`, `containerd`, `runc`) et `/proc/1/cgroup` (pour `docker`, `kubepods`, `containerd`).
+**Effet :** L'installation des fichiers de service est ignorée. L'installateur affiche les commandes de démarrage manuel :
+
+```bash
+# Premier plan
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# Arrière-plan
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+Pour une gestion correcte des services dans Docker, utilisez `--init` ou [tini](https://github.com/krallin/tini) comme PID 1.
+
 ---
 
 ## Prise en charge des systèmes d'initialisation
@@ -189,8 +205,9 @@ L'installateur détecte automatiquement votre système d'initialisation et crée
 | systemd | `/run/systemd/system` existe | `/etc/systemd/system/*.service` | `systemctl` |
 | OpenRC | `/sbin/openrc` existe | `/etc/init.d/*` (format OpenRC) | `rc-service`, `rc-update` |
 | SysV init | commande `service` disponible | `/etc/init.d/*` (format LSB) | `service`, `update-rc.d` |
+| **Conteneur** | `/.dockerenv`, `/proc/1/comm`, `/proc/1/cgroup` | Aucun — démarrage manuel | Binaire direct ou `nohup` |
 
-Pris en charge sur : La plupart des distributions Linux (systemd, OpenRC, SysV init), WSL1 et les conteneurs Linux.
+Pris en charge sur : La plupart des distributions Linux (systemd, OpenRC, SysV init), WSL1 et les conteneurs Linux. Les environnements conteneur sont auto-détectés — l'installation des fichiers de service est ignorée avec affichage des instructions de démarrage manuel.
 
 ---
 

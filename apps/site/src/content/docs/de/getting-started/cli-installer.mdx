@@ -12,7 +12,7 @@ Für die Server-Einrichtung nach der Installation siehe [Schnellstart](/de/docs/
 
 ## Funktionsweise
 
-1. Erkennt Betriebssystem, CPU-Architektur, Plattformvarianten (Rosetta 2) und Init-System
+1. Erkennt Betriebssystem, CPU-Architektur, Plattformvarianten (Rosetta 2) und Init-System (systemd/OpenRC/SysV/Container)
 2. Lädt die richtige Binärdatei von [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) herunter (oder erstellt aus dem Quellcode mit `--build`)
 3. Installiert nach `~/bin` (anpassbar über `--install-dir`)
 4. Fügt das Installationsverzeichnis über die Shell-Konfiguration zum `PATH` hinzu
@@ -178,6 +178,22 @@ uname -m → "x86_64" | "amd64"  → amd64
 **Erkennung:** `sysctl -n sysctl.proc_translated` gibt `1` zurück.
 **Auswirkung:** Wechselt `darwin_amd64` → `darwin_arm64` für native ARM-Leistung.
 
+### Container-Umgebungen (Docker, Kubernetes, etc.)
+
+**Erkennung:** Prüft `/.dockerenv`, `/run/.containerenv`, `/proc/1/comm` (für `docker-init`, `tini`, `containerd`, `runc`) und `/proc/1/cgroup` (für `docker`, `kubepods`, `containerd`).
+**Auswirkung:** Service-Datei-Installation wird übersprungen. Der Installer zeigt manuelle Startbefehle an:
+
+```bash
+# Vordergrund
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# Hintergrund
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+Für korrektes Servicemanagement in Docker, verwenden Sie `--init` oder [tini](https://github.com/krallin/tini) als PID 1.
+
 ---
 
 ## Init-System-Unterstützung
@@ -189,8 +205,9 @@ Der Installer erkennt das Init-System automatisch und erstellt die entsprechende
 | systemd | `/run/systemd/system` vorhanden | `/etc/systemd/system/*.service` | `systemctl` |
 | OpenRC | `/sbin/openrc` vorhanden | `/etc/init.d/*` (OpenRC-Format) | `rc-service`, `rc-update` |
 | SysV init | `service`-Befehl verfügbar | `/etc/init.d/*` (LSB-Format) | `service`, `update-rc.d` |
+| **Container** | `/.dockerenv`, `/proc/1/comm`, `/proc/1/cgroup` | Keine — manueller Start | Direkte Binärdatei oder `nohup` |
 
-Unterstützt auf: Den meisten Linux-Distributionen (systemd, OpenRC, SysV init), WSL1 und Linux-Containern.
+Unterstützt auf: Den meisten Linux-Distributionen (systemd, OpenRC, SysV init), WSL1 und Linux-Containern. Containerumgebungen werden automatisch erkannt — die Service-Datei-Installation wird übersprungen und manuelle Startanweisungen werden angezeigt.
 
 ---
 

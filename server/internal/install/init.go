@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 type serviceConfig struct {
@@ -26,12 +27,45 @@ var initdScripts = []string{
 }
 
 const (
+	InitSystemNone    = "none"
 	InitSystemSystemd = "systemd"
 	InitSystemOpenRC  = "openrc"
 	InitSystemSysV    = "sysv"
 )
 
+var containerPIDs = []string{
+	"docker-init", "tini", "containerd", "containerd-shim",
+	"runc", "podsandbox", "conmon",
+}
+
+func isContainer() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+	if _, err := os.Stat("/run/.containerenv"); err == nil {
+		return true
+	}
+	if comm, err := os.ReadFile("/proc/1/comm"); err == nil {
+		pid1 := strings.TrimSpace(string(comm))
+		for _, name := range containerPIDs {
+			if pid1 == name {
+				return true
+			}
+		}
+	}
+	if cgroup, err := os.ReadFile("/proc/1/cgroup"); err == nil {
+		s := string(cgroup)
+		if strings.Contains(s, "docker") || strings.Contains(s, "kubepods") || strings.Contains(s, "containerd") {
+			return true
+		}
+	}
+	return false
+}
+
 func detectInitSystem() string {
+	if isContainer() {
+		return InitSystemNone
+	}
 	if _, err := exec.LookPath("systemctl"); err == nil {
 		return InitSystemSystemd
 	}
@@ -115,6 +149,9 @@ func buildServiceConfig(isExternalLK bool) serviceConfig {
 
 func enableAndStartServices(initSystem string, cfg *serviceConfig) error {
 	switch initSystem {
+	case InitSystemNone:
+		printContainerInstructions()
+		return nil
 	case InitSystemSystemd:
 		return enableStartSystemd(cfg)
 	case InitSystemSysV:
@@ -155,6 +192,8 @@ func enableStartOpenRC(cfg *serviceConfig) error {
 
 func writeServiceFiles(initSystem string, cfg *serviceConfig, bedrudAfter, lkManagedEnv, lkService, serviceContent string) error {
 	switch initSystem {
+	case InitSystemNone:
+		return nil
 	case InitSystemSystemd:
 		return writeSystemdFiles(cfg, lkService, serviceContent)
 	case InitSystemSysV:
@@ -176,4 +215,19 @@ func writeSystemdFiles(cfg *serviceConfig, lkService, serviceContent string) err
 		return fmt.Errorf("failed to write bedrud.service: %w", err)
 	}
 	return nil
+}
+
+func printContainerInstructions() {
+	fmt.Println("\n⚠ Container environment detected (no init system).")
+	fmt.Println("  Service files were skipped — systemd/service commands won't work here.")
+	fmt.Println()
+	fmt.Println("  To start Bedrud:")
+	fmt.Println("    /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml")
+	fmt.Println()
+	fmt.Println("  To run in background:")
+	fmt.Println("    nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \\")
+	fmt.Println("      > /var/log/bedrud/bedrud.log 2>&1 &")
+	fmt.Println()
+	fmt.Println("  For proper service management, use the Docker image with --init")
+	fmt.Println("  or tini as PID 1.")
 }

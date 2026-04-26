@@ -492,6 +492,10 @@ if [[ "$CAN_SETUP" == true ]]; then
     info "Local IP: ${LOCAL_IP}"
   fi
 
+  BEDRUD_IP="${PUBLIC_IP:-${LOCAL_IP:-0.0.0.0}}"
+  info "Detected IPs — Public: ${PUBLIC_IP:-unknown}, Local: ${LOCAL_IP:-unknown}"
+  ask "Bedrud server IP (for TLS, access URLs, LiveKit)" "${BEDRUD_IP}" BEDRUD_IP
+
   HAS_DOCKER=false
   if command -v docker >/dev/null 2>&1; then
     HAS_DOCKER=true
@@ -557,12 +561,13 @@ if [[ "$CAN_SETUP" == true ]]; then
       ask_yn "Run Postgres in Docker? (recommended — auto-configured, isolated)" "Y" USE_DOCKER_PG
       if [[ "$USE_DOCKER_PG" == true ]]; then
         PG_DOCKER_CREATED=true
-        PG_HOST="127.0.0.1"
+        ask "Postgres Docker bind address" "127.0.0.1" PG_DOCKER_BIND
+        PG_HOST="$PG_DOCKER_BIND"
         PG_PORT="5432"
         PG_USER="bedrud"
         PG_DBNAME="bedrud"
         PG_PASS="$(head -c 24 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 24)"
-        info "Docker Postgres will be bound to 127.0.0.1 only (not accessible from outside)"
+        info "Postgres Docker will be bound to ${PG_DOCKER_BIND} only"
       else
         ask_pg_details
       fi
@@ -595,13 +600,14 @@ if [[ "$CAN_SETUP" == true ]]; then
   # ── Summary ────────────────────────────────────────────────────
   step "Summary"
   echo ""
-  printf "  ${BOLD}Domain:${RESET}       %s\n" "${DOMAIN:-IP-only (${PUBLIC_IP:-unknown})}"
+  printf "  ${BOLD}Domain:${RESET}       %s\n" "${DOMAIN:-IP-only (${BEDRUD_IP})}"
+  printf "  ${BOLD}Server IP:${RESET}   %s\n" "$BEDRUD_IP"
   printf "  ${BOLD}TLS:${RESET}         %s\n" "$TLS_MODE"
   printf "  ${BOLD}Database:${RESET}    %s\n" "$DB_TYPE"
   if [[ "$DB_TYPE" == "postgres" ]]; then
     printf "  ${BOLD}PG Host:${RESET}     %s:%s\n" "$PG_HOST" "$PG_PORT"
     if [[ "$PG_DOCKER_CREATED" == true ]]; then
-      printf "  ${BOLD}PG Docker:${RESET}   yes (127.0.0.1 only)\n"
+      printf "  ${BOLD}PG Docker:${RESET}   yes (bound to ${PG_DOCKER_BIND})\n"
     fi
   fi
   printf "  ${BOLD}Behind proxy:${RESET} %s\n" "$BEHIND_PROXY"
@@ -630,12 +636,12 @@ if [[ "$CAN_SETUP" == true ]]; then
       -e POSTGRES_PASSWORD="${PG_PASS}" \
       -e POSTGRES_DB="${PG_DBNAME}" \
       -v bedrud-pgdata:/var/lib/postgresql/data \
-      -p 127.0.0.1:5432:5432 \
+      -p ${PG_DOCKER_BIND}:5432:5432 \
       --restart unless-stopped \
       postgres:alpine >/dev/null 2>&1 \
       || error "Failed to start Postgres container"
 
-    info "Postgres container started (bound to 127.0.0.1 — not accessible from outside)"
+    info "Postgres container started (bound to ${PG_DOCKER_BIND})"
     info "Waiting for Postgres to be ready..."
     for i in $(seq 1 30); do
       if docker exec bedrud-postgres pg_isready -U "${PG_USER}" -d "${PG_DBNAME}" >/dev/null 2>&1; then
@@ -660,9 +666,7 @@ if [[ "$CAN_SETUP" == true ]]; then
   if [[ -n "$EMAIL" ]]; then
     INSTALL_CMD+=" --email ${EMAIL}"
   fi
-  if [[ -n "$PUBLIC_IP" ]]; then
-    INSTALL_CMD+=" --ip ${PUBLIC_IP}"
-  fi
+  INSTALL_CMD+=" --ip ${BEDRUD_IP}"
 
   case "$TLS_MODE" in
     acme)       ;;
@@ -712,8 +716,8 @@ if [[ "$CAN_SETUP" == true ]]; then
   WAIT_URL=""
   case "$TLS_MODE" in
     acme)       WAIT_URL="https://${DOMAIN}" ;;
-    selfsigned) WAIT_URL="https://${PUBLIC_IP:-localhost}" ;;
-    none)       WAIT_URL="http://${PUBLIC_IP:-localhost}:8090" ;;
+    selfsigned) WAIT_URL="https://${BEDRUD_IP}" ;;
+    none)       WAIT_URL="http://${BEDRUD_IP}:8090" ;;
   esac
 
   WAIT_OK=false
@@ -814,8 +818,8 @@ if [[ "$CAN_SETUP" == true ]]; then
   VERIFY_URL=""
   case "$TLS_MODE" in
     acme)       VERIFY_URL="https://${DOMAIN}" ;;
-    selfsigned) VERIFY_URL="https://${PUBLIC_IP:-localhost}" ;;
-    none)       VERIFY_URL="http://${PUBLIC_IP:-localhost}:8090" ;;
+    selfsigned) VERIFY_URL="https://${BEDRUD_IP}" ;;
+    none)       VERIFY_URL="http://${BEDRUD_IP}:8090" ;;
   esac
 
   HEALTH_CODE=""
@@ -836,7 +840,7 @@ if [[ "$CAN_SETUP" == true ]]; then
   printf "  ${BOLD}Access URL:${RESET}   %s\n" "$VERIFY_URL"
   printf "  ${BOLD}Admin:${RESET}        %s (%s)\n" "$ADMIN_NAME" "$ADMIN_EMAIL"
   if [[ "$PG_DOCKER_CREATED" == true ]]; then
-    printf "  ${BOLD}Postgres:${RESET}     Docker (bedrud-postgres, 127.0.0.1:5432)\n"
+    printf "  ${BOLD}Postgres:${RESET}     Docker (bedrud-postgres, ${PG_DOCKER_BIND}:5432)\n"
   fi
   printf "  ${BOLD}Config:${RESET}       %s\n" "$CONFIG_FILE"
   case "$INIT_SYSTEM" in

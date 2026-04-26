@@ -312,18 +312,20 @@ func LinuxInstall(cfg *InstallConfig) error {
 	initSystem := detectInitSystem()
 	fmt.Println("➜ Detected init system:", initSystem)
 
-	serviceCfg := buildServiceConfig(isExternalLK)
+	if initSystem == InitSystemNone {
+		fmt.Println("➜ Skipping service file installation (container environment)")
+	} else {
+		serviceCfg := buildServiceConfig(isExternalLK)
+		cleanupStaleServiceFiles(initSystem)
 
-	cleanupStaleServiceFiles(initSystem)
+		lkManagedEnv := ""
+		bedrudAfter := "network.target"
+		if !isExternalLK {
+			lkManagedEnv = "\nEnvironment=LIVEKIT_MANAGED=true"
+			bedrudAfter = "network.target livekit.service"
+		}
 
-	lkManagedEnv := ""
-	bedrudAfter := "network.target"
-	if !isExternalLK {
-		lkManagedEnv = "\nEnvironment=LIVEKIT_MANAGED=true"
-		bedrudAfter = "network.target livekit.service"
-	}
-
-	lkService := `[Unit]
+		lkService := `[Unit]
 Description=Bedrud Video Meeting Server (LiveKit)
 Documentation=https://docs.bedrud.com
 After=network.target network-online.target
@@ -350,7 +352,7 @@ ReadWritePaths=/var/lib/bedrud /var/log/bedrud /etc/bedrud
 WantedBy=multi-user.target
 `
 
-	serviceContent := fmt.Sprintf(`[Unit]
+		serviceContent := fmt.Sprintf(`[Unit]
 Description=Bedrud Video Meeting Server
 Documentation=https://docs.bedrud.com
 After=%s network-online.target
@@ -377,13 +379,14 @@ ReadWritePaths=/var/lib/bedrud /var/log/bedrud /etc/bedrud
 WantedBy=multi-user.target
 `, bedrudAfter, lkManagedEnv)
 
-	if err := writeServiceFiles(initSystem, &serviceCfg, bedrudAfter, lkManagedEnv, lkService, serviceContent); err != nil {
-		return fmt.Errorf("failed to write service files: %w", err)
-	}
+		if err := writeServiceFiles(initSystem, &serviceCfg, bedrudAfter, lkManagedEnv, lkService, serviceContent); err != nil {
+			return fmt.Errorf("failed to write service files: %w", err)
+		}
 
-	fmt.Println("➜ Enabling and starting services...")
-	if err := enableAndStartServices(initSystem, &serviceCfg); err != nil {
-		return fmt.Errorf("failed to enable/start services: %w", err)
+		fmt.Println("➜ Enabling and starting services...")
+		if err := enableAndStartServices(initSystem, &serviceCfg); err != nil {
+			return fmt.Errorf("failed to enable/start services: %w", err)
+		}
 	}
 
 	fmt.Println("\n✓ Installation complete!")

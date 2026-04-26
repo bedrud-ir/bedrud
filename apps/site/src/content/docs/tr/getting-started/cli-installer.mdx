@@ -178,6 +178,22 @@ uname -m → "x86_64" | "amd64"  → amd64
 **Algılama:** `sysctl -n sysctl.proc_translated` değeri `1` döndürür.
 **Etki:** Yerel ARM performansı için `darwin_amd64` → `darwin_arm64` olarak değiştirir.
 
+### Konteyner Ortamları (Docker, Kubernetes, vb.)
+
+**Algılama:** `/.dockerenv`, `/run/.containerenv`, `/proc/1/comm` (`docker-init`, `tini`, `containerd`, `runc` için) ve `/proc/1/cgroup` (`docker`, `kubepods`, `containerd` için) dosyalarını kontrol eder.
+**Etki:** Servis dosyası kurulumu atlanır. Yükleyici manuel başlatma komutlarını yazdırır:
+
+```bash
+# Öncelik
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# Arka plan
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+Docker'da düzgün servis yönetimi için `--init` veya [tini](https://github.com/krallin/tini)'yi PID 1 olarak kullanın.
+
 ---
 
 ## İnit Sistemi Desteği
@@ -189,8 +205,9 @@ Yükleyici, init sistemini otomatik olarak algılar ve sunucu kurulumu için uyg
 | systemd | `/run/systemd/system` mevcut | `/etc/systemd/system/*.service` | `systemctl` |
 | OpenRC | `/sbin/openrc` mevcut | `/etc/init.d/*` (OpenRC formatı) | `rc-service`, `rc-update` |
 | SysV init | `service` komutu mevcut | `/etc/init.d/*` (LSB formatı) | `service`, `update-rc.d` |
+| **Konteyner** | `/.dockerenv`, `/proc/1/comm`, `/proc/1/cgroup` | Yok — manuel başlatma | Doğrudan ikili dosya veya `nohup` |
 
-Desteklenen: Çoğu Linux dağıtımı (systemd, OpenRC, SysV init), WSL1 ve Linux konteynerleri.
+Desteklenen: Çoğu Linux dağıtımı (systemd, OpenRC, SysV init), WSL1 ve Linux konteynerleri. Konteyner ortamları otomatik algılanır — servis dosyası kurulumu atlanır ve manuel başlatma talimatları yazdırılır.
 
 ---
 

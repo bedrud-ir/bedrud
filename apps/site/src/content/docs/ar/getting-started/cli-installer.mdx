@@ -12,7 +12,7 @@ order: 2
 
 ## ما يفعله المُثبّت
 
-١. يكتشف نظام التشغيل وبنية المعالج وتفاوتات المنصة (Rosetta ٢) ونظام التهيئة
+١. يكتشف نظام التشغيل وبنية المعالج وتفاوتات المنصة (Rosetta ٢) ونظام التهيئة (systemd/OpenRC/SysV/حاوية)
 ٢. يُنزّل الملف الثنائي الصحيح من [إصدارات GitHub](https://github.com/bedrud-ir/bedrud/releases) (أو يبني من المصدر مع `--build`)
 ٣. يُثبّت في `~/bin` (قابل للتخصيص عبر `--install-dir`)
 ٤. يُضيف مجلد التثبيت إلى `PATH` عبر تهيئة الصدفة
@@ -178,6 +178,22 @@ uname -m → "x86_64" | "amd64"  → amd64
 **الاكتشاف:** `sysctl -n sysctl.proc_translated` يُعيد `١`.
 **التأثير:** يبدّل `darwin_amd64` → `darwin_arm64` لأداء ARM أصلي.
 
+### بيئات الحاويات (Docker، Kubernetes، إلخ)
+
+**الاكتشاف:** يتحقق من `/.dockerenv` و `/run/.containerenv` و `/proc/1/comm` (لـ `docker-init` و `tini` و `containerd` و `runc`) و `/proc/1/cgroup` (لـ `docker` و `kubepods` و `containerd`).
+**التأثير:** يتم تخطي تثبيت ملفات الخدمة. يطبع المثبّت أوامر التشغيل اليدوي:
+
+```bash
+# المقدمة
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# الخلفية
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+لإدارة الخدمات بشكل صحيح في Docker، استخدم `--init` أو [tini](https://github.com/krallin/tini) كـ PID 1.
+
 ---
 
 ## دعم أنظمة التهيئة
@@ -189,8 +205,9 @@ uname -m → "x86_64" | "amd64"  → amd64
 | systemd | وجود `/run/systemd/system` | `/etc/systemd/system/*.service` | `systemctl` |
 | OpenRC | وجود `/sbin/openrc` | `/etc/init.d/*` (تنسيق OpenRC) | `rc-service`, `rc-update` |
 | SysV init | توفر أمر `service` | `/etc/init.d/*` (تنسيق LSB) | `service`, `update-rc.d` |
+| **حاوية** | `/.dockerenv`، `/proc/1/comm`، `/proc/1/cgroup` | لا يوجد — تشغيل يدوي | ملف ثنائي مباشر أو `nohup` |
 
-مدعوم في: معظم توزيعات Linux (systemd، OpenRC، SysV init) وWSL1 وحاويات Linux.
+مدعوم في: معظم توزيعات Linux (systemd، OpenRC، SysV init) وWSL1 وحاويات Linux. بيئات الحاويات تُكتشف تلقائيًا — يتم تخطي تثبيت ملفات الخدمة مع طباعة تعليمات التشغيل اليدوي.
 
 ---
 

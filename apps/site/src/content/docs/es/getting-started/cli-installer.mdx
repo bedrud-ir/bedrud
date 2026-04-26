@@ -12,7 +12,7 @@ Para la configuración del servidor después de la instalación, consulta [Inici
 
 ## Lo que Hace
 
-1. Detecta el sistema operativo, arquitectura de CPU, variantes de plataforma (Rosetta 2) y sistema de inicialización
+1. Detecta el sistema operativo, arquitectura de CPU, variantes de plataforma (Rosetta 2) y sistema de inicialización (systemd/OpenRC/SysV/contenedor)
 2. Descarga el binario correcto desde [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) (o compila desde el código fuente con `--build`)
 3. Instala en `~/bin` (personalizable con `--install-dir`)
 4. Añade el directorio de instalación al `PATH` mediante la configuración del shell
@@ -178,6 +178,22 @@ uname -m → "x86_64" | "amd64"  → amd64
 **Detección:** `sysctl -n sysctl.proc_translated` devuelve `1`.
 **Efecto:** Cambia `darwin_amd64` → `darwin_arm64` para rendimiento nativo en ARM.
 
+### Entornos de contenedores (Docker, Kubernetes, etc.)
+
+**Detección:** Comprueba `/.dockerenv`, `/run/.containerenv`, `/proc/1/comm` (para `docker-init`, `tini`, `containerd`, `runc`) y `/proc/1/cgroup` (para `docker`, `kubepods`, `containerd`).
+**Efecto:** La instalación de archivos de servicio se omite. El instalador muestra comandos de inicio manual:
+
+```bash
+# Primer plano
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# Segundo plano
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+Para una gestión adecuada de servicios en Docker, use `--init` o [tini](https://github.com/krallin/tini) como PID 1.
+
 ---
 
 ## Soporte de sistemas de inicialización
@@ -189,8 +205,9 @@ El instalador detecta automáticamente el sistema de inicialización y crea los 
 | systemd | existe `/run/systemd/system` | `/etc/systemd/system/*.service` | `systemctl` |
 | OpenRC | existe `/sbin/openrc` | `/etc/init.d/*` (formato OpenRC) | `rc-service`, `rc-update` |
 | SysV init | comando `service` disponible | `/etc/init.d/*` (formato LSB) | `service`, `update-rc.d` |
+| **Contenedor** | `/.dockerenv`, `/proc/1/comm`, `/proc/1/cgroup` | Ninguno — inicio manual | Binario directo o `nohup` |
 
-Compatible con: La mayoría de las distribuciones de Linux (systemd, OpenRC, SysV init), WSL1 y contenedores de Linux.
+Compatible con: La mayoría de las distribuciones de Linux (systemd, OpenRC, SysV init), WSL1 y contenedores de Linux. Los entornos de contenedores se detectan automáticamente — la instalación de archivos de servicio se omite con instrucciones de inicio manual.
 
 ---
 

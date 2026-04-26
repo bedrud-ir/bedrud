@@ -12,7 +12,7 @@ order: 2
 
 ## インストーラーの動作
 
-1. OS、CPU アーキテクチャ、プラットフォームバリアント（Rosetta 2）、イニットシステム（systemd/OpenRC/SysV init）を検出
+1. OS、CPU アーキテクチャ、プラットフォームバリアント（Rosetta 2）、イニットシステム（systemd/OpenRC/SysV init/コンテナ）を検出
 2. [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) から正しいバイナリをダウンロード（または `--build` でソースからビルド）
 3. `~/bin` にインストール（`--install-dir` でカスタマイズ可能）
 4. シェル設定を通じてインストールディレクトリを `PATH` に追加
@@ -178,6 +178,22 @@ uname -m → "x86_64" | "amd64"  → amd64
 **検出:** `sysctl -n sysctl.proc_translated` が `1` を返します。
 **影響:** ネイティブ ARM パフォーマンスのため `darwin_amd64` → `darwin_arm64` に切り替えます。
 
+### コンテナ環境（Docker、Kubernetes 等）
+
+**検出:** `/.dockerenv`、`/run/.containerenv`、`/proc/1/comm`（`docker-init`、`tini`、`containerd`、`runc` 用）、および `/proc/1/cgroup`（`docker`、`kubepods`、`containerd` 用）をチェックします。
+**影響:** サービスファイルのインストールはスキップされます。インストーラーは手動起動コマンドを表示します：
+
+```bash
+# フォアグラウンド
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# バックグラウンド
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+Docker で適切なサービス管理を行うには、`--init` または [tini](https://github.com/krallin/tini) を PID 1 として使用してください。
+
 ---
 
 ## イニットシステムのサポート
@@ -189,8 +205,9 @@ uname -m → "x86_64" | "amd64"  → amd64
 | systemd | `/run/systemd/system` が存在 | `/etc/systemd/system/*.service` | `systemctl` |
 | OpenRC | `/sbin/openrc` が存在 | `/etc/init.d/*`（OpenRC 形式） | `rc-service`、`rc-update` |
 | SysV init | `service` コマンドが利用可能 | `/etc/init.d/*`（LSB 形式） | `service`、`update-rc.d` |
+| **コンテナ** | `/.dockerenv`、`/proc/1/comm`、`/proc/1/cgroup` | なし — 手動起動 | バイナリ直接実行または `nohup` |
 
-対応環境：ほとんどのLinuxディストリビューション（systemd、OpenRC、SysV init）、WSL1、およびLinuxコンテナ。
+対応環境：ほとんどのLinuxディストリビューション（systemd、OpenRC、SysV init）、WSL1、およびLinuxコンテナ。コンテナ環境は自動検出されます — サービスファイルのインストールはスキップされ、手動起動の手順が表示されます。
 
 ---
 

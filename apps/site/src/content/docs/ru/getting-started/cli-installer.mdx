@@ -178,6 +178,22 @@ uname -m → "x86_64" | "amd64"  → amd64
 **Определение:** `sysctl -n sysctl.proc_translated` возвращает `1`.
 **Действие:** Переключает `darwin_amd64` → `darwin_arm64` для нативной производительности ARM.
 
+### Контейнерные среды (Docker, Kubernetes и др.)
+
+**Определение:** Проверяет `/.dockerenv`, `/run/.containerenv`, `/proc/1/comm` (для `docker-init`, `tini`, `containerd`, `runc`) и `/proc/1/cgroup` (для `docker`, `kubepods`, `containerd`).
+**Действие:** Установка сервис-файлов пропускается. Установщик выводит команды для ручного запуска:
+
+```bash
+# Передний план
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# Фоновый режим
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+Для корректного управления сервисами в Docker используйте `--init` или [tini](https://github.com/krallin/tini) в качестве PID 1.
+
 ---
 
 ## Поддержка систем инициализации
@@ -189,8 +205,9 @@ uname -m → "x86_64" | "amd64"  → amd64
 | systemd | существует `/run/systemd/system` | `/etc/systemd/system/*.service` | `systemctl` |
 | OpenRC | существует `/sbin/openrc` | `/etc/init.d/*` (формат OpenRC) | `rc-service`, `rc-update` |
 | SysV init | доступна команда `service` | `/etc/init.d/*` (формат LSB) | `service`, `update-rc.d` |
+| **Контейнер** | `/.dockerenv`, `/proc/1/comm`, `/proc/1/cgroup` | Нет — ручной запуск | Прямой запуск бинарного файла или `nohup` |
 
-Поддерживается: Большинство дистрибутивов Linux (systemd, OpenRC, SysV init), WSL1 и Linux-контейнеры.
+Поддерживается: Большинство дистрибутивов Linux (systemd, OpenRC, SysV init), WSL1 и Linux-контейнеры. Контейнерные среды определяются автоматически — установка сервис-файлов пропускается с выводом инструкций для ручного запуска.
 
 ---
 

@@ -12,7 +12,7 @@ order: 2
 
 ## 功能说明
 
-1. 检测操作系统、CPU 架构、平台变体（Rosetta 2）和 init 系统（systemd/OpenRC/SysV init）
+1. 检测操作系统、CPU 架构、平台变体（Rosetta 2）和 init 系统（systemd/OpenRC/SysV init/容器）
 2. 从 [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) 下载对应的二进制文件（或使用 `--build` 从源码构建）
 3. 安装到 `~/bin`（可通过 `--install-dir` 自定义）
 4. 通过 shell 配置将安装目录添加到 `PATH`
@@ -178,6 +178,22 @@ uname -m → "x86_64" | "amd64"  → amd64
 **检测方式：** `sysctl -n sysctl.proc_translated` 返回 `1`。
 **效果：** 将 `darwin_amd64` 切换为 `darwin_arm64`，以获得原生 ARM 性能。
 
+### 容器环境（Docker、Kubernetes 等）
+
+**检测方式：** 检查 `/.dockerenv`、`/run/.containerenv`、`/proc/1/comm`（匹配 `docker-init`、`tini`、`containerd`、`runc`）以及 `/proc/1/cgroup`（匹配 `docker`、`kubepods`、`containerd`）。
+**效果：** 服务文件安装将被跳过。安装程序会打印手动启动命令：
+
+```bash
+# 前台运行
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# 后台运行
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+在 Docker 中如需正确的服务管理，请使用 `--init` 或 [tini](https://github.com/krallin/tini) 作为 PID 1。
+
 ---
 
 ## Init 系统支持
@@ -189,8 +205,9 @@ uname -m → "x86_64" | "amd64"  → amd64
 | systemd | `/run/systemd/system` 存在 | `/etc/systemd/system/*.service` | `systemctl` |
 | OpenRC | `/sbin/openrc` 存在 | `/etc/init.d/*`（OpenRC 格式） | `rc-service`、`rc-update` |
 | SysV init | `service` 命令可用 | `/etc/init.d/*`（LSB 格式） | `service`、`update-rc.d` |
+| **容器** | `/.dockerenv`、`/proc/1/comm`、`/proc/1/cgroup` | 无 — 手动启动 | 直接运行二进制文件或 `nohup` |
 
-支持的系统：大多数 Linux 发行版（systemd、OpenRC、SysV init）、WSL1 及 Linux 容器。
+支持的系统：大多数 Linux 发行版（systemd、OpenRC、SysV init）、WSL1 及 Linux 容器。容器环境会被自动检测 — 服务文件安装将被跳过，并打印手动启动说明。
 
 ---
 

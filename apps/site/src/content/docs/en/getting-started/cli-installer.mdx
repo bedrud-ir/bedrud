@@ -12,7 +12,7 @@ For server setup after installing, see [Quick Start](/en/docs/getting-started/qu
 
 ## What It Does
 
-1. Detects OS, CPU architecture, platform variants (Rosetta 2), and init system (systemd/OpenRC/SysV)
+1. Detects OS, CPU architecture, platform variants (Rosetta 2), and init system (systemd/OpenRC/SysV/container)
 2. Downloads the correct binary from [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) (or builds from source with `--build`)
 3. Installs to `~/bin` (customizable via `--install-dir`)
 4. Adds install directory to `PATH` via shell config
@@ -178,6 +178,22 @@ uname -m → "x86_64" | "amd64"  → amd64
 **Detection:** `sysctl -n sysctl.proc_translated` returns `1`.
 **Effect:** Switches `darwin_amd64` → `darwin_arm64` for native ARM performance.
 
+### Container Environments (Docker, Kubernetes, etc.)
+
+**Detection:** Checks `/.dockerenv`, `/run/.containerenv`, `/proc/1/comm` (for `docker-init`, `tini`, `containerd`, `runc`), and `/proc/1/cgroup` (for `docker`, `kubepods`, `containerd`).
+**Effect:** Service file installation is skipped. The installer prints manual start commands:
+
+```bash
+# Foreground
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# Background
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+For proper service management in Docker, use `--init` or [tini](https://github.com/krallin/tini) as PID 1.
+
 ---
 
 ## Init System Support
@@ -189,8 +205,9 @@ The installer auto-detects your init system and creates appropriate service file
 | systemd | `/run/systemd/system` exists | `/etc/systemd/system/*.service` | `systemctl` |
 | OpenRC | `/sbin/openrc` exists | `/etc/init.d/*` (OpenRC format) | `rc-service`, `rc-update` |
 | SysV init | `service` command available | `/etc/init.d/*` (LSB format) | `service`, `update-rc.d` |
+| **Container** | `/.dockerenv`, `/proc/1/comm`, `/proc/1/cgroup` | None — manual start | Direct binary or `nohup` |
 
-Supported on: Most Linux distributions (systemd, OpenRC, SysV init), WSL1, and Linux containers.
+Supported on: Most Linux distributions (systemd, OpenRC, SysV init), WSL1, and Linux containers. Container environments are auto-detected — service file installation is skipped with manual start instructions printed.
 
 ---
 
