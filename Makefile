@@ -5,7 +5,8 @@ RED    := \033[0;31m
 RESET  := \033[0m
 
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS := -ldflags "-X main.version=$(VERSION)" -s -w
+# -s -w must be inside -ldflags; Go 1.26+ rejects them as top-level flags
+LDFLAGS := -ldflags "-X main.version=$(VERSION) -s -w"
 
 # Show available targets
 help:

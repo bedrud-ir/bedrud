@@ -240,7 +240,7 @@ if [[ "$SKIP_DOWNLOAD" != true ]]; then
 
     # Install go if missing
     if ! command -v go >/dev/null 2>&1; then
-      GO_VERSION="1.25.0"
+      GO_VERSION="1.26.0"
       GO_ARCH="$arch"
       if [[ "$GO_ARCH" == "armv7" ]]; then GO_ARCH="armv6l"; fi
       GO_TAR="go${GO_VERSION}.${os}-${GO_ARCH}.tar.gz"
