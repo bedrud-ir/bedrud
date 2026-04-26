@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-
 // testAuthConfig returns a config suitable for auth service tests
 func testAuthConfig() *config.Config {
 	return &config.Config{
@@ -31,21 +30,23 @@ func setupAuthService(t *testing.T) (*AuthService, *config.Config) {
 	return svc, cfg
 }
 
+const testEmail = "test@example.com"
+
 func TestAuthService_Register_Success(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	userRepo := repository.NewUserRepository(db)
 	passkeyRepo := repository.NewPasskeyRepository(db)
 	svc := NewAuthService(userRepo, passkeyRepo)
 
-	user, err := svc.Register("test@example.com", "password123", "Test User")
+	user, err := svc.Register(testEmail, "password123", "Test User")
 	if err != nil {
 		t.Fatalf("failed to register: %v", err)
 	}
 	if user == nil {
 		t.Fatal("expected non-nil user")
 	}
-	if user.Email != "test@example.com" {
-		t.Fatalf("expected email 'test@example.com', got '%s'", user.Email)
+	if user.Email != testEmail {
+		t.Fatalf("expected email '%s', got '%s'", testEmail, user.Email)
 	}
 	if user.Name != "Test User" {
 		t.Fatalf("expected name 'Test User', got '%s'", user.Name)
@@ -201,21 +202,21 @@ func TestNewAuthService(t *testing.T) {
 
 func TestRegisterRequest_Fields(t *testing.T) {
 	r := RegisterRequest{
-		Email:    "test@example.com",
+		Email:    testEmail,
 		Password: "pass123",
 		Name:     "Test",
 	}
-	if r.Email != "test@example.com" {
+	if r.Email != testEmail {
 		t.Fatal("unexpected email")
 	}
 }
 
 func TestLoginRequest_Fields(t *testing.T) {
 	r := LoginRequest{
-		Email:    "test@example.com",
+		Email:    testEmail,
 		Password: "pass123",
 	}
-	if r.Email != "test@example.com" {
+	if r.Email != testEmail {
 		t.Fatal("unexpected email")
 	}
 }

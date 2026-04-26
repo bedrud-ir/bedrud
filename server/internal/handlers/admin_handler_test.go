@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -45,24 +46,26 @@ func setupAdminTestApp(t *testing.T) (*fiber.App, *repository.SettingsRepository
 func TestAdminHandler_GetSettings_Default(t *testing.T) {
 	app, _, _ := setupAdminTestApp(t)
 
-	req := httptest.NewRequest("GET", "/admin/settings", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/settings", http.NoBody)
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(body))
+		t.Fatalf("expected %d, got %d: %s", http.StatusOK, resp.StatusCode, string(body))
 	}
 }
 
 func TestAdminHandler_GetPublicSettings(t *testing.T) {
 	app, _, _ := setupAdminTestApp(t)
 
-	req := httptest.NewRequest("GET", "/public/settings", nil)
+	req := httptest.NewRequest(http.MethodGet, "/public/settings", http.NoBody)
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
 	body, _ := io.ReadAll(resp.Body)
@@ -83,12 +86,13 @@ func TestAdminHandler_UpdateSettings_Success(t *testing.T) {
 		"registrationEnabled":   false,
 		"tokenRegistrationOnly": true,
 	})
-	req := httptest.NewRequest("PUT", "/admin/settings", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, "/admin/settings", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+		t.Fatalf("expected %d, got %d: %s", http.StatusOK, resp.StatusCode, string(respBody))
 	}
 
 	// Verify the settings were persisted (TokenRegistrationOnly: false→true is safe to check)
@@ -104,21 +108,23 @@ func TestAdminHandler_UpdateSettings_Success(t *testing.T) {
 func TestAdminHandler_UpdateSettings_InvalidBody(t *testing.T) {
 	app, _, _ := setupAdminTestApp(t)
 
-	req := httptest.NewRequest("PUT", "/admin/settings", bytes.NewReader([]byte("{invalid")))
+	req := httptest.NewRequest(http.MethodPut, "/admin/settings", bytes.NewReader([]byte("{invalid")))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 400 {
-		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected %d, got %d", http.StatusBadRequest, resp.StatusCode)
 	}
 }
 
 func TestAdminHandler_ListInviteTokens_Empty(t *testing.T) {
 	app, _, _ := setupAdminTestApp(t)
 
-	req := httptest.NewRequest("GET", "/admin/invite-tokens", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/invite-tokens", http.NoBody)
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
 	body, _ := io.ReadAll(resp.Body)
@@ -134,15 +140,16 @@ func TestAdminHandler_CreateInviteToken_Success(t *testing.T) {
 	app, _, _ := setupAdminTestApp(t)
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"email":        "invited@example.com",
+		"email":          "invited@example.com",
 		"expiresInHours": 48,
 	})
-	req := httptest.NewRequest("POST", "/admin/invite-tokens", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/admin/invite-tokens", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 201 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 201, got %d: %s", resp.StatusCode, string(respBody))
+		t.Fatalf("expected %d, got %d: %s", http.StatusCreated, resp.StatusCode, string(respBody))
 	}
 
 	respBody, _ := io.ReadAll(resp.Body)
@@ -161,11 +168,12 @@ func TestAdminHandler_CreateInviteToken_DefaultExpiry(t *testing.T) {
 
 	// expiresInHours = 0 should default to 72 hours
 	body, _ := json.Marshal(map[string]interface{}{"email": "default@example.com"})
-	req := httptest.NewRequest("POST", "/admin/invite-tokens", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/admin/invite-tokens", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 201 {
-		t.Fatalf("expected 201, got %d", resp.StatusCode)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected %d, got %d", http.StatusCreated, resp.StatusCode)
 	}
 }
 
@@ -174,12 +182,13 @@ func TestAdminHandler_DeleteInviteToken_Success(t *testing.T) {
 
 	// Create a token first via repo
 	createBody, _ := json.Marshal(map[string]interface{}{
-		"email":        "todelete@example.com",
+		"email":          "todelete@example.com",
 		"expiresInHours": 24,
 	})
-	createReq := httptest.NewRequest("POST", "/admin/invite-tokens", bytes.NewReader(createBody))
+	createReq := httptest.NewRequest(http.MethodPost, "/admin/invite-tokens", bytes.NewReader(createBody))
 	createReq.Header.Set("Content-Type", "application/json")
 	createResp, _ := app.Test(createReq, -1)
+	defer createResp.Body.Close()
 
 	createRespBody, _ := io.ReadAll(createResp.Body)
 	var created map[string]interface{}
@@ -193,10 +202,11 @@ func TestAdminHandler_DeleteInviteToken_Success(t *testing.T) {
 	}
 
 	// Delete it
-	req := httptest.NewRequest("DELETE", "/admin/invite-tokens/"+tokenID, nil)
+	req := httptest.NewRequest(http.MethodDelete, "/admin/invite-tokens/"+tokenID, http.NoBody)
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+		t.Fatalf("expected %d, got %d: %s", http.StatusOK, resp.StatusCode, string(respBody))
 	}
 }

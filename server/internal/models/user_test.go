@@ -21,7 +21,7 @@ func TestStringArray_Scan_Bytes_NonEmpty(t *testing.T) {
 	if err := sa.Scan([]byte("{admin,user}")); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(sa) != 2 || sa[0] != "admin" || sa[1] != "user" {
+	if len(sa) != 2 || sa[0] != string(AccessAdmin) || sa[1] != string(AccessUser) {
 		t.Fatalf("expected [admin user], got %v", sa)
 	}
 }

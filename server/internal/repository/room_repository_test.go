@@ -8,14 +8,16 @@ import (
 	"testing"
 )
 
+const testUserIDRoom = "user-1"
+
 func TestRoomRepository_CreateRoom(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
 	// Create a user first (needed for foreign key if enabled)
-	db.Create(&models.User{ID: "user-1", Email: "user@ex.com", Name: "Creator", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "user@ex.com", Name: "Creator", Provider: "local", IsActive: true})
 
-	room, err := repo.CreateRoom("user-1", "test-room", true, "standard", models.RoomSettings{
+	room, err := repo.CreateRoom(testUserIDRoom, "test-room", true, "standard", &models.RoomSettings{
 		AllowChat:  true,
 		AllowVideo: true,
 		AllowAudio: true,
@@ -29,10 +31,10 @@ func TestRoomRepository_CreateRoom(t *testing.T) {
 	if room.Name != "test-room" {
 		t.Fatalf("expected name 'test-room', got '%s'", room.Name)
 	}
-	if room.CreatedBy != "user-1" {
+	if room.CreatedBy != testUserIDRoom {
 		t.Fatalf("expected createdBy 'user-1', got '%s'", room.CreatedBy)
 	}
-	if room.AdminID != "user-1" {
+	if room.AdminID != testUserIDRoom {
 		t.Fatalf("expected adminID 'user-1', got '%s'", room.AdminID)
 	}
 	if !room.IsActive {
@@ -50,9 +52,9 @@ func TestRoomRepository_CreateRoom_CreatesParticipantAndPermissions(t *testing.T
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "user@ex.com", Name: "Creator", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "user@ex.com", Name: "Creator", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "perm-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "perm-room", false, "standard", &models.RoomSettings{})
 
 	// Check participant was created
 	participants, err := repo.GetActiveParticipants(room.ID)
@@ -62,7 +64,7 @@ func TestRoomRepository_CreateRoom_CreatesParticipantAndPermissions(t *testing.T
 	if len(participants) != 1 {
 		t.Fatalf("expected 1 participant, got %d", len(participants))
 	}
-	if participants[0].UserID != "user-1" {
+	if participants[0].UserID != testUserIDRoom {
 		t.Fatal("expected creator to be a participant")
 	}
 	if !participants[0].IsApproved {
@@ -73,7 +75,7 @@ func TestRoomRepository_CreateRoom_CreatesParticipantAndPermissions(t *testing.T
 	}
 
 	// Check permissions
-	perms, err := repo.GetParticipantPermissions(room.ID, "user-1")
+	perms, err := repo.GetParticipantPermissions(room.ID, testUserIDRoom)
 	if err != nil {
 		t.Fatalf("failed to get permissions: %v", err)
 	}
@@ -89,8 +91,8 @@ func TestRoomRepository_GetRoom(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "user@ex.com", Name: "Creator", Provider: "local", IsActive: true})
-	room, _ := repo.CreateRoom("user-1", "get-room", false, "standard", models.RoomSettings{})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "user@ex.com", Name: "Creator", Provider: "local", IsActive: true})
+	room, _ := repo.CreateRoom(testUserIDRoom, "get-room", false, "standard", &models.RoomSettings{})
 
 	found, err := repo.GetRoom(room.ID)
 	if err != nil {
@@ -121,8 +123,8 @@ func TestRoomRepository_GetRoomByName(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "user@ex.com", Name: "Creator", Provider: "local", IsActive: true})
-	_, _ = repo.CreateRoom("user-1", "named-room", false, "standard", models.RoomSettings{})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "user@ex.com", Name: "Creator", Provider: "local", IsActive: true})
+	_, _ = repo.CreateRoom(testUserIDRoom, "named-room", false, "standard", &models.RoomSettings{})
 
 	found, err := repo.GetRoomByName("named-room")
 	if err != nil {
@@ -150,10 +152,10 @@ func TestRoomRepository_AddParticipant(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "join-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "join-room", false, "standard", &models.RoomSettings{})
 
 	err := repo.AddParticipant(room.ID, "user-2")
 	if err != nil {
@@ -170,10 +172,10 @@ func TestRoomRepository_AddParticipant_Rejoin(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "rejoin-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "rejoin-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 	_ = repo.RemoveParticipant(room.ID, "user-2")
 
@@ -193,10 +195,10 @@ func TestRoomRepository_AddParticipant_BannedUser(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "ban-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "ban-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 	_ = repo.KickParticipant(room.ID, "user-2")
 
@@ -211,10 +213,10 @@ func TestRoomRepository_RemoveParticipant(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "leave-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "leave-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	err := repo.RemoveParticipant(room.ID, "user-2")
@@ -232,10 +234,10 @@ func TestRoomRepository_KickParticipant(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "kick-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "kick-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	err := repo.KickParticipant(room.ID, "user-2")
@@ -258,10 +260,10 @@ func TestRoomRepository_BringToStage_RemoveFromStage(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "stage-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "stage-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	// user-2 should not be on stage
@@ -289,10 +291,10 @@ func TestRoomRepository_UpdateParticipantStatus(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "status-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "status-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	err := repo.UpdateParticipantStatus(room.ID, "user-2", map[string]interface{}{
@@ -317,11 +319,11 @@ func TestRoomRepository_DeleteRoom(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "delete-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "delete-room", false, "standard", &models.RoomSettings{})
 
-	err := repo.DeleteRoom(room.ID, "user-1")
+	err := repo.DeleteRoom(room.ID, testUserIDRoom)
 	if err != nil {
 		t.Fatalf("failed to delete room: %v", err)
 	}
@@ -336,10 +338,10 @@ func TestRoomRepository_DeleteRoom_NotCreator(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "no-delete-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "no-delete-room", false, "standard", &models.RoomSettings{})
 
 	err := repo.DeleteRoom(room.ID, "user-2")
 	if err == nil {
@@ -351,10 +353,10 @@ func TestRoomRepository_GetAllRooms(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	_, _ = repo.CreateRoom("user-1", "room-1", false, "standard", models.RoomSettings{})
-	_, _ = repo.CreateRoom("user-1", "room-2", true, "standard", models.RoomSettings{})
+	_, _ = repo.CreateRoom(testUserIDRoom, "room-1", false, "standard", &models.RoomSettings{})
+	_, _ = repo.CreateRoom(testUserIDRoom, "room-2", true, "standard", &models.RoomSettings{})
 
 	rooms, err := repo.GetAllRooms()
 	if err != nil {
@@ -369,14 +371,14 @@ func TestRoomRepository_GetRoomsCreatedByUser(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	_, _ = repo.CreateRoom("user-1", "my-room-1", false, "standard", models.RoomSettings{})
-	_, _ = repo.CreateRoom("user-1", "my-room-2", false, "standard", models.RoomSettings{})
-	_, _ = repo.CreateRoom("user-2", "other-room", false, "standard", models.RoomSettings{})
+	_, _ = repo.CreateRoom(testUserIDRoom, "my-room-1", false, "standard", &models.RoomSettings{})
+	_, _ = repo.CreateRoom(testUserIDRoom, "my-room-2", false, "standard", &models.RoomSettings{})
+	_, _ = repo.CreateRoom("user-2", "other-room", false, "standard", &models.RoomSettings{})
 
-	rooms, err := repo.GetRoomsCreatedByUser("user-1")
+	rooms, err := repo.GetRoomsCreatedByUser(testUserIDRoom)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -389,16 +391,16 @@ func TestRoomRepository_UpdateRoomSettings(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "settings-room", false, "standard", models.RoomSettings{
+	room, _ := repo.CreateRoom(testUserIDRoom, "settings-room", false, "standard", &models.RoomSettings{
 		AllowChat: false,
 		E2EE:      false,
 	})
 
 	// The UpdateRoomSettings uses Select("Settings").Updates() on embedded struct.
 	// This may have limitations with SQLite. Just verify no error is returned.
-	err := repo.UpdateRoomSettings(room.ID, models.RoomSettings{
+	err := repo.UpdateRoomSettings(room.ID, &models.RoomSettings{
 		AllowChat:  true,
 		AllowVideo: true,
 		E2EE:       true,
@@ -412,10 +414,10 @@ func TestRoomRepository_GetRoomParticipantsWithUsers(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "preload-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "preload-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	participants, err := repo.GetRoomParticipantsWithUsers(room.ID)
@@ -439,14 +441,14 @@ func TestRoomRepository_CreateRoom_DuplicateName(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	_, err := repo.CreateRoom("user-1", "dup-room", false, "standard", models.RoomSettings{})
+	_, err := repo.CreateRoom(testUserIDRoom, "dup-room", false, "standard", &models.RoomSettings{})
 	if err != nil {
 		t.Fatalf("first creation failed: %v", err)
 	}
 
-	_, err = repo.CreateRoom("user-1", "dup-room", false, "standard", models.RoomSettings{})
+	_, err = repo.CreateRoom(testUserIDRoom, "dup-room", false, "standard", &models.RoomSettings{})
 	if err == nil {
 		t.Fatal("expected error when creating room with duplicate name")
 	}
@@ -461,9 +463,9 @@ func TestRoomRepository_CreateRoom_EmptyNameAutoGenerates(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, err := repo.CreateRoom("user-1", "", false, "standard", models.RoomSettings{})
+	room, err := repo.CreateRoom(testUserIDRoom, "", false, "standard", &models.RoomSettings{})
 	if err != nil {
 		t.Fatalf("CreateRoom with empty name should auto-generate, got error: %v", err)
 	}
@@ -483,7 +485,7 @@ func TestRoomRepository_CreateRoom_SpecialCharsRejected(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
 	invalidNames := []string{
 		"room#1",
@@ -494,7 +496,7 @@ func TestRoomRepository_CreateRoom_SpecialCharsRejected(t *testing.T) {
 		"room_under",
 	}
 	for _, name := range invalidNames {
-		_, err := repo.CreateRoom("user-1", name, false, "standard", models.RoomSettings{})
+		_, err := repo.CreateRoom(testUserIDRoom, name, false, "standard", &models.RoomSettings{})
 		if err == nil {
 			t.Fatalf("expected error for invalid name '%s'", name)
 		}
@@ -507,9 +509,9 @@ func TestRoomRepository_CreateRoom_NameNormalized(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, err := repo.CreateRoom("user-1", "  My-Room  ", false, "standard", models.RoomSettings{})
+	room, err := repo.CreateRoom(testUserIDRoom, "  My-Room  ", false, "standard", &models.RoomSettings{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -524,10 +526,10 @@ func TestRoomRepository_CreateRoom_NameTooLong(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
 	longName := strings.Repeat("a", 64)
-	_, err := repo.CreateRoom("user-1", longName, false, "standard", models.RoomSettings{})
+	_, err := repo.CreateRoom(testUserIDRoom, longName, false, "standard", &models.RoomSettings{})
 	if !errors.Is(err, models.ErrRoomNameTooLong) {
 		t.Fatalf("expected ErrRoomNameTooLong, got: %v", err)
 	}
@@ -539,11 +541,11 @@ func TestRoomRepository_CreateRoom_MaxParticipantsNotSet(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
 	// BUG: CreateRoom doesn't accept maxParticipants parameter!
 	// The Room struct has a default of 20 in GORM, but the value is never set from input.
-	room, err := repo.CreateRoom("user-1", "max-room", false, "standard", models.RoomSettings{})
+	room, err := repo.CreateRoom(testUserIDRoom, "max-room", false, "standard", &models.RoomSettings{})
 	if err != nil {
 		t.Fatalf("failed to create room: %v", err)
 	}
@@ -565,9 +567,9 @@ func TestRoomRepository_CreateRoom_SettingsPreserved(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	settings := models.RoomSettings{
+	settings := &models.RoomSettings{
 		AllowChat:       true,
 		AllowVideo:      true,
 		AllowAudio:      true,
@@ -575,7 +577,7 @@ func TestRoomRepository_CreateRoom_SettingsPreserved(t *testing.T) {
 		E2EE:            true,
 	}
 
-	room, err := repo.CreateRoom("user-1", "settings-preserved", false, "standard", settings)
+	room, err := repo.CreateRoom(testUserIDRoom, "settings-preserved", false, "standard", settings)
 	if err != nil {
 		t.Fatalf("failed to create room: %v", err)
 	}
@@ -604,9 +606,9 @@ func TestRoomRepository_CreateRoom_ExpiresAtIsSet(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "expire-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "expire-room", false, "standard", &models.RoomSettings{})
 
 	found, _ := repo.GetRoom(room.ID)
 	if found.ExpiresAt.IsZero() {
@@ -624,15 +626,15 @@ func TestRoomRepository_CleanupExpiredRooms(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
 	// Create a room that already expired
-	room, _ := repo.CreateRoom("user-1", "expired-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "expired-room", false, "standard", &models.RoomSettings{})
 	// Manually set ExpiresAt to the past
 	db.Model(&models.Room{}).Where("id = ?", room.ID).Update("expires_at", "2020-01-01 00:00:00")
 
 	// Create a room that hasn't expired yet
-	_, _ = repo.CreateRoom("user-1", "active-room", false, "standard", models.RoomSettings{})
+	_, _ = repo.CreateRoom(testUserIDRoom, "active-room", false, "standard", &models.RoomSettings{})
 
 	err := repo.CleanupExpiredRooms()
 	if err != nil {
@@ -650,8 +652,8 @@ func TestRoomRepository_CleanupExpiredRooms_NoExpired(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
-	_, _ = repo.CreateRoom("user-1", "future-room", false, "standard", models.RoomSettings{})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	_, _ = repo.CreateRoom(testUserIDRoom, "future-room", false, "standard", &models.RoomSettings{})
 
 	err := repo.CleanupExpiredRooms()
 	if err != nil {
@@ -663,9 +665,9 @@ func TestRoomRepository_CreateRoom_PrivateRoom(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "private-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "private-room", false, "standard", &models.RoomSettings{})
 	if room.IsPublic {
 		t.Fatal("expected room to be private")
 	}
@@ -675,9 +677,9 @@ func TestRoomRepository_CreateRoom_PublicRoom(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "public-room", true, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "public-room", true, "standard", &models.RoomSettings{})
 	if !room.IsPublic {
 		t.Fatal("expected room to be public")
 	}
@@ -689,12 +691,12 @@ func TestRoomRepository_MultipleParticipantsLifecycle(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-3", Email: "u3@ex.com", Name: "U3", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-4", Email: "u4@ex.com", Name: "U4", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "lifecycle-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "lifecycle-room", false, "standard", &models.RoomSettings{})
 
 	// Add 3 more participants
 	_ = repo.AddParticipant(room.ID, "user-2")
@@ -740,10 +742,10 @@ func TestRoomRepository_AddParticipant_AlreadyActive(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "double-join-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "double-join-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	// Add again (already active) — should not error, just update
@@ -765,10 +767,10 @@ func TestRoomRepository_DeleteRoom_CleansUpAll(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "cleanup-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "cleanup-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	// Verify we have participants and permissions before delete
@@ -782,7 +784,7 @@ func TestRoomRepository_DeleteRoom_CleansUpAll(t *testing.T) {
 		t.Fatal("expected permissions before delete")
 	}
 
-	_ = repo.DeleteRoom(room.ID, "user-1")
+	_ = repo.DeleteRoom(room.ID, testUserIDRoom)
 
 	// Verify everything is cleaned up
 	db.Model(&models.RoomParticipant{}).Where("room_id = ?", room.ID).Count(&participantCount)
@@ -801,9 +803,9 @@ func TestRoomRepository_CreateRoom_RequireApproval(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, err := repo.CreateRoom("user-1", "approval-room", false, "standard", models.RoomSettings{
+	room, err := repo.CreateRoom(testUserIDRoom, "approval-room", false, "standard", &models.RoomSettings{
 		RequireApproval: true,
 		AllowChat:       true,
 	})
@@ -821,10 +823,10 @@ func TestRoomRepository_AddParticipant_NewJoiner_NotApproved(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "approval-test", false, "standard", models.RoomSettings{RequireApproval: true})
+	room, _ := repo.CreateRoom(testUserIDRoom, "approval-test", false, "standard", &models.RoomSettings{RequireApproval: true})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	// New joiner should NOT be approved by default
@@ -839,12 +841,12 @@ func TestRoomRepository_CreateRoom_CreatorIsAlwaysApproved(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "creator-approved", false, "standard", models.RoomSettings{RequireApproval: true})
+	room, _ := repo.CreateRoom(testUserIDRoom, "creator-approved", false, "standard", &models.RoomSettings{RequireApproval: true})
 
 	var participant models.RoomParticipant
-	db.Where("room_id = ? AND user_id = ?", room.ID, "user-1").First(&participant)
+	db.Where("room_id = ? AND user_id = ?", room.ID, testUserIDRoom).First(&participant)
 	if !participant.IsApproved {
 		t.Fatal("creator should always be approved regardless of RequireApproval setting")
 	}
@@ -856,9 +858,9 @@ func TestRoomRepository_CreateRoom_E2EE(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "e2ee-room", false, "standard", models.RoomSettings{E2EE: true})
+	room, _ := repo.CreateRoom(testUserIDRoom, "e2ee-room", false, "standard", &models.RoomSettings{E2EE: true})
 
 	found, _ := repo.GetRoom(room.ID)
 	if !found.Settings.E2EE {
@@ -872,15 +874,15 @@ func TestRoomRepository_GetRoomsParticipatedInByUser(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
 	// user-1 creates 2 rooms
-	room1, _ := repo.CreateRoom("user-1", "owner-room-1", false, "standard", models.RoomSettings{})
-	room2, _ := repo.CreateRoom("user-1", "owner-room-2", false, "standard", models.RoomSettings{})
+	room1, _ := repo.CreateRoom(testUserIDRoom, "owner-room-1", false, "standard", &models.RoomSettings{})
+	room2, _ := repo.CreateRoom(testUserIDRoom, "owner-room-2", false, "standard", &models.RoomSettings{})
 
 	// user-2 creates 1 room, joins 1 of user-1's rooms
-	_, _ = repo.CreateRoom("user-2", "u2-own-room", false, "standard", models.RoomSettings{})
+	_, _ = repo.CreateRoom("user-2", "u2-own-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room1.ID, "user-2")
 
 	// user-2 participated rooms (excluding rooms they created)
@@ -907,9 +909,9 @@ func TestRoomRepository_GetRoomsParticipatedInByUser_None(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	rooms, err := repo.GetRoomsParticipatedInByUser("user-1")
+	rooms, err := repo.GetRoomsParticipatedInByUser(testUserIDRoom)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -924,11 +926,11 @@ func TestRoomRepository_CreatorHasFullAdminPermissions(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "admin-perms-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "admin-perms-room", false, "standard", &models.RoomSettings{})
 
-	perms, err := repo.GetParticipantPermissions(room.ID, "user-1")
+	perms, err := repo.GetParticipantPermissions(room.ID, testUserIDRoom)
 	if err != nil {
 		t.Fatalf("failed to get permissions: %v", err)
 	}
@@ -953,10 +955,10 @@ func TestRoomRepository_NewParticipantHasNoPermissions(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "noperm-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "noperm-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	// New participant should NOT have permissions entry
@@ -973,10 +975,10 @@ func TestRoomRepository_RemoveParticipant_SetsLeftAt(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "leftat-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "leftat-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 	_ = repo.RemoveParticipant(room.ID, "user-2")
 
@@ -996,18 +998,18 @@ func TestRoomRepository_BringToStage_CreatorAlreadyOnStage(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "creator-stage", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "creator-stage", false, "standard", &models.RoomSettings{})
 
 	// Creator should already be on stage
-	onStage, _ := repo.IsParticipantOnStage(room.ID, "user-1")
+	onStage, _ := repo.IsParticipantOnStage(room.ID, testUserIDRoom)
 	if !onStage {
 		t.Fatal("expected creator to be on stage by default")
 	}
 
 	// Bringing creator to stage again should not fail
-	err := repo.BringToStage(room.ID, "user-1")
+	err := repo.BringToStage(room.ID, testUserIDRoom)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1017,13 +1019,13 @@ func TestRoomRepository_RemoveFromStage_CreatorCanBeRemoved(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "stage-remove", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "stage-remove", false, "standard", &models.RoomSettings{})
 
 	// Remove creator from stage (should work but might be undesirable)
-	_ = repo.RemoveFromStage(room.ID, "user-1")
-	onStage, _ := repo.IsParticipantOnStage(room.ID, "user-1")
+	_ = repo.RemoveFromStage(room.ID, testUserIDRoom)
+	onStage, _ := repo.IsParticipantOnStage(room.ID, testUserIDRoom)
 	if onStage {
 		t.Fatal("expected creator to be removed from stage")
 	}
@@ -1035,10 +1037,10 @@ func TestRoomRepository_UpdateParticipantPermissions(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "perm-update-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "perm-update-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	// Create permissions for user-2 (since AddParticipant doesn't auto-create them)
@@ -1048,7 +1050,7 @@ func TestRoomRepository_UpdateParticipantPermissions(t *testing.T) {
 		UserID: "user-2",
 	})
 
-	err := repo.UpdateParticipantPermissions(room.ID, "user-2", models.RoomPermissions{
+	err := repo.UpdateParticipantPermissions(room.ID, "user-2", &models.RoomPermissions{
 		CanChat: true,
 	})
 	if err != nil {
@@ -1062,9 +1064,9 @@ func TestRoomRepository_GetRoom_ReturnsCompleteData(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	_, err := repo.CreateRoom("user-1", "complete-data-room", true, "standard", models.RoomSettings{
+	_, err := repo.CreateRoom(testUserIDRoom, "complete-data-room", true, "standard", &models.RoomSettings{
 		AllowChat:  true,
 		AllowAudio: true,
 		E2EE:       true,
@@ -1077,10 +1079,10 @@ func TestRoomRepository_GetRoom_ReturnsCompleteData(t *testing.T) {
 	if found == nil {
 		t.Fatal("expected to find room")
 	}
-	if found.CreatedBy != "user-1" {
+	if found.CreatedBy != testUserIDRoom {
 		t.Fatalf("expected createdBy 'user-1', got '%s'", found.CreatedBy)
 	}
-	if found.AdminID != "user-1" {
+	if found.AdminID != testUserIDRoom {
 		t.Fatalf("expected adminID 'user-1', got '%s'", found.AdminID)
 	}
 	if !found.IsActive {
@@ -1106,10 +1108,10 @@ func TestRoomRepository_KickParticipant_SetsLeftAt(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "kick-left-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "kick-left-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 	_ = repo.KickParticipant(room.ID, "user-2")
 
@@ -1144,16 +1146,16 @@ func TestRoomRepository_GetUserByID(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	user, err := repo.GetUserByID("user-1")
+	user, err := repo.GetUserByID(testUserIDRoom)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if user == nil {
 		t.Fatal("expected to find user")
 	}
-	if user.ID != "user-1" {
+	if user.ID != testUserIDRoom {
 		t.Fatalf("expected ID 'user-1', got '%s'", user.ID)
 	}
 }
@@ -1174,12 +1176,12 @@ func TestRoomRepository_CreateRoom_CreatorJoinTimeSet(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "jointime-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "jointime-room", false, "standard", &models.RoomSettings{})
 
 	var participant models.RoomParticipant
-	db.Where("room_id = ? AND user_id = ?", room.ID, "user-1").First(&participant)
+	db.Where("room_id = ? AND user_id = ?", room.ID, testUserIDRoom).First(&participant)
 	if participant.JoinedAt.IsZero() {
 		t.Fatal("expected JoinedAt to be set for creator")
 	}
@@ -1194,10 +1196,10 @@ func TestRoomRepository_UpdateParticipantStatus_ChatBlocked(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewRoomRepository(db)
 
-	db.Create(&models.User{ID: "user-1", Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
+	db.Create(&models.User{ID: testUserIDRoom, Email: "u1@ex.com", Name: "U1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-2", Email: "u2@ex.com", Name: "U2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-1", "chat-block-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom(testUserIDRoom, "chat-block-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-2")
 
 	_ = repo.UpdateParticipantStatus(room.ID, "user-2", map[string]interface{}{
@@ -1217,8 +1219,8 @@ func TestRoomRepository_GetAllActiveRooms(t *testing.T) {
 
 	db.Create(&models.User{ID: "user-gar", Email: "gar@ex.com", Name: "GAR", Provider: "local", IsActive: true})
 
-	r1, _ := repo.CreateRoom("user-gar", "active-room-1", false, "standard", models.RoomSettings{})
-	r2, _ := repo.CreateRoom("user-gar", "active-room-2", false, "standard", models.RoomSettings{})
+	r1, _ := repo.CreateRoom("user-gar", "active-room-1", false, "standard", &models.RoomSettings{})
+	r2, _ := repo.CreateRoom("user-gar", "active-room-2", false, "standard", &models.RoomSettings{})
 
 	// Mark r2 as idle
 	_ = repo.SetRoomIdle(r2.ID)
@@ -1241,7 +1243,7 @@ func TestRoomRepository_SetRoomIdle(t *testing.T) {
 
 	db.Create(&models.User{ID: "user-sri", Email: "sri@ex.com", Name: "SRI", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-sri", "idle-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom("user-sri", "idle-room", false, "standard", &models.RoomSettings{})
 	if !room.IsActive {
 		t.Fatal("expected room to be active initially")
 	}
@@ -1263,7 +1265,7 @@ func TestRoomRepository_UpdateRoom(t *testing.T) {
 
 	db.Create(&models.User{ID: "user-ur", Email: "ur@ex.com", Name: "UR", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-ur", "update-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom("user-ur", "update-room", false, "standard", &models.RoomSettings{})
 
 	room.MaxParticipants = 99
 	err := repo.UpdateRoom(room)
@@ -1284,7 +1286,7 @@ func TestRoomRepository_CountActiveParticipants(t *testing.T) {
 	db.Create(&models.User{ID: "user-cap1", Email: "cap1@ex.com", Name: "CAP1", Provider: "local", IsActive: true})
 	db.Create(&models.User{ID: "user-cap2", Email: "cap2@ex.com", Name: "CAP2", Provider: "local", IsActive: true})
 
-	room, _ := repo.CreateRoom("user-cap1", "cap-room", false, "standard", models.RoomSettings{})
+	room, _ := repo.CreateRoom("user-cap1", "cap-room", false, "standard", &models.RoomSettings{})
 	_ = repo.AddParticipant(room.ID, "user-cap2")
 
 	count, err := repo.CountActiveParticipants()

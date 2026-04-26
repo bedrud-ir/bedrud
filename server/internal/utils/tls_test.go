@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -94,7 +95,7 @@ func TestGenerateSelfSignedCert_MultipleGenerations(t *testing.T) {
 	data2, _ := os.ReadFile(cert2)
 
 	// Different certs should be generated each time (different serial numbers, keys)
-	if string(data1) == string(data2) {
+	if bytes.Equal(data1, data2) {
 		t.Fatal("expected different certificates for each generation")
 	}
 }

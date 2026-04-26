@@ -366,7 +366,7 @@ func TestUserRepository_DeleteUser_CascadesCleanup(t *testing.T) {
 	_ = repo.CreateUser(user)
 
 	// Create room with this user
-	_, _ = roomRepo.CreateRoom("user-cascade", "test-room", false, "standard", models.RoomSettings{})
+	_, _ = roomRepo.CreateRoom("user-cascade", "test-room", false, "standard", &models.RoomSettings{})
 
 	// Block a token
 	_ = repo.BlockRefreshToken("user-cascade", "some-token", time.Now().Add(time.Hour))

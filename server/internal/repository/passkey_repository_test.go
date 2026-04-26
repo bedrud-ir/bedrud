@@ -6,13 +6,15 @@ import (
 	"testing"
 )
 
+const testUserIDPasskey = "user-1"
+
 func TestPasskeyRepository_CreatePasskey(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewPasskeyRepository(db)
 
 	passkey := &models.Passkey{
 		ID:           "pk-1",
-		UserID:       "user-1",
+		UserID:       testUserIDPasskey,
 		CredentialID: []byte("cred-123"),
 		PublicKey:    []byte("pub-key-data"),
 		Algorithm:    -7,
@@ -47,8 +49,8 @@ func TestPasskeyRepository_GetPasskeyByCredentialID(t *testing.T) {
 	if found == nil {
 		t.Fatal("expected to find passkey")
 	}
-	if found.UserID != "user-1" {
-		t.Fatalf("expected userID 'user-1', got '%s'", found.UserID)
+	if found.UserID != testUserIDPasskey {
+		t.Fatalf("expected userID '%s', got '%s'", testUserIDPasskey, found.UserID)
 	}
 }
 
@@ -69,16 +71,16 @@ func TestPasskeyRepository_GetPasskeysByUserID(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewPasskeyRepository(db)
 
-	_ = repo.CreatePasskey(&models.Passkey{ID: "pk-1", UserID: "user-1", CredentialID: []byte("c1"), PublicKey: []byte("k1"), Algorithm: -7, Name: "Key 1"})
-	_ = repo.CreatePasskey(&models.Passkey{ID: "pk-2", UserID: "user-1", CredentialID: []byte("c2"), PublicKey: []byte("k2"), Algorithm: -7, Name: "Key 2"})
+	_ = repo.CreatePasskey(&models.Passkey{ID: "pk-1", UserID: testUserIDPasskey, CredentialID: []byte("c1"), PublicKey: []byte("k1"), Algorithm: -7, Name: "Key 1"})
+	_ = repo.CreatePasskey(&models.Passkey{ID: "pk-2", UserID: testUserIDPasskey, CredentialID: []byte("c2"), PublicKey: []byte("k2"), Algorithm: -7, Name: "Key 2"})
 	_ = repo.CreatePasskey(&models.Passkey{ID: "pk-3", UserID: "user-2", CredentialID: []byte("c3"), PublicKey: []byte("k3"), Algorithm: -7, Name: "Key 3"})
 
-	passkeys, err := repo.GetPasskeysByUserID("user-1")
+	passkeys, err := repo.GetPasskeysByUserID(testUserIDPasskey)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(passkeys) != 2 {
-		t.Fatalf("expected 2 passkeys for user-1, got %d", len(passkeys))
+		t.Fatalf("expected 2 passkeys for %s, got %d", testUserIDPasskey, len(passkeys))
 	}
 }
 
@@ -139,7 +141,7 @@ func TestPasskeyRepository_DeletePasskey(t *testing.T) {
 		t.Fatalf("failed to delete passkey: %v", err)
 	}
 
-	passkeys, _ := repo.GetPasskeysByUserID("user-1")
+	passkeys, _ := repo.GetPasskeysByUserID(testUserIDPasskey)
 	if len(passkeys) != 0 {
 		t.Fatalf("expected 0 passkeys after delete, got %d", len(passkeys))
 	}
