@@ -16,6 +16,56 @@ SKIP_SHELL=false
 NO_SETUP=false
 CONFIG_FILE="/etc/bedrud/config.yaml"
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Table of Contents / Script Guide
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# This script performs a full installation of Bedrud. It supports both
+# downloading pre-built binaries and building from source (--build).
+# For Linux environments, it also offers an interactive server setup to 
+# configure Postgres, Let's Encrypt TLS, systemd/openrc, and an admin user.
+#
+# Sections & Functions:
+#
+# 1. Globals & Setup
+#    Defines install directories, repo, and default versions.
+#
+# 2. Helpers (Logging & Prompts)
+#    - info(), warn(), error(), step(): Logging and UI formatting.
+#    - ask(), ask_yn(), ask_pg_details(): Interactive prompt handlers.
+#
+# 3. Environment & Dependency Management
+#    - Windows guard: Blocks execution on Windows (suggests PowerShell).
+#    - detect_pkg_manager(), install_pkg(), pkg_name(): OS package managers.
+#    - ensure_deps(): Installs required tools (tar, xz, unzip, git, make).
+#
+# 4. Argument Parsing
+#    - usage(): Displays help. Parses --install-dir, --build, --no-setup, etc.
+#
+# 5. Platform Detection
+#    Determines OS (Darwin, Linux, FreeBSD) and Architecture (amd64, arm64).
+#    Handles Rosetta 2 translation mappings.
+#
+# 6. Download & Install Phase
+#    - If --build: Clones repo, installs bun/go, runs 'make build'.
+#    - Else: Downloads release tar.xz and extracts binary.
+#
+# 7. PATH Configuration
+#    - in_path(), configure_shell(): Appends INSTALL_DIR to shell profiles.
+#
+# 8. Interactive Server Setup (Linux only, skipped via --no-setup)
+#    - Phase 2: Detects distro, init system, Docker, and Public/Local IPs.
+#    - Phase 3: Q&A for Domain, TLS, DB, Proxy, and Admin credentials.
+#    - Phase 3.5: Starts Postgres in Docker (if selected).
+#    - Phase 4: Executes `bedrud install` to generate config/service files.
+#    - Phase 5: Edits bedrud config to use Postgres and restarts services.
+#    - Phase 6: Creates and promotes the initial Admin user.
+#    - Phase 7: Health checks service via HTTP/HTTPS and verifies init daemon.
+#
+# 9. Final Output
+#    Displays success messages, access URLs, and next steps for the user.
+# ══════════════════════════════════════════════════════════════════════════════
+
 # ── Colors (tty only) ───────────────────────────────────────────
 if [[ -t 1 ]]; then
   RED='\033[0;31m'
@@ -118,6 +168,8 @@ detect_pkg_manager() {
   elif command -v apk     >/dev/null 2>&1; then echo "apk"
   elif command -v pacman  >/dev/null 2>&1; then echo "pacman"
   elif command -v zypper  >/dev/null 2>&1; then echo "zypper"
+  elif command -v pkg     >/dev/null 2>&1; then echo "pkg"
+  elif command -v brew    >/dev/null 2>&1; then echo "brew"
   else echo ""
   fi
 }
@@ -130,20 +182,15 @@ install_pkg() {
   if [[ -z "$pm" ]]; then return 1; fi
 
   local install_cmd=""
-  local update_cmd=""
   case "$pm" in
-    apt)     update_cmd="apt-get update -qq"
-             install_cmd="apt-get install -y" ;;
-    dnf)     update_cmd="dnf makecache -q"
-             install_cmd="dnf install -y" ;;
-    yum)     update_cmd="yum makecache -q"
-             install_cmd="yum install -y" ;;
-    apk)     update_cmd="apk update -q"
-             install_cmd="apk add" ;;
-    pacman)  update_cmd="pacman -Sy --noconfirm"
-             install_cmd="pacman -S --noconfirm" ;;
-    zypper)  update_cmd="zypper refresh"
-             install_cmd="zypper --non-interactive install" ;;
+    apt)     install_cmd="apt-get update -qq && apt-get install -y" ;;
+    dnf)     install_cmd="dnf makecache && dnf install -y" ;;
+    yum)     install_cmd="yum makecache && yum install -y" ;;
+    apk)     install_cmd="apk update && apk add" ;;
+    pacman)  install_cmd="pacman -Sy --noconfirm" ;;
+    zypper)  install_cmd="zypper refresh && zypper --non-interactive install" ;;
+    pkg)     install_cmd="pkg update && pkg install -y" ;;
+    brew)    install_cmd="brew install" ;;
   esac
 
   local runner=""
@@ -155,13 +202,12 @@ install_pkg() {
     return 1
   fi
 
-  if [[ -n "$update_cmd" ]]; then
-    info "Updating package database..."
-    $runner $update_cmd || true
-  fi
-
   info "Installing ${pkg}..."
-  $runner $install_cmd "$pkg" || return 1
+  if [[ -n "$runner" ]]; then
+    $runner sh -c "$install_cmd \"$pkg\"" || return 1
+  else
+    sh -c "$install_cmd \"$pkg\"" || return 1
+  fi
   return 0
 }
 
