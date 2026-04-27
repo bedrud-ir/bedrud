@@ -202,6 +202,12 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
+	if input.Email == "" || input.Password == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Email and password are required",
+		})
+	}
+
 	loginResponse, err := h.authService.Login(input.Email, input.Password)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
