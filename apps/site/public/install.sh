@@ -243,6 +243,66 @@ ensure_deps() {
     fi
   fi
 
+  # ── git (required for --build mode) ──
+  if [[ "$BUILD" == true ]] && ! command -v git >/dev/null 2>&1; then
+    if [[ "$skip_auto" == true ]]; then
+      warn "git is required for --build mode. Install manually:"
+      if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "    brew install git"
+      elif [[ "$(uname -s)" == "FreeBSD" ]]; then
+        echo "    pkg install git"
+      else
+        echo "    sudo apt-get install -y git"
+        echo "    sudo dnf install -y git"
+        echo "    sudo apk add git"
+        echo "    sudo pacman -S git"
+      fi
+      echo ""
+      error "git required for --build mode"
+    else
+      if ! install_pkg "git"; then
+        if [[ "$(id -u)" -ne 0 ]] && ! command -v sudo >/dev/null 2>&1; then
+          warn "No sudo access. Install manually: git"
+          error "Cannot install git without root/sudo"
+        fi
+        error "Failed to install git"
+      fi
+      info "git installed"
+    fi
+  fi
+
+  # ── make (required for --build mode) ──
+  if [[ "$BUILD" == true ]] && ! command -v make >/dev/null 2>&1; then
+    if [[ "$skip_auto" == true ]]; then
+      warn "make is required for --build mode. Install manually:"
+      if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "    brew install make"
+      elif [[ "$(uname -s)" == "FreeBSD" ]]; then
+        echo "    pkg install gmake"
+      else
+        echo "    sudo apt-get install -y make"
+        echo "    sudo dnf install -y make"
+        echo "    sudo apk add make"
+        echo "    sudo pacman -S make"
+      fi
+      echo ""
+      error "make required for --build mode"
+    else
+      local make_pkg="make"
+      if [[ "$(uname -s)" == "FreeBSD" ]]; then
+        make_pkg="gmake"
+      fi
+      if ! install_pkg "$make_pkg"; then
+        if [[ "$(id -u)" -ne 0 ]] && ! command -v sudo >/dev/null 2>&1; then
+          warn "No sudo access. Install manually: $make_pkg"
+          error "Cannot install $make_pkg without root/sudo"
+        fi
+        error "Failed to install $make_pkg"
+      fi
+      info "make installed"
+    fi
+  fi
+
   # ── Other deps (non-fatal, best-effort) ──
   local deps=("grep" "sed" "find" "gawk" "coreutils")
   local missing=()
@@ -310,7 +370,7 @@ ensure_deps() {
   fi
 }
 
-ensure_deps
+# ensure_deps runs after arg parse (needs BUILD flag)
 
 # ── Arg parse ───────────────────────────────────────────────────
 usage() {
@@ -355,6 +415,8 @@ while [[ $# -gt 0 ]]; do
     *) error "Unknown argument: $1. Run with --help for usage." ;;
   esac
 done
+
+ensure_deps
 
 # ── Platform detection ──────────────────────────────────────────
 OS="$(uname -s)"
