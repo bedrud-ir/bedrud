@@ -5,15 +5,15 @@ go 1.25.0
 require (
 	github.com/go-co-op/gocron v1.37.0
 	github.com/go-passkeys/go-passkeys v0.4.1
-	github.com/gofiber/fiber/v2 v2.52.12
+	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/gofiber/swagger v1.1.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
-	github.com/livekit/protocol v1.45.3
-	github.com/magefile/mage v1.17.1
+	github.com/livekit/protocol v1.45.6
+	github.com/magefile/mage v1.17.2
 	github.com/markbates/goth v1.82.0
-	github.com/rs/zerolog v1.35.0
+	github.com/rs/zerolog v1.35.1
 	github.com/swaggo/swag v1.16.6
 	github.com/twitchtv/twirp v8.1.3+incompatible
 	golang.org/x/crypto v0.50.0
