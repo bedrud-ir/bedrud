@@ -82,7 +82,7 @@ struct LoginView: View {
                     .frame(maxWidth: .infinity)
                     .font(.body.bold())
                 }
-                .disabled(isLoading || isPasskeyLoading || email.isEmpty || password.isEmpty)
+                .disabled(isLoading || isPasskeyLoading || email.isEmpty || password.count < 6)
             }
 
             // OAuth providers
