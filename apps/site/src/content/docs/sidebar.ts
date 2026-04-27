@@ -218,7 +218,8 @@ export const sections: SidebarSection[] = [
       {
         slug: "guides/behind-proxy",
         title: "Behind a Proxy/CDN",
-        description: "Running Bedrud behind Cloudflare, nginx, and other proxies",
+        description:
+          "Running Bedrud behind Cloudflare, nginx, and other proxies",
         order: 29,
       },
       {
