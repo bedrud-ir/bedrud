@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 var version = "dev"
@@ -99,25 +100,43 @@ func main() {
 		behindProxyFlag := installCmd.Bool("behind-proxy", false, "Running behind a CDN/reverse-proxy (Cloudflare, nginx, etc.)")
 		externalLKFlag := installCmd.String("external-livekit", "", "URL of a fully external LiveKit server (different machine, e.g. https://lk.example.com)")
 		lkDomainFlag := installCmd.String("livekit-domain", "", "Separate domain for the local LiveKit server (e.g. lk.example.com, bypasses CDN)")
+		lkIPFlag := installCmd.String("lk-ip", "", "Separate IP for LiveKit NodeIP (when server behind CDN, LiveKit needs direct-reachable IP)")
+		lkUDPPortRangeFlag := installCmd.String("lk-udp-range", "", "UDP port range for WebRTC media, e.g. 50000-60000 (default 50000-60000)")
 		_ = installCmd.Parse(os.Args[2:])
 
+		lkUDPPortRangeStart := ""
+		lkUDPPortRangeEnd := ""
+		if *lkUDPPortRangeFlag != "" {
+			parts := strings.SplitN(*lkUDPPortRangeFlag, "-", 2)
+			if len(parts) == 2 {
+				lkUDPPortRangeStart = parts[0]
+				lkUDPPortRangeEnd = parts[1]
+			} else {
+				fmt.Fprintf(os.Stderr, "Invalid --lk-udp-range format: %s (expected start-end, e.g. 50000-60000)\n", *lkUDPPortRangeFlag)
+				os.Exit(1)
+			}
+		}
+
 		cfg := install.InstallConfig{
-			EnableTLS:     (*enableTLS || *selfSigned) && !*noTLS,
-			DisableTLS:    *noTLS,
-			SelfSigned:    *selfSigned && !*noTLS,
-			OverrideIP:    *ipOverride,
-			Domain:        *domainFlag,
-			Email:         *emailFlag,
-			Port:          *portFlag,
-			CertPath:      *certFlag,
-			KeyPath:       *keyFlag,
-			LKPort:        *lkPortFlag,
-			LKTcpPort:     *lkTcpPortFlag,
-			LKUdpPort:     *lkUdpPortFlag,
-			Fresh:         *freshFlag,
-			BehindProxy:   *behindProxyFlag,
-			ExternalLKURL: *externalLKFlag,
-			LKDomain:      *lkDomainFlag,
+			EnableTLS:           (*enableTLS || *selfSigned) && !*noTLS,
+			DisableTLS:          *noTLS,
+			SelfSigned:          *selfSigned && !*noTLS,
+			OverrideIP:          *ipOverride,
+			Domain:              *domainFlag,
+			Email:               *emailFlag,
+			Port:                *portFlag,
+			CertPath:            *certFlag,
+			KeyPath:             *keyFlag,
+			LKPort:              *lkPortFlag,
+			LKTcpPort:           *lkTcpPortFlag,
+			LKUdpPort:           *lkUdpPortFlag,
+			LKUDPPortRangeStart: lkUDPPortRangeStart,
+			LKUDPPortRangeEnd:   lkUDPPortRangeEnd,
+			Fresh:               *freshFlag,
+			BehindProxy:         *behindProxyFlag,
+			ExternalLKURL:       *externalLKFlag,
+			LKDomain:            *lkDomainFlag,
+			LKIP:                *lkIPFlag,
 		}
 
 		if err := install.LinuxInstall(&cfg); err != nil {
@@ -212,6 +231,8 @@ func printUsage() {
 	fmt.Println("            Flags: --tls / --self-signed, --no-tls, --domain, --email,")
 	fmt.Println("                   --ip, --port, --cert, --key,")
 	fmt.Println("                   --lk-port, --lk-tcp-port, --lk-udp-port,")
+	fmt.Println("                   --lk-ip <ip>            (separate NodeIP when behind CDN)")
+	fmt.Println("                   --lk-udp-range <s-e>    (UDP port range, e.g. 50000-60000)")
 	fmt.Println("                   --fresh, --behind-proxy,")
 	fmt.Println("                   --livekit-domain <domain>  (local LK on its own domain)")
 	fmt.Println("                   --external-livekit <url>   (fully separate LK machine)")

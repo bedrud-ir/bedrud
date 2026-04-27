@@ -63,10 +63,12 @@ type livekitConfigYAML struct {
 	BindAddresses []string          `yaml:"bind_addresses"`
 	Keys          map[string]string `yaml:"keys"`
 	RTC           struct {
-		TCPPort       string `yaml:"tcp_port"`
-		UDPPort       string `yaml:"udp_port"`
-		UseExternalIP bool   `yaml:"use_external_ip"`
-		NodeIP        string `yaml:"node_ip"`
+		TCPPort        string `yaml:"tcp_port"`
+		UDPPort        string `yaml:"udp_port,omitempty"`
+		PortRangeStart string `yaml:"port_range_start,omitempty"`
+		PortRangeEnd   string `yaml:"port_range_end,omitempty"`
+		UseExternalIP  bool   `yaml:"use_external_ip"`
+		NodeIP         string `yaml:"node_ip"`
 	} `yaml:"rtc"`
 	TURN struct {
 		Enabled  bool   `yaml:"enabled"`
@@ -206,6 +208,11 @@ func LinuxInstall(cfg *InstallConfig) error {
 		livekitPublicHost = fmt.Sprintf("https://%s", cfg.LKDomain)
 	}
 
+	lkNodeIP := cfg.OverrideIP
+	if cfg.LKIP != "" {
+		lkNodeIP = cfg.LKIP
+	}
+
 	// Build config.yaml
 	var configYAML installConfigYAML
 	configYAML.Server.Port = cfg.Port
@@ -278,9 +285,15 @@ func LinuxInstall(cfg *InstallConfig) error {
 		lkYAML.BindAddresses = []string{lkBindAddr}
 		lkYAML.Keys = map[string]string{apiKey: apiSecret}
 		lkYAML.RTC.TCPPort = cfg.LKTcpPort
-		lkYAML.RTC.UDPPort = cfg.LKUdpPort
 		lkYAML.RTC.UseExternalIP = false
-		lkYAML.RTC.NodeIP = cfg.OverrideIP
+		lkYAML.RTC.NodeIP = lkNodeIP
+
+		if cfg.LKUDPPortRangeStart != "" && cfg.LKUDPPortRangeEnd != "" {
+			lkYAML.RTC.PortRangeStart = cfg.LKUDPPortRangeStart
+			lkYAML.RTC.PortRangeEnd = cfg.LKUDPPortRangeEnd
+		} else {
+			lkYAML.RTC.UDPPort = cfg.LKUdpPort
+		}
 		lkYAML.TURN.Enabled = true
 		lkYAML.TURN.Domain = turnDomain
 		lkYAML.TURN.UDPPort = 3478
@@ -410,6 +423,18 @@ WantedBy=multi-user.target
 		fmt.Println("  Domain URL: ", fmt.Sprintf("%s://%s", protocol, cfg.Domain))
 	}
 	fmt.Println("  LiveKit Host:", livekitPublicHost)
+	if !isExternalLK {
+		displayNodeIP := lkNodeIP
+		if displayNodeIP == "" {
+			displayNodeIP = cfg.OverrideIP
+		}
+		if displayNodeIP != cfg.OverrideIP {
+			fmt.Println("  LiveKit NodeIP:", displayNodeIP, "(different from server — set via --lk-ip)")
+		}
+		if cfg.LKUDPPortRangeStart != "" && cfg.LKUDPPortRangeEnd != "" {
+			fmt.Println("  LiveKit UDP range:", cfg.LKUDPPortRangeStart+"-"+cfg.LKUDPPortRangeEnd)
+		}
+	}
 	return nil
 }
 

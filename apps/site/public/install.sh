@@ -59,8 +59,10 @@ CONFIG_FILE="/etc/bedrud/config.yaml"
 #    - Phase 3.5: Starts Postgres in Docker (if selected).
 #    - Phase 4: Executes `bedrud install` to generate config/service files.
 #    - Phase 5: Edits bedrud config to use Postgres and restarts services.
+#    - Phase 5.5: Health checks service via HTTP/HTTPS and waits for init daemon.
+#    - Phase 5.7: Firewall warnings and Cloudflare/CDN post-install notes.
 #    - Phase 6: Creates and promotes the initial Admin user.
-#    - Phase 7: Health checks service via HTTP/HTTPS and verifies init daemon.
+#    - Phase 7: Verifies installation and displays next steps.
 #
 # 9. Final Output
 #    Displays success messages, access URLs, and next steps for the user.
@@ -919,7 +921,79 @@ if [[ "$CAN_SETUP" == true ]]; then
 
   # -- Q4: Behind proxy/CDN --
   BEHIND_PROXY=false
+  CDN_TYPE="none"
   ask_yn "Running behind a proxy/CDN? (Cloudflare, nginx, etc.)" "N" BEHIND_PROXY
+
+  if [[ "$BEHIND_PROXY" == true ]]; then
+    ask "What type of proxy/CDN? (cloudflare/nginx/other)" "cloudflare" CDN_TYPE
+  fi
+
+  # -- Q4b: LiveKit WebRTC topology --
+  step "LiveKit configuration"
+
+  USE_EXTERNAL_LK=false
+  EXTERNAL_LK_URL=""
+  USE_LK_DOMAIN=false
+  LK_DOMAIN=""
+  LK_IP=""
+
+  if [[ "$BEHIND_PROXY" == true ]]; then
+    echo ""
+    warn "LiveKit uses WebRTC which requires direct UDP connectivity."
+    warn "A proxy/CDN can handle the web UI, but CANNOT proxy WebRTC media traffic."
+    if [[ "$CDN_TYPE" == "cloudflare" ]]; then
+      echo ""
+      warn "Cloudflare: Standard proxy (Orange Cloud) drops all UDP media packets."
+      warn "  Recommended: Use a separate subdomain for LiveKit with DNS-only (Grey Cloud)."
+    fi
+    echo ""
+  fi
+
+  ask_yn "Use an external LiveKit server (separate machine)?" "N" USE_EXTERNAL_LK
+
+  if [[ "$USE_EXTERNAL_LK" == true ]]; then
+    ask "External LiveKit URL (e.g., https://lk.example.com)" "" EXTERNAL_LK_URL
+  else
+    if [[ "$BEHIND_PROXY" == true ]]; then
+      ask_yn "Use a separate subdomain for LiveKit? (bypasses CDN, recommended)" "Y" USE_LK_DOMAIN
+      if [[ "$USE_LK_DOMAIN" == true ]]; then
+        if [[ "$USE_DOMAIN" == true ]]; then
+          local_lk_default="${SETUP_DOMAIN%%.*}"
+          local_lk_default="lk.${SETUP_DOMAIN#"$local_lk_default".}"
+        fi
+        ask "LiveKit subdomain (e.g., lk.meet.example.com)" "${local_lk_default:-}" LK_DOMAIN
+      fi
+    fi
+
+    DEFAULT_LK_IP="${PUBLIC_IP:-${LOCAL_IP:-}}"
+    if [[ "$BEHIND_PROXY" == true ]]; then
+      echo ""
+      warn "LiveKit needs your server's REAL public IP for WebRTC ICE candidates."
+      warn "This is NOT the CDN IP — it is your server's actual IP that clients can reach."
+      ask "LiveKit server IP (real public IP, for WebRTC)" "$DEFAULT_LK_IP" LK_IP
+    else
+      LK_IP="$BEDRUD_IP"
+    fi
+
+    if [[ "$USE_LK_DOMAIN" != true && "$BEHIND_PROXY" == true ]]; then
+      echo ""
+      warn "WARNING: No separate LiveKit domain configured."
+      warn "WebRTC media traffic will likely NOT work through the CDN."
+      warn "See https://bedrud.org/en/docs/guides/behind-proxy for setup instructions."
+      echo ""
+      ask_yn "Proceed anyway?" "Y" PROCEED_ANYWAY
+      if [[ "$PROCEED_ANYWAY" != true ]]; then
+        ask_yn "Set up a separate subdomain for LiveKit?" "Y" USE_LK_DOMAIN
+        if [[ "$USE_LK_DOMAIN" == true ]]; then
+          if [[ "$USE_DOMAIN" == true ]]; then
+            local_lk_default="${SETUP_DOMAIN%%.*}"
+            local_lk_default="lk.${SETUP_DOMAIN#"$local_lk_default".}"
+          fi
+          ask "LiveKit subdomain" "${local_lk_default:-}" LK_DOMAIN
+        fi
+      fi
+    fi
+  fi
 
   # -- Q5: Admin user --
   step "Admin user"
@@ -941,17 +1015,43 @@ if [[ "$CAN_SETUP" == true ]]; then
   # ── Summary ────────────────────────────────────────────────────
   step "Summary"
   echo ""
-  printf "  ${BOLD}Domain:${RESET}       %s\n" "${DOMAIN:-IP-only (${BEDRUD_IP})}"
-  printf "  ${BOLD}Server IP:${RESET}   %s\n" "$BEDRUD_IP"
-  printf "  ${BOLD}TLS:${RESET}         %s\n" "$TLS_MODE"
-  printf "  ${BOLD}Database:${RESET}    %s\n" "$DB_TYPE"
-  if [[ "$DB_TYPE" == "postgres" ]]; then
-    printf "  ${BOLD}PG Host:${RESET}     %s:%s\n" "$PG_HOST" "$PG_PORT"
-    if [[ "$PG_DOCKER_CREATED" == true ]]; then
-      printf "  ${BOLD}PG Docker:${RESET}   yes (bound to ${PG_DOCKER_BIND})\n"
+  printf "  ${BOLD}Server:${RESET}\n"
+  if [[ -n "$DOMAIN" ]]; then
+    printf "    Domain:       %s\n" "$DOMAIN"
+    if [[ "$BEHIND_PROXY" == true ]]; then
+      printf "                  (behind ${CDN_TYPE})\n"
     fi
   fi
-  printf "  ${BOLD}Behind proxy:${RESET} %s\n" "$BEHIND_PROXY"
+  printf "    IP:           %s\n" "$BEDRUD_IP"
+  printf "    TLS:          %s\n" "$TLS_MODE"
+
+  echo ""
+  printf "  ${BOLD}LiveKit:${RESET}\n"
+  if [[ "$USE_EXTERNAL_LK" == true ]]; then
+    printf "    Mode:         External\n"
+    printf "    URL:          %s\n" "$EXTERNAL_LK_URL"
+  elif [[ "$USE_LK_DOMAIN" == true ]]; then
+    printf "    Mode:         Separate domain (direct DNS)\n"
+    printf "    Domain:       %s\n" "$LK_DOMAIN"
+    printf "    IP:           %s (for WebRTC ICE)\n" "$LK_IP"
+    printf "    UDP range:    50000-60000\n"
+    printf "    Ports:        7880/tcp, 7881/tcp\n"
+  elif [[ "$BEHIND_PROXY" == true ]]; then
+    printf "    Mode:         Embedded (behind CDN)\n"
+    printf "    IP:           %s (for WebRTC ICE)\n" "$LK_IP"
+    printf "    ${YELLOW}WARNING: WebRTC may not work through CDN${RESET}\n"
+  else
+    printf "    Mode:         Embedded (proxied via server)\n"
+  fi
+
+  echo ""
+  printf "  ${BOLD}Database:${RESET}     %s\n" "$DB_TYPE"
+  if [[ "$DB_TYPE" == "postgres" ]]; then
+    printf "    PG Host:      %s:%s\n" "$PG_HOST" "$PG_PORT"
+    if [[ "$PG_DOCKER_CREATED" == true ]]; then
+      printf "    PG Docker:    yes (bound to ${PG_DOCKER_BIND})\n"
+    fi
+  fi
   printf "  ${BOLD}Init system:${RESET} %s\n" "$INIT_SYSTEM"
   printf "  ${BOLD}Admin:${RESET}       %s (%s)\n" "$ADMIN_NAME" "$ADMIN_EMAIL"
   echo ""
@@ -1022,6 +1122,17 @@ if [[ "$CAN_SETUP" == true ]]; then
       INSTALL_CMD+=" --behind-proxy"
     fi
 
+    if [[ "$USE_EXTERNAL_LK" == true && -n "$EXTERNAL_LK_URL" ]]; then
+      INSTALL_CMD+=" --external-livekit ${EXTERNAL_LK_URL}"
+    fi
+    if [[ -n "$LK_DOMAIN" ]]; then
+      INSTALL_CMD+=" --livekit-domain ${LK_DOMAIN}"
+    fi
+    if [[ -n "$LK_IP" ]] && [[ "$LK_IP" != "$BEDRUD_IP" ]]; then
+      INSTALL_CMD+=" --lk-ip ${LK_IP}"
+    fi
+    INSTALL_CMD+=" --lk-udp-range 50000-60000"
+
     info "Running: ${INSTALL_CMD}"
     echo ""
 
@@ -1082,6 +1193,54 @@ if [[ "$CAN_SETUP" == true ]]; then
     if [[ "$WAIT_OK" != true ]]; then
       warn "Service not responding after 30s. User creation may fail."
     fi
+  fi
+
+  # ── Phase 5.7: Firewall & CDN notes ─────────────────────────────
+  LK_BINDS_PUBLIC=false
+  if [[ "$USE_LK_DOMAIN" == true ]] || [[ "$USE_EXTERNAL_LK" != true && "$BEHIND_PROXY" == true && -n "$LK_IP" && "$LK_IP" != "$BEDRUD_IP" ]]; then
+    LK_BINDS_PUBLIC=true
+  fi
+
+  if [[ "$LK_BINDS_PUBLIC" == true ]]; then
+    step "Firewall configuration"
+    echo ""
+    warn "LiveKit binds to 0.0.0.0 — ensure these ports are open in your firewall:"
+    echo "  7880/tcp   LiveKit API"
+    echo "  7881/tcp   RTC TCP fallback"
+    echo "  50000-60000/udp  WebRTC media"
+    echo "  3478/udp   TURN relay"
+    if [[ "$TLS_MODE" == "acme" || "$TLS_MODE" == "selfsigned" ]]; then
+      echo "  5349/tcp   TURN TLS"
+    fi
+    echo ""
+    echo "  Example (UFW):"
+    echo "    sudo ufw allow 7880/tcp"
+    echo "    sudo ufw allow 7881/tcp"
+    echo "    sudo ufw allow 50000:60000/udp"
+    echo "    sudo ufw allow 3478/udp"
+    echo ""
+  fi
+
+  if [[ "$CDN_TYPE" == "cloudflare" ]]; then
+    step "Cloudflare setup"
+    echo ""
+    if [[ "$USE_LK_DOMAIN" == true ]]; then
+      warn "DNS setup required in Cloudflare Dashboard:"
+      echo "  1. Go to DNS > Records"
+      echo "  2. Add A record: ${LK_DOMAIN} → ${LK_IP}"
+      echo "  3. Set proxy status to ${BOLD}DNS Only (Grey Cloud)${RESET} — NOT Proxied"
+      echo ""
+      warn "If you also want to proxy the Bedrud server domain through Cloudflare:"
+      echo "  - Set ${DOMAIN} to Proxied (Orange Cloud) as usual"
+      echo "  - WebSocket idle timeout is 100s on free/pro tiers (may cause reconnects)"
+      echo "  - Create a Cache Rule for ${DOMAIN}/twirp/* → Bypass"
+      echo "  - Add a WAF exception for your server IP if backend API calls get challenged"
+    elif [[ "$USE_EXTERNAL_LK" != true ]]; then
+      warn "LiveKit is embedded behind Cloudflare proxy."
+      warn "WebRTC media (UDP) will NOT work through Cloudflare."
+      warn "See: https://bedrud.org/en/docs/guides/behind-proxy"
+    fi
+    echo ""
   fi
 
   # ── Phase 6: Create admin user ─────────────────────────────────
@@ -1175,6 +1334,12 @@ if [[ "$CAN_SETUP" == true ]]; then
   printf "\n"
   printf "  ${BOLD}Access URL:${RESET}   %s\n" "$VERIFY_URL"
   printf "  ${BOLD}Admin:${RESET}        %s (%s)\n" "$ADMIN_NAME" "$ADMIN_EMAIL"
+  if [[ "$USE_EXTERNAL_LK" == true ]]; then
+    printf "  ${BOLD}LiveKit:${RESET}      External (%s)\n" "$EXTERNAL_LK_URL"
+  elif [[ "$USE_LK_DOMAIN" == true ]]; then
+    printf "  ${BOLD}LiveKit:${RESET}      %s (direct, DNS-only)\n" "$LK_DOMAIN"
+    printf "  ${BOLD}LK NodeIP:${RESET}    %s\n" "$LK_IP"
+  fi
   if [[ "$PG_DOCKER_CREATED" == true ]]; then
     printf "  ${BOLD}Postgres:${RESET}     Docker (bedrud-postgres, ${PG_DOCKER_BIND}:5432)\n"
   fi
@@ -1217,6 +1382,10 @@ if [[ "$CAN_SETUP" == true ]]; then
         ;;
     esac
     printf "\n"
+  fi
+
+  if [[ "$BEHIND_PROXY" == true ]]; then
+    printf "  ${BOLD}Proxy guide:${RESET}  https://bedrud.org/en/docs/guides/behind-proxy\n"
   fi
 
 # ════════════════════════════════════════════════════════════════
