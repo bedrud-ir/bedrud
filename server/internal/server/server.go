@@ -25,6 +25,7 @@ import (
 	"bedrud/internal/middleware"
 	"bedrud/internal/repository"
 	"bedrud/internal/scheduler"
+	"bedrud/internal/utils"
 	"context"
 	"crypto/tls"
 	"net/http"
@@ -278,7 +279,7 @@ func Run(configPath string) error {
 
 			// Manager for HTTP-01 challenge on port 80
 			go func() {
-				log.Info().Msg("➜ Starting ACME challenge server on port 80")
+				log.Info().Msgf("➜ Starting ACME challenge server on %s (bound 0.0.0.0:80)", utils.DisplayAddr("0.0.0.0", "80"))
 				if err := http.ListenAndServe(":80", certManager.HTTPHandler(nil)); err != nil {
 					log.Error().Err(err).Msg("ACME challenge server failed")
 				}
@@ -294,7 +295,7 @@ func Run(configPath string) error {
 				log.Error().Err(err).Msg("Failed to listen on :443 for ACME — falling back to plain HTTP")
 				// fall through to the plain-HTTP / manual-TLS block below
 			} else {
-				log.Info().Msg("➜ Bedrud is running on HTTPS 443 with Let's Encrypt")
+				log.Info().Msgf("➜ Bedrud is running on HTTPS %s (bound 0.0.0.0:443)", utils.DisplayAddr("0.0.0.0", "443"))
 				_ = app.Listener(ln)
 				return
 			}
@@ -306,16 +307,16 @@ func Run(configPath string) error {
 			// Start HTTP on port 80 for bots/local use
 			go func() {
 				httpAddr := cfg.Server.Host + ":80"
-				log.Info().Msgf("➜ Also listening on HTTP %s", httpAddr)
+				log.Info().Msgf("➜ Also listening on HTTP %s (bound %s)", utils.DisplayAddr(cfg.Server.Host, "80"), httpAddr)
 				if err := app.Listen(httpAddr); err != nil {
 					log.Debug().Err(err).Msg("HTTP server failed (might be port 80 restricted)")
 				}
 			}()
 			// Start HTTPS on primary port
-			log.Info().Msgf("➜ Bedrud is running on HTTPS %s (Self-signed or provided certs)", addr)
+			log.Info().Msgf("➜ Bedrud is running on HTTPS %s (bound %s)", utils.DisplayAddr(cfg.Server.Host, cfg.Server.Port), addr)
 			_ = app.ListenTLS(addr, cfg.Server.CertFile, cfg.Server.KeyFile)
 		} else {
-			log.Info().Msgf("➜ Bedrud is running on HTTP %s", addr)
+			log.Info().Msgf("➜ Bedrud is running on HTTP %s (bound %s)", utils.DisplayAddr(cfg.Server.Host, cfg.Server.Port), addr)
 			_ = app.Listen(addr)
 		}
 	}()

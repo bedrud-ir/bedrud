@@ -24,6 +24,7 @@ import (
 	"bedrud/internal/middleware"
 	"bedrud/internal/repository"
 	"bedrud/internal/scheduler"
+	"bedrud/internal/utils"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -365,8 +366,9 @@ func run() error {
 	// Start server in a goroutine
 	serverAddr := cfg.Server.Host + ":" + cfg.Server.Port
 	go func() {
+		log.Info().Msgf("➜ Bedrud is running on HTTP %s (bound %s)", utils.DisplayAddr(cfg.Server.Host, cfg.Server.Port), serverAddr)
 		if err := app.Listen(serverAddr); err != nil {
-			log.Error().Err(err).Msg("Failed to start server")
+			log.Error().Err(err).Msgf("Failed to start server on %s (bound %s)", utils.DisplayAddr(cfg.Server.Host, cfg.Server.Port), serverAddr)
 		}
 	}()
 

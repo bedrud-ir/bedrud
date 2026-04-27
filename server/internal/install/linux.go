@@ -106,6 +106,9 @@ func LinuxInstall(cfg *InstallConfig) error {
 	}
 
 	cfg.SetDefaults()
+	if cfg.OverrideIP == "" || cfg.OverrideIP == "0.0.0.0" {
+		cfg.OverrideIP = utils.OutboundIP().String()
+	}
 
 	fmt.Println("➜ Preparing Bedrud installation...")
 	fmt.Println("➜ Using IP:", cfg.OverrideIP)
