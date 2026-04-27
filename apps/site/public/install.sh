@@ -129,14 +129,21 @@ install_pkg() {
 
   if [[ -z "$pm" ]]; then return 1; fi
 
-  local cmd=""
+  local install_cmd=""
+  local update_cmd=""
   case "$pm" in
-    apt)     cmd="apt-get install -y" ;;
-    dnf)     cmd="dnf install -y" ;;
-    yum)     cmd="yum install -y" ;;
-    apk)     cmd="apk add" ;;
-    pacman)  cmd="pacman -S --noconfirm" ;;
-    zypper)  cmd="zypper install -y" ;;
+    apt)     update_cmd="apt-get update -qq"
+             install_cmd="apt-get install -y" ;;
+    dnf)     update_cmd="dnf makecache -q"
+             install_cmd="dnf install -y" ;;
+    yum)     update_cmd="yum makecache -q"
+             install_cmd="yum install -y" ;;
+    apk)     update_cmd="apk update -q"
+             install_cmd="apk add" ;;
+    pacman)  update_cmd="pacman -Sy --noconfirm"
+             install_cmd="pacman -S --noconfirm" ;;
+    zypper)  update_cmd="zypper refresh"
+             install_cmd="zypper --non-interactive install" ;;
   esac
 
   local runner=""
@@ -148,8 +155,13 @@ install_pkg() {
     return 1
   fi
 
+  if [[ -n "$update_cmd" ]]; then
+    info "Updating package database..."
+    $runner $update_cmd || true
+  fi
+
   info "Installing ${pkg}..."
-  $runner $cmd "$pkg" || return 1
+  $runner $install_cmd "$pkg" || return 1
   return 0
 }
 
