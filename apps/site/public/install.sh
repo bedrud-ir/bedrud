@@ -55,6 +55,7 @@ CONFIG_FILE="/etc/bedrud/config.yaml"
 #
 # 8. Interactive Server Setup (Linux only, skipped via --no-setup)
 #    - Phase 2: Detects distro, init system, Docker, and Public/Local IPs.
+#    - Phase 2b: Checks for an existing installation and prompts to reinstall.
 #    - Phase 3: Q&A for Domain, TLS, DB, Proxy, and Admin credentials.
 #    - Phase 3.5: Starts Postgres in Docker (if selected).
 #    - Phase 4: Executes `bedrud install` to generate config/service files.
