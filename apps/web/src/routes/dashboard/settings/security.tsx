@@ -44,8 +44,8 @@ function SecurityPage() {
     const newPassword = fd.get('newPassword') as string
     const confirmPassword = fd.get('confirmPassword') as string
 
-    if (newPassword.length < 6) {
-      setStatus({ type: 'error', message: 'New password must be at least 6 characters' })
+    if (newPassword.length < 12) {
+      setStatus({ type: 'error', message: 'New password must be at least 12 characters' })
       return
     }
     if (newPassword !== confirmPassword) {

@@ -33,14 +33,14 @@ export function ParticipantGrid({ pinnedIdentities, onTogglePin }: ParticipantGr
             width: 80,
             height: 80,
             borderRadius: '50%',
-            background: 'rgba(99,102,241,0.1)',
-            border: '1px solid rgba(99,102,241,0.2)',
+            background: 'color-mix(in oklab, var(--primary) 10%, transparent)',
+            border: '1px solid color-mix(in oklab, var(--primary) 20%, transparent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Video size={32} style={{ color: 'rgba(99,102,241,0.55)' }} />
+          <Video size={32} style={{ color: 'color-mix(in oklab, var(--primary) 55%, transparent)' }} />
         </div>
         <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>Waiting for others to join…</p>
       </div>

@@ -41,7 +41,7 @@ export function IPhoneMeetingPreview({ lang: _lang }: { lang: Locale }) {
   return (
     <div
       aria-hidden="true"
-      className="flex size-full select-none flex-col bg-[#111127]"
+      className="flex size-full select-none flex-col bg-[#0E1220]"
     >
       {/* Status bar spacer */}
       <div className="h-12 shrink-0" />
@@ -75,7 +75,7 @@ export function IPhoneMeetingPreview({ lang: _lang }: { lang: Locale }) {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-4 bg-[#0c0c20] py-3">
+      <div className="flex items-center justify-center gap-4 bg-[#0a0f1e] py-3">
         <div className="flex size-9 items-center justify-center rounded-full bg-white/10">
           <Mic className="size-4 text-white/80" />
         </div>
@@ -88,7 +88,7 @@ export function IPhoneMeetingPreview({ lang: _lang }: { lang: Locale }) {
       </div>
 
       {/* Home indicator spacer */}
-      <div className="h-5 shrink-0 bg-[#0c0c20]" />
+      <div className="h-5 shrink-0 bg-[#0a0f1e]" />
     </div>
   );
 }
@@ -108,7 +108,7 @@ export function AndroidMeetingPreview({ lang: _lang }: { lang: Locale }) {
   return (
     <div
       aria-hidden="true"
-      className="flex size-full select-none flex-col bg-[#111127]"
+      className="flex size-full select-none flex-col bg-[#0E1220]"
     >
       {/* Status bar spacer */}
       <div className="h-8 shrink-0" />
@@ -133,7 +133,7 @@ export function AndroidMeetingPreview({ lang: _lang }: { lang: Locale }) {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-3 bg-[#0c0c20] py-2.5">
+      <div className="flex items-center justify-center gap-3 bg-[#0a0f1e] py-2.5">
         <div className="flex size-8 items-center justify-center rounded-full bg-white/10">
           <MicOff className="size-3.5 text-red-400" />
         </div>
@@ -146,7 +146,7 @@ export function AndroidMeetingPreview({ lang: _lang }: { lang: Locale }) {
       </div>
 
       {/* Nav bar spacer */}
-      <div className="h-4 shrink-0 bg-[#0c0c20]" />
+      <div className="h-4 shrink-0 bg-[#0a0f1e]" />
     </div>
   );
 }

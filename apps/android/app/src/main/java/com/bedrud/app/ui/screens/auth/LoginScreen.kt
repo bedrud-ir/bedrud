@@ -254,7 +254,7 @@ fun LoginScreen(
                         }
                     }
                 },
-                enabled = email.isNotBlank() && password.isNotBlank() && !isLoading,
+                enabled = email.isNotBlank() && password.length >= 6 && !isLoading,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()

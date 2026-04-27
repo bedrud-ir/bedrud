@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bedrud/config"
 	"bedrud/internal/auth"
 	"bedrud/internal/database"
 	"bedrud/internal/models"
@@ -10,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/markbates/goth/gothic"
@@ -144,7 +142,7 @@ func BeginAuthHandler(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /auth/{provider}/callback [get]
-func CallbackHandler(c *fiber.Ctx) error {
+func (h *AuthHandler) CallbackHandler(c *fiber.Ctx) error {
 	provider := c.Params("provider")
 	log.Debug().Str("provider", provider).Msg("CallbackHandler called with provider")
 
@@ -214,6 +212,21 @@ func CallbackHandler(c *fiber.Ctx) error {
 
 	log.Debug().Str("provider", provider).Msg("Auth completed successfully")
 
+	// Check registration settings — block new account creation if disabled,
+	// but allow existing users to log in via OAuth.
+	if h.settingsRepo != nil {
+		settings, _ := h.settingsRepo.GetSettings()
+		if settings != nil && !settings.RegistrationEnabled {
+			// Check if user already exists — if so, allow login
+			existing, _ := h.authService.GetUserByEmail(gothUser.Email)
+			if existing == nil {
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"error": "Registration is currently disabled",
+				})
+			}
+		}
+	}
+
 	// Create or update user in database
 	userRepo := repository.NewUserRepository(database.GetDB())
 	dbUser := &models.User{
@@ -232,40 +245,38 @@ func CallbackHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Generate JWT token
-	cfg := config.Get()
-	token, err := auth.GenerateToken(
+	// Generate token pair (access + refresh)
+	accessToken, refreshToken, err := auth.GenerateTokenPair(
 		dbUser.ID,
 		dbUser.Email,
 		dbUser.Name,
-		dbUser.Provider,
-		dbUser.Accesses, // Add accesses
-		cfg,
+		dbUser.Accesses,
+		h.config,
 	)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to generate JWT token")
+		log.Error().Err(err).Msg("Failed to generate JWT token pair")
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Error: "Failed to generate authentication token",
 		})
 	}
 
-	// Set token in cookie
-	cookie := fiber.Cookie{
-		Name:     "jwt",
-		Value:    token,
-		Expires:  time.Now().Add(time.Duration(cfg.Auth.TokenDuration) * time.Hour),
-		HTTPOnly: true,
-		Secure:   c.Protocol() == "https",
-		SameSite: "Lax",
+	// Store refresh token in database
+	if err := h.authService.UpdateRefreshToken(dbUser.ID, refreshToken); err != nil {
+		log.Error().Err(err).Msg("Failed to save refresh token for OAuth user")
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Error: "Failed to save refresh token",
+		})
 	}
-	c.Cookie(&cookie)
+
+	// Set both access and refresh token cookies
+	setAuthCookies(c, h.config, accessToken, refreshToken)
 
 	// frontend url debug print
-	log.Debug().Str("frontend url", cfg.Auth.FrontendURL).Msg("frontend url")
+	log.Debug().Str("frontend url", h.config.Auth.FrontendURL).Msg("frontend url")
 
-	// If frontend URL is provided in config, redirect there with token
-	if cfg.Auth.FrontendURL != "" {
-		frontendURL, err := url.Parse(cfg.Auth.FrontendURL)
+	// If frontend URL is provided in config, redirect there without token in URL
+	if h.config.Auth.FrontendURL != "" {
+		frontendURL, err := url.Parse(h.config.Auth.FrontendURL)
 		if err != nil {
 			log.Error().Err(err).Msg("Invalid frontend URL in config")
 			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
@@ -274,9 +285,7 @@ func CallbackHandler(c *fiber.Ctx) error {
 		}
 
 		frontendURL.Path = "/auth/callback"
-		q := frontendURL.Query()
-		q.Set("token", token)
-		frontendURL.RawQuery = q.Encode()
+		// Token is delivered via HTTP-only cookie; do not expose it in the URL
 		return c.Redirect(frontendURL.String())
 	}
 
@@ -289,6 +298,6 @@ func CallbackHandler(c *fiber.Ctx) error {
 			Provider:  dbUser.Provider,
 			AvatarURL: dbUser.AvatarURL,
 		},
-		Token: token,
+		Token: accessToken,
 	})
 }

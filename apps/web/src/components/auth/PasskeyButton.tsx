@@ -1,25 +1,17 @@
 import { Fingerprint } from 'lucide-react'
 import { useState } from 'react'
 import { api } from '#/lib/api'
+import {
+  base64ToBuffer,
+  bufferToBase64,
+  type PublicKeyCredentialCreationOptionsJSON,
+  type PublicKeyCredentialRequestOptionsJSON,
+} from '#/lib/webauthn'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-
-function base64ToBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'))
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return bytes.buffer
-}
-
-function bufferToBase64(buffer: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '')
-}
 
 interface AuthResponse {
   user: { id: string; email: string; name: string; provider: string; accesses: string[] | null; avatarUrl?: string }

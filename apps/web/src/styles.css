@@ -1,98 +1,85 @@
+/*
+ * Color tokens live in theme.css — edit that file to rebrand.
+ * See DESIGN.md for the full design system documentation.
+ */
+
 @import "tailwindcss";
+@import "./theme.css";
 
 /* Use class-based dark mode — toggled by adding .dark to <html> */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Bedrud Design Tokens — Cobalt + Gold (Accessible)
+   Vibe: Linear / Stripe / Notion — credibility-first, premium, editorial.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @theme inline {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
+  /* Semantic colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-}
 
-/* ── Light theme ──────────────────────────────────────────────────────────── */
-:root {
-  --background: 0 0% 100%;
-  --foreground: 224 71% 4%;
+  /* Primary scale (mapped to --sky-* names) */
+  --color-sky-50: var(--sky-50);
+  --color-sky-100: var(--sky-100);
+  --color-sky-200: var(--sky-200);
+  --color-sky-300: var(--sky-300);
+  --color-sky-400: var(--sky-400);
+  --color-sky-500: var(--sky-500);
+  --color-sky-600: var(--sky-600);
+  --color-sky-700: var(--sky-700);
+  --color-sky-800: var(--sky-800);
+  --color-sky-900: var(--sky-900);
 
-  --card: 220 20% 98%;
-  --card-foreground: 224 71% 4%;
+  /* Secondary scale (mapped to --cyan-* names) */
+  --color-cyan-50: var(--cyan-50);
+  --color-cyan-100: var(--cyan-100);
+  --color-cyan-200: var(--cyan-200);
+  --color-cyan-300: var(--cyan-300);
+  --color-cyan-400: var(--cyan-400);
+  --color-cyan-500: var(--cyan-500);
+  --color-cyan-600: var(--cyan-600);
+  --color-cyan-700: var(--cyan-700);
+  --color-cyan-800: var(--cyan-800);
+  --color-cyan-900: var(--cyan-900);
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 224 71% 4%;
+  /* Accent scale (mapped to --fuchsia-* names) */
+  --color-fuchsia-50: var(--fuchsia-50);
+  --color-fuchsia-100: var(--fuchsia-100);
+  --color-fuchsia-200: var(--fuchsia-200);
+  --color-fuchsia-300: var(--fuchsia-300);
+  --color-fuchsia-400: var(--fuchsia-400);
+  --color-fuchsia-500: var(--fuchsia-500);
+  --color-fuchsia-600: var(--fuchsia-600);
+  --color-fuchsia-700: var(--fuchsia-700);
+  --color-fuchsia-800: var(--fuchsia-800);
+  --color-fuchsia-900: var(--fuchsia-900);
 
-  /* Indigo — the bedrud brand primary */
-  --primary: 239 84% 67%;
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 220 14% 96%;
-  --secondary-foreground: 224 71% 4%;
-
-  --muted: 220 14% 96%;
-  --muted-foreground: 220 9% 46%;
-
-  --accent: 220 14% 96%;
-  --accent-foreground: 224 71% 4%;
-
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-
-  --border: 220 13% 91%;
-  --input: 220 13% 91%;
-  --ring: 239 84% 67%;
-
-  --radius: 0.5rem;
-}
-
-/* ── Dark theme ───────────────────────────────────────────────────────────── */
-.dark {
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
-
-  --card: 222 47% 6%;
-  --card-foreground: 213 31% 91%;
-
-  --popover: 222 47% 6%;
-  --popover-foreground: 213 31% 91%;
-
-  /* Indigo — same hue, same recognizability in dark mode */
-  --primary: 239 84% 67%;
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 217 33% 17%;
-  --secondary-foreground: 213 31% 91%;
-
-  --muted: 217 33% 15%;
-  --muted-foreground: 215 20% 55%;
-
-  --accent: 217 33% 17%;
-  --accent-foreground: 213 31% 91%;
-
-  --destructive: 0 63% 50%;
-  --destructive-foreground: 0 0% 100%;
-
-  --border: 217 33% 17%;
-  --input: 217 33% 17%;
-  --ring: 239 84% 67%;
+  /* Semantic aliases */
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-bright-hover: var(--accent-bright-hover);
+  --color-info: var(--info);
 }
 
 /* ── View Transitions: theme switch circle animation ─────────────────────── */
@@ -104,7 +91,7 @@
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    border-color: var(--border);
     box-sizing: border-box;
   }
   html,
@@ -113,8 +100,8 @@
     min-height: 100%;
   }
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background-color: var(--background);
+    color: var(--foreground);
     margin: 0;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
@@ -128,13 +115,13 @@
   0%,
   100% {
     box-shadow:
-      0 0 0 2px hsl(var(--primary) / 0.8),
-      0 0 20px hsl(var(--primary) / 0.2);
+      0 0 0 2px oklch(from var(--primary) l c h / 0.8),
+      0 0 20px oklch(from var(--primary) l c h / 0.2);
   }
   50% {
     box-shadow:
-      0 0 0 3px hsl(var(--primary)),
-      0 0 44px hsl(var(--primary) / 0.5);
+      0 0 0 3px var(--primary),
+      0 0 44px oklch(from var(--primary) l c h / 0.5);
   }
 }
 

@@ -33,7 +33,9 @@ export interface ChatMessage {
 
 const KNOWN_SYSTEM_EVENTS = new Set(['kick', 'ban', 'ask_unmute', 'ask_camera', 'spotlight', 'deafen', 'undeafen'])
 
-interface MeetingContextValue {
+// ── Room context (static / slow-changing metadata) ──────────────────────────
+
+interface MeetingRoomContextValue {
   roomId: string
   roomName: string
   adminId: string
@@ -46,7 +48,19 @@ interface MeetingContextValue {
   // Self-deafened: user toggled deafen from controls bar
   isSelfDeafened: boolean
   toggleSelfDeafen: () => void
-  // Chat — always live, regardless of panel visibility
+}
+
+const MeetingRoomContext = createContext<MeetingRoomContextValue | null>(null)
+
+export function useMeetingRoomContext(): MeetingRoomContextValue {
+  const ctx = useContext(MeetingRoomContext)
+  if (!ctx) throw new Error('useMeetingRoomContext must be used inside MeetingProvider')
+  return ctx
+}
+
+// ── Chat context (fast-changing chat state) ─────────────────────────────────
+
+interface MeetingChatContextValue {
   chatMessages: ChatMessage[]
   systemMessages: SystemMessage[]
   sendChat: (text: string, attachments?: ChatAttachment[]) => void
@@ -54,13 +68,25 @@ interface MeetingContextValue {
   markRead: () => void
 }
 
-const MeetingContext = createContext<MeetingContextValue | null>(null)
+const MeetingChatContext = createContext<MeetingChatContextValue | null>(null)
 
-export function useMeetingContext(): MeetingContextValue {
-  const ctx = useContext(MeetingContext)
-  if (!ctx) throw new Error('useMeetingContext must be used inside MeetingProvider')
+export function useMeetingChatContext(): MeetingChatContextValue {
+  const ctx = useContext(MeetingChatContext)
+  if (!ctx) throw new Error('useMeetingChatContext must be used inside MeetingProvider')
   return ctx
 }
+
+// ── Legacy combined hook (for backward compatibility) ───────────────────────
+
+interface MeetingContextValue extends MeetingRoomContextValue, MeetingChatContextValue {}
+
+export function useMeetingContext(): MeetingContextValue {
+  const room = useMeetingRoomContext()
+  const chat = useMeetingChatContext()
+  return useMemo(() => ({ ...room, ...chat }), [room, chat])
+}
+
+// ── Provider ────────────────────────────────────────────────────────────────
 
 interface MeetingProviderProps {
   roomId: string
@@ -133,8 +159,9 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
           }
           setChatMessages((prev) => [...prev, msg])
         }
-      } catch (e) {
-        console.warn('[MeetingContext] failed to parse data message:', e)
+      } catch {
+        // Silently discard malformed data messages — a malicious participant
+        // could flood the channel with garbage, so we avoid polluting the console.
       }
     }
     room.on(RoomEvent.DataReceived, handler)
@@ -182,7 +209,7 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
 
       const data = new TextEncoder().encode(JSON.stringify(payload))
       lp.publishData(data, { reliable: true, topic: 'chat' }).catch((err) => {
-        console.error('[MeetingContext] failed to publish chat message:', err)
+        if (import.meta.env.DEV) console.error('[MeetingContext] failed to publish chat message:', err)
       })
 
       // Local echo so the sender sees the message immediately
@@ -224,7 +251,8 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
     setIsSelfDeafened(newDeafened)
   }, [room, isSelfDeafened])
 
-  const value = useMemo<MeetingContextValue>(
+  // Room context value — stable unless room metadata actually changes
+  const roomValue = useMemo<MeetingRoomContextValue>(
     () => ({
       roomId,
       roomName,
@@ -236,11 +264,6 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
       isServerDeafened,
       isSelfDeafened,
       toggleSelfDeafen,
-      chatMessages,
-      systemMessages,
-      sendChat,
-      unreadCount,
-      markRead,
     }),
     [
       roomId,
@@ -251,14 +274,25 @@ export function MeetingProvider({ roomId, roomName, adminId, children }: Meeting
       isServerDeafened,
       isSelfDeafened,
       toggleSelfDeafen,
+      room.localParticipant.identity,
+    ],
+  )
+
+  // Chat context value — changes every time a message arrives (isolated from room context)
+  const chatValue = useMemo<MeetingChatContextValue>(
+    () => ({
       chatMessages,
       systemMessages,
       sendChat,
       unreadCount,
       markRead,
-      room.localParticipant.identity,
-    ],
+    }),
+    [chatMessages, systemMessages, sendChat, unreadCount, markRead],
   )
 
-  return <MeetingContext.Provider value={value}>{children}</MeetingContext.Provider>
+  return (
+    <MeetingRoomContext.Provider value={roomValue}>
+      <MeetingChatContext.Provider value={chatValue}>{children}</MeetingChatContext.Provider>
+    </MeetingRoomContext.Provider>
+  )
 }

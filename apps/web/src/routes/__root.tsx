@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { useAuthStore } from '#/lib/auth.store'
 import { applyTheme, useThemeStore } from '#/lib/theme.store'
 import appCss from '../styles.css?url'
 
@@ -51,6 +52,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     const handler = () => applyTheme(useThemeStore.getState().theme)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  // Fire-and-forget: restore session via HTTP-only cookie refresh.
+  // Runs in the background — does NOT block initial render.
+  // Protected routes await the result in their beforeLoad guards.
+  useEffect(() => {
+    void useAuthStore.getState().initialize()
   }, [])
 
   return (

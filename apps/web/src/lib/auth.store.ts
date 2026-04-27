@@ -5,55 +5,83 @@ export interface AuthTokens {
   refreshToken: string | null
 }
 
+const REMEMBER_KEY = 'auth_remember'
+
 interface AuthStore {
   tokens: AuthTokens | null
-  setTokens: (tokens: AuthTokens, remember?: boolean) => void
+  initialized: boolean
+  setTokens: (tokens: AuthTokens, remember?: boolean | 'ephemeral') => void
   updateAccessToken: (accessToken: string) => void
   clear: () => void
+  initialize: () => Promise<void>
 }
 
-function loadTokens(): AuthTokens | null {
-  try {
-    const raw = localStorage.getItem('auth_data') ?? sessionStorage.getItem('auth_data')
-    if (!raw) return null
-    return JSON.parse(raw).state?.tokens ?? null
-  } catch {
-    return null
-  }
-}
+const BASE_URL = (import.meta.env['VITE_API_URL'] as string | undefined) ?? ''
 
-function saveTokens(tokens: AuthTokens, remember: boolean) {
-  const payload = JSON.stringify({ state: { tokens }, version: 0 })
-  if (remember) {
-    localStorage.setItem('auth_data', payload)
-    sessionStorage.removeItem('auth_data')
-  } else {
-    sessionStorage.setItem('auth_data', payload)
-    localStorage.removeItem('auth_data')
-  }
-}
+const _init = { promise: null as Promise<void> | null }
 
 export const useAuthStore = create<AuthStore>()((set, get) => ({
-  tokens: loadTokens(),
+  tokens: null,
+  initialized: false,
 
   setTokens: (tokens, remember = true) => {
     set({ tokens })
-    saveTokens(tokens, remember)
+    if (remember === 'ephemeral') return
+    if (remember) {
+      localStorage.setItem(REMEMBER_KEY, '1')
+    } else {
+      sessionStorage.setItem(REMEMBER_KEY, '1')
+    }
   },
 
   updateAccessToken: (accessToken) => {
     const current = get().tokens
     if (!current) return
-    const updated = { ...current, accessToken }
-    set({ tokens: updated })
-    // Preserve the original remember choice by checking which storage currently holds the token
-    const inLocalStorage = Boolean(localStorage.getItem('auth_data'))
-    saveTokens(updated, inLocalStorage)
+    set({ tokens: { ...current, accessToken } })
   },
 
   clear: () => {
-    set({ tokens: null })
-    localStorage.removeItem('auth_data')
-    sessionStorage.removeItem('auth_data')
+    set({ tokens: null, initialized: false })
+    _init.promise = null
+    localStorage.removeItem(REMEMBER_KEY)
+    sessionStorage.removeItem(REMEMBER_KEY)
+  },
+
+  initialize: async () => {
+    if (get().initialized) return
+
+    // Deduplicate: if an initialize() call is already in-flight, reuse it.
+    if (_init.promise) return _init.promise
+
+    _init.promise = (async () => {
+      const wasRemembered = Boolean(localStorage.getItem(REMEMBER_KEY)) || Boolean(sessionStorage.getItem(REMEMBER_KEY))
+
+      if (!wasRemembered) {
+        set({ initialized: true })
+        return
+      }
+
+      try {
+        const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        })
+
+        if (res.ok) {
+          const data = (await res.json()) as { access_token: string; refresh_token: string }
+          get().setTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
+        } else {
+          get().clear()
+        }
+      } catch {
+        // Network error — leave remember flag for retry on next page load.
+      }
+
+      set({ initialized: true })
+      _init.promise = null
+    })()
+
+    return _init.promise
   },
 }))

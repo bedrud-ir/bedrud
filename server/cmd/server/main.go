@@ -22,6 +22,7 @@ import (
 	"bedrud/internal/database"
 	"bedrud/internal/handlers"
 	"bedrud/internal/middleware"
+	"bedrud/internal/models"
 	"bedrud/internal/repository"
 	"bedrud/internal/scheduler"
 	"bedrud/internal/utils"
@@ -43,6 +44,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
+	"github.com/gofiber/fiber/v2/middleware/helmet"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
 	"github.com/rs/zerolog"
@@ -132,11 +134,21 @@ func run() error {
 	// Initialize Goth providers (after session store is initialized)
 	auth.Init(cfg)
 
+	// Periodically prune expired entries from the in-memory access token revocation set.
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			auth.PruneRevokedTokens()
+		}
+	}()
+
 	// Create new Fiber instance
 	app := fiber.New(fiber.Config{
 		AppName:      "Bedrud API",
 		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
+		BodyLimit:    2 * 1024 * 1024,
 		// Enable custom error handling
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			log.Error().Err(err).
@@ -190,6 +202,17 @@ func run() error {
 	scheduler.Initialize(roomRepo, &cfg.LiveKit)
 	defer scheduler.Stop()
 
+	// Periodically clean up expired blocked refresh tokens from the database.
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := userRepo.CleanupBlockedTokens(); err != nil {
+				log.Error().Err(err).Msg("Failed to cleanup blocked tokens")
+			}
+		}
+	}()
+
 	// ===============================
 	// Services
 	// ===============================
@@ -199,6 +222,12 @@ func run() error {
 	// Middleware
 	// ===============================
 	app.Use(recover.New())
+	app.Use(helmet.New(helmet.Config{
+		XSSProtection:      "1; mode=block",
+		ContentTypeNosniff: "nosniff",
+		XFrameOptions:      "DENY",
+		ReferrerPolicy:     "strict-origin-when-cross-origin",
+	}))
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.Cors.AllowedOrigins,
 		AllowHeaders:     cfg.Cors.AllowedHeaders,
@@ -240,16 +269,16 @@ func run() error {
 
 	// ------------------------------
 	authHandler := handlers.NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)
-	api.Post("/auth/register", authHandler.Register)
-	api.Post("/auth/login", authHandler.Login)
-	api.Post("/auth/guest-login", authHandler.GuestLogin)
-	api.Post("/auth/refresh", authHandler.RefreshToken)
+	api.Post("/auth/register", middleware.AuthRateLimiter(), authHandler.Register)
+	api.Post("/auth/login", middleware.AuthRateLimiter(), authHandler.Login)
+	api.Post("/auth/guest-login", middleware.AuthRateLimiter(), authHandler.GuestLogin)
+	api.Post("/auth/refresh", middleware.AuthRateLimiter(), authHandler.RefreshToken)
 	api.Post("/auth/logout", middleware.Protected(), authHandler.Logout)
 	api.Get("/auth/me", middleware.Protected(), authHandler.GetMe)
 	api.Put("/auth/me", middleware.Protected(), authHandler.UpdateProfile)
 	api.Put("/auth/password", middleware.Protected(), authHandler.ChangePassword)
 	api.Get("/auth/:provider/login", handlers.BeginAuthHandler)
-	api.Get("/auth/:provider/callback", handlers.CallbackHandler)
+	api.Get("/auth/:provider/callback", authHandler.CallbackHandler)
 
 	prefsRepo := repository.NewUserPreferencesRepository(database.GetDB())
 	preferencesHandler := handlers.NewPreferencesHandler(prefsRepo)
@@ -259,10 +288,10 @@ func run() error {
 	// Passkey routes
 	api.Post("/auth/passkey/register/begin", middleware.Protected(), authHandler.PasskeyRegisterBegin)
 	api.Post("/auth/passkey/register/finish", middleware.Protected(), authHandler.PasskeyRegisterFinish)
-	api.Post("/auth/passkey/login/begin", authHandler.PasskeyLoginBegin)
-	api.Post("/auth/passkey/login/finish", authHandler.PasskeyLoginFinish)
-	api.Post("/auth/passkey/signup/begin", authHandler.PasskeySignupBegin)
-	api.Post("/auth/passkey/signup/finish", authHandler.PasskeySignupFinish)
+	api.Post("/auth/passkey/login/begin", middleware.AuthRateLimiter(), authHandler.PasskeyLoginBegin)
+	api.Post("/auth/passkey/login/finish", middleware.AuthRateLimiter(), authHandler.PasskeyLoginFinish)
+	api.Post("/auth/passkey/signup/begin", middleware.AuthRateLimiter(), authHandler.PasskeySignupBegin)
+	api.Post("/auth/passkey/signup/finish", middleware.AuthRateLimiter(), authHandler.PasskeySignupFinish)
 
 	// Initialize handlers
 	roomHandler := handlers.NewRoomHandler(&cfg.LiveKit, &cfg.Chat, roomRepo)
@@ -270,7 +299,7 @@ func run() error {
 	// Room routes
 	api.Post("/room/create", middleware.Protected(), roomHandler.CreateRoom)
 	api.Post("/room/join", middleware.Protected(), roomHandler.JoinRoom)
-	api.Post("/room/guest-join", roomHandler.GuestJoinRoom)
+	api.Post("/room/guest-join", middleware.GuestRateLimiter(), roomHandler.GuestJoinRoom)
 	api.Get("/room/list", middleware.Protected(), roomHandler.ListRooms)
 	api.Post("/room/:roomId/kick/:identity", middleware.Protected(), roomHandler.KickParticipant)
 	api.Post("/room/:roomId/mute/:identity", middleware.Protected(), roomHandler.MuteParticipant)
@@ -308,7 +337,7 @@ func run() error {
 	// Admin routes
 	adminGroup := api.Group("/admin",
 		middleware.Protected(),
-		middleware.RequireAccess("superadmin"),
+		middleware.RequireAccess(models.AccessSuperAdmin),
 	)
 	adminGroup.Get("/users", usersHandler.ListUsers)
 	adminGroup.Put("/users/:id/status", usersHandler.UpdateUserStatus)

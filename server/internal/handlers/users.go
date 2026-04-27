@@ -79,7 +79,9 @@ func NewUsersHandler(userRepo *repository.UserRepository, roomRepo *repository.R
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /admin/users [get]
 func (h *UsersHandler) ListUsers(c *fiber.Ctx) error {
-	users, err := h.userRepo.GetAllUsers()
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 50)
+	users, total, err := h.userRepo.GetAllUsers(repository.PaginationParams{Page: page, Limit: limit})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to fetch users",
@@ -101,7 +103,12 @@ func (h *UsersHandler) ListUsers(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(UserListResponse{Users: response})
+	return c.JSON(fiber.Map{
+		"users": response,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	})
 }
 
 // @Summary Update user status

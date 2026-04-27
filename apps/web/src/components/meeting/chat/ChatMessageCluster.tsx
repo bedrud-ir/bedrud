@@ -16,6 +16,15 @@ function bubbleRadius(isLocal: boolean, pos: 'only' | 'first' | 'middle' | 'last
   return '4px 14px 14px 14px'
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url, window.location.origin)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 function bubblePosition(idx: number, total: number): 'only' | 'first' | 'middle' | 'last' {
   if (total === 1) return 'only'
   if (idx === 0) return 'first'
@@ -24,24 +33,29 @@ function bubblePosition(idx: number, total: number): 'only' | 'first' | 'middle'
 }
 
 function ChatMarkdown({ content, isLocal }: { content: string; isLocal: boolean }) {
-  const linkColor = isLocal ? 'rgba(255,255,255,0.9)' : 'rgba(165,180,252,0.9)'
-  const codeBg = isLocal ? 'rgba(0,0,0,0.25)' : 'rgba(99,102,241,0.15)'
+  const linkColor = isLocal ? 'rgba(255,255,255,0.9)' : 'color-mix(in oklab, var(--sky-300) 90%, transparent)'
+  const codeBg = isLocal ? 'rgba(0,0,0,0.25)' : 'color-mix(in oklab, var(--primary) 15%, transparent)'
 
   type C = { children?: ReactNode }
   type CA = { href?: string; children?: ReactNode }
   type CC = { children?: ReactNode; className?: string }
 
   const components = {
-    a: ({ href, children }: CA) => (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: linkColor, textDecoration: 'underline', wordBreak: 'break-all' }}
-      >
-        {children}
-      </a>
-    ),
+    a: ({ href, children }: CA) => {
+      if (!href || (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('/'))) {
+        return <span>{children}</span>
+      }
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: linkColor, textDecoration: 'underline', wordBreak: 'break-all' }}
+        >
+          {children}
+        </a>
+      )
+    },
     p: ({ children }: C) => <p style={{ margin: 0, lineHeight: 1.45 }}>{children}</p>,
     code: ({ children, className }: CC) => {
       const isBlock = Boolean(className)
@@ -72,7 +86,7 @@ function ChatMarkdown({ content, isLocal }: { content: string; isLocal: boolean 
         style={{
           margin: '4px 0',
           paddingLeft: 10,
-          borderLeft: `2px solid ${isLocal ? 'rgba(255,255,255,0.4)' : 'rgba(165,180,252,0.4)'}`,
+          borderLeft: `2px solid ${isLocal ? 'rgba(255,255,255,0.4)' : 'color-mix(in oklab, var(--sky-300) 40%, transparent)'}`,
           color: isLocal ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.5)',
         }}
       >
@@ -159,8 +173,10 @@ export function ChatMessageCluster({ cluster }: Props) {
                 maxWidth: '78%',
                 padding: hasAttachments && !msg.message ? '4px' : '7px 12px',
                 borderRadius: bubbleRadius(isLocal, pos),
-                background: isLocal ? 'rgba(99,102,241,0.75)' : 'rgba(255,255,255,0.07)',
-                border: isLocal ? '1px solid rgba(165,180,252,0.25)' : '1px solid rgba(255,255,255,0.06)',
+                background: isLocal ? 'color-mix(in oklab, var(--primary) 75%, transparent)' : 'rgba(255,255,255,0.07)',
+                border: isLocal
+                  ? '1px solid color-mix(in oklab, var(--sky-300) 25%, transparent)'
+                  : '1px solid rgba(255,255,255,0.06)',
                 color: isLocal ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.75)',
                 fontSize: 13,
                 lineHeight: 1.45,
@@ -169,8 +185,10 @@ export function ChatMessageCluster({ cluster }: Props) {
               }}
             >
               {/* Image attachments */}
-              {msg.attachments.map((att, ai) =>
-                att.kind === 'image' ? (
+              {msg.attachments.map((att, ai) => {
+                if (att.kind !== 'image') return null
+                if (!isSafeUrl(att.url)) return null
+                return (
                   <a key={ai} href={att.url} target="_blank" rel="noopener noreferrer">
                     <img
                       src={att.url}
@@ -185,8 +203,8 @@ export function ChatMessageCluster({ cluster }: Props) {
                       }}
                     />
                   </a>
-                ) : null,
-              )}
+                )
+              })}
               {/* Text */}
               {msg.message && (
                 <div style={{ padding: hasAttachments ? '6px 8px 2px' : '0' }}>

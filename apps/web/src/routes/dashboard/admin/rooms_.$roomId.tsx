@@ -64,10 +64,10 @@ function TrackBadge({ track }: { track: Track }) {
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
       style={
         track.muted
-          ? { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
+          ? { background: 'var(--muted)', color: 'var(--muted-foreground)' }
           : isAudio
             ? { background: '#10b98115', color: '#10b981' }
-            : { background: '#6366f115', color: '#818cf8' }
+            : { background: 'color-mix(in oklab, var(--primary) 8%, transparent)', color: 'var(--sky-300)' }
       }
       title={isAudio ? `${track.source} · audio (bitrate N/A)` : `${track.source} · ${formatBitrate(track.bitrate)}`}
     >
@@ -147,7 +147,18 @@ function RoomDetailPage() {
     participants.some((p) => p.tracks.some((t) => !t.muted && t.type === 'AUDIO'))
 
   // Stable colors for per-participant lines
-  const LINE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#06b6d4', '#ec4899', '#f97316', '#a855f7', '#84cc16']
+  // Per-instructions: data viz colors stay hardcoded for distinctness, but brand
+  // entries use CSS vars so they respond to theme.
+  const LINE_COLORS = [
+    'var(--primary)',
+    '#10b981',
+    '#f59e0b',
+    'var(--sky-700)',
+    '#ec4899',
+    '#f97316',
+    '#a855f7',
+    '#84cc16',
+  ]
   const getColor = (identity: string) => {
     const idx = identitiesRef.current.indexOf(identity)
     return LINE_COLORS[idx % LINE_COLORS.length]
@@ -183,7 +194,7 @@ function RoomDetailPage() {
       {room && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Participants', value: participants.length, icon: Users, color: '#6366f1' },
+            { label: 'Participants', value: participants.length, icon: Users, color: 'var(--primary)' },
             {
               label: 'Publishers',
               value: participants.filter((p) => p.isPublisher).length,
@@ -200,7 +211,7 @@ function RoomDetailPage() {
               label: 'Visibility',
               value: room.isPublic ? 'Public' : 'Private',
               icon: room.isPublic ? Globe : Lock,
-              color: room.isPublic ? '#06b6d4' : '#8b5cf6',
+              color: room.isPublic ? 'var(--primary)' : 'var(--sky-700)',
             },
           ].map(({ label, value, icon: Icon, color }) => (
             <div
@@ -223,10 +234,12 @@ function RoomDetailPage() {
       )}
 
       {/* Live bitrate chart — rolling 3-minute window, per-participant lines */}
-      <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'hsl(var(--border))' }}>
+      <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
         <div
           className="flex items-center justify-between border-b px-5 py-3"
-          style={{ background: 'linear-gradient(135deg, #6366f108, #f59e0b08)' }}
+          style={{
+            background: 'linear-gradient(135deg, color-mix(in oklab, var(--primary) 3%, transparent), #f59e0b08)',
+          }}
         >
           <p className="text-sm font-semibold">Live bitrate</p>
           <span className="text-xs text-muted-foreground">
@@ -241,16 +254,16 @@ function RoomDetailPage() {
           ) : (
             <ResponsiveContainer width="100%" height={160}>
               <LineChart data={bitrateHistory} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="time"
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
                   axisLine={false}
                   tickLine={false}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v: number) => `${v}k`}
@@ -260,8 +273,8 @@ function RoomDetailPage() {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={(v: any, name: any) => [`${v} kbps`, name === 'total' ? 'Total' : name]}
                   contentStyle={{
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '8px',
                     fontSize: '11px',
                   }}
@@ -301,17 +314,20 @@ function RoomDetailPage() {
       </div>
 
       {/* Participants table */}
-      <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'hsl(var(--border))' }}>
+      <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
         <div
           className="flex items-center justify-between border-b px-5 py-3"
-          style={{ background: 'linear-gradient(135deg, #6366f108, #8b5cf608)' }}
+          style={{
+            background:
+              'linear-gradient(135deg, color-mix(in oklab, var(--primary) 3%, transparent), color-mix(in oklab, var(--sky-700) 3%, transparent))',
+          }}
         >
           <p className="text-sm font-semibold">Live participants</p>
           <span className="text-xs text-muted-foreground">{participants.length} in room</span>
         </div>
 
         {isLoading ? (
-          <div className="divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {[...Array(3)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-5 py-4 animate-pulse">
                 <div className="h-8 w-8 rounded-full bg-muted" />
@@ -329,7 +345,7 @@ function RoomDetailPage() {
             <p className="text-xs text-muted-foreground">Room may be idle or not yet started in LiveKit</p>
           </div>
         ) : (
-          <div className="divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {participants.map((p) => {
               const audioTracks = p.tracks.filter((t) => t.type === 'AUDIO')
               const videoTracks = p.tracks.filter((t) => t.type === 'VIDEO')
@@ -342,7 +358,7 @@ function RoomDetailPage() {
                   {/* Avatar */}
                   <div
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                    style={{ background: 'linear-gradient(135deg, var(--primary), var(--sky-700))' }}
                   >
                     {(p.name || p.identity).charAt(0).toUpperCase()}
                   </div>
@@ -431,13 +447,19 @@ function RoomDetailPage() {
 
       {/* Room settings info */}
       {room?.settings && (
-        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'hsl(var(--border))' }}>
-          <div className="border-b px-5 py-3" style={{ background: 'linear-gradient(135deg, #06b6d408, #8b5cf608)' }}>
+        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+          <div
+            className="border-b px-5 py-3"
+            style={{
+              background:
+                'linear-gradient(135deg, color-mix(in oklab, var(--primary) 3%, transparent), color-mix(in oklab, var(--sky-700) 3%, transparent))',
+            }}
+          >
             <p className="text-sm font-semibold">Room configuration</p>
           </div>
           <div
             className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-y"
-            style={{ borderColor: 'hsl(var(--border))' }}
+            style={{ borderColor: 'var(--border)' }}
           >
             {[
               { label: 'Chat', enabled: room.settings.allowChat },

@@ -117,7 +117,7 @@ func TestAuthHandler_Register_DuplicateEmail(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{
 		"email":    "dup@example.com",
-		"password": "pass123",
+		"password": "securepassword1",
 		"name":     "First User",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", bytes.NewReader(body))
@@ -464,7 +464,7 @@ func TestAuthHandler_ChangePassword_Success(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{
 		"currentPassword": "oldpass123",
-		"newPassword":     "newpass456",
+		"newPassword":     "newpass456secure", // must be >= 12 chars
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")

@@ -74,9 +74,9 @@ func (StringArray) GormDataType() string {
 
 type User struct {
 	ID           string      `json:"id" gorm:"primaryKey;type:varchar(36)"`
-	Email        string      `json:"email" gorm:"uniqueIndex;not null;type:varchar(255)"`
+	Email        string      `json:"email" gorm:"uniqueIndex:idx_email_provider;not null;type:varchar(255)"`
 	Name         string      `json:"name" gorm:"not null;type:varchar(255)"`
-	Provider     string      `json:"provider" gorm:"not null;type:varchar(50);index"`
+	Provider     string      `json:"provider" gorm:"uniqueIndex:idx_email_provider;type:varchar(20);default:'local'"`
 	AvatarURL    string      `json:"avatarUrl" gorm:"column:avatar_url;type:varchar(255)"`
 	Password     string      `json:"-" gorm:"type:varchar(255)"`
 	RefreshToken string      `json:"-" gorm:"column:refresh_token;type:text"`

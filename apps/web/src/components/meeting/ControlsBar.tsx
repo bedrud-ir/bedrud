@@ -23,7 +23,7 @@ import { type NoiseSuppressionMode, useAudioPreferencesStore } from '#/lib/audio
 import { AudioProcessorService } from '#/lib/audio-processor.service'
 import { useAuthStore } from '#/lib/auth.store'
 import { DeviceSelector } from '@/components/meeting/DeviceSelector'
-import { useMeetingContext } from '@/components/meeting/MeetingContext'
+import { useMeetingRoomContext } from '@/components/meeting/MeetingContext'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,8 +63,12 @@ const iconBtn = (active = false, danger = false, size = 44): React.CSSProperties
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: danger ? 'rgba(239,68,68,0.18)' : active ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.07)',
-  color: danger ? '#f87171' : active ? '#a5b4fc' : 'rgba(255,255,255,0.75)',
+  background: danger
+    ? 'rgba(239,68,68,0.18)'
+    : active
+      ? 'color-mix(in oklab, var(--primary) 25%, transparent)'
+      : 'rgba(255,255,255,0.07)',
+  color: danger ? '#f87171' : active ? 'var(--sky-300)' : 'rgba(255,255,255,0.75)',
   transition: 'background 0.15s, color 0.15s',
   flexShrink: 0,
 })
@@ -223,7 +227,7 @@ function useDeviceList(kind: 'audioinput' | 'audiooutput') {
 export function ControlsBar({ onLeave }: Props) {
   const isMobile = useIsMobile()
   const { localParticipant } = useLocalParticipant()
-  const { isSelfDeafened, toggleSelfDeafen } = useMeetingContext()
+  const { isSelfDeafened, toggleSelfDeafen } = useMeetingRoomContext()
 
   const micEnabled = localParticipant?.isMicrophoneEnabled ?? false
   const camEnabled = localParticipant?.isCameraEnabled ?? false
@@ -299,14 +303,14 @@ export function ControlsBar({ onLeave }: Props) {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: 'rgba(99,102,241,0.9)',
-            border: '1px solid rgba(165,180,252,0.4)',
+            background: 'color-mix(in oklab, var(--primary) 90%, transparent)',
+            border: '1px solid color-mix(in oklab, var(--sky-300) 40%, transparent)',
             borderRadius: 24,
             padding: '7px 16px',
             color: 'white',
             fontSize: 12,
             fontWeight: 600,
-            boxShadow: '0 4px 24px rgba(99,102,241,0.5)',
+            boxShadow: '0 4px 24px color-mix(in oklab, var(--primary) 50%, transparent)',
           }}
         >
           <Mic size={13} />
@@ -454,7 +458,11 @@ export function ControlsBar({ onLeave }: Props) {
                     <DropdownMenuItem key={d.deviceId} onClick={() => mics.select(d.deviceId)} style={menuItemStyle}>
                       <Check
                         size={12}
-                        style={{ opacity: mics.activeId === d.deviceId ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }}
+                        style={{
+                          opacity: mics.activeId === d.deviceId ? 1 : 0,
+                          color: 'var(--sky-300)',
+                          flexShrink: 0,
+                        }}
                       />
                       <span className="truncate">{d.label || `Microphone ${i + 1}`}</span>
                     </DropdownMenuItem>
@@ -475,7 +483,11 @@ export function ControlsBar({ onLeave }: Props) {
                     >
                       <Check
                         size={12}
-                        style={{ opacity: speakers.activeId === d.deviceId ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }}
+                        style={{
+                          opacity: speakers.activeId === d.deviceId ? 1 : 0,
+                          color: 'var(--sky-300)',
+                          flexShrink: 0,
+                        }}
                       />
                       <span className="truncate">{d.label || `Speaker ${i + 1}`}</span>
                     </DropdownMenuItem>
@@ -497,7 +509,7 @@ export function ControlsBar({ onLeave }: Props) {
                   >
                     <Check
                       size={12}
-                      style={{ opacity: noiseMode === value ? 1 : 0, color: '#a5b4fc', flexShrink: 0 }}
+                      style={{ opacity: noiseMode === value ? 1 : 0, color: 'var(--sky-300)', flexShrink: 0 }}
                     />
                     <span style={{ flex: 1 }}>{label}</span>
                     {disabled && (

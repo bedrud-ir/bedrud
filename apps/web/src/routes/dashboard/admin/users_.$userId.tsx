@@ -41,7 +41,7 @@ interface Room {
 }
 
 const PROVIDER_STYLE: Record<string, { bg: string; color: string }> = {
-  local: { bg: '#6366f115', color: '#818cf8' },
+  local: { bg: 'color-mix(in oklab, var(--primary) 8%, transparent)', color: 'var(--sky-300)' },
   google: { bg: '#ef444415', color: '#f87171' },
   github: { bg: '#71717a15', color: '#a1a1aa' },
   guest: { bg: '#f59e0b15', color: '#fbbf24' },
@@ -49,7 +49,10 @@ const PROVIDER_STYLE: Record<string, { bg: string; color: string }> = {
 }
 
 function ProviderBadge({ provider }: { provider: string }) {
-  const s = PROVIDER_STYLE[provider] ?? { bg: '#6366f115', color: '#818cf8' }
+  const s = PROVIDER_STYLE[provider] ?? {
+    bg: 'color-mix(in oklab, var(--primary) 8%, transparent)',
+    color: 'var(--sky-300)',
+  }
   return (
     <span
       className="rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider"
@@ -171,17 +174,19 @@ function UserDetailPage() {
           ))}
         </div>
       ) : !user ? (
-        <div className="rounded-2xl border px-5 py-16 text-center" style={{ borderColor: 'hsl(var(--border))' }}>
+        <div className="rounded-2xl border px-5 py-16 text-center" style={{ borderColor: 'var(--border)' }}>
           <p className="text-sm text-muted-foreground">User not found</p>
         </div>
       ) : (
         <>
           {/* ── Hero card ──────────────────────────────────── */}
-          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
             {/* gradient banner */}
             <div
               className="h-20 w-full"
-              style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 60%, #06b6d4 100%)' }}
+              style={{
+                background: 'linear-gradient(135deg, var(--primary) 0%, var(--sky-700) 60%, var(--primary) 100%)',
+              }}
             />
 
             <div className="px-5 pb-5">
@@ -190,8 +195,8 @@ function UserDetailPage() {
                 <div
                   className="flex h-16 w-16 items-center justify-center rounded-2xl text-2xl font-bold text-white ring-4"
                   style={{
-                    background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                    boxShadow: '0 0 0 4px hsl(var(--background))',
+                    background: 'linear-gradient(135deg, var(--primary), var(--sky-700))',
+                    boxShadow: '0 0 0 4px var(--background)',
                   }}
                 >
                   {(user.name || user.email).charAt(0).toUpperCase()}
@@ -206,8 +211,12 @@ function UserDetailPage() {
                     className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-50"
                     style={
                       isSuperadmin
-                        ? { background: '#6366f115', color: '#818cf8', border: '1px solid #6366f130' }
-                        : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
+                        ? {
+                            background: 'color-mix(in oklab, var(--primary) 8%, transparent)',
+                            color: 'var(--sky-300)',
+                            border: '1px solid color-mix(in oklab, var(--primary) 19%, transparent)',
+                          }
+                        : { background: 'var(--muted)', color: 'var(--muted-foreground)' }
                     }
                   >
                     {isSuperadmin ? <Shield className="h-3.5 w-3.5" /> : <ShieldOff className="h-3.5 w-3.5" />}
@@ -246,7 +255,10 @@ function UserDetailPage() {
                 {isSuperadmin && (
                   <span
                     className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                    style={{ background: '#6366f115', color: '#818cf8' }}
+                    style={{
+                      background: 'color-mix(in oklab, var(--primary) 8%, transparent)',
+                      color: 'var(--sky-300)',
+                    }}
                   >
                     superadmin
                   </span>
@@ -262,7 +274,7 @@ function UserDetailPage() {
               </div>
 
               {/* Detail grid */}
-              <div className="mt-4 grid grid-cols-2 gap-2 border-t pt-4" style={{ borderColor: 'hsl(var(--border))' }}>
+              <div className="mt-4 grid grid-cols-2 gap-2 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
                 {[
                   { icon: Hash, label: 'User ID', value: user.id, mono: true },
                   {
@@ -280,7 +292,7 @@ function UserDetailPage() {
                   <div
                     key={label}
                     className="flex items-start gap-2.5 rounded-xl p-3"
-                    style={{ background: 'hsl(var(--muted)/0.4)' }}
+                    style={{ background: 'color-mix(in oklab, var(--muted) 40%, transparent)' }}
                   >
                     <Icon className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
                     <div className="min-w-0">
@@ -297,17 +309,20 @@ function UserDetailPage() {
 
           {/* ── Stats row ──────────────────────────────────── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard value={rooms.length} label="Rooms created" icon={Video} color="#6366f1" />
+            <StatCard value={rooms.length} label="Rooms created" icon={Video} color="var(--primary)" />
             <StatCard value={activeRooms} label="Currently live" icon={Activity} color="#10b981" />
-            <StatCard value={publicRooms} label="Public rooms" icon={Globe} color="#06b6d4" />
+            <StatCard value={publicRooms} label="Public rooms" icon={Globe} color="var(--primary)" />
             <StatCard value={`${daysSince(user.createdAt)}d`} label="Member for" icon={Users} color="#f59e0b" />
           </div>
 
           {/* ── Room activity chart ─────────────────────────── */}
-          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
             <div
               className="flex items-center justify-between border-b px-5 py-3"
-              style={{ background: 'linear-gradient(135deg, #6366f108, #8b5cf608)' }}
+              style={{
+                background:
+                  'linear-gradient(135deg, color-mix(in oklab, var(--primary) 3%, transparent), color-mix(in oklab, var(--sky-700) 3%, transparent))',
+              }}
             >
               <p className="text-sm font-semibold">Room creation activity</p>
               <span className="text-xs text-muted-foreground">last 8 weeks</span>
@@ -322,14 +337,14 @@ function UserDetailPage() {
                   <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="uGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis
                       dataKey="label"
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                      tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
                       axisLine={false}
                       tickLine={false}
                     />
@@ -337,8 +352,8 @@ function UserDetailPage() {
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       formatter={(v: any) => [`${v} room${v !== 1 ? 's' : ''}`, 'Created']}
                       contentStyle={{
-                        background: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
+                        background: 'var(--card)',
+                        border: '1px solid var(--border)',
                         borderRadius: '8px',
                         fontSize: '12px',
                       }}
@@ -346,10 +361,10 @@ function UserDetailPage() {
                     <Area
                       type="monotone"
                       dataKey="rooms"
-                      stroke="#6366f1"
+                      stroke="var(--primary)"
                       fill="url(#uGrad)"
                       strokeWidth={2}
-                      dot={{ r: 3, fill: '#6366f1' }}
+                      dot={{ r: 3, fill: 'var(--primary)' }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -358,10 +373,13 @@ function UserDetailPage() {
           </div>
 
           {/* ── Rooms table ────────────────────────────────── */}
-          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'hsl(var(--border))' }}>
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
             <div
               className="flex items-center justify-between border-b px-5 py-3"
-              style={{ background: 'linear-gradient(135deg, #8b5cf608, #06b6d408)' }}
+              style={{
+                background:
+                  'linear-gradient(135deg, color-mix(in oklab, var(--sky-700) 3%, transparent), color-mix(in oklab, var(--primary) 3%, transparent))',
+              }}
             >
               <p className="text-sm font-semibold">Rooms</p>
               <span className="text-xs text-muted-foreground">{rooms.length} total</span>
@@ -378,7 +396,7 @@ function UserDetailPage() {
                   {/* header row */}
                   <div
                     className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 border-b px-5 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
-                    style={{ borderColor: 'hsl(var(--border))' }}
+                    style={{ borderColor: 'var(--border)' }}
                   >
                     <span>Name</span>
                     <span className="hidden sm:block">Visibility</span>
@@ -386,7 +404,7 @@ function UserDetailPage() {
                     <span>Cap.</span>
                     <span className="hidden sm:block">Created</span>
                   </div>
-                  <div className="divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
+                  <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                     {rooms.map((room) => (
                       <div
                         key={room.id}
@@ -403,8 +421,14 @@ function UserDetailPage() {
                           className="hidden sm:flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
                           style={
                             room.isPublic
-                              ? { background: '#06b6d415', color: '#06b6d4' }
-                              : { background: '#8b5cf615', color: '#a78bfa' }
+                              ? {
+                                  background: 'color-mix(in oklab, var(--primary) 8%, transparent)',
+                                  color: 'var(--primary)',
+                                }
+                              : {
+                                  background: 'color-mix(in oklab, var(--sky-700) 8%, transparent)',
+                                  color: 'var(--sky-300)',
+                                }
                           }
                         >
                           {room.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
@@ -415,7 +439,7 @@ function UserDetailPage() {
                           style={
                             room.isActive
                               ? { background: '#10b98115', color: '#10b981' }
-                              : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
+                              : { background: 'var(--muted)', color: 'var(--muted-foreground)' }
                           }
                         >
                           {room.isActive && <Activity className="h-2.5 w-2.5 animate-pulse" />}

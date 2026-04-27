@@ -110,9 +110,9 @@ function Tile({ participant }: { participant: Participant }) {
   return (
     <div
       className={cn(
-        "relative h-full overflow-hidden rounded-lg bg-[#16162e]",
+        "relative h-full overflow-hidden rounded-lg bg-[#161B2E]",
         participant.speaking &&
-          "ring-[1.5px] ring-emerald-400/70 ring-offset-1 ring-offset-[#111127]",
+          "ring-[1.5px] ring-emerald-400/70 ring-offset-1 ring-offset-[#0E1220]",
       )}
     >
       <img
@@ -188,9 +188,9 @@ export function MeetingPreview({ lang }: { lang: Locale }) {
       className="relative flex h-full w-full select-none flex-col"
     >
       {/* App window */}
-      <div className="relative flex h-full flex-col overflow-hidden bg-[#111127]">
+      <div className="relative flex h-full flex-col overflow-hidden bg-[#0E1220]">
         {/* ---- Title bar ---- */}
-        <div className="flex h-9 shrink-0 items-center border-b border-white/[0.05] bg-[#0c0c20] px-3 sm:h-10 sm:px-4">
+        <div className="flex h-9 shrink-0 items-center border-b border-white/[0.05] bg-[#0a0f1e] px-3 sm:h-10 sm:px-4">
           {/* Traffic lights */}
           <div className="flex gap-1.5">
             <div className="size-2 rounded-full bg-[#ff5f57] sm:size-2.5" />
@@ -283,7 +283,7 @@ export function MeetingPreview({ lang }: { lang: Locale }) {
           </div>
 
           {/* Chat sidebar - lg only */}
-          <div className="hidden w-44 flex-col border-s border-white/[0.05] bg-[#0d0d22] lg:flex xl:w-48">
+          <div className="hidden w-44 flex-col border-s border-white/[0.05] bg-[#0D1024] lg:flex xl:w-48">
             {/* Chat header */}
             <div className="flex items-center justify-between border-b border-white/[0.04] px-3 py-2">
               <span className="text-[10px] font-medium text-white/40">
@@ -328,7 +328,7 @@ export function MeetingPreview({ lang }: { lang: Locale }) {
         </div>
 
         {/* ---- Controls bar ---- */}
-        <div className="flex shrink-0 items-center justify-center gap-1.5 border-t border-white/[0.05] bg-[#0c0c20] py-2 sm:gap-2 sm:py-2.5">
+        <div className="flex shrink-0 items-center justify-center gap-1.5 border-t border-white/[0.05] bg-[#0a0f1e] py-2 sm:gap-2 sm:py-2.5">
           <ControlBtn active label={t(lang, "mockups.meeting.micOn")}>
             <Mic className="size-3.5 sm:size-4" />
           </ControlBtn>

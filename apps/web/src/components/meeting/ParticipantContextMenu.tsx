@@ -17,7 +17,7 @@ import { type ComponentType, type ReactNode, useCallback, useEffect, useMemo, us
 import { api } from '#/lib/api'
 import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
 import { selectIsMuted, selectVolume, useParticipantOverridesStore } from '#/lib/participant-overrides.store'
-import { useMeetingContext } from '@/components/meeting/MeetingContext'
+import { useMeetingRoomContext } from '@/components/meeting/MeetingContext'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -138,7 +138,7 @@ async function collectWebRTCStats(participant: Participant): Promise<Partial<Sta
 // ─── Shared menu content ──────────────────────────────────────────────────────
 
 export function ParticipantMenuContent({ participant, Item, Separator, Label, onClose }: ParticipantMenuContentProps) {
-  const { roomId, adminId, isAdmin, isModerator, isCreator } = useMeetingContext()
+  const { roomId, adminId, isAdmin, isModerator, isCreator } = useMeetingRoomContext()
   const identity = participant.identity
   const isSelf = participant.isLocal
   const canModerate = isAdmin || isModerator || isCreator
@@ -229,7 +229,7 @@ export function ParticipantMenuContent({ participant, Item, Separator, Label, on
       await api.post(path)
       onClose?.()
     } catch (e) {
-      console.error('[ParticipantContextMenu] action failed:', e)
+      if (import.meta.env.DEV) console.error('[ParticipantContextMenu] action failed:', e)
     } finally {
       setLoading(null)
     }
@@ -344,7 +344,7 @@ export function ParticipantMenuContent({ participant, Item, Separator, Label, on
               max={200}
               value={Math.round(volume * 100)}
               onChange={(e) => setVolume(identity, Number(e.target.value) / 100)}
-              style={{ flex: 1, accentColor: '#6366f1', height: 3, cursor: 'pointer' }}
+              style={{ flex: 1, accentColor: 'var(--primary)', height: 3, cursor: 'pointer' }}
             />
             <span
               style={{

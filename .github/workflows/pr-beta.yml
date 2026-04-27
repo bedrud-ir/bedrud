@@ -535,7 +535,7 @@ jobs:
           echo "release_url=$RELEASE_URL" >> "$GITHUB_OUTPUT"
 
       - name: Post or update PR comment
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_URL: ${{ steps.create_release.outputs.release_url }}
           SHA_SHORT: ${{ needs.prepare.outputs.sha_short }}

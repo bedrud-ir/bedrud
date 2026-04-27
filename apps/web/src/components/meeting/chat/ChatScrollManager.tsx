@@ -28,7 +28,7 @@ export function ChatScrollManager({ show, unreadCount, onScrollToBottom }: Props
             type="button"
             onClick={onScrollToBottom}
             style={{
-              background: 'rgba(99,102,241,0.85)',
+              background: 'color-mix(in oklab, var(--primary) 85%, transparent)',
               border: 'none',
               borderRadius: 20,
               padding: '5px 14px',
@@ -59,7 +59,7 @@ export function ChatScrollManager({ show, unreadCount, onScrollToBottom }: Props
           borderRadius: '50%',
           border: '1px solid rgba(255,255,255,0.12)',
           background: 'rgba(30,30,50,0.92)',
-          color: 'rgba(165,180,252,0.9)',
+          color: 'color-mix(in oklab, var(--sky-300) 90%, transparent)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -75,7 +75,7 @@ export function ChatScrollManager({ show, unreadCount, onScrollToBottom }: Props
               position: 'absolute',
               top: -5,
               right: -5,
-              background: 'rgba(99,102,241,0.9)',
+              background: 'color-mix(in oklab, var(--primary) 90%, transparent)',
               color: 'white',
               fontSize: 9,
               fontWeight: 700,

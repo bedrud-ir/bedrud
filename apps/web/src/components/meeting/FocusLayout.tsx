@@ -32,8 +32,10 @@ function StripTile({
         flexShrink: 0,
         borderRadius: 8,
         overflow: 'hidden',
-        border: isSpeaking ? '1.5px solid rgba(99,102,241,0.75)' : '1.5px solid rgba(255,255,255,0.07)',
-        boxShadow: isSpeaking ? '0 0 14px rgba(99,102,241,0.3)' : 'none',
+        border: isSpeaking
+          ? '1.5px solid color-mix(in oklab, var(--primary) 75%, transparent)'
+          : '1.5px solid rgba(255,255,255,0.07)',
+        boxShadow: isSpeaking ? '0 0 14px color-mix(in oklab, var(--primary) 30%, transparent)' : 'none',
         transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
         cursor: 'pointer',
       }}
@@ -159,13 +161,13 @@ export function FocusLayout({ pinnedIdentities, onTogglePin }: FocusLayoutProps)
               position: 'absolute',
               top: 8,
               right: 14,
-              background: 'rgba(99,102,241,0.18)',
-              border: '1px solid rgba(99,102,241,0.3)',
+              background: 'color-mix(in oklab, var(--primary) 18%, transparent)',
+              border: '1px solid color-mix(in oklab, var(--primary) 30%, transparent)',
               borderRadius: 6,
               padding: '2px 7px',
               fontSize: 11,
               fontWeight: 600,
-              color: 'rgba(165,180,252,0.8)',
+              color: 'color-mix(in oklab, var(--sky-300) 80%, transparent)',
               pointerEvents: 'none',
             }}
           >

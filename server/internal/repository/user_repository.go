@@ -2,6 +2,8 @@ package repository
 
 import (
 	"bedrud/internal/models"
+	"crypto/sha256"
+	"encoding/hex"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,6 +17,12 @@ type UserRepository struct {
 
 func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{db: db}
+}
+
+// hashToken returns the SHA-256 hex digest of a token string.
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
 }
 
 func (r *UserRepository) CreateOrUpdateUser(user *models.User) error {
@@ -77,13 +85,24 @@ func (r *UserRepository) CreateUser(user *models.User) error {
 func (r *UserRepository) UpdateRefreshToken(userID, refreshToken string) error {
 	result := r.db.Model(&models.User{}).
 		Where("id = ?", userID).
-		Update("refresh_token", refreshToken)
+		Update("refresh_token", hashToken(refreshToken))
 
 	if result.Error != nil {
 		log.Error().Err(result.Error).Msg("Failed to update refresh token")
 		return result.Error
 	}
 	return nil
+}
+
+// MatchRefreshToken checks whether the provided raw token matches the stored hash for the user.
+func (r *UserRepository) MatchRefreshToken(userID, rawToken string) bool {
+	var stored string
+	r.db.Model(&models.User{}).
+		Where("id = ?", userID).
+		Select("refresh_token").
+		Row().
+		Scan(&stored)
+	return stored == hashToken(rawToken)
 }
 
 func (r *UserRepository) GetUserByID(id string) (*models.User, error) {
@@ -105,7 +124,7 @@ func (r *UserRepository) GetUserByID(id string) (*models.User, error) {
 func (r *UserRepository) BlockRefreshToken(userID, token string, expiresAt time.Time) error {
 	blocked := &models.BlockedRefreshToken{
 		ID:        uuid.New().String(),
-		Token:     token,
+		Token:     hashToken(token),
 		UserID:    userID,
 		ExpiresAt: expiresAt,
 	}
@@ -117,7 +136,7 @@ func (r *UserRepository) BlockRefreshToken(userID, token string, expiresAt time.
 func (r *UserRepository) IsRefreshTokenBlocked(token string) bool {
 	var count int64
 	r.db.Model(&models.BlockedRefreshToken{}).
-		Where("token = ? AND expires_at > ?", token, time.Now()).
+		Where("token = ? AND expires_at > ?", hashToken(token), time.Now()).
 		Count(&count)
 	return count > 0
 }
@@ -170,9 +189,26 @@ func (r *UserRepository) DeleteUser(userID string) error {
 	return r.db.Delete(&models.User{}, "id = ?", userID).Error
 }
 
-// GetAllUsers returns all users in the system
-func (r *UserRepository) GetAllUsers() ([]models.User, error) {
+// PaginationParams holds page and limit for paginated queries.
+type PaginationParams struct {
+	Page  int
+	Limit int
+}
+
+// GetAllUsers returns a paginated list of users and the total count.
+func (r *UserRepository) GetAllUsers(p PaginationParams) ([]models.User, int64, error) {
+	if p.Limit <= 0 || p.Limit > 100 {
+		p.Limit = 50
+	}
+	if p.Page <= 0 {
+		p.Page = 1
+	}
+	offset := (p.Page - 1) * p.Limit
+	var total int64
 	var users []models.User
-	err := r.db.Find(&users).Error
-	return users, err
+	if err := r.db.Model(&models.User{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := r.db.Limit(p.Limit).Offset(offset).Find(&users).Error
+	return users, total, err
 }

@@ -5,6 +5,33 @@ import { useAuthStore } from './auth.store'
 // to the absolute server origin (e.g. https://api.bedrud.com).
 const BASE_URL = (import.meta.env['VITE_API_URL'] as string | undefined) ?? ''
 
+/**
+ * CSRF protection strategy:
+ *
+ * 1. Primary: The `Authorization: Bearer <token>` header is sent on every
+ *    request that has an access token. Custom headers trigger a CORS preflight,
+ *    which cross-origin attackers cannot bypass, so this provides implicit CSRF
+ *    protection for Bearer-authenticated requests.
+ *
+ * 2. Fallback: When no access token is available (e.g., cookie-only sessions),
+ *    we attach an `X-CSRF-Token` header read from either:
+ *    - a `<meta name="csrf-token">` tag set by the server-rendered page, or
+ *    - a `csrf_token` cookie that the server sets alongside the session cookie.
+ *
+ *    The server must validate this header on state-changing requests (POST, PUT,
+ *    PATCH, DELETE) when no Authorization header is present.
+ */
+function getCsrfToken(): string | null {
+  if (typeof document === 'undefined') return null
+  // Try meta tag first (server-rendered pages)
+  const meta = document.querySelector('meta[name="csrf-token"]')
+  if (meta?.getAttribute('content')) return meta.getAttribute('content')
+  // Fall back to csrf_token cookie
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/)
+  if (match?.[1]) return decodeURIComponent(match[1])
+  return null
+}
+
 type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 
 // Singleton refresh promise — multiple concurrent 401s share one refresh call
@@ -12,13 +39,11 @@ type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 let refreshPromise: Promise<string | null> | null = null
 
 async function doRefresh(): Promise<string | null> {
-  const refreshToken = useAuthStore.getState().tokens?.refreshToken
   try {
     const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // send the refresh_token HTTP-only cookie too
-      body: JSON.stringify({ refresh_token: refreshToken ?? '' }),
+      credentials: 'include', // HTTP-only refresh_token cookie is sent automatically
     })
     if (!res.ok) return null
     const data = (await res.json()) as { access_token: string; refresh_token: string }
@@ -47,7 +72,15 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
   }
 
   if (tokens?.accessToken) {
+    // Bearer token in a custom header triggers CORS preflight, providing
+    // implicit CSRF protection — cross-origin attackers cannot set this header.
     headers['Authorization'] = `Bearer ${tokens.accessToken}`
+  } else {
+    // No Bearer token — attach CSRF token as defense-in-depth for cookie-only auth.
+    const csrf = getCsrfToken()
+    if (csrf) {
+      headers['X-CSRF-Token'] = csrf
+    }
   }
 
   const res = await fetch(`${BASE_URL}${path}`, {

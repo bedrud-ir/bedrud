@@ -1,7 +1,8 @@
 import { useParticipants } from '@livekit/components-react'
 import { Mic, MicOff, Users, Video, VideoOff, VolumeX, X } from 'lucide-react'
 import { useMemo } from 'react'
-import { useMeetingContext } from '@/components/meeting/MeetingContext'
+import { getPalette } from '#/lib/participant-palette'
+import { useMeetingRoomContext } from '@/components/meeting/MeetingContext'
 import { ParticipantContextMenu, ParticipantMenuButton } from '@/components/meeting/ParticipantContextMenu'
 
 interface Props {
@@ -19,21 +20,6 @@ function parseMeta(raw: string | undefined): ParticipantMeta {
   } catch {
     return {}
   }
-}
-
-const PALETTES = [
-  'linear-gradient(135deg,#6366f1,#8b5cf6)',
-  'linear-gradient(135deg,#06b6d4,#3b82f6)',
-  'linear-gradient(135deg,#ec4899,#f43f5e)',
-  'linear-gradient(135deg,#f59e0b,#ef4444)',
-  'linear-gradient(135deg,#10b981,#06b6d4)',
-  'linear-gradient(135deg,#a855f7,#ec4899)',
-  'linear-gradient(135deg,#0ea5e9,#6366f1)',
-  'linear-gradient(135deg,#f43f5e,#fb923c)',
-]
-function getPalette(name: string) {
-  const hash = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-  return PALETTES[Math.abs(hash) % PALETTES.length]
 }
 
 const panel: React.CSSProperties = {
@@ -54,7 +40,7 @@ const panel: React.CSSProperties = {
 
 export function ParticipantsList({ onClose }: Props) {
   const participants = useParticipants()
-  const { adminId } = useMeetingContext()
+  const { adminId } = useMeetingRoomContext()
 
   return (
     <aside className="meet-panel" style={panel}>
@@ -71,13 +57,13 @@ export function ParticipantsList({ onClose }: Props) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <Users size={14} style={{ color: 'rgba(165,180,252,0.7)' }} />
+          <Users size={14} style={{ color: 'color-mix(in oklab, var(--sky-300) 70%, transparent)' }} />
           <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: 600 }}>Participants</span>
           <span
             style={{
-              background: 'rgba(99,102,241,0.18)',
-              border: '1px solid rgba(99,102,241,0.25)',
-              color: 'rgba(165,180,252,0.8)',
+              background: 'color-mix(in oklab, var(--primary) 18%, transparent)',
+              border: '1px solid color-mix(in oklab, var(--primary) 25%, transparent)',
+              color: 'color-mix(in oklab, var(--sky-300) 80%, transparent)',
               borderRadius: 6,
               padding: '1px 6px',
               fontSize: 11,
@@ -126,7 +112,7 @@ interface RowProps {
 function ParticipantRow({ p, adminId }: RowProps): React.ReactElement {
   const displayName = p.name ?? p.identity
   const initial = displayName.charAt(0).toUpperCase()
-  const gradient = useMemo(() => getPalette(displayName), [displayName])
+  const palette = useMemo(() => getPalette(displayName), [displayName])
 
   const meta = useMemo(() => parseMeta(p.metadata), [p.metadata])
   const participantAccesses = meta.accesses ?? []
@@ -155,7 +141,7 @@ function ParticipantRow({ p, adminId }: RowProps): React.ReactElement {
           width: 32,
           height: 32,
           borderRadius: '50%',
-          background: gradient,
+          background: palette.avatar,
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
@@ -194,9 +180,9 @@ function ParticipantRow({ p, adminId }: RowProps): React.ReactElement {
                   fontSize: 10,
                   fontWeight: 600,
                   letterSpacing: '0.04em',
-                  color: '#a5b4fc',
-                  background: 'rgba(99,102,241,0.2)',
-                  border: '1px solid rgba(99,102,241,0.3)',
+                  color: 'var(--sky-300)',
+                  background: 'color-mix(in oklab, var(--primary) 20%, transparent)',
+                  border: '1px solid color-mix(in oklab, var(--primary) 30%, transparent)',
                   borderRadius: 4,
                   padding: '1px 5px',
                 }}

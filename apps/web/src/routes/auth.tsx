@@ -4,8 +4,9 @@ import { useAuthStore } from '#/lib/auth.store'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
 export const Route = createFileRoute('/auth')({
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (typeof window === 'undefined') return
+    await useAuthStore.getState().initialize()
     if (useAuthStore.getState().tokens) throw redirect({ to: '/dashboard' })
   },
   component: AuthLayout,
@@ -46,14 +47,17 @@ function AuthLayout() {
       {/* ── Left brand panel (always dark) ─────────────────────────────── */}
       <div
         className="relative hidden w-[420px] shrink-0 flex-col justify-between overflow-hidden p-10 lg:flex"
-        style={{ background: 'linear-gradient(160deg, #0f0f1a 0%, #0d0d1f 40%, #0a0a18 100%)' }}
+        style={{
+          background:
+            'linear-gradient(160deg, oklch(0.14 0.025 270) 0%, oklch(0.12 0.03 270) 40%, oklch(0.10 0.03 270) 100%)',
+        }}
       >
         {/* Grid texture */}
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.04]"
           style={{
             backgroundImage:
-              'linear-gradient(#6366f1 1px, transparent 1px), linear-gradient(90deg, #6366f1 1px, transparent 1px)',
+              'linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)',
             backgroundSize: '60px 60px',
           }}
           aria-hidden
@@ -63,21 +67,23 @@ function AuthLayout() {
         <div
           className="pointer-events-none absolute -left-20 -top-20 h-80 w-80 rounded-full blur-3xl"
           style={{
-            background: 'radial-gradient(circle, #6366f130, transparent 70%)',
+            background:
+              'radial-gradient(circle, color-mix(in oklab, var(--primary) 19%, transparent), transparent 70%)',
             animation: 'blob 9s ease-in-out infinite',
           }}
         />
         <div
           className="pointer-events-none absolute -bottom-16 -right-16 h-72 w-72 rounded-full blur-3xl"
           style={{
-            background: 'radial-gradient(circle, #8b5cf625, transparent 70%)',
+            background:
+              'radial-gradient(circle, color-mix(in oklab, var(--sky-700) 15%, transparent), transparent 70%)',
             animation: 'blob 12s ease-in-out 3s infinite',
           }}
         />
         <div
           className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-48 rounded-full blur-2xl"
           style={{
-            background: 'radial-gradient(circle, #06b6d415, transparent 70%)',
+            background: 'radial-gradient(circle, color-mix(in oklab, var(--sky-800) 8%, transparent), transparent 70%)',
             animation: 'blob 15s ease-in-out 6s infinite',
           }}
         />
@@ -87,8 +93,8 @@ function AuthLayout() {
           <div
             className="flex h-9 w-9 items-center justify-center rounded-xl"
             style={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              boxShadow: '0 2px 16px #6366f150',
+              background: 'linear-gradient(135deg, var(--primary) 0%, var(--sky-700) 100%)',
+              boxShadow: '0 2px 16px color-mix(in oklab, var(--primary) 31%, transparent)',
             }}
           >
             <Radio className="h-4 w-4 text-white" />
@@ -105,7 +111,10 @@ function AuthLayout() {
               <br />
               <span
                 className="bg-clip-text text-transparent"
-                style={{ backgroundImage: 'linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #22d3ee 100%)' }}
+                style={{
+                  backgroundImage:
+                    'linear-gradient(135deg, var(--sky-300) 0%, var(--cyan-400) 50%, var(--cyan-300) 100%)',
+                }}
               >
                 built for humans.
               </span>
@@ -121,7 +130,7 @@ function AuthLayout() {
               <div key={item} className="flex items-center gap-2 text-xs text-white/40">
                 <span
                   className="h-1.5 w-1.5 rounded-full shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #6366f1, #06b6d4)' }}
+                  style={{ background: 'linear-gradient(135deg, var(--primary), var(--sky-700))' }}
                 />
                 {item}
               </div>
@@ -130,7 +139,14 @@ function AuthLayout() {
         </div>
 
         {/* Bottom */}
-        <p className="relative text-xs text-white/20">© {new Date().getFullYear()} Bedrud</p>
+        <a
+          href="https://bedrud.org?utm_source=app&utm_medium=footer"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative text-xs text-white/20 transition-colors hover:text-white/40"
+        >
+          © {new Date().getFullYear()} Bedrud
+        </a>
       </div>
 
       {/* ── Right form panel ───────────────────────────────────────────── */}

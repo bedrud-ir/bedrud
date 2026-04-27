@@ -3,22 +3,7 @@ import type { Participant } from 'livekit-client'
 import { Track } from 'livekit-client'
 import { MicOff, Minimize2 } from 'lucide-react'
 import { useMemo } from 'react'
-
-const PALETTES = [
-  { avatar: 'linear-gradient(135deg,#6366f1,#8b5cf6)', glow: 'rgba(99,102,241,0.5)' },
-  { avatar: 'linear-gradient(135deg,#06b6d4,#3b82f6)', glow: 'rgba(6,182,212,0.5)' },
-  { avatar: 'linear-gradient(135deg,#ec4899,#f43f5e)', glow: 'rgba(236,72,153,0.5)' },
-  { avatar: 'linear-gradient(135deg,#f59e0b,#ef4444)', glow: 'rgba(245,158,11,0.5)' },
-  { avatar: 'linear-gradient(135deg,#10b981,#06b6d4)', glow: 'rgba(16,185,129,0.5)' },
-  { avatar: 'linear-gradient(135deg,#a855f7,#ec4899)', glow: 'rgba(168,85,247,0.5)' },
-  { avatar: 'linear-gradient(135deg,#0ea5e9,#6366f1)', glow: 'rgba(14,165,233,0.5)' },
-  { avatar: 'linear-gradient(135deg,#f43f5e,#fb923c)', glow: 'rgba(244,63,94,0.5)' },
-]
-
-function getPalette(name: string) {
-  const hash = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-  return PALETTES[Math.abs(hash) % PALETTES.length]
-}
+import { getPalette } from '#/lib/participant-palette'
 
 interface Props {
   participant: Participant
@@ -59,7 +44,7 @@ export function SpotlightView({ participant, onClose }: Props) {
             ? '#000'
             : `radial-gradient(ellipse 80% 60% at 50% 35%, ${palette.glow.replace('0.5', '0.12')}, #0c0c1a 70%)`,
           boxShadow: isSpeaking
-            ? `0 0 0 3px rgba(99,102,241,0.8), 0 0 60px rgba(99,102,241,0.3)`
+            ? `0 0 0 3px color-mix(in oklab, var(--primary) 80%, transparent), 0 0 60px color-mix(in oklab, var(--primary) 30%, transparent)`
             : '0 0 0 1px rgba(255,255,255,0.06)',
           transition: 'box-shadow 0.3s ease',
         }}
@@ -109,7 +94,7 @@ export function SpotlightView({ participant, onClose }: Props) {
                       width: 4,
                       height: 22,
                       borderRadius: 2,
-                      background: '#6366f1',
+                      background: 'var(--primary)',
                       transformOrigin: 'bottom center',
                       animation: `meet-speak-bar 0.7s ease-in-out ${i * 0.12}s infinite`,
                     }}
