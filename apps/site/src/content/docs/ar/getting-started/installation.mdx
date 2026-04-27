@@ -1,4 +1,4 @@
----
+﻿---
 title: تثبيت الخادم
 description: تثبيت خادم بدرود على لينكس
 order: 2
@@ -37,7 +37,7 @@ order: 2
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     أعد تحميل الصدفة بعد التثبيت:
@@ -50,7 +50,7 @@ order: 2
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
   </TabsContent>
@@ -497,3 +497,4 @@ sudo bedrud uninstall
 | **تحذيرات شهادة موقّعة ذاتياً** | متوقع. راجع [دليل TLS الداخلي](/ar/docs/guides/internal-tls) لإعداد CA خاص |
 | **بدون فيديو / فشل WebRTC** | HTTPS مطلوب للوصول للكاميرا. استخدم `--tls`. تأكد من أن UDP 50000–60000 مفتوح |
 | **بروكسي عكسي: IP العميل خاطئ** | استخدم علامة `--behind-proxy`. تهيّئ عناوين البروكسي الموثوقة |
+

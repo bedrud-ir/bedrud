@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useInViewRef } from "~/hooks/use-animation";
 import { cn } from "~/lib/utils";
 import { type Locale, t } from "../../../i18n/utils";
 
-const command = "curl -fsSL https://get.bedrud.org | bash";
+const command = "curl -fsSL https://bedrud.org/install.sh | bash";
 
 function getOutputLines(lang: Locale) {
   return [
@@ -111,3 +111,4 @@ export function TerminalMockup({ lang }: { lang: Locale }) {
     </div>
   );
 }
+

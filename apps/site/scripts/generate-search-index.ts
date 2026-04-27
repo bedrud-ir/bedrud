@@ -70,7 +70,7 @@ async function generateSearchIndex() {
 
     const enDocs = await glob("en/**/*.mdx", { cwd: docsDir });
     const docSlugs = enDocs.map((f) =>
-      f.replace(/^en\//, "").replace(/\.mdx$/, ""),
+      f.replace(/\\/g, "/").replace(/^en\//, "").replace(/\.mdx$/, ""),
     );
 
     for (const slug of docSlugs) {
@@ -94,10 +94,10 @@ async function generateSearchIndex() {
     const enBlogFiles = await glob("en/**/*.mdx", { cwd: blogDir });
     const blogSlugs = new Set([
       ...localeBlogFiles.map((f) =>
-        f.replace(/^[^/]+\//, "").replace(/\.mdx$/, ""),
+        f.replace(/\\/g, "/").replace(/^[^/]+\//, "").replace(/\.mdx$/, ""),
       ),
       ...enBlogFiles.map((f) =>
-        f.replace(/^[^/]+\//, "").replace(/\.mdx$/, ""),
+        f.replace(/\\/g, "/").replace(/^[^/]+\//, "").replace(/\.mdx$/, ""),
       ),
     ]);
 

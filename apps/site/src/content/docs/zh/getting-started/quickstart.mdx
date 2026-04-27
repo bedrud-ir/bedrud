@@ -1,4 +1,4 @@
----
+﻿---
 title: Quick Start
 description: Deploy Bedrud and join a video meeting in under 5 minutes
 order: 1
@@ -46,7 +46,7 @@ order: 1
   <TabsContent value="macos-linux">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     安装后重新加载 shell：
@@ -66,7 +66,7 @@ order: 1
   <TabsContent value="windows">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
     关闭并重新打开终端，然后验证：
@@ -254,3 +254,4 @@ docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
 - [部署指南](/zh/docs/guides/deployment) - 生产环境配置、反向代理、扩容
 - [架构概览](/zh/docs/architecture/overview) - 各组件如何协同工作
 - [API 文档](http://localhost:8090/api/swagger) - Swagger UI（需运行实例）
+

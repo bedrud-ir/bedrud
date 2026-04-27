@@ -1,4 +1,4 @@
----
+﻿---
 title: نصب‌کننده CLI
 description: نصب با یک دستور برای Bedrud در همه پلتفرم‌ها
 order: 2
@@ -41,7 +41,7 @@ order: 2
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     shell را دوباره بارگذاری کنید، سپس تأیید کنید:
@@ -54,7 +54,7 @@ order: 2
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     bedrud --version
     ```
   </TabsContent>
@@ -67,7 +67,7 @@ order: 2
 ### نصب‌کننده Bash
 
 ```
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 ```
 
 | پرچم | پیش‌فرض | توضیحات |
@@ -83,34 +83,34 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 
 ```bash
 # پیش‌فرض
-curl -fsSL https://get.bedrud.org | bash
+curl -fsSL https://bedrud.org/install.sh | bash
 
 # ثابت نگه داشتن نسخه
-curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
 
 # ساخت از کد منبع (شاخه سفارشی)
-curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
 
 # ساخت از یک fork
-BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
 
 # نصب سیستم‌واید
-curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://bedrud.org/install.sh | sudo bash -s -- --install-dir /usr/local/bin
 
 # CI / اتوماسیون — رد کردن تنظیمات shell
-curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --skip-shell
 ```
 
 ### نصب‌کننده PowerShell
 
 ```
-Usage: irm https://get.bedrud.org/install.ps1 | iex
+Usage: irm https://bedrud.org/install.ps1 | iex
 ```
 
 برای ارسال پارامترها، ابتدا در فایل ذخیره کنید:
 
 ```powershell
-irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+irm https://bedrud.org/install.ps1 -OutFile install.ps1
 .\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
 ```
 
@@ -130,13 +130,13 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `BEDRUD_REPO` | `bedrud-ir/bedrud` | هر دو | جایگزینی مخزن GitHub (برای forks یا mirrorها) |
 
 ```bash
-BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
-BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://bedrud.org/install.sh | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ```powershell
 $env:BEDRUD_REPO = "myorg/bedrud-fork"
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
 
 ---
@@ -281,7 +281,7 @@ chmod +x ~/bin/bedrud
 ### Mirror خودمیزبانی شده
 
 ```bash
-BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ### باینری مستقیم
@@ -341,12 +341,26 @@ source ~/.bashrc
 اجبار به ARM بومی:
 
 ```bash
-arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+arch -arm64 curl -fsSL https://bedrud.org/install.sh | arch -arm64 bash
 ```
 
-### Windows: "running scripts is disabled"
+### ویندوز: "running scripts is disabled"
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
+
+### ویندوز: شناسایی WSL
+
+اگر در محیط WSL (مثلاً اوبونتو روی ویندوز) هستید، نصب‌کننده PowerShell این را تشخیص داده و از شما می‌خواهد نصب‌کننده Bash را اجرا کنید. این کار تضمین می‌کند که بدرود به درستی برای محیط لینوکس داخل WSL نصب شود.
+
+### ویندوز: دستگاه‌های ARM64 (Surface Pro و غیره)
+
+نصب‌کننده به طور خودکار `windows_arm64` را شناسایی کرده و فایل باینری نیتیو را دانلود می‌کند. اگر نیاز دارید معماری خاصی را اجبار کنید، فایل zip مربوطه را از [نسخه‌ها](https://github.com/bedrud-ir/bedrud/releases) دانلود کنید.
+
+### ویندوز: Docker Desktop برای Postgres
+
+اگر در طول تنظیمات انتخاب کردید که Postgres در داکر اجرا شود، مطمئن شوید که **Docker Desktop** نصب و در حال اجرا است. نصب‌کننده سعی می‌کند کانتینر را به طور خودکار راه‌اندازی کند.
+
+

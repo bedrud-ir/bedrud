@@ -1,4 +1,4 @@
----
+﻿---
 title: 在代理/CDN 之后
 description: 在 Cloudflare、nginx 和其他反向代理之后运行 Bedrud
 order: 29
@@ -44,7 +44,7 @@ lk.meet.example.com  → A 记录 → 仅 DNS (灰色云朵)    → 同一台服
 
 1. 运行安装程序并回答代理/CDN 问题：
    ```bash
-   curl -fsSL https://get.bedrud.org | bash
+   curl -fsSL https://bedrud.org/install.sh | bash
    ```
    - "Running behind a proxy/CDN?" → **Yes**
    - "What type?" → **cloudflare**
@@ -283,3 +283,4 @@ bedrud install --fresh --lk-ip 您的真实服务器IP
    dig +short lk.meet.example.com
    # 应该返回您服务器真实的 IP，而不是 CDN IP
    ```
+

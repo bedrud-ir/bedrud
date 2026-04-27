@@ -1,4 +1,4 @@
----
+﻿---
 title: Installation du serveur
 description: Installer le serveur Bedrud sur Linux
 order: 2
@@ -37,7 +37,7 @@ Télécharge et installe le binaire CLI Bedrud dans votre PATH. Fonctionne sous 
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Rechargez votre shell après l'installation :
@@ -50,7 +50,7 @@ Télécharge et installe le binaire CLI Bedrud dans votre PATH. Fonctionne sous 
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
   </TabsContent>
@@ -497,3 +497,4 @@ Cela arrête les services, supprime les fichiers de service de tous les système
 | **Avertissements de certificat auto-signé** | Attendu. Voir [Guide TLS interne](/fr/docs/guides/internal-tls) pour la configuration d'AC privée |
 | **Pas de vidéo / WebRTC échoué** | HTTPS requis pour l'accès à la caméra. Utilisez `--tls`. Assurez-vous que UDP 50000–60000 est ouvert |
 | **Reverse proxy : mauvaise IP client** | Utilisez le drapeau `--behind-proxy`. Configure les en-têtes de proxy de confiance |
+

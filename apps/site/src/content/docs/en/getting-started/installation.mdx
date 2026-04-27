@@ -1,4 +1,4 @@
----
+﻿---
 title: Server Installation
 description: Install Bedrud server on Linux
 order: 2
@@ -37,7 +37,7 @@ Downloads and installs the Bedrud CLI binary to your PATH. Works on Linux, macOS
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Reload your shell after install:
@@ -50,7 +50,7 @@ Downloads and installs the Bedrud CLI binary to your PATH. Works on Linux, macOS
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
   </TabsContent>
@@ -497,3 +497,4 @@ This stops services, removes service files for all init systems, deletes the bin
 | **Self-signed cert warnings** | Expected. See [Internal TLS Guide](/en/docs/guides/internal-tls) for private CA setup |
 | **No video / WebRTC failed** | HTTPS required for camera access. Use `--tls`. Ensure UDP 50000–60000 is open |
 | **Reverse proxy: wrong client IP** | Use `--behind-proxy` flag. Configures trusted proxy headers |
+

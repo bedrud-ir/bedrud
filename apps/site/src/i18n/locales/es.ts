@@ -1,4 +1,4 @@
-export default {
+﻿export default {
   meta: {
     title: "Bedrud - Videollamadas a tu manera",
     description:
@@ -206,8 +206,8 @@ export default {
   install: {
     title: "Un comando. Listo.",
     subtitle: "Copia. Pega. Funcionando. Eso es todo.",
-    command: "curl -fsSL https://get.bedrud.org | bash",
-    powershellCommand: "irm https://get.bedrud.org/install.ps1 | iex",
+    command: "curl -fsSL https://bedrud.org/install.sh | bash",
+    powershellCommand: "irm https://bedrud.org/install.ps1 | iex",
     dockerCommand: "docker pull ghcr.io/bedrud-ir/bedrud:latest",
     or: "o",
     whatItDoes:
@@ -892,3 +892,4 @@ export default {
     },
   },
 };
+

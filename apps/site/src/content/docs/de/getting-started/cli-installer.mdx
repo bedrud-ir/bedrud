@@ -1,4 +1,4 @@
----
+﻿---
 title: CLI-Installer
 description: Ein-Klick-Installation von Bedrud auf allen Plattformen
 order: 2
@@ -28,6 +28,7 @@ Für die Server-Einrichtung nach der Installation siehe [Schnellstart](/de/docs/
 | macOS / Linux | `curl` + `tar` |
 | macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (in Windows 10/11 enthalten) |
+| Windows (`--build`) | `git` + `go` + `bun` + `make` |
 
 ---
 
@@ -41,7 +42,7 @@ Für die Server-Einrichtung nach der Installation siehe [Schnellstart](/de/docs/
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Shell neu laden, dann überprüfen:
@@ -54,7 +55,7 @@ Für die Server-Einrichtung nach der Installation siehe [Schnellstart](/de/docs/
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     bedrud --version
     ```
   </TabsContent>
@@ -67,7 +68,7 @@ Für die Server-Einrichtung nach der Installation siehe [Schnellstart](/de/docs/
 ### Bash-Installer
 
 ```
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 ```
 
 | Flag | Standard | Beschreibung |
@@ -83,34 +84,34 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 
 ```bash
 # Standard
-curl -fsSL https://get.bedrud.org | bash
+curl -fsSL https://bedrud.org/install.sh | bash
 
 # Version festlegen
-curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
 
 # Aus Quellcode erstellen (benutzerdefinierter Branch)
-curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
 
 # Aus einem Fork erstellen
-BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
 
 # Systemweite Installation
-curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://bedrud.org/install.sh | sudo bash -s -- --install-dir /usr/local/bin
 
 # CI / Automatisierung — Shell-Konfiguration überspringen
-curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --skip-shell
 ```
 
 ### PowerShell-Installer
 
 ```
-Usage: irm https://get.bedrud.org/install.ps1 | iex
+Usage: irm https://bedrud.org/install.ps1 | iex
 ```
 
 Zum Übergeben von Parametern zunächst in einer Datei speichern:
 
 ```powershell
-irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+irm https://bedrud.org/install.ps1 -OutFile install.ps1
 .\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
 ```
 
@@ -130,13 +131,13 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `BEDRUD_REPO` | `bedrud-ir/bedrud` | Beide | GitHub-Repo überschreiben (für Forks oder Mirrors) |
 
 ```bash
-BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
-BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://bedrud.org/install.sh | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ```powershell
 $env:BEDRUD_REPO = "myorg/bedrud-fork"
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
 
 ---
@@ -281,7 +282,7 @@ chmod +x ~/bin/bedrud
 ### Selbstgehosteter Mirror
 
 ```bash
-BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ### Direkte Binärdatei
@@ -341,12 +342,36 @@ source ~/.bashrc
 Natives ARM erzwingen:
 
 ```bash
-arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+arch -arm64 curl -fsSL https://bedrud.org/install.sh | arch -arm64 bash
 ```
 
 ### Windows: „Ausführung von Skripts ist deaktiviert"
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
+
+lattform verfügt möglicherweise noch nicht über eine vorkompilierte Binärdatei
+
+### macOS: x64 wird unter Rosetta ausgeführt (langsam)
+
+Natives ARM erzwingen:
+
+```bash
+arch -arm64 curl -fsSL https://bedrud.org/install.sh | arch -arm64 bash
+```
+
+### Windows: „Ausführung von Skripts ist deaktiviert"
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+irm https://bedrud.org/install.ps1 | iex
+```
+
+as entsprechende Zip-Archiv von [Releases](https://github.com/bedrud-ir/bedrud/releases) herunter.
+
+### Windows: Docker Desktop für Postgres
+
+Wenn Sie sich während der Einrichtung dafür entscheiden, Postgres in Docker auszuführen, stellen Sie sicher, dass **Docker Desktop** installiert ist und ausgeführt wird. Der Installer wird versuchen, den Container automatisch zu starten.
+

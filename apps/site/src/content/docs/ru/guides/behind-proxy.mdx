@@ -1,4 +1,4 @@
----
+﻿---
 title: За прокси/CDN
 description: Запуск Bedrud за Cloudflare, nginx и другими обратными прокси
 order: 29
@@ -44,7 +44,7 @@ lk.meet.example.com  → запись A → только DNS (Grey Cloud)   → 
 
 1. Запустите установщик и ответьте на вопросы о прокси/CDN:
    ```bash
-   curl -fsSL https://get.bedrud.org | bash
+   curl -fsSL https://bedrud.org/install.sh | bash
    ```
    - "Running behind a proxy/CDN?" → **Yes**
    - "What type?" → **cloudflare**
@@ -283,3 +283,4 @@ bedrud install --fresh --lk-ip ВАШ_РЕАЛЬНЫЙ_IP_СЕРВЕРА
    dig +short lk.meet.example.com
    # Должен возвращаться реальный IP вашего сервера, а не IP от CDN
    ```
+

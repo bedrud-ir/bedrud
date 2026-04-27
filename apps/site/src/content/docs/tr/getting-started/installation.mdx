@@ -1,4 +1,4 @@
----
+﻿---
 title: Sunucu Kurulumu
 description: Bedrud sunucusunu Linux'a kurun
 order: 2
@@ -37,7 +37,7 @@ Bedrud CLI ikili dosyasını indirir ve PATH'inize kurar. Linux, macOS ve Window
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Kurulumdan sonra kabuğunuzu yeniden yükleyin:
@@ -50,7 +50,7 @@ Bedrud CLI ikili dosyasını indirir ve PATH'inize kurar. Linux, macOS ve Window
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
   </TabsContent>
@@ -497,3 +497,4 @@ Bu, servisleri durdurur, tüm init sistemlerinin servis dosyalarını kaldırır
 | **Kendi imzalı sertifika uyarıları** | Beklenen davranış. Özel CA kurulumu için bkz. [Dahili TLS Kılavuzu](/tr/docs/guides/internal-tls) |
 | **Video yok / WebRTC başarısız** | Kamera erişimi için HTTPS gerekli. `--tls` kullanın. UDP 50000–60000'ün açık olduğundan emin olun |
 | **Ters vekil sunucu: yanlış istemci IP'si** | `--behind-proxy` bayrağını kullanın. Güvenilir vekil başlıklarını yapılandırır |
+

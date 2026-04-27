@@ -1,4 +1,4 @@
----
+﻿---
 title: CLI インストーラー
 description: すべてのプラットフォーム向け Bedrud ワンコマンドインストール
 order: 2
@@ -41,7 +41,7 @@ order: 2
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     シェルを再読み込みして、確認します:
@@ -54,7 +54,7 @@ order: 2
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     bedrud --version
     ```
   </TabsContent>
@@ -67,7 +67,7 @@ order: 2
 ### Bash インストーラー
 
 ```
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 ```
 
 | フラグ | デフォルト | 説明 |
@@ -83,34 +83,34 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 
 ```bash
 # デフォルト
-curl -fsSL https://get.bedrud.org | bash
+curl -fsSL https://bedrud.org/install.sh | bash
 
 # バージョン固定
-curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
 
 # ソースからビルド（カスタムブランチ）
-curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
 
 # フォークからビルド
-BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
 
 # システム全体にインストール
-curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://bedrud.org/install.sh | sudo bash -s -- --install-dir /usr/local/bin
 
 # CI / 自動化 — シェル設定をスキップ
-curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --skip-shell
 ```
 
 ### PowerShell インストーラー
 
 ```
-Usage: irm https://get.bedrud.org/install.ps1 | iex
+Usage: irm https://bedrud.org/install.ps1 | iex
 ```
 
 パラメータを渡すには、まずファイルに保存します:
 
 ```powershell
-irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+irm https://bedrud.org/install.ps1 -OutFile install.ps1
 .\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
 ```
 
@@ -130,13 +130,13 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `BEDRUD_REPO` | `bedrud-ir/bedrud` | 両方 | GitHub リポジトリを上書き（フォークやミラー用） |
 
 ```bash
-BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
-BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://bedrud.org/install.sh | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ```powershell
 $env:BEDRUD_REPO = "myorg/bedrud-fork"
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
 
 ---
@@ -281,7 +281,7 @@ chmod +x ~/bin/bedrud
 ### セルフホストミラー
 
 ```bash
-BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ### 直接バイナリ
@@ -341,12 +341,25 @@ source ~/.bashrc
 ネイティブ ARM を強制:
 
 ```bash
-arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+arch -arm64 curl -fsSL https://bedrud.org/install.sh | arch -arm64 bash
 ```
 
 ### Windows: "running scripts is disabled"
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
+
+### Windows: WSL を検出
+
+WSL ターミナル（例: Windows 上の Ubuntu）で実行している場合、PowerShell インストーラーはそれを検出し、Bash インストーラーを実行するように促します。これにより、WSL 内の Linux 環境に Bedrud が正しくインストールされることが保証されます。
+
+### Windows: ARM64 デバイス (Surface Pro 等)
+
+インストーラーは自動的に `windows_arm64` を検出し、ネイティブバイナリをダウンロードします。特定のアーキテクチャを強制する必要がある場合は、[Releases](https://github.com/bedrud-ir/bedrud/releases) から特定の zip ファイルをダウンロードしてください。
+
+### Windows: Postgres 用の Docker Desktop
+
+セットアップ中に Docker で Postgres を実行することを選択した場合は、**Docker Desktop** がインストールされ、実行されていることを確認してください。インストーラーは自動的にコンテナを起動しようとします。
+

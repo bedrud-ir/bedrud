@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# bedrud installer — curl -fsSL https://get.bedrud.org | bash
+﻿#!/usr/bin/env bash
+# bedrud installer — curl -fsSL https://bedrud.org/install.sh | bash
 set -euo pipefail
 
 BINARY_NAME="bedrud"
@@ -147,7 +147,7 @@ case "$(uname -s 2>/dev/null)" in
   MINGW*|MSYS*|CYGWIN*|Windows_NT)
     echo "Windows detected. Run this in PowerShell instead:"
     echo ""
-    echo '  irm https://get.bedrud.org/install.ps1 | iex'
+    echo '  irm https://bedrud.org/install.ps1 | iex'
     echo ""
     echo "Or download from: https://github.com/${REPO}/releases/latest"
     exit 1
@@ -438,7 +438,7 @@ usage() {
   cat <<EOF
 ${BOLD}bedrud installer${RESET}
 
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 
 Options:
   --install-dir <dir>   Install directory (default: ~/.local/bin, /usr/local/bin if root)
@@ -454,12 +454,12 @@ Environment:
   BEDRUD_REPO           Override GitHub repo (default: bedrud-ir/bedrud)
 
 Examples:
-  curl -fsSL https://get.bedrud.org | bash
-  curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
-  curl -fsSL https://get.bedrud.org | bash -s -- --install-dir /usr/local/bin
-  curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
-  BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
-  curl -fsSL https://get.bedrud.org | bash -s -- --no-setup
+  curl -fsSL https://bedrud.org/install.sh | bash
+  curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
+  curl -fsSL https://bedrud.org/install.sh | bash -s -- --install-dir /usr/local/bin
+  curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
+  BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
+  curl -fsSL https://bedrud.org/install.sh | bash -s -- --no-setup
 EOF
   exit 0
 }
@@ -1419,3 +1419,4 @@ else
     echo ""
   fi
 fi
+

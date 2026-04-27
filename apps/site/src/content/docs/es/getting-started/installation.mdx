@@ -1,4 +1,4 @@
----
+﻿---
 title: Instalación del Servidor
 description: Instalar el servidor Bedrud en Linux
 order: 2
@@ -37,7 +37,7 @@ Descarga e instala el binario CLI de Bedrud en tu PATH. Funciona en Linux, macOS
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Recarga tu shell después de la instalación:
@@ -50,7 +50,7 @@ Descarga e instala el binario CLI de Bedrud en tu PATH. Funciona en Linux, macOS
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
   </TabsContent>
@@ -497,3 +497,4 @@ Esto detiene los servicios, elimina los archivos de servicio de todos los sistem
 | **Advertencias de certificado autofirmado** | Es lo esperado. Consulta la [Guía de TLS Interno](/es/docs/guides/internal-tls) para configuración de CA privada |
 | **Sin video / WebRTC falló** | Se requiere HTTPS para acceso a la cámara. Usa `--tls`. Asegúrate de que UDP 50000–60000 esté abierto |
 | **Proxy inverso: IP de cliente incorrecta** | Usa el flag `--behind-proxy`. Configura los headers de proxy de confianza |
+

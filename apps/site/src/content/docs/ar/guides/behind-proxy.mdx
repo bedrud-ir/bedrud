@@ -1,4 +1,4 @@
----
+﻿---
 title: Behind a Proxy/CDN
 description: Running Bedrud behind Cloudflare, nginx, and other reverse proxies
 order: 29
@@ -44,7 +44,7 @@ lk.meet.example.com  → A record → DNS only (Grey Cloud)    → Same server
 
 1. قم بتشغيل المثبت وأجب على أسئلة proxy/CDN:
    ```bash
-   curl -fsSL https://get.bedrud.org | bash
+   curl -fsSL https://bedrud.org/install.sh | bash
    ```
    - "Running behind a proxy/CDN?" → **Yes**
    - "What type?" → **cloudflare**
@@ -283,3 +283,4 @@ bedrud install --fresh --lk-ip YOUR_REAL_SERVER_IP
    dig +short lk.meet.example.com
    # يجب أن يعيد IP الحقيقي لخادمك، وليس IP الخاص بـ CDN
    ```
+

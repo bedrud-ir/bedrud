@@ -1,4 +1,4 @@
----
+﻿---
 title: Installateur CLI
 description: Installation en une commande de Bedrud sur toutes les plateformes
 order: 2
@@ -41,7 +41,7 @@ Pour la configuration du serveur après l'installation, voir [Démarrage rapide]
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Rechargez votre shell, puis vérifiez :
@@ -54,7 +54,7 @@ Pour la configuration du serveur après l'installation, voir [Démarrage rapide]
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     bedrud --version
     ```
   </TabsContent>
@@ -67,7 +67,7 @@ Pour la configuration du serveur après l'installation, voir [Démarrage rapide]
 ### Installateur Bash
 
 ```
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 ```
 
 | Flag | Par défaut | Description |
@@ -83,34 +83,34 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 
 ```bash
 # Par défaut
-curl -fsSL https://get.bedrud.org | bash
+curl -fsSL https://bedrud.org/install.sh | bash
 
 # Version spécifique
-curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
 
 # Compiler depuis les sources (branche personnalisée)
-curl -fsSL https://get.bedrud.org | bash -s -- --build --branch my-feature
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
 
 # Compiler depuis un fork
-BEDRUD_REPO=myuser/bedrud curl -fsSL https://get.bedrud.org | bash -s -- --build
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
 
 # Installation système
-curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://bedrud.org/install.sh | sudo bash -s -- --install-dir /usr/local/bin
 
 # CI / automatisation — ignorer la config du shell
-curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --skip-shell
 ```
 
 ### Installateur PowerShell
 
 ```
-Usage: irm https://get.bedrud.org/install.ps1 | iex
+Usage: irm https://bedrud.org/install.ps1 | iex
 ```
 
 Pour passer des paramètres, enregistrez d'abord le fichier :
 
 ```powershell
-irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+irm https://bedrud.org/install.ps1 -OutFile install.ps1
 .\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
 ```
 
@@ -130,13 +130,13 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `BEDRUD_REPO` | `bedrud-ir/bedrud` | Les deux | Remplacer le dépôt GitHub (pour les forks ou miroirs) |
 
 ```bash
-BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
-BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://bedrud.org/install.sh | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ```powershell
 $env:BEDRUD_REPO = "myorg/bedrud-fork"
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
 
 ---
@@ -281,7 +281,7 @@ chmod +x ~/bin/bedrud
 ### Miroir auto-hébergé
 
 ```bash
-BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ### Binaire direct
@@ -341,12 +341,25 @@ source ~/.bashrc
 Forcer l'ARM natif :
 
 ```bash
-arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+arch -arm64 curl -fsSL https://bedrud.org/install.sh | arch -arm64 bash
 ```
 
 ### Windows : « running scripts is disabled »
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
+
+### Windows : WSL détecté
+
+Si vous exécutez l'installateur dans un terminal WSL (par exemple, Ubuntu sur Windows), l'installateur PowerShell le détectera et vous demandera d'exécuter l'installateur Bash à la place. Cela garantit que Bedrud est installé correctement pour l'environnement Linux à l'intérieur de WSL.
+
+### Windows : appareils ARM64 (Surface Pro, etc.)
+
+L'installateur auto-détecte `windows_arm64` et télécharge le binaire natif. Si vous avez besoin de forcer une architecture, téléchargez le zip spécifique depuis les [Releases](https://github.com/bedrud-ir/bedrud/releases).
+
+### Windows : Docker Desktop pour Postgres
+
+Si vous choisissez d'exécuter Postgres dans Docker pendant la configuration, assurez-vous que **Docker Desktop** est installé et en cours d'exécution. L'installateur tentera de démarrer le conteneur automatiquement.
+

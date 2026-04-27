@@ -1,4 +1,4 @@
----
+﻿---
 title: Behind a Proxy/CDN
 description: Running Bedrud behind Cloudflare, nginx, and other reverse proxies
 order: 29
@@ -44,7 +44,7 @@ The installer handles this when you select "Behind proxy" and provide a LiveKit 
 
 1. Run the installer and answer the proxy/CDN questions:
    ```bash
-   curl -fsSL https://get.bedrud.org | bash
+   curl -fsSL https://bedrud.org/install.sh | bash
    ```
    - "Running behind a proxy/CDN?" → **Yes**
    - "What type?" → **cloudflare**
@@ -283,3 +283,4 @@ bedrud install --fresh --lk-ip YOUR_REAL_SERVER_IP
    dig +short lk.meet.example.com
    # Should return your server's real IP, not a CDN IP
    ```
+

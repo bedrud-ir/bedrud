@@ -1,4 +1,4 @@
----
+﻿---
 title: Быстрый старт
 description: Разверните Bedrud и присоединитесь к видеоконференции за 5 минут
 order: 1
@@ -46,7 +46,7 @@ order: 1
   <TabsContent value="macos-linux">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Перезагрузите оболочку после установки:
@@ -66,7 +66,7 @@ order: 1
   <TabsContent value="windows">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
     Закройте и снова откройте терминал, затем проверьте:
@@ -254,3 +254,4 @@ docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
 - [Руководство по развёртыванию](/ru/docs/guides/deployment) — настройка production, обратный прокси, масштабирование
 - [Обзор архитектуры](/ru/docs/architecture/overview) — как компоненты работают вместе
 - [Документация API](http://localhost:8090/api/swagger) — Swagger UI (на запущенном экземпляре)
+
