@@ -209,7 +209,7 @@ func LinuxInstall(cfg *InstallConfig) error {
 	// Build config.yaml
 	var configYAML installConfigYAML
 	configYAML.Server.Port = cfg.Port
-	configYAML.Server.Host = "0.0.0.0"
+	configYAML.Server.Host = cfg.OverrideIP
 	configYAML.Server.EnableTLS = cfg.EnableTLS
 	configYAML.Server.CertFile = certFile
 	configYAML.Server.KeyFile = keyFile
