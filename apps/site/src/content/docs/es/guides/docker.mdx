@@ -41,7 +41,7 @@ Instala Bun, pre-renderiza con SSR la aplicación React y copia los assets a `se
 ### Etapa 2: Compilación del servidor
 
 ```dockerfile
-FROM golang:1.24-alpine AS backend
+FROM golang:1.25-alpine AS backend
 RUN apk add --no-cache gcc musl-dev
 WORKDIR /build/server
 COPY server/go.mod server/go.sum ./

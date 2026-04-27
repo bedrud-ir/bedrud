@@ -41,7 +41,7 @@ Bun را نصب می‌کند، برنامه React را از پیش رندر SSR
 ### مرحله ۲: ساخت سرور
 
 ```dockerfile
-FROM golang:1.24-alpine AS backend
+FROM golang:1.25-alpine AS backend
 RUN apk add --no-cache gcc musl-dev
 WORKDIR /build/server
 COPY server/go.mod server/go.sum ./

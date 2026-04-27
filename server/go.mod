@@ -1,6 +1,6 @@
 module bedrud
 
-go 1.26
+go 1.25.0
 
 require (
 	github.com/go-co-op/gocron v1.37.0
