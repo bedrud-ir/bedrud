@@ -407,11 +407,8 @@ WantedBy=multi-user.target
 
 	fmt.Println("\n✓ Installation complete!")
 	fmt.Println("--------------------------------------------------")
-	fmt.Println("Generated Secrets (Save these!):")
-	fmt.Println("  LiveKit API Key:   ", apiKey)
-	fmt.Println("  LiveKit API Secret:", apiSecret)
-	fmt.Println("  JWT Secret:        ", jwtSecret)
-	fmt.Println("  Session Secret:    ", sessionSecret)
+	fmt.Println("Sensitive credentials were generated and written to configuration files.")
+	fmt.Println("For security, secrets are not displayed in console output.")
 	fmt.Println("--------------------------------------------------")
 
 	accessURL := fmt.Sprintf("%s://%s:%s", protocol, cfg.OverrideIP, cfg.Port)
