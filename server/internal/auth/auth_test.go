@@ -132,8 +132,9 @@ func TestAuthService_UpdateRefreshToken(t *testing.T) {
 	}
 
 	foundUser, _ := svc.GetUserByID(user.ID)
-	if foundUser.RefreshToken != "new-refresh-token" {
-		t.Fatalf("expected 'new-refresh-token', got '%s'", foundUser.RefreshToken)
+	// Token is stored as SHA-256 hash, not plaintext
+	if foundUser.RefreshToken == "new-refresh-token" {
+		t.Fatal("refresh token should be hashed, not stored in plaintext")
 	}
 }
 
@@ -303,8 +304,8 @@ func TestAuthService_Login_WrongPassword(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for wrong password")
 	}
-	if err.Error() != "invalid password" {
-		t.Fatalf("expected 'invalid password', got '%s'", err.Error())
+	if err.Error() != "invalid credentials" {
+		t.Fatalf("expected 'invalid credentials', got '%s'", err.Error())
 	}
 }
 
@@ -316,8 +317,8 @@ func TestAuthService_Login_UserNotFound(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for missing user")
 	}
-	if err.Error() != "user not found" {
-		t.Fatalf("expected 'user not found', got '%s'", err.Error())
+	if err.Error() != "invalid credentials" {
+		t.Fatalf("expected 'invalid credentials', got '%s'", err.Error())
 	}
 }
 

@@ -133,13 +133,26 @@ func (s *AuthService) Login(email, password string) (*LoginResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Dummy bcrypt hash used to maintain constant-time response when user is nil,
+	// preventing timing-based email enumeration attacks.
+	const dummyHash = "$2a$10$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
 	if user == nil {
-		return nil, errors.New("user not found")
+		// Perform a dummy comparison so both the nil-user and wrong-password paths
+		// take roughly the same amount of time (~100ms bcrypt).
+		_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
+		return nil, errors.New("invalid credentials")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		return nil, errors.New("invalid password")
+		return nil, errors.New("invalid credentials")
+	}
+
+	// Check if account is deactivated before issuing tokens.
+	if !user.IsActive {
+		return nil, errors.New("account is deactivated")
 	}
 
 	// Generate tokens
@@ -260,8 +273,12 @@ func (s *AuthService) ChangePassword(userID, currentPassword, newPassword string
 	if user.Provider != "local" && user.Provider != "passkey" {
 		return errors.New("password change is only available for local accounts")
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword)); err != nil {
-		return errors.New("current password is incorrect")
+	// Passkey-only users may have an empty stored password; skip the current-
+	// password check in that case and let them set a password for the first time.
+	if user.Password != "" {
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword)); err != nil {
+			return errors.New("current password is incorrect")
+		}
 	}
 	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
@@ -340,7 +357,7 @@ func (s *AuthService) ValidateRefreshToken(refreshToken string) (*Claims, error)
 	if user == nil {
 		return nil, errors.New("user not found")
 	}
-	if user.RefreshToken != refreshToken {
+	if !s.userRepo.MatchRefreshToken(user.ID, refreshToken) {
 		return nil, ErrRefreshTokenMismatch
 	}
 
@@ -380,6 +397,12 @@ func (s *AuthService) FinishRegisterPasskey(userID string, challengeStr string, 
 	authData, err := rp.VerifyAttestation(challenge, clientDataJSON, attestationObject)
 	if err != nil {
 		return err
+	}
+
+	// Prevent duplicate credential registration.
+	existing, _ := s.passkeyRepo.GetPasskeyByCredentialID(authData.CredentialID)
+	if existing != nil {
+		return errors.New("passkey already registered")
 	}
 
 	pub, err := x509.MarshalPKIXPublicKey(authData.PublicKey)
@@ -518,6 +541,10 @@ func (s *AuthService) FinishLoginPasskey(challengeStr string, credentialID, clie
 		return nil, errors.New("user not found")
 	}
 
+	if !user.IsActive {
+		return nil, errors.New("account is deactivated")
+	}
+
 	// Generate tokens
 	cfg := config.Get()
 	accessToken, refreshToken, err := GenerateTokenPair(user.ID, user.Email, user.Name, user.Accesses, cfg)
@@ -557,8 +584,6 @@ func Init(cfg *config.Config) {
 
 	// Initialize Google provider if credentials are provided
 	if cfg.Auth.Google.ClientID != "" && cfg.Auth.Google.ClientSecret != "" {
-		log.Debug().Msg("Initializing Google provider")
-		log.Debug().Str("redirect_url", cfg.Auth.Google.RedirectURL).Msg("Google callback URL")
 
 		provider := google.New(
 			cfg.Auth.Google.ClientID,
@@ -574,7 +599,6 @@ func Init(cfg *config.Config) {
 
 	// Initialize GitHub provider if credentials are provided
 	if cfg.Auth.Github.ClientID != "" && cfg.Auth.Github.ClientSecret != "" {
-		log.Debug().Msg("Initializing GitHub provider")
 		providers = append(providers, github.New(
 			cfg.Auth.Github.ClientID,
 			cfg.Auth.Github.ClientSecret,
@@ -585,7 +609,6 @@ func Init(cfg *config.Config) {
 
 	// Initialize Twitter provider if credentials are provided
 	if cfg.Auth.Twitter.ClientID != "" && cfg.Auth.Twitter.ClientSecret != "" {
-		log.Debug().Msg("Initializing Twitter provider")
 		providers = append(providers, twitter.New(
 			cfg.Auth.Twitter.ClientID,
 			cfg.Auth.Twitter.ClientSecret,

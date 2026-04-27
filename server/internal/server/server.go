@@ -25,6 +25,7 @@ import (
 	"bedrud/internal/handlers"
 	"bedrud/internal/livekit"
 	"bedrud/internal/middleware"
+	"bedrud/internal/models"
 	"bedrud/internal/repository"
 	"bedrud/internal/scheduler"
 	"context"
@@ -141,12 +142,18 @@ func Run(configPath string) error {
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowCredentials: cfg.Cors.AllowCredentials,
 	}
-	if cfg.Cors.AllowCredentials && (cfg.Cors.AllowedOrigins == "*" || cfg.Cors.AllowedOrigins == "") {
-		// Credentials + wildcard is forbidden by the CORS spec; reflect the request
-		// origin instead so the browser receives a specific origin with credentials.
-		corsConfig.AllowOriginsFunc = func(origin string) bool { return true }
+	if cfg.Cors.AllowCredentials {
+		if cfg.Cors.AllowedOrigins == "*" || cfg.Cors.AllowedOrigins == "" {
+			log.Warn().Msg("CORS: AllowCredentials is true but AllowedOrigins is wildcard. Refusing to allow all origins with credentials.")
+		} else {
+			corsConfig.AllowOrigins = cfg.Cors.AllowedOrigins
+		}
 	} else {
-		corsConfig.AllowOrigins = cfg.Cors.AllowedOrigins
+		if cfg.Cors.AllowedOrigins == "" || cfg.Cors.AllowedOrigins == "*" {
+			corsConfig.AllowOrigins = "*"
+		} else {
+			corsConfig.AllowOrigins = cfg.Cors.AllowedOrigins
+		}
 	}
 	app.Use(cors.New(corsConfig))
 
@@ -220,7 +227,7 @@ func Run(configPath string) error {
 	adminHandler := handlers.NewAdminHandler(settingsRepo, inviteTokenRepo)
 	adminGroup := api.Group("/admin",
 		middleware.Protected(),
-		middleware.RequireAccess("superadmin"),
+		middleware.RequireAccess(models.AccessSuperAdmin),
 	)
 	adminGroup.Get("/users", usersHandler.ListUsers)
 	adminGroup.Put("/users/:id/status", usersHandler.UpdateUserStatus)

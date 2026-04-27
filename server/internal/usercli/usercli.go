@@ -79,6 +79,15 @@ func CreateUser(configPath, email, password, name string) error {
 	}
 
 	repo := repository.NewUserRepository(database.GetDB())
+
+	existing, err := repo.GetUserByEmail(email)
+	if err != nil {
+		return fmt.Errorf("failed to check existing user: %w", err)
+	}
+	if existing != nil {
+		return fmt.Errorf("user with email %s already exists", email)
+	}
+
 	if err := repo.CreateUser(user); err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}

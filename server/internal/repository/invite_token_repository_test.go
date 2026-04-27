@@ -90,9 +90,12 @@ func TestInviteTokenRepository_GetByToken_NotFound(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	repo := NewInviteTokenRepository(db)
 
-	_, err := repo.GetByToken("nonexistent-token-value")
-	if err == nil {
-		t.Fatal("expected error for missing token")
+	tok, err := repo.GetByToken("nonexistent-token-value")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tok != nil {
+		t.Fatal("expected nil for missing token")
 	}
 }
 

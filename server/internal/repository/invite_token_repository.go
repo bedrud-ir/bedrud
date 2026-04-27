@@ -2,6 +2,7 @@ package repository
 
 import (
 	"bedrud/internal/models"
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
@@ -29,6 +30,9 @@ func (r *InviteTokenRepository) GetByToken(token string) (*models.InviteToken, e
 	var t models.InviteToken
 	err := r.db.Where("token = ?", token).First(&t).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &t, nil
@@ -36,8 +40,16 @@ func (r *InviteTokenRepository) GetByToken(token string) (*models.InviteToken, e
 
 func (r *InviteTokenRepository) MarkUsed(tokenID, userID string) error {
 	now := time.Now()
-	return r.db.Model(&models.InviteToken{}).Where("id = ?", tokenID).
-		Updates(map[string]interface{}{"used_at": now, "used_by": userID}).Error
+	result := r.db.Model(&models.InviteToken{}).
+		Where("id = ? AND used_at IS NULL", tokenID).
+		Updates(map[string]interface{}{"used_at": now, "used_by": userID})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("invite token already used or not found")
+	}
+	return nil
 }
 
 func (r *InviteTokenRepository) Delete(tokenID string) error {

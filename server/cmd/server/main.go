@@ -30,6 +30,7 @@ import (
 	"bedrud/internal/database"
 	"bedrud/internal/handlers"
 	"bedrud/internal/middleware"
+	"bedrud/internal/models"
 	"bedrud/internal/repository"
 	"bedrud/internal/scheduler"
 
@@ -193,6 +194,17 @@ func main() {
 	scheduler.Initialize(roomRepo, cfg.LiveKit)
 	defer scheduler.Stop()
 
+	// Periodically clean up expired blocked refresh tokens from the database.
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := userRepo.CleanupBlockedTokens(); err != nil {
+				log.Error().Err(err).Msg("Failed to cleanup blocked tokens")
+			}
+		}
+	}()
+
 	// ===============================
 	// Services
 	// ===============================
@@ -258,7 +270,7 @@ func main() {
 	api.Put("/auth/me", middleware.Protected(), authHandler.UpdateProfile)
 	api.Put("/auth/password", middleware.Protected(), authHandler.ChangePassword)
 	api.Get("/auth/:provider/login", handlers.BeginAuthHandler)
-	api.Get("/auth/:provider/callback", handlers.CallbackHandler)
+	api.Get("/auth/:provider/callback", authHandler.CallbackHandler)
 
 	prefsRepo := repository.NewUserPreferencesRepository(database.GetDB())
 	preferencesHandler := handlers.NewPreferencesHandler(prefsRepo)
@@ -317,7 +329,7 @@ func main() {
 	// Admin routes
 	adminGroup := api.Group("/admin",
 		middleware.Protected(),
-		middleware.RequireAccess("superadmin"),
+		middleware.RequireAccess(models.AccessSuperAdmin),
 	)
 	adminGroup.Get("/users", usersHandler.ListUsers)
 	adminGroup.Put("/users/:id/status", usersHandler.UpdateUserStatus)

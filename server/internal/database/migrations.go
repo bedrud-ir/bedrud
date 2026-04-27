@@ -10,9 +10,6 @@ import (
 func RunMigrations() error {
 	db := GetDB()
 
-	// Disable foreign key checks during migration
-	db = db.Set("gorm:auto_preload", false)
-
 	// Run migrations in correct order
 	if err := db.AutoMigrate(&models.User{}); err != nil {
 		return err

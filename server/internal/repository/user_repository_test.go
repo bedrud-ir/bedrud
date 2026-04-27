@@ -125,9 +125,8 @@ func TestUserRepository_UpdateRefreshToken(t *testing.T) {
 		t.Fatalf("failed to update refresh token: %v", err)
 	}
 
-	found, _ := repo.GetUserByID("user-1")
-	if found.RefreshToken != "new-refresh-token" {
-		t.Fatalf("expected refresh token 'new-refresh-token', got '%s'", found.RefreshToken)
+	if !repo.MatchRefreshToken("user-1", "new-refresh-token") {
+		t.Fatal("expected MatchRefreshToken to return true for the stored token")
 	}
 }
 
