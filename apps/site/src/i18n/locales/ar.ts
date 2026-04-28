@@ -1,4 +1,4 @@
-export default {
+﻿export default {
   meta: {
     title: "بدرود - اجتماعات فيديو، بطريقتك",
     description:
@@ -205,8 +205,8 @@ export default {
   install: {
     title: "أمر واحد. انتهى.",
     subtitle: "انسخ. الصق. يعمل. هذا هو الإعداد بالكامل.",
-    command: "curl -fsSL https://get.bedrud.org | bash",
-    powershellCommand: "irm https://get.bedrud.org/install.ps1 | iex",
+    command: "curl -fsSL https://bedrud.org/install.sh | bash",
+    powershellCommand: "irm https://bedrud.org/install.ps1 | iex",
     dockerCommand: "docker pull ghcr.io/bedrud-ir/bedrud:latest",
     or: "أو",
     whatItDoes:

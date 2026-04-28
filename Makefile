@@ -1,11 +1,12 @@
-.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android dev-desktop dev-site build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim build-desktop build-site deploy test-back push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open clean full-clean
+.PHONY: help init dev dev-web dev-server dev-server-hot dev-api dev-livekit dev-ios dev-android dev-desktop dev-site build build-front build-back build-dist build-android-debug build-android install-android release-android build-ios export-ios build-ios-sim build-desktop build-site deploy test-back fmt lint lint-fix push-dev push-prod run-front-dev local-build local-run swagger-gen swagger-open scalar-open clean full-clean
 
 GREEN  := \033[0;32m
 RED    := \033[0;31m
 RESET  := \033[0m
 
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS := -ldflags "-X main.version=$(VERSION)" -s -w
+# -s -w must be inside -ldflags; Go 1.26+ rejects them as top-level flags
+LDFLAGS := -ldflags "-X main.version=$(VERSION) -s -w"
 
 # Show available targets
 help:
@@ -34,6 +35,7 @@ help:
 	@echo "  build-back           Build backend only"
 	@echo "  build-dist           Build production linux/amd64 tarball"
 	@echo "  build-site           Build Astro site (SSG)"
+	@echo "  livekit-download     Download LiveKit server for current OS/arch"
 	@echo ""
 	@echo "Local (Single Binary):"
 	@echo "  local-build          Build frontend+backend into one binary"
@@ -70,31 +72,52 @@ help:
 # Initialize all dependencies
 init:
 	@echo "➜ Setting up Bedrud development environment..."
-	@# 1. Install LiveKit server binary if not in PATH
-	@if ! command -v livekit-server >/dev/null 2>&1; then \
-		echo "➜ Downloading LiveKit server..."; \
-		ARCH=$$(uname -m); \
-		if [ "$$ARCH" = "x86_64" ]; then LK_ARCH="amd64"; \
-		elif [ "$$ARCH" = "aarch64" ]; then LK_ARCH="arm64"; \
-		else echo "❌ Unsupported architecture: $$ARCH" && exit 1; fi; \
-		curl -sL $$(curl -s https://api.github.com/repos/livekit/livekit/releases/latest | grep "browser_download_url.*linux_$${LK_ARCH}.tar.gz" | cut -d '"' -f 4) -o /tmp/livekit.tar.gz && \
-		tar -xzf /tmp/livekit.tar.gz -C /tmp && \
-		mkdir -p ~/.local/bin && \
-		mv /tmp/livekit-server ~/.local/bin/ && \
-		rm -f /tmp/livekit.tar.gz && \
-		echo "✅ LiveKit server installed to ~/.local/bin/livekit-server"; \
+	@mkdir -p server/internal/livekit/bin
+	@OS=$$(uname -s); \
+	ARCH=$$(uname -m); \
+	if [ "$$ARCH" = "x86_64" ]; then LK_ARCH="amd64"; \
+	elif [ "$$ARCH" = "aarch64" ] || [ "$$ARCH" = "arm64" ]; then LK_ARCH="arm64"; \
+	else echo "❌ Unsupported architecture: $$ARCH" && exit 1; fi; \
+	if [ "$$OS" = "Darwin" ]; then \
+		echo "➜ Darwin (macOS) detected ($$LK_ARCH)..."; \
+		if ! command -v livekit-server >/dev/null 2>&1; then \
+			echo "➜ Downloading LiveKit macOS binary..."; \
+			curl -sL $$(curl -s https://api.github.com/repos/livekit/livekit/releases/latest | grep "browser_download_url.*darwin_$${LK_ARCH}.tar.gz" | cut -d '"' -f 4) -o /tmp/livekit.tar.gz && \
+			tar -xzf /tmp/livekit.tar.gz -C /tmp && \
+			mkdir -p ~/.local/bin && mv /tmp/livekit-server ~/.local/bin/ && \
+			rm -f /tmp/livekit.tar.gz && \
+			echo "✅ LiveKit server installed to ~/.local/bin/livekit-server"; \
+		fi; \
+		test -f server/internal/livekit/bin/livekit-server || cp $$(command -v livekit-server || echo ~/.local/bin/livekit-server) server/internal/livekit/bin/livekit-server; \
+	elif [ "$$OS" = "Linux" ]; then \
+		echo "➜ Linux detected ($$LK_ARCH)..."; \
+		if ! command -v livekit-server >/dev/null 2>&1; then \
+			echo "➜ Downloading LiveKit Linux binary..."; \
+			curl -sL $$(curl -s https://api.github.com/repos/livekit/livekit/releases/latest | grep "browser_download_url.*linux_$${LK_ARCH}.tar.gz" | cut -d '"' -f 4) -o /tmp/livekit.tar.gz && \
+			tar -xzf /tmp/livekit.tar.gz -C /tmp && \
+			mkdir -p ~/.local/bin && mv /tmp/livekit-server ~/.local/bin/ && \
+			rm -f /tmp/livekit.tar.gz && \
+			echo "✅ LiveKit server installed to ~/.local/bin/livekit-server"; \
+		fi; \
+		test -f server/internal/livekit/bin/livekit-server || cp $$(command -v livekit-server || echo ~/.local/bin/livekit-server) server/internal/livekit/bin/livekit-server; \
+	elif echo "$$OS" | grep -q -E "MINGW|CYGWIN|MSYS|Windows_NT"; then \
+		echo "➜ Windows detected ($$LK_ARCH)..."; \
+		if [ ! -f server/internal/livekit/bin/livekit-server.exe ]; then \
+			echo "➜ Downloading LiveKit Windows binary..."; \
+			curl -sL $$(curl -s https://api.github.com/repos/livekit/livekit/releases/latest | grep "browser_download_url.*windows_$${LK_ARCH}.zip" | cut -d '"' -f 4) -o /tmp/livekit-windows.zip && \
+			unzip -p /tmp/livekit-windows.zip livekit-server.exe > server/internal/livekit/bin/livekit-server.exe && \
+			rm -f /tmp/livekit-windows.zip && \
+			echo "✅ LiveKit Windows binary downloaded for embedding"; \
+		fi; \
 	else \
-		echo "✅ LiveKit server already installed"; \
+		echo "⚠️ OS $$OS not fully supported for auto-download. Ensure livekit-server is manually placed in server/internal/livekit/bin/"; \
 	fi
 	@# 2. Create backend config if missing
 	@if [ ! -f server/config.yaml ]; then \
 		cp server/config.local.yaml server/config.yaml; \
 		echo "✅ Created server/config.yaml from local template"; \
 	fi
-	@# 3. Create LiveKit embed placeholder for Go compilation
-	@mkdir -p server/internal/livekit/bin
-	@test -f server/internal/livekit/bin/livekit-server || echo "placeholder" > server/internal/livekit/bin/livekit-server
-	@# 4. Install air for hot reload if not present
+	@# 3. Install air for hot reload if not present
 	@if ! command -v air >/dev/null 2>&1; then \
 		echo "➜ Installing air (Go hot reload)..."; \
 		go install github.com/air-verse/air@latest; \
@@ -102,7 +125,7 @@ init:
 	else \
 		echo "✅ air already installed"; \
 	fi
-	@# 5. Install frontend and backend dependencies
+	@# 4. Install frontend and backend dependencies
 	cd apps/web && bun install
 	cd apps/site && bun install
 	cd server && go mod tidy && go mod download
@@ -181,6 +204,69 @@ build-dist: build
 		rm ../dist/bedrud && \
 		printf "$(GREEN)✅ Distribution ready: dist/bedrud_linux_amd64.tar.xz$(RESET)\n" || \
 		( printf "$(RED)❌ Distribution build failed$(RESET)\n"; exit 1 )
+
+# Build backend for Windows
+build-back-win: prep-livekit-win
+	cd server && GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o ../dist/bedrud.exe ./cmd/bedrud/main.go
+
+# Build production Windows distribution
+build-dist-win: build-front prep-livekit-win
+	find server/frontend -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
+	mkdir -p server/frontend
+	cp -r apps/web/dist/client/* server/frontend/
+	@mkdir -p dist
+	@cd server && GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o ../dist/bedrud.exe ./cmd/bedrud/main.go && \
+		zip -j ../dist/bedrud_windows_amd64.zip ../dist/bedrud.exe && \
+		rm ../dist/bedrud.exe && \
+		printf "$(GREEN)✅ Distribution ready: dist/bedrud_windows_amd64.zip$(RESET)\n" || \
+		( printf "$(RED)❌ Distribution build failed$(RESET)\n"; exit 1 )
+
+# Ensure LiveKit Windows binary is available for embedding
+prep-livekit-win:
+	@mkdir -p server/internal/livekit/bin
+	@if [ ! -f server/internal/livekit/bin/livekit-server.exe ]; then \
+		ARCH=$$(uname -m); \
+		if [ "$$ARCH" = "x86_64" ]; then LK_ARCH="amd64"; \
+		elif [ "$$ARCH" = "aarch64" ] || [ "$$ARCH" = "arm64" ]; then LK_ARCH="arm64"; \
+		else echo "❌ Unsupported architecture: $$ARCH" && exit 1; fi; \
+		echo "➜ Downloading LiveKit Windows binary for embedding ($$LK_ARCH)..."; \
+		curl -sL $$(curl -s https://api.github.com/repos/livekit/livekit/releases/latest | grep "browser_download_url.*windows_$${LK_ARCH}.zip" | cut -d '"' -f 4) -o /tmp/livekit-windows.zip && \
+		unzip -p /tmp/livekit-windows.zip livekit-server.exe > server/internal/livekit/bin/livekit-server.exe && \
+		rm -f /tmp/livekit-windows.zip && \
+		echo "✅ LiveKit Windows binary ready"; \
+	fi
+
+# Download LiveKit server for current OS/arch
+livekit-download:
+	@OS=$$(uname -s); \
+	ARCH=$$(uname -m); \
+	if [ "$$ARCH" = "x86_64" ]; then LK_ARCH="amd64"; \
+	elif [ "$$ARCH" = "aarch64" ] || [ "$$ARCH" = "arm64" ]; then LK_ARCH="arm64"; \
+	else echo "❌ Unsupported architecture: $$ARCH" && exit 1; fi; \
+	if [ "$$OS" = "Darwin" ]; then \
+		echo "➜ Downloading LiveKit macOS ($$LK_ARCH)..."; \
+		curl -sL $$(curl -s https://api.github.com/repos/livekit/livekit/releases/latest | grep "browser_download_url.*darwin_$${LK_ARCH}.tar.gz" | cut -d '"' -f 4) -o /tmp/livekit.tar.gz && \
+		tar -xzf /tmp/livekit.tar.gz -C /tmp && \
+		mkdir -p ~/.local/bin && mv /tmp/livekit-server ~/.local/bin/ && \
+		rm -f /tmp/livekit.tar.gz && \
+		echo "✅ LiveKit server installed to ~/.local/bin/livekit-server"; \
+	elif [ "$$OS" = "Linux" ]; then \
+		echo "➜ Downloading LiveKit Linux ($$LK_ARCH)..."; \
+		curl -sL $$(curl -s https://api.github.com/repos/livekit/livekit/releases/latest | grep "browser_download_url.*linux_$${LK_ARCH}.tar.gz" | cut -d '"' -f 4) -o /tmp/livekit.tar.gz && \
+		tar -xzf /tmp/livekit.tar.gz -C /tmp && \
+		mkdir -p ~/.local/bin && mv /tmp/livekit-server ~/.local/bin/ && \
+		rm -f /tmp/livekit.tar.gz && \
+		echo "✅ LiveKit server installed to ~/.local/bin/livekit-server"; \
+	elif echo "$$OS" | grep -q -E "MINGW|CYGWIN|MSYS|Windows_NT"; then \
+		echo "➜ Downloading LiveKit Windows ($$LK_ARCH)..."; \
+		mkdir -p server/internal/livekit/bin; \
+		curl -sL $$(curl -s https://api.github.com/repos/livekit/livekit/releases/latest | grep "browser_download_url.*windows_$${LK_ARCH}.zip" | cut -d '"' -f 4) -o /tmp/livekit-windows.zip && \
+		unzip -p /tmp/livekit-windows.zip livekit-server.exe > server/internal/livekit/bin/livekit-server.exe && \
+		rm -f /tmp/livekit-windows.zip && \
+		echo "✅ LiveKit Windows binary ready at server/internal/livekit/bin/livekit-server.exe"; \
+	else \
+		echo "❌ OS $$OS not supported for auto-download"; \
+	fi
 
 # Build Android debug APK
 build-android-debug:
@@ -263,6 +349,22 @@ scalar-open:
 # Run backend tests
 test-back:
 	cd server && go test -v -count=1 ./...
+
+# Format Go code
+fmt:
+	@if ! command -v gofumpt >/dev/null 2>&1; then \
+		echo "➜ Installing gofumpt..."; \
+		go install mvdan.cc/gofumpt@latest; \
+	fi
+	cd server && gofumpt -l -w .
+
+# Run linters
+lint:
+	cd server && golangci-lint run ./...
+
+# Run linters and auto-fix issues
+lint-fix:
+	cd server && golangci-lint run --fix ./...
 
 # Run frontend dev proxy
 run-front-dev:

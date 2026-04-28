@@ -141,8 +141,8 @@ func (h *AdminHandler) ListInviteTokens(c *fiber.Ctx) error {
 		Used bool `json:"used"`
 	}
 	out := make([]tokenResponse, len(tokens))
-	for i, t := range tokens {
-		out[i] = tokenResponse{InviteToken: t, Used: t.UsedAt != nil}
+	for i := range tokens {
+		out[i] = tokenResponse{InviteToken: tokens[i], Used: tokens[i].UsedAt != nil}
 	}
 	return c.JSON(fiber.Map{"tokens": out})
 }

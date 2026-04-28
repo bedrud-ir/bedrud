@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+const (
+	ProviderLocal   = "local"
+	ProviderPasskey = "passkey"
+	ProviderGuest   = "guest"
+)
+
 type AccessLevel string
 
 const (

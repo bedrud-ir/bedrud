@@ -1,4 +1,4 @@
----
+﻿---
 title: CLI Kurulumu
 description: Tüm platformlarda Bedrud için tek komutla kurulum
 order: 2
@@ -12,8 +12,8 @@ Kurulum sonrası sunucu kurulumu için bkz. [Hızlı Başlangıç](/tr/docs/gett
 
 ## Ne Yapar
 
-1. İşletim sistemini, CPU mimarisini ve platform varyantlarını (Rosetta 2) algılar
-2. [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases) adresinden doğru ikili dosyayı indirir
+1. İşletim sistemini, CPU mimarisini, platform varyantlarını (Rosetta 2) ve init sistemini (systemd/OpenRC/SysV) algılar
+2. [GitHub Sürümleri](https://github.com/bedrud-ir/bedrud/releases) adresinden doğru ikili dosyayı indirir (`--build` ile kaynak koddan derler)
 3. `~/bin` dizinine kurulum yapar (`--install-dir` ile özelleştirilebilir)
 4. Kabuk yapılandırması ile kurulum dizinini `PATH`'e ekler
 5. Kabuk sekme tamamlama için `bedrud completions` komutunu çalıştırır
@@ -26,6 +26,7 @@ Kurulum sonrası sunucu kurulumu için bkz. [Hızlı Başlangıç](/tr/docs/gett
 | Platform | Bağımlılıklar |
 |----------|--------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (Windows 10/11 ile birlikte gelir) |
 
 ---
@@ -40,7 +41,7 @@ Kurulum sonrası sunucu kurulumu için bkz. [Hızlı Başlangıç](/tr/docs/gett
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Kabuğunuzu yeniden yükleyin, ardından doğrulayın:
@@ -53,7 +54,7 @@ Kurulum sonrası sunucu kurulumu için bkz. [Hızlı Başlangıç](/tr/docs/gett
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     bedrud --version
     ```
   </TabsContent>
@@ -66,13 +67,15 @@ Kurulum sonrası sunucu kurulumu için bkz. [Hızlı Başlangıç](/tr/docs/gett
 ### Bash Kurulumu
 
 ```
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 ```
 
 | Bayrak | Varsayılan | Açıklama |
 |--------|-----------|----------|
 | `--install-dir <dir>` | `~/bin` | İkili dosyanın yerleştirileceği dizin |
 | `--version <ver>` | `latest` | Bir sürüme sabitle (ör. `v1.2.0`) |
+| `--build` | kapalı | İndirmek yerine kaynak koddan derle |
+| `--branch <name>` | `main` | Klonlanacak Git dalı (`--build` gerekir) |
 | `--skip-shell` | kapalı | Kabuk RC dosyalarını veya PATH'ı değiştirme |
 | `-h`, `--help` | — | Kullanım bilgisini yazdır ve çık |
 
@@ -80,28 +83,34 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 
 ```bash
 # Varsayılan
-curl -fsSL https://get.bedrud.org | bash
+curl -fsSL https://bedrud.org/install.sh | bash
 
 # Sürüm sabitleme
-curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
+
+# Kaynak koddan derle (özel dal)
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
+
+# Fork'tan derle
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
 
 # Sistem geneli kurulum
-curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://bedrud.org/install.sh | sudo bash -s -- --install-dir /usr/local/bin
 
 # CI / otomasyon — kabuk yapılandırmasını atla
-curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --skip-shell
 ```
 
 ### PowerShell Kurulumu
 
 ```
-Usage: irm https://get.bedrud.org/install.ps1 | iex
+Usage: irm https://bedrud.org/install.ps1 | iex
 ```
 
 Parametre göndermek için önce dosyayı kaydedin:
 
 ```powershell
-irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+irm https://bedrud.org/install.ps1 -OutFile install.ps1
 .\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
 ```
 
@@ -121,13 +130,13 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `BEDRUD_REPO` | `bedrud-ir/bedrud` | İkisi de | GitHub deposunu geçersiz kıl (çatallar veya yansılar için) |
 
 ```bash
-BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
-BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://bedrud.org/install.sh | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ```powershell
 $env:BEDRUD_REPO = "myorg/bedrud-fork"
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
 
 ---
@@ -169,23 +178,56 @@ uname -m → "x86_64" | "amd64"  → amd64
 **Algılama:** `sysctl -n sysctl.proc_translated` değeri `1` döndürür.
 **Etki:** Yerel ARM performansı için `darwin_amd64` → `darwin_arm64` olarak değiştirir.
 
+### Konteyner Ortamları (Docker, Kubernetes, vb.)
+
+**Algılama:** `/.dockerenv`, `/run/.containerenv`, `/proc/1/comm` (`docker-init`, `tini`, `containerd`, `runc` için) ve `/proc/1/cgroup` (`docker`, `kubepods`, `containerd` için) dosyalarını kontrol eder.
+**Etki:** Servis dosyası kurulumu atlanır. Yükleyici manuel başlatma komutlarını yazdırır:
+
+```bash
+# Öncelik
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# Arka plan
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+Docker'da düzgün servis yönetimi için `--init` veya [tini](https://github.com/krallin/tini)'yi PID 1 olarak kullanın.
+
+---
+
+## İnit Sistemi Desteği
+
+Yükleyici, init sistemini otomatik olarak algılar ve sunucu kurulumu için uygun servis dosyalarını oluşturur:
+
+| Init System | Algılama | Servis Dosyaları | Yönetim |
+|-------------|----------|-------------------|---------|
+| systemd | `/run/systemd/system` mevcut | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | `/sbin/openrc` mevcut | `/etc/init.d/*` (OpenRC formatı) | `rc-service`, `rc-update` |
+| SysV init | `service` komutu mevcut | `/etc/init.d/*` (LSB formatı) | `service`, `update-rc.d` |
+| **Konteyner** | `/.dockerenv`, `/proc/1/comm`, `/proc/1/cgroup` | Yok — manuel başlatma | Doğrudan ikili dosya veya `nohup` |
+
+Desteklenen: Çoğu Linux dağıtımı (systemd, OpenRC, SysV init), WSL1 ve Linux konteynerleri. Konteyner ortamları otomatik algılanır — servis dosyası kurulumu atlanır ve manuel başlatma talimatları yazdırılır.
+
 ---
 
 ## Kurulum Akışı
 
-1. **Windows kontrolü** — MINGW/MSYS/CYGWIN algılandı mı? PowerShell komutunu yazdır, çık
-2. **Bağımlılık kontrolü** — `curl` + `tar` gerektirir
-3. **Argüman ayrıştırma** — en fazla 3 bayrak
-4. **Platform algılama** — `uname` ile işletim sistemi + mimari
-5. **Varyant algılama** — Rosetta 2
-6. **İndirme** — `bedrud_{TARGET}.tar.xz` dosyasını indir
-7. **Çıkarma ve kurulum** — geçici dizin, çıkar, `mv → $INSTALL_DIR/bedrud`, `chmod +x`
-8. **Doğrulama** — `bedrud --version` komutunu çalıştır
-9. **PATH kontrolü** — PATH'te zaten var mı? Atla. `--skip-shell`? Manuel komutu yazdır. Aksi halde → RC dosyasını düzenle
-10. **Tamamlamalar** — `bedrud completions` komutunu çalıştır
-11. **Tamamlandı** — başarı ve yeniden yükleme talimatlarını yazdır
+1. **Windows kontrolü** — Bash'te MINGW/MSYS/CYGWIN algılandı mı? PowerShell'e yönlendir.
+2. **WSL kontrolü** — PowerShell'de WSL algılandı mı? Bash'e yönlendir.
+3. **Bağımlılık kontrolü** — Bash: `curl` + `tar`. PowerShell: (varsayılan yok). Derleme: `git` + `go` + `bun` + `make`.
+4. **Platform algılama** — `uname` (Bash) veya `RuntimeInformation` (PowerShell) aracılığıyla işletim sistemi + mimari.
+5. **İkili dosya kurulumu** — iki seçenek:
+   - **İndirme modu** (varsayılan): zip/tar.xz indir ve çıkar.
+   - **Derleme modu** (`--build`): `git clone`, `bun install`, `go mod download`, `make build`.
+6. **Doğrulama** — `bedrud --version` komutunu çalıştır.
+7. **PATH kontrolü** — PATH'te zaten var mı? Atla. Aksi halde → RC dosyasını (Bash) veya Kayıt Defterini (PowerShell) düzenle.
+8. **Etkileşimli Kurulum** — Alan Adı, TLS, Postgres ve Yönetici kullanıcısı oluşturma için Soru-Cevap.
+9. **Tamamlandı** — başarı mesajı + erişim URL'si.
 
 İndirme URL formatı: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+Derleme modu `github.com/{repo}` adresinden klonlar ve `make build` çalıştırır (çıktı: `server/dist/bedrud`).
 
 ---
 
@@ -238,7 +280,7 @@ chmod +x ~/bin/bedrud
 ### Kendi Barındırdığınız Yansı
 
 ```bash
-BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ### Doğrudan İkili Dosya
@@ -255,7 +297,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-systemd sunucu kurulumları için:
+systemd, OpenRC, SysV init sunucu kurulumları için:
 
 ```bash
 sudo bedrud uninstall
@@ -298,12 +340,23 @@ source ~/.bashrc
 Yerel ARM'ı zorla:
 
 ```bash
-arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+arch -arm64 curl -fsSL https://bedrud.org/install.sh | arch -arm64 bash
 ```
 
 ### Windows: "running scripts is disabled"
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
+
+Bir WSL terminalinde (örneğin, Windows üzerinde Ubuntu) çalıştırıyorsanız, PowerShell yükleyicisi bunu algılayacak ve sizden Bash yükleyicisini çalıştırmanızı isteyecektir. Bu, Bedrud'un WSL içindeki Linux ortamı için doğru şekilde kurulmasını sağlar.
+
+### Windows: ARM64 cihazlar (Surface Pro, vb.)
+
+Yükleyici `windows_arm64` mimarisini otomatik olarak algılar ve yerel ikili dosyayı indirir. Bir mimariyi zorlamanız gerekirse, [Sürümler](https://github.com/bedrud-ir/bedrud/releases) sayfasından belirli zip dosyasını indirin.
+
+### Windows: Postgres için Docker Desktop
+
+Kurulum sırasında Postgres'i Docker'da çalıştırmayı seçerseniz, **Docker Desktop**'ın kurulu ve çalışır durumda olduğundan emin olun. Yükleyici, konteyneri otomatik olarak başlatmaya çalışacaktır.
+

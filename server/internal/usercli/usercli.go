@@ -62,9 +62,23 @@ func CreateUser(configPath, email, password, name string) error {
 	}
 	defer database.Close()
 
+	if err := database.RunMigrations(); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	repo := repository.NewUserRepository(database.GetDB())
+	existing, checkErr := repo.GetUserByEmail(email)
+	if checkErr != nil {
+		return fmt.Errorf("failed to check existing user: %w", checkErr)
+	}
+	if existing != nil {
+		fmt.Printf("⚠ User %q already exists — skipping creation.\n", email)
+		return nil
 	}
 
 	user := &models.User{
@@ -76,16 +90,6 @@ func CreateUser(configPath, email, password, name string) error {
 		Accesses:  models.StringArray{"user"},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-	}
-
-	repo := repository.NewUserRepository(database.GetDB())
-
-	existing, err := repo.GetUserByEmail(email)
-	if err != nil {
-		return fmt.Errorf("failed to check existing user: %w", err)
-	}
-	if existing != nil {
-		return fmt.Errorf("user with email %s already exists", email)
 	}
 
 	if err := repo.CreateUser(user); err != nil {
@@ -106,6 +110,10 @@ func DeleteUser(configPath, email string) error {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer database.Close()
+
+	if err := database.RunMigrations(); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
 
 	repo := repository.NewUserRepository(database.GetDB())
 	user, err := repo.GetUserByEmail(email)
@@ -133,6 +141,10 @@ func withUser(configPath, email string, fn func(*repository.UserRepository, *mod
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer database.Close()
+
+	if err := database.RunMigrations(); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
 
 	repo := repository.NewUserRepository(database.GetDB())
 	user, err := repo.GetUserByEmail(email)

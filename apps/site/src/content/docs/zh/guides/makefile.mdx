@@ -27,6 +27,7 @@ make help       # Show all available targets
 | `make dev-site` | 运行 Astro 站点开发服务器 |
 | `make dev-ios` | 在 Xcode 中打开 iOS 项目 |
 | `make dev-android` | 在 Android Studio 中打开 Android 项目 |
+| `make livekit-download` | 下载适用于当前操作系统/架构的 LiveKit 服务器 |
 
 ### `make init`
 
@@ -54,6 +55,9 @@ make help       # Show all available targets
 | `make build-front` | 仅构建前端 |
 | `make build-back` | 仅构建后端 |
 | `make build-dist` | 构建生产版 linux/amd64 tar 包 |
+| `make build-back-win` | 为 Windows 构建后端 |
+| `make build-dist-win` | 构建生产版 Windows 分发包 |
+| `make prep-livekit-win` | 确保 LiveKit Windows 二进制文件可用于嵌入 |
 | `make build-site` | 构建 Astro 站点（SSG） |
 
 ### `make build`

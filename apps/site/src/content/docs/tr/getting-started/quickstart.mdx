@@ -1,4 +1,4 @@
----
+﻿---
 title: Hızlı Başlangıç
 description: Bedrud'u 5 dakikadan kısa sürede dağıtın ve video toplantısına katılın
 order: 1
@@ -27,7 +27,7 @@ Bedrud'u dağıtın ve 5 dakikadan kısa sürede video toplantısına katılın.
 
 | Gereksinim | Detaylar |
 |-------------|---------|
-| Bir Linux sunucusu | amd64 veya arm64, `sudo` erişimi ve `systemd` ile. macOS/Windows: sunucu için Docker veya WSL2 kullanın |
+| Bir Linux sunucusu | amd64 veya arm64, `sudo` erişimi ve desteklenen bir init sistemi (systemd, OpenRC veya SysV init) ile. macOS/Windows: sunucu için Docker veya WSL2 kullanın |
 | Açık bağlantı noktaları | `8090`, `7880`, `50000–60000/udp`. Otomatik TLS için: ayrıca `80` ve `443` |
 | Bir alan adı (isteğe bağlı) | Sunucunuza işaret eden DNS A kaydı ile. Alan adınız yok mu? IP ile çalışır — aşağıdaki alternatiflere bakın |
 
@@ -46,7 +46,7 @@ Bedrud'u dağıtın ve 5 dakikadan kısa sürede video toplantısına katılın.
   <TabsContent value="macos-linux">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Kurulumdan sonra kabuğunuzu yeniden yükleyin:
@@ -66,7 +66,7 @@ Bedrud'u dağıtın ve 5 dakikadan kısa sürede video toplantısına katılın.
   <TabsContent value="windows">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
     Terminalinizi kapatıp yeniden açın, ardından doğrulayın:
@@ -98,7 +98,7 @@ Bedrud'u dağıtın ve 5 dakikadan kısa sürede video toplantısına katılın.
 
 ## 2. Sunucuyu Dağıtın
 
-> **Sunucu kurulumu Linux ve systemd gerektirir.** macOS ve Windows `bedrud install` komutunu doğrudan desteklemez — bunun yerine [Docker](#docker) veya [WSL2](#linux-dışı-sistemler) kullanın.
+> **Sunucu kurulumu desteklenen bir init sistemi (systemd, OpenRC veya SysV init) ile Linux gerektirir.** macOS ve Windows `bedrud install` komutunu doğrudan desteklemez — bunun yerine [Docker](#docker) veya [WSL2](#linux-dışı-sistemler) kullanın.
 
 `meet.example.com` ve `admin@example.com` değerlerini kendinize göre değiştirin:
 
@@ -106,7 +106,7 @@ Bedrud'u dağıtın ve 5 dakikadan kısa sürede video toplantısına katılın.
 sudo bedrud install --tls --domain meet.example.com --email admin@example.com
 ```
 
-Sunucu ikili dosyasını `/usr/local/bin` dizinine kurar, yapılandırma oluşturur, systemd servislerini oluşturur, TLS sağlar ve her şeyi başlatır.
+Sunucu ikili dosyasını `/usr/local/bin` dizinine kurar, yapılandırma oluşturur, init servislerini (systemd, OpenRC veya SysV init) oluşturur, TLS sağlar ve her şeyi başlatır.
 
 > **80 veya 443 bağlantı noktası meşgul mü?** Çakışan servisleri durdurun: `sudo systemctl stop nginx apache2 caddy`, ardından tekrar çalıştırın.
 
@@ -185,7 +185,7 @@ sudo bedrud install --ip 127.0.0.1
 
 ### Linux Dışı Sistemler
 
-`bedrud install` komutu systemd servislerini ayarlar ve yalnızca Linux içindir. CLI kurulumu (1. adım) her platformda çalışır ve ikili dosyayı PATH'e yerleştirir. Sunucu kurulumu için Docker veya WSL2 kullanın.
+`bedrud install` komutu init servislerini (systemd, OpenRC veya SysV init) ayarlar ve yalnızca Linux içindir. CLI kurulumu (1. adım) her platformda çalışır ve ikili dosyayı PATH'e yerleştirir. Sunucu kurulumu için Docker veya WSL2 kullanın.
 
 | İşletim Sistemi | Nasıl |
 |---------|-------|
@@ -254,3 +254,4 @@ docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
 - [Dağıtım Kılavuzu](/tr/docs/guides/deployment) — üretim kurulumu, ters vekil sunucu, ölçeklendirme
 - [Mimari Genel Bakış](/tr/docs/architecture/overview) — parçalar nasıl bir araya gelir
 - [API Belgeleri](http://localhost:8090/api/swagger) — Swagger UI (çalışan örnek)
+

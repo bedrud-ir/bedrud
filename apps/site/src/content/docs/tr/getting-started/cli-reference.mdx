@@ -57,7 +57,7 @@ bedrud --livekit --config <yol>
 |------------|------------|----------------------------------|
 | `--config` | (gerekli) | LiveKit YAML yapılandırma dosyasının yolu |
 
-**Kullanan:** `bedrud install` tarafından oluşturulan systemd `livekit.service`
+**Kullanan:** `bedrud install` tarafından oluşturulan init `livekit` servisi
 
 **Uygulama:** `server/internal/livekit/server.go`
 
@@ -65,7 +65,7 @@ bedrud --livekit --config <yol>
 
 ### `--run`
 
-Aynı `--config` bayrak davranışıyla `bedrud run` için takma ad. systemd `bedrud.service` tarafından kullanılır.
+Aynı `--config` bayrak davranışıyla `bedrud run` için takma ad. init `bedrud` servisi tarafından kullanılır.
 
 ```bash
 bedrud --run --config <yol>
@@ -75,7 +75,7 @@ bedrud --run --config <yol>
 
 ### `install`
 
-Bedrud'u bir Debian/Linux sistemine kurar. systemd servisleri, yapılandırma dosyaları, dizinler ve TLS sertifikaları oluşturur.
+Bedrud'u bir Debian/Linux sistemine kurar. init servisleri (systemd, OpenRC veya SysV init — otomatik algılanır), yapılandırma dosyaları, dizinler ve TLS sertifikaları oluşturur.
 
 ```bash
 bedrud install [bayraklar]
@@ -108,9 +108,9 @@ bedrud install [bayraklar]
 5. `/etc/bedrud/config.yaml` konumunda Bedrud sunucu yapılandırması oluşturur
 6. `/etc/bedrud/livekit.yaml` konumunda LiveKit medya sunucusu yapılandırması oluşturur
 7. `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` konumunda kendi imzalı sertifikalar oluşturur (TLS etkinse ve özel sertifikalar yoksa)
-8. systemd `livekit.service` oluşturur (harici LiveKit kullanılmıyorsa)
-9. systemd `bedrud.service` oluşturur
-10. `systemctl daemon-reload` çalıştırır, her iki servisi de etkinleştirir ve başlatır
+8. LiveKit init servisi oluşturur (harici LiveKit kullanılmıyorsa)
+9. Bedrud init servisi oluşturur
+10. Algılanan init sistemi üzerinden servisleri etkinleştirir ve başlatır
 11. Erişim URL'lerini yazdırır
 
 **TLS seçenekleri:**
@@ -124,7 +124,7 @@ bedrud install [bayraklar]
 - `--livekit-domain`: LiveKit yerel olarak çalışır ama istemciler kendi alan adı üzerinden doğrudan bağlanır
 - `--external-livekit`: Yerel LiveKit yok; uzak sunucuya bağlanır
 
-**Uygulama:** `server/internal/install/debian.go`
+**Uygulama:** `server/internal/install/linux.go`
 
 **İlgili belgeler:** [Kurulum Kılavuzu](/tr/docs/getting-started/installation) • [Dağıtım Kılavuzu](/tr/docs/guides/deployment) • [Arka Uç Dağıtım Mantığı](/tr/docs/backend/deployment)
 
@@ -139,12 +139,13 @@ bedrud uninstall
 ```
 
 **Kaldırdıkları:**
-- systemd servislerini durdurur ve devre dışı bırakır: `bedrud`, `livekit`
-- systemd birim dosyalarını `/etc/systemd/system/` konumundan kaldırır
+- tüm init sistemlerinde servisleri durdurur ve devre dışı bırakır: `bedrud`, `livekit`
+- systemd, OpenRC ve SysV init servis dosyalarını kaldırır
 - İkili dosyaları kaldırır: `/usr/local/bin/bedrud`, `/tmp/bedrud`, `/tmp/bedrud-livekit-server`
 - Dizinleri kaldırır: `/etc/bedrud`, `/var/lib/bedrud`, `/var/log/bedrud`
+- Sistem kullanıcısını siler: bedrud
 
-**Uygulama:** `server/internal/install/debian.go`
+**Uygulama:** `server/internal/install/` (linux.go, init.go, sysv.go, openrc.go)
 
 **İlgili belgeler:** [Kurulum Kılavuzu - Kaldırma](/tr/docs/getting-started/installation#uninstallation)
 
@@ -289,4 +290,4 @@ bedrud user demote --email admin@example.com
 - [Kurulum Kılavuzu](/tr/docs/getting-started/installation) - Ayrıntılı `bedrud install` kılavuzu, TLS topolojileri, kurulum sonrası adımlar
 - [Yapılandırma Referansı](/tr/docs/getting-started/configuration) - Sunucu ve LiveKit yapılandırma dosyası yapısı
 - [Arka Uç Dağıtım Mantığı](/tr/docs/backend/deployment) - `install` ve `uninstall` dahili olarak nasıl çalışır
-- [Dağıtım Kılavuzu](/tr/docs/guides/deployment) - systemd servisleri dahil tam dağıtım seçenekleri
+- [Dağıtım Kılavuzu](/tr/docs/guides/deployment) - init sistemi servisleri dahil tam dağıtım seçenekleri

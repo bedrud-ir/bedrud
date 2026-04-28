@@ -27,6 +27,7 @@ make help       # Show all available targets
 | `make dev-site` | Astro-Site-Dev-Server ausführen |
 | `make dev-ios` | iOS-Projekt in Xcode öffnen |
 | `make dev-android` | Android-Projekt in Android Studio öffnen |
+| `make livekit-download` | LiveKit-Server für das aktuelle OS/Arch herunterladen |
 
 ### `make init`
 
@@ -54,6 +55,9 @@ Startet alle drei Entwicklungsdienste gleichzeitig. Drücken Sie `Ctrl+C`, um al
 | `make build-front` | Nur Frontend erstellen |
 | `make build-back` | Nur Backend erstellen |
 | `make build-dist` | Produktions-Tarball für linux/amd64 erstellen |
+| `make build-back-win` | Backend für Windows bauen |
+| `make build-dist-win` | Produktions-Windows-Distribution bauen |
+| `make prep-livekit-win` | Sicherstellen, dass die LiveKit-Windows-Binärdatei zum Einbetten verfügbar ist |
 | `make build-site` | Astro-Site erstellen (SSG) |
 
 ### `make build`

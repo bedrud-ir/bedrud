@@ -57,7 +57,7 @@ bedrud --livekit --config <path>
 |------------|------------|----------------------------------|
 | `--config` | (required) | Path to LiveKit YAML config file |
 
-**Used by:** systemd `livekit.service` created by `bedrud install`
+**Used by:** init `livekit` service created by `bedrud install`
 
 **Implementation:** `server/internal/livekit/server.go`
 
@@ -65,7 +65,7 @@ bedrud --livekit --config <path>
 
 ### `--run`
 
-Alias for `bedrud run` with same `--config` flag behavior. Used by systemd `bedrud.service`.
+Alias for `bedrud run` with same `--config` flag behavior. Used by init `bedrud` service.
 
 ```bash
 bedrud --run --config <path>
@@ -75,7 +75,7 @@ bedrud --run --config <path>
 
 ### `install`
 
-Install Bedrud on a Debian/Linux system. Creates systemd services, config files, directories, and TLS certificates.
+Install Bedrud on a Debian/Linux system. Creates init services (systemd, OpenRC, or SysV init — auto-detected), config files, directories, and TLS certificates.
 
 ```bash
 bedrud install [flags]
@@ -108,9 +108,9 @@ bedrud install [flags]
 5. Generates Bedrud server config at `/etc/bedrud/config.yaml`
 6. Generates LiveKit media server config at `/etc/bedrud/livekit.yaml`
 7. Generates self-signed certs at `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` (if TLS enabled and no custom certs)
-8. Creates systemd `livekit.service` (unless using external LiveKit)
-9. Creates systemd `bedrud.service`
-10. Runs `systemctl daemon-reload`, enables, and starts both services
+8. Creates LiveKit init service (unless using external LiveKit)
+9. Creates Bedrud init service
+10. Enables and starts services via detected init system
 11. Prints access URLs
 
 **TLS options:**
@@ -124,7 +124,7 @@ bedrud install [flags]
 - `--livekit-domain`: LiveKit runs locally but clients connect directly via its own domain
 - `--external-livekit`: No local LiveKit; connects to remote server
 
-**Implementation:** `server/internal/install/debian.go`
+**Implementation:** `server/internal/install/linux.go`
 
 **Related docs:** [Installation Guide](/en/docs/getting-started/installation) • [Deployment Guide](/en/docs/guides/deployment) • [Backend Deployment Logic](/en/docs/backend/deployment)
 
@@ -139,12 +139,13 @@ bedrud uninstall
 ```
 
 **Removes:**
-- Stops and disables systemd services: `bedrud`, `livekit`
-- Removes systemd unit files from `/etc/systemd/system/`
+- Stops and disables services across all init systems: `bedrud`, `livekit`
+- Removes service files for systemd, OpenRC, and SysV init
 - Removes binary: `/usr/local/bin/bedrud`, `/tmp/bedrud`, `/tmp/bedrud-livekit-server`
 - Removes directories: `/etc/bedrud`, `/var/lib/bedrud`, `/var/log/bedrud`
+- Removes system user: `bedrud`
 
-**Implementation:** `server/internal/install/debian.go`
+**Implementation:** `server/internal/install/` (linux.go, init.go, sysv.go, openrc.go)
 
 **Related docs:** [Installation Guide - Uninstalling](/en/docs/getting-started/installation#uninstallation)
 
@@ -289,4 +290,4 @@ bedrud user demote --email admin@example.com
 - [Installation Guide](/en/docs/getting-started/installation) - Detailed `bedrud install` walkthrough, TLS topologies, post-install steps
 - [Configuration Reference](/en/docs/getting-started/configuration) - Server and LiveKit config file structure
 - [Backend Deployment Logic](/en/docs/backend/deployment) - How `install` and `uninstall` work internally
-- [Deployment Guide](/en/docs/guides/deployment) - Full deployment options including systemd services
+- [Deployment Guide](/en/docs/guides/deployment) - Full deployment options including init system services

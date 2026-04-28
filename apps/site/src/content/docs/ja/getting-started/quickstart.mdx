@@ -1,4 +1,4 @@
----
+﻿---
 title: クイックスタート
 description: 5 分以内に Bedrud をデプロイしてビデオ会議に参加する
 order: 1
@@ -27,7 +27,7 @@ order: 1
 
 | 要件 | 詳細 |
 |-------------|---------|
-| Linux サーバー | amd64 または arm64、`sudo` アクセスと `systemd` が必要。macOS/Windows: サーバーには Docker または WSL2 を使用 |
+| Linux サーバー | amd64 または arm64、`sudo` アクセスと対応イニットシステム（systemd、OpenRC、SysV init）が必要。macOS/Windows: サーバーには Docker または WSL2 を使用 |
 | 開放ポート | `8090`、`7880`、`50000–60000/udp`。自動 TLS の場合: さらに `80` と `443` |
 | ドメイン（任意） | このサーバーを指す DNS A レコード。ドメインなし？IP でも動作 - 以下の代替方法を参照 |
 
@@ -46,7 +46,7 @@ order: 1
   <TabsContent value="macos-linux">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     インストール後にシェルを再読み込み:
@@ -66,7 +66,7 @@ order: 1
   <TabsContent value="windows">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
     ターミナルを閉じて再び開き、確認:
@@ -98,7 +98,7 @@ order: 1
 
 ## 2. サーバーをデプロイ
 
-> **サーバーセットアップには systemd 搭載の Linux が必要です。** macOS と Windows では `bedrud install` を直接サポートしていません — 代わりに [Docker](#docker) または [WSL2](#非-linux-システム) を使用してください。
+> **サーバーセットアップには対応イニットシステム（systemd、OpenRC、SysV init）搭載の Linux が必要です。** macOS と Windows では `bedrud install` を直接サポートしていません — 代わりに [Docker](#docker) または [WSL2](#非-linux-システム) を使用してください。
 
 `meet.example.com` と `admin@example.com` を実際の値に置き換えてください:
 
@@ -106,7 +106,7 @@ order: 1
 sudo bedrud install --tls --domain meet.example.com --email admin@example.com
 ```
 
-サーバーバイナリを `/usr/local/bin` にインストールし、設定を生成し、systemd サービスを作成し、TLS をプロビジョニングし、すべてを起動します。
+サーバーバイナリを `/usr/local/bin` にインストールし、設定を生成し、イニットサービス（systemd、OpenRC、SysV init）を作成し、TLS をプロビジョニングし、すべてを起動します。
 
 > **ポート 80 または 443 が使用中？** 競合するサービスを停止: `sudo systemctl stop nginx apache2 caddy`、その後再実行。
 
@@ -185,7 +185,7 @@ sudo bedrud install --ip 127.0.0.1
 
 ### 非 Linux システム
 
-`bedrud install` コマンドは systemd サービスを設定するため Linux のみ対応です。CLI インストーラー（ステップ 1）はすべてのプラットフォームで動作し、バイナリを PATH に配置します。サーバーセットアップには Docker または WSL2 を使用してください。
+`bedrud install` コマンドはイニットサービス（systemd、OpenRC、SysV init）を設定するため Linux のみ対応です。CLI インストーラー（ステップ 1）はすべてのプラットフォームで動作し、バイナリを PATH に配置します。サーバーセットアップには Docker または WSL2 を使用してください。
 
 | OS      | 方法                                                     |
 |---------|---------------------------------------------------------|
@@ -254,3 +254,4 @@ docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
 - [デプロイメントガイド](/ja/docs/guides/deployment) — 本番セットアップ、リバースプロキシ、スケーリング
 - [アーキテクチャ概要](/ja/docs/architecture/overview) — 構成要素の全体像
 - [API ドキュメント](http://localhost:8090/api/swagger) — Swagger UI（実行中のインスタンス）
+

@@ -1,4 +1,4 @@
----
+﻿---
 title: Instalador CLI
 description: Instalación en un solo comando de Bedrud en todas las plataformas
 order: 2
@@ -12,8 +12,8 @@ Para la configuración del servidor después de la instalación, consulta [Inici
 
 ## Lo que Hace
 
-1. Detecta el sistema operativo, arquitectura de CPU y variantes de plataforma (Rosetta 2)
-2. Descarga el binario correcto desde [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases)
+1. Detecta el sistema operativo, arquitectura de CPU, variantes de plataforma (Rosetta 2) y sistema de inicialización (systemd/OpenRC/SysV/contenedor)
+2. Descarga el binario correcto desde [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) (o compila desde el código fuente con `--build`)
 3. Instala en `~/bin` (personalizable con `--install-dir`)
 4. Añade el directorio de instalación al `PATH` mediante la configuración del shell
 5. Ejecuta `bedrud completions` para el autocompletado por tabulador del shell
@@ -26,6 +26,7 @@ Para la configuración del servidor después de la instalación, consulta [Inici
 | Plataforma | Dependencias |
 |------------|-------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (incluido con Windows 10/11) |
 
 ---
@@ -40,7 +41,7 @@ Para la configuración del servidor después de la instalación, consulta [Inici
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Recarga el shell, luego verifica:
@@ -53,7 +54,7 @@ Para la configuración del servidor después de la instalación, consulta [Inici
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     bedrud --version
     ```
   </TabsContent>
@@ -66,13 +67,15 @@ Para la configuración del servidor después de la instalación, consulta [Inici
 ### Instalador Bash
 
 ```
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 ```
 
 | Flag | Predeterminado | Descripción |
 |------|---------------|-------------|
 | `--install-dir <dir>` | `~/bin` | Dónde colocar el binario |
 | `--version <ver>` | `latest` | Fijar a una versión (ej. `v1.2.0`) |
+| `--build` | desactivado | Compilar desde el código fuente en lugar de descargar |
+| `--branch <name>` | `main` | Rama de Git a clonar (requiere `--build`) |
 | `--skip-shell` | desactivado | No modificar archivos RC del shell ni PATH |
 | `-h`, `--help` | — | Mostrar uso y salir |
 
@@ -80,28 +83,34 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 
 ```bash
 # Predeterminado
-curl -fsSL https://get.bedrud.org | bash
+curl -fsSL https://bedrud.org/install.sh | bash
 
 # Fijar versión
-curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
+
+# Compilar desde el código fuente (rama personalizada)
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
+
+# Compilar desde un fork
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
 
 # Instalación en todo el sistema
-curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://bedrud.org/install.sh | sudo bash -s -- --install-dir /usr/local/bin
 
 # CI / automatización — omitir configuración del shell
-curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --skip-shell
 ```
 
 ### Instalador PowerShell
 
 ```
-Usage: irm https://get.bedrud.org/install.ps1 | iex
+Usage: irm https://bedrud.org/install.ps1 | iex
 ```
 
 Para pasar parámetros, guarda primero en un archivo:
 
 ```powershell
-irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+irm https://bedrud.org/install.ps1 -OutFile install.ps1
 .\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
 ```
 
@@ -121,13 +130,13 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `BEDRUD_REPO` | `bedrud-ir/bedrud` | Ambas | Sobrescribir repositorio de GitHub (para forks o mirrors) |
 
 ```bash
-BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
-BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://bedrud.org/install.sh | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ```powershell
 $env:BEDRUD_REPO = "myorg/bedrud-fork"
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
 
 ---
@@ -169,23 +178,56 @@ uname -m → "x86_64" | "amd64"  → amd64
 **Detección:** `sysctl -n sysctl.proc_translated` devuelve `1`.
 **Efecto:** Cambia `darwin_amd64` → `darwin_arm64` para rendimiento nativo en ARM.
 
+### Entornos de contenedores (Docker, Kubernetes, etc.)
+
+**Detección:** Comprueba `/.dockerenv`, `/run/.containerenv`, `/proc/1/comm` (para `docker-init`, `tini`, `containerd`, `runc`) y `/proc/1/cgroup` (para `docker`, `kubepods`, `containerd`).
+**Efecto:** La instalación de archivos de servicio se omite. El instalador muestra comandos de inicio manual:
+
+```bash
+# Primer plano
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# Segundo plano
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+Para una gestión adecuada de servicios en Docker, use `--init` o [tini](https://github.com/krallin/tini) como PID 1.
+
+---
+
+## Soporte de sistemas de inicialización
+
+El instalador detecta automáticamente el sistema de inicialización y crea los archivos de servicio apropiados para la configuración del servidor:
+
+| Sistema de inicialización | Detección | Archivos de servicio | Gestión |
+|---------------------------|-----------|---------------------|---------|
+| systemd | existe `/run/systemd/system` | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | existe `/sbin/openrc` | `/etc/init.d/*` (formato OpenRC) | `rc-service`, `rc-update` |
+| SysV init | comando `service` disponible | `/etc/init.d/*` (formato LSB) | `service`, `update-rc.d` |
+| **Contenedor** | `/.dockerenv`, `/proc/1/comm`, `/proc/1/cgroup` | Ninguno — inicio manual | Binario directo o `nohup` |
+
+Compatible con: La mayoría de las distribuciones de Linux (systemd, OpenRC, SysV init), WSL1 y contenedores de Linux. Los entornos de contenedores se detectan automáticamente — la instalación de archivos de servicio se omite con instrucciones de inicio manual.
+
 ---
 
 ## Flujo de Instalación
 
-1. **Comprobación de Windows** — ¿MINGW/MSYS/CYGWIN detectado? Mostrar comando de PowerShell, salir
-2. **Comprobación de dependencias** — requiere `curl` + `tar`
-3. **Análisis de argumentos** — máximo 3 flags
-4. **Detección de plataforma** — SO + arquitectura mediante `uname`
-5. **Detección de variantes** — Rosetta 2
-6. **Descarga** — descargar `bedrud_{TARGET}.tar.xz`
-7. **Extracción e instalación** — directorio temporal, extraer, `mv → $INSTALL_DIR/bedrud`, `chmod +x`
-8. **Verificación** — ejecutar `bedrud --version`
-9. **Comprobación de PATH** — ¿Ya en PATH? Omitir. ¿`--skip-shell`? Mostrar comando manual. En caso contrario → modificar archivo RC
-10. **Completions** — ejecutar `bedrud completions`
-11. **Listo** — mostrar éxito + instrucciones de recarga
+1. **Comprobación de Windows** — ¿MINGW/MSYS/CYGWIN detectado en Bash? Redirigir a PowerShell.
+2. **Comprobación de WSL** — ¿WSL detectado en PowerShell? Redirigir a Bash.
+3. **Comprobación de dependencias** — Bash: `curl` + `tar`. PowerShell: (ninguna por defecto). Compilación: `git` + `go` + `bun` + `make`.
+4. **Detección de plataforma** — SO + arquitectura mediante `uname` (Bash) o `RuntimeInformation` (PowerShell).
+5. **Instalar binario** — ya sea:
+   - **Modo descarga** (predeterminado): descargar y extraer zip/tar.xz.
+   - **Modo compilación** (`--build`): `git clone`, `bun install`, `go mod download`, `make build`.
+6. **Verificación** — ejecutar `bedrud --version`.
+7. **Comprobación de PATH** — ¿Ya en PATH? Omitir. En caso contrario → modificar archivo RC (Bash) o Registro (PowerShell).
+8. **Configuración Interactiva** — Cuestionario para Dominio, TLS, Postgres y creación del usuario Administrador.
+9. **Listo** — mostrar éxito + URL de acceso.
 
 Formato de URL de descarga: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+Modo compilación clona desde: `github.com/{repo}` y ejecuta `make build` (salida: `server/dist/bedrud`).
 
 ---
 
@@ -238,7 +280,7 @@ chmod +x ~/bin/bedrud
 ### Mirror Autohospedado
 
 ```bash
-BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ### Binario Directo
@@ -255,7 +297,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-Para instalaciones de servidor con systemd:
+Para instalaciones de servidor con systemd, OpenRC o SysV init:
 
 ```bash
 sudo bedrud uninstall
@@ -298,12 +340,29 @@ source ~/.bashrc
 Forzar ARM nativo:
 
 ```bash
-arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+arch -arm64 curl -fsSL https://bedrud.org/install.sh | arch -arm64 bash
 ```
 
 ### Windows: "running scripts is disabled"
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
+
+nstall.ps1 | iex
+```
+
+edrud.org/install.ps1 | iex
+```
+
+n Windows), el instalador de PowerShell lo detectará y te pedirá que ejecutes el instalador de Bash en su lugar. Esto asegura que Bedrud se instale correctamente para el entorno Linux dentro de WSL.
+
+### Windows: dispositivos ARM64 (Surface Pro, etc.)
+
+El instalador detecta automáticamente `windows_arm64` y descarga el binario nativo. Si necesitas forzar una arquitectura, descarga el zip específico desde [Releases](https://github.com/bedrud-ir/bedrud/releases).
+
+### Windows: Docker Desktop para Postgres
+
+Si eliges ejecutar Postgres en Docker durante la configuración, asegúrate de que **Docker Desktop** esté instalado y funcionando. El instalador intentará iniciar el contenedor automáticamente.
+

@@ -1,4 +1,4 @@
-import { ArrowRight, Copy } from "lucide-react";
+﻿import { ArrowRight, Copy } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Spotlight } from "~/components/ui/spotlight";
@@ -7,7 +7,7 @@ import { DEMO_URL } from "~/lib/config";
 import { type Locale, t } from "../../i18n/utils";
 import { DeviceShowcase } from "./device-showcase";
 
-const INSTALL_CMD = "curl -fsSL https://get.bedrud.org | bash";
+const INSTALL_CMD = "curl -fsSL https://bedrud.org/install.sh | bash";
 
 export function HeroSection({ lang }: { lang: Locale }) {
   const [copied, setCopied] = useState(false);

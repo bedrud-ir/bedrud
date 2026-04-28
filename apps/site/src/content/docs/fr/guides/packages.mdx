@@ -30,7 +30,7 @@ echo "deb https://bedrud-ir.github.io/bedrud stable main" \
 sudo apt update && sudo apt install bedrud
 ```
 
-Le paquet installe le binaire dans `/usr/local/bin/bedrud` et enregistre un service systemd. Après l'installation, exécutez l'installateur interactif :
+Le paquet installe le binaire dans `/usr/local/bin/bedrud` et enregistre un service init (systemd/OpenRC/SysV détection automatique). Après l'installation, exécutez l'installateur interactif :
 
 ```bash
 sudo bedrud install

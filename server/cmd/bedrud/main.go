@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 var version = "dev"
@@ -27,7 +28,7 @@ func main() {
 		case "--livekit":
 			lkCmd := flag.NewFlagSet("livekit", flag.ExitOnError)
 			configPath := lkCmd.String("config", "", "Path to LiveKit config file")
-			lkCmd.Parse(os.Args[i+1:])
+			_ = lkCmd.Parse(os.Args[i+1:])
 			if err := livekit.RunLiveKit(*configPath); err != nil {
 				fmt.Fprintf(os.Stderr, "LiveKit error: %v\n", err)
 				os.Exit(1)
@@ -36,13 +37,17 @@ func main() {
 		case "--run":
 			runCmd := flag.NewFlagSet("run", flag.ExitOnError)
 			configPath := runCmd.String("config", "", "Path to Bedrud config file")
-			runCmd.Parse(os.Args[i+1:])
+			skipMigrate := runCmd.Bool("skip-migrate", false, "Skip database migrations on startup")
+			_ = runCmd.Parse(os.Args[i+1:])
 			path := *configPath
 			if path == "" {
 				path = os.Getenv("CONFIG_PATH")
 				if path == "" {
 					path = "config.yaml"
 				}
+			}
+			if *skipMigrate {
+				os.Setenv("BEDRUD_SKIP_MIGRATE", "1")
 			}
 			if err := server.Run(path); err != nil {
 				fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
@@ -57,7 +62,8 @@ func main() {
 	case "server", "run":
 		serverCmd := flag.NewFlagSet("server", flag.ExitOnError)
 		configPath := serverCmd.String("config", "", "Path to config file")
-		serverCmd.Parse(os.Args[2:])
+		skipMigrate := serverCmd.Bool("skip-migrate", false, "Skip database migrations on startup")
+		_ = serverCmd.Parse(os.Args[2:])
 
 		path := *configPath
 		if path == "" {
@@ -65,6 +71,10 @@ func main() {
 			if path == "" {
 				path = "config.yaml"
 			}
+		}
+
+		if *skipMigrate {
+			os.Setenv("BEDRUD_SKIP_MIGRATE", "1")
 		}
 
 		if err := server.Run(path); err != nil {
@@ -90,16 +100,52 @@ func main() {
 		behindProxyFlag := installCmd.Bool("behind-proxy", false, "Running behind a CDN/reverse-proxy (Cloudflare, nginx, etc.)")
 		externalLKFlag := installCmd.String("external-livekit", "", "URL of a fully external LiveKit server (different machine, e.g. https://lk.example.com)")
 		lkDomainFlag := installCmd.String("livekit-domain", "", "Separate domain for the local LiveKit server (e.g. lk.example.com, bypasses CDN)")
-		installCmd.Parse(os.Args[2:])
+		lkIPFlag := installCmd.String("lk-ip", "", "Separate IP for LiveKit NodeIP (when server behind CDN, LiveKit needs direct-reachable IP)")
+		lkUDPPortRangeFlag := installCmd.String("lk-udp-range", "", "UDP port range for WebRTC media, e.g. 50000-60000 (default 50000-60000)")
+		_ = installCmd.Parse(os.Args[2:])
 
-		tls := (*enableTLS || *selfSigned) && !*noTLS
-		if err := install.DebianInstall(tls, *noTLS, *selfSigned && !*noTLS, *ipOverride, *domainFlag, *emailFlag, *portFlag, *certFlag, *keyFlag, *lkPortFlag, *lkTcpPortFlag, *lkUdpPortFlag, *freshFlag, *behindProxyFlag, *externalLKFlag, *lkDomainFlag); err != nil {
+		lkUDPPortRangeStart := ""
+		lkUDPPortRangeEnd := ""
+		if *lkUDPPortRangeFlag != "" {
+			parts := strings.SplitN(*lkUDPPortRangeFlag, "-", 2)
+			if len(parts) == 2 {
+				lkUDPPortRangeStart = parts[0]
+				lkUDPPortRangeEnd = parts[1]
+			} else {
+				fmt.Fprintf(os.Stderr, "Invalid --lk-udp-range format: %s (expected start-end, e.g. 50000-60000)\n", *lkUDPPortRangeFlag)
+				os.Exit(1)
+			}
+		}
+
+		cfg := install.InstallConfig{
+			EnableTLS:           (*enableTLS || *selfSigned) && !*noTLS,
+			DisableTLS:          *noTLS,
+			SelfSigned:          *selfSigned && !*noTLS,
+			OverrideIP:          *ipOverride,
+			Domain:              *domainFlag,
+			Email:               *emailFlag,
+			Port:                *portFlag,
+			CertPath:            *certFlag,
+			KeyPath:             *keyFlag,
+			LKPort:              *lkPortFlag,
+			LKTcpPort:           *lkTcpPortFlag,
+			LKUdpPort:           *lkUdpPortFlag,
+			LKUDPPortRangeStart: lkUDPPortRangeStart,
+			LKUDPPortRangeEnd:   lkUDPPortRangeEnd,
+			Fresh:               *freshFlag,
+			BehindProxy:         *behindProxyFlag,
+			ExternalLKURL:       *externalLKFlag,
+			LKDomain:            *lkDomainFlag,
+			LKIP:                *lkIPFlag,
+		}
+
+		if err := install.LinuxInstall(&cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Installation error: %v\n", err)
 			os.Exit(1)
 		}
 
 	case "uninstall":
-		if err := install.DebianUninstall(); err != nil {
+		if err := install.LinuxUninstall(); err != nil {
 			fmt.Fprintf(os.Stderr, "Uninstallation error: %v\n", err)
 			os.Exit(1)
 		}
@@ -107,7 +153,7 @@ func main() {
 	case "user":
 		userCmd := flag.NewFlagSet("user", flag.ExitOnError)
 		configPath := userCmd.String("config", "/etc/bedrud/config.yaml", "Path to Bedrud config file")
-		userCmd.Parse(os.Args[2:])
+		_ = userCmd.Parse(os.Args[2:])
 
 		if len(userCmd.Args()) == 0 {
 			fmt.Println("Usage: bedrud user <subcommand> [flags]")
@@ -122,7 +168,7 @@ func main() {
 		emailFlag := subCmd.String("email", "", "User email address")
 		passwordFlag := subCmd.String("password", "", "User password")
 		nameFlag := subCmd.String("name", "", "User name")
-		subCmd.Parse(userCmd.Args()[1:])
+		_ = subCmd.Parse(userCmd.Args()[1:])
 
 		if *emailFlag == "" {
 			fmt.Fprintf(os.Stderr, "Error: --email is required\n")
@@ -185,6 +231,8 @@ func printUsage() {
 	fmt.Println("            Flags: --tls / --self-signed, --no-tls, --domain, --email,")
 	fmt.Println("                   --ip, --port, --cert, --key,")
 	fmt.Println("                   --lk-port, --lk-tcp-port, --lk-udp-port,")
+	fmt.Println("                   --lk-ip <ip>            (separate NodeIP when behind CDN)")
+	fmt.Println("                   --lk-udp-range <s-e>    (UDP port range, e.g. 50000-60000)")
 	fmt.Println("                   --fresh, --behind-proxy,")
 	fmt.Println("                   --livekit-domain <domain>  (local LK on its own domain)")
 	fmt.Println("                   --external-livekit <url>   (fully separate LK machine)")

@@ -30,7 +30,7 @@ echo "deb https://bedrud-ir.github.io/bedrud stable main" \
 sudo apt update && sudo apt install bedrud
 ```
 
-Paket, ikili dosyayı `/usr/local/bin/bedrud` konumuna kurar ve bir systemd servisi kaydeder. Kurulumdan sonra etkileşimli yükleyiciyi çalıştırın:
+Paket, ikili dosyayı `/usr/local/bin/bedrud` konumuna kurar ve bir init servisi (systemd/OpenRC/SysV otomatik algılanır) kaydeder. Kurulumdan sonra etkileşimli yükleyiciyi çalıştırın:
 
 ```bash
 sudo bedrud install

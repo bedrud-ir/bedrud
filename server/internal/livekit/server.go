@@ -21,7 +21,7 @@ func ExportBinary(destPath string) error {
 	// currently mapped as an executable (ETXTBSY).  Removing the path lets
 	// the running process keep its inode while we create a fresh one.
 	_ = os.Remove(destPath)
-	if err := os.WriteFile(destPath, binData, 0755); err != nil {
+	if err := os.WriteFile(destPath, binData, 0o755); err != nil {
 		return fmt.Errorf("failed to write LiveKit binary to %s: %w", destPath, err)
 	}
 	return nil
@@ -33,7 +33,9 @@ func RunLiveKit(configPath string) error {
 	if err := ExportBinary(lkPath); err != nil {
 		return err
 	}
-	os.Chmod(lkPath, 0755)
+	if err := os.Chmod(lkPath, 0o755); err != nil {
+		log.Warn().Err(err).Msg("Failed to set executable permissions on LiveKit binary")
+	}
 
 	args := []string{}
 	if configPath != "" {
@@ -49,7 +51,7 @@ func RunLiveKit(configPath string) error {
 }
 
 // StartInternalServer starts a LiveKit server using the provided config file
-func StartInternalServer(ctx context.Context, apiKey, apiSecret string, port int, certFile, keyFile string, externalConfigPath string) error {
+func StartInternalServer(ctx context.Context, apiKey, apiSecret string, port int, certFile, keyFile, externalConfigPath string) error {
 	// Skip if we are running in a mode where external LiveKit is preferred (managed by systemd)
 	if os.Getenv("LIVEKIT_MANAGED") == "true" {
 		log.Info().Msg("➜ Skipping internal LiveKit management (managed by system service)")
@@ -63,15 +65,16 @@ func StartInternalServer(ctx context.Context, apiKey, apiSecret string, port int
 		// Fallback to PATH if export fails
 		lkPath = lkExeName
 	} else {
-		os.Chmod(lkPath, 0755)
+		if err := os.Chmod(lkPath, 0o755); err != nil {
+			log.Warn().Err(err).Msg("Failed to set executable permissions on LiveKit binary")
+		}
 	}
 
 	args := []string{}
 	if externalConfigPath != "" {
 		args = append(args, "--config", externalConfigPath)
 	} else {
-		args = append(args, "--port", fmt.Sprintf("%d", port))
-		args = append(args, "--keys", fmt.Sprintf("%s: %s", apiKey, apiSecret))
+		args = append(args, "--port", fmt.Sprintf("%d", port), "--keys", fmt.Sprintf("%s: %s", apiKey, apiSecret))
 	}
 
 	cmd := exec.CommandContext(ctx, lkPath, args...)

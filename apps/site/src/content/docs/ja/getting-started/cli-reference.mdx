@@ -57,7 +57,7 @@ bedrud --livekit --config <path>
 |------------|------------|----------------------------------|
 | `--config` | （必須） | LiveKit YAML 設定ファイルのパス |
 
-**使用元:** `bedrud install` で作成される systemd `livekit.service`
+**使用元:** `bedrud install` で作成されるイニットサービス `livekit.service`
 
 **実装:** `server/internal/livekit/server.go`
 
@@ -65,7 +65,7 @@ bedrud --livekit --config <path>
 
 ### `--run`
 
-`bedrud run` のエイリアス。同じ `--config` フラグの動作。systemd `bedrud.service` で使用されます。
+`bedrud run` のエイリアス。同じ `--config` フラグの動作。イニットサービス `bedrud.service` で使用されます。
 
 ```bash
 bedrud --run --config <path>
@@ -75,7 +75,7 @@ bedrud --run --config <path>
 
 ### `install`
 
-Debian/Linux システムに Bedrud をインストールします。systemd サービス、設定ファイル、ディレクトリ、TLS 証明書を作成します。
+Debian/Linux システムに Bedrud をインストールします。イニットサービス（systemd、OpenRC、SysV init — 自動検出）、設定ファイル、ディレクトリ、TLS 証明書を作成します。
 
 ```bash
 bedrud install [flags]
@@ -108,9 +108,9 @@ bedrud install [flags]
 5. Bedrud サーバー設定を `/etc/bedrud/config.yaml` に生成
 6. LiveKit メディアサーバー設定を `/etc/bedrud/livekit.yaml` に生成
 7. 自己署名証明書を `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` に生成（TLS 有効でカスタム証明書未指定時）
-8. systemd `livekit.service` を作成（外部 LiveKit 使用時を除く）
-9. systemd `bedrud.service` を作成
-10. `systemctl daemon-reload` を実行し、両サービスを有効化して起動
+8. LiveKit イニットサービスを作成（外部 LiveKit 使用時を除く）
+9. Bedrud イニットサービスを作成
+10. 検出されたイニットシステムでサービスを有効化・開始
 11. アクセス URL を表示
 
 **TLS オプション:**
@@ -124,7 +124,7 @@ bedrud install [flags]
 - `--livekit-domain`: LiveKit はローカルで実行されるが、クライアントは独自ドメインで直接接続
 - `--external-livekit`: ローカル LiveKit なし。リモートサーバーに接続
 
-**実装:** `server/internal/install/debian.go`
+**実装:** `server/internal/install/linux.go`
 
 **関連ドキュメント:** [インストールガイド](/ja/docs/getting-started/installation) • [デプロイメントガイド](/ja/docs/guides/deployment) • [バックエンドデプロイメントロジック](/ja/docs/backend/deployment)
 
@@ -139,12 +139,13 @@ bedrud uninstall
 ```
 
 **削除内容:**
-- systemd サービスを停止して無効化: `bedrud`、`livekit`
-- `/etc/systemd/system/` から systemd ユニットファイルを削除
+- すべてのイニットシステムでサービスを停止・無効化: `bedrud`、`livekit`
+- systemd、OpenRC、SysV init のサービスファイルを削除
 - バイナリを削除: `/usr/local/bin/bedrud`、`/tmp/bedrud`、`/tmp/bedrud-livekit-server`
 - ディレクトリを削除: `/etc/bedrud`、`/var/lib/bedrud`、`/var/log/bedrud`
+- システムユーザーを削除: bedrud
 
-**実装:** `server/internal/install/debian.go`
+**実装:** `server/internal/install/` (linux.go, init.go, sysv.go, openrc.go)
 
 **関連ドキュメント:** [インストールガイド - アンインストール](/ja/docs/getting-started/installation#uninstallation)
 
@@ -289,4 +290,4 @@ bedrud user demote --email admin@example.com
 - [インストールガイド](/ja/docs/getting-started/installation) - 詳細な `bedrud install` の手順、TLS トポロジー、インストール後のステップ
 - [設定リファレンス](/ja/docs/getting-started/configuration) - サーバーと LiveKit の設定ファイル構造
 - [バックエンドデプロイメントロジック](/ja/docs/backend/deployment) - `install` と `uninstall` の内部動作
-- [デプロイメントガイド](/ja/docs/guides/deployment) - systemd サービスを含む完全なデプロイメントオプション
+- [デプロイメントガイド](/ja/docs/guides/deployment) - イニットシステムサービスを含む完全なデプロイメントオプション

@@ -1,0 +1,286 @@
+﻿---
+title: Behind a Proxy/CDN
+description: Running Bedrud behind Cloudflare, nginx, and other reverse proxies
+order: 29
+---
+
+How to deploy Bedrud when your server sits behind a reverse proxy or CDN. This is a common production setup, but WebRTC (LiveKit) requires special handling because **CDNs cannot proxy UDP media traffic**.
+
+---
+
+## The Problem
+
+Bedrud has two network-facing components with different requirements:
+
+| Component | Traffic | CDN/Proxy Compatible? |
+|-----------|---------|----------------------|
+| Bedrud Server | HTTP/WebSocket (TCP) | Yes |
+| LiveKit (WebRTC) | UDP media + TCP signaling | **No — UDP must reach the server directly** |
+
+A standard proxy like Cloudflare, nginx, or Traefik handles HTTP/HTTPS traffic fine. But LiveKit's WebRTC media flows over **UDP ports** that these proxies silently drop or cannot forward.
+
+```
+Browser ──HTTP/WS──► CDN ──HTTP/WS──► Bedrud Server    ✓ Works
+Browser ──UDP────────► CDN ──X─────────► LiveKit        ✗ Dropped
+Browser ──UDP─────────────────────────► LiveKit         ✓ Direct
+```
+
+---
+
+## Deployment Options
+
+### Option 1: Separate LiveKit Domain (Recommended)
+
+Use two DNS records: one for the Bedrud server (proxied) and one for LiveKit (DNS-only).
+
+```
+meet.example.com     → A record → CDN proxy (Orange Cloud) → Bedrud server
+lk.meet.example.com  → A record → DNS only (Grey Cloud)    → Same server
+```
+
+The installer handles this when you select "Behind proxy" and provide a LiveKit subdomain.
+
+**Steps:**
+
+1. Run the installer and answer the proxy/CDN questions:
+   ```bash
+   curl -fsSL https://bedrud.org/install.sh | bash
+   ```
+   - "Running behind a proxy/CDN?" → **Yes**
+   - "What type?" → **cloudflare**
+   - "Use a separate subdomain for LiveKit?" → **Yes**
+   - Enter `lk.meet.example.com` as the LiveKit subdomain
+   - Enter your server's **real public IP** (not the CDN IP) for LiveKit
+
+2. In your DNS provider, create:
+   - `meet.example.com` → proxied through CDN
+   - `lk.meet.example.com` → **DNS Only** (Grey Cloud), pointing to your server's real IP
+
+3. Open the required ports in your firewall:
+   ```bash
+   sudo ufw allow 7880/tcp    # LiveKit API
+   sudo ufw allow 7881/tcp    # RTC TCP fallback
+   sudo ufw allow 50000:60000/udp  # WebRTC media
+   sudo ufw allow 3478/udp    # TURN relay
+   sudo ufw allow 5349/tcp    # TURN TLS (if using TLS)
+   ```
+
+**Why this works:** The browser connects to LiveKit directly via `lk.meet.example.com`, bypassing the CDN entirely. WebRTC UDP flows straight to your server. The Bedrud web UI still benefits from CDN caching and DDoS protection.
+
+### Option 2: External LiveKit Server
+
+Run LiveKit on a separate machine that is not behind any proxy.
+
+```
+Browser ──► CDN ──► Bedrud Server ──API──► LiveKit Server
+Browser ──────────────────────────────────► LiveKit Server
+```
+
+**Steps:**
+
+1. Set up a LiveKit server on a separate machine (see [LiveKit docs](https://docs.livekit.io/deploy/))
+
+2. Run the Bedrud installer and select "external LiveKit server":
+   ```bash
+   bedrud install \
+     --domain meet.example.com \
+     --behind-proxy \
+     --external-livekit https://lk.example.com \
+     --email admin@example.com
+   ```
+
+3. Ensure the LiveKit server's ports are open and reachable from clients.
+
+### Option 3: Same IP, Different Config (Embedded LK with explicit NodeIP)
+
+If you cannot use a separate domain, you can keep LiveKit embedded and explicitly set the real server IP for WebRTC ICE candidates. The signaling (WebSocket) still goes through the CDN, but media (UDP) bypasses it.
+
+```
+Browser ──WS/Signaling──► CDN ──► Bedrud Server ──► Embedded LiveKit
+Browser ──UDP Media─────────────────────► Server IP (direct)
+```
+
+**Steps:**
+
+1. Run the installer:
+   ```bash
+   bedrud install \
+     --domain meet.example.com \
+     --behind-proxy \
+     --lk-ip YOUR_REAL_SERVER_IP \
+     --lk-udp-range 50000-60000
+   ```
+
+2. Open the WebRTC ports on your firewall:
+   ```bash
+   sudo ufw allow 50000:60000/udp
+   sudo ufw allow 7881/tcp
+   sudo ufw allow 3478/udp
+   ```
+
+**Limitations:**
+- Clients must be able to reach your server's real IP on UDP ports
+- WebSocket signaling goes through CDN (subject to idle timeouts)
+- Less reliable than Option 1 or 2
+
+---
+
+## Cloudflare-Specific Notes
+
+### DNS Setup
+
+| Record | Name | Content | Proxy |
+|--------|------|---------|-------|
+| A | `meet` | Your server IP | **Proxied** (Orange Cloud) |
+| A | `lk` | Your server IP | **DNS Only** (Grey Cloud) |
+
+### WebSocket Timeouts
+
+Cloudflare free and pro tiers have a **100-second idle timeout** on WebSocket connections. If a user sits in a room without active signaling, the connection may drop. This causes a reconnect — audio/video usually recovers, but it can be disruptive.
+
+Mitigation: configure LiveKit keep-alive intervals in `livekit.yaml`:
+```yaml
+rtc:
+  peer_connection_configs:
+    - video_codec: H264
+  # Keepalive helps prevent idle disconnects through CDN
+```
+
+### Cache Rules
+
+Ensure Cloudflare is not caching LiveKit API responses. Create a cache rule:
+
+- **URL pattern:** `lk.yourdomain.com/twirp/*`
+- **Cache level:** **Bypass**
+
+### WAF Exceptions
+
+If your Bedrud server makes backend API calls to LiveKit through the CDN (rare with separate domains), Cloudflare's WAF may challenge or block these requests. Add a WAF exception for your server's IP address.
+
+### DDoS Protection
+
+When using DNS-only (Grey Cloud) for the LiveKit domain, that subdomain does **not** get Cloudflare's DDoS protection. LiveKit's built-in rate limiting and authentication (API keys) provide some protection. For additional security, consider:
+- Using the `--external-livekit` option with a dedicated LiveKit machine behind a separate firewall
+- Restricting LiveKit API access to your Bedrud server's IP using firewall rules
+
+---
+
+## nginx Reverse Proxy
+
+If using nginx as a reverse proxy (not CDN), you need to proxy the Bedrud server but pass LiveKit traffic directly.
+
+### nginx Config for Bedrud Server Only
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name meet.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/meet.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/meet.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # WebSocket support (if proxying LiveKit signaling through nginx)
+    location /livekit {
+        proxy_pass http://127.0.0.1:7880;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+    }
+}
+```
+
+### Important: UDP Media Still Needs Direct Access
+
+Even with nginx, WebRTC UDP media does **not** go through nginx. Clients connect directly to the LiveKit NodeIP on UDP ports. You still need to:
+
+1. Open UDP ports `50000-60000` (or your configured range) in the firewall
+2. Ensure `livekit.yaml` has the correct `node_ip` set to your server's public IP
+3. Use the `--behind-proxy` flag when installing so the server trusts proxy headers
+
+```bash
+bedrud install \
+  --domain meet.example.com \
+  --behind-proxy \
+  --lk-ip YOUR_REAL_SERVER_IP \
+  --lk-udp-range 50000-60000
+```
+
+---
+
+## Required Firewall Ports
+
+| Port | Protocol | Service | Always Required? |
+|------|----------|---------|-----------------|
+| 7880 | TCP | LiveKit API | Only if LK domain or external |
+| 7881 | TCP | RTC TCP fallback | Yes |
+| 50000-60000 | UDP | WebRTC media | Yes |
+| 3478 | UDP | TURN relay | Recommended |
+| 5349 | TCP | TURN TLS | If TLS enabled |
+| 80/443 | TCP | HTTP/HTTPS | Yes (via CDN or direct) |
+
+**Embedded mode (no separate LK domain):** Only 7881/tcp, 50000-60000/udp, and 3478/udp need to be open. Port 7880 is proxied through the Bedrud server.
+
+---
+
+## Troubleshooting
+
+### Users can join rooms but audio/video doesn't work
+
+**Cause:** UDP media traffic is not reaching the LiveKit server.
+
+1. Check that WebRTC UDP ports are open:
+   ```bash
+   sudo ss -ulnp | grep -E '(7882|50000|3478)'
+   ```
+2. Verify `node_ip` in `/etc/bedrud/livekit.yaml` is your server's real public IP
+3. If behind CDN, ensure the LiveKit domain uses DNS-only (Grey Cloud)
+
+### WebSocket disconnects every ~100 seconds
+
+**Cause:** Cloudflare idle timeout on free/pro tiers.
+
+Solutions:
+- Use a separate LiveKit domain (DNS-only) — signaling goes direct, no timeout
+- Upgrade to Cloudflare Business or Enterprise (longer WebSocket timeouts)
+
+### LiveKit ICE candidates show CDN IP instead of server IP
+
+**Cause:** `node_ip` is not set correctly in `livekit.yaml`.
+
+Fix:
+```bash
+# Check current config
+grep node_ip /etc/bedrud/livekit.yaml
+
+# If wrong, reinstall with correct IP
+bedrud install --fresh --lk-ip YOUR_REAL_SERVER_IP
+```
+
+### Clients cannot connect to LiveKit at all
+
+1. Check the LiveKit service is running:
+   ```bash
+   systemctl status livekit
+   journalctl -u livekit -n 50
+   ```
+2. Check port binding:
+   ```bash
+   ss -tlnp | grep 7880
+   ss -tlnp | grep 7881
+   ```
+3. If using a separate LK domain, verify DNS resolution:
+   ```bash
+   dig +short lk.meet.example.com
+   # Should return your server's real IP, not a CDN IP
+   ```
+

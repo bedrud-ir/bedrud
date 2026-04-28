@@ -1,4 +1,4 @@
----
+﻿---
 title: CLI Installer
 description: One-command install for Bedrud on all platforms
 order: 2
@@ -12,11 +12,11 @@ For server setup after installing, see [Quick Start](/en/docs/getting-started/qu
 
 ## What It Does
 
-1. Detects OS, CPU architecture, and platform variants (Rosetta 2)
-2. Downloads the correct binary from [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases)
-3. Installs to `~/bin` (customizable via `--install-dir`)
-4. Adds install directory to `PATH` via shell config
-5. Runs `bedrud completions` for shell tab-completion
+1. Detects OS, CPU architecture, platform variants (Rosetta 2/WSL), and init system (systemd/OpenRC/SysV/container)
+2. Downloads the correct binary from [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) (or builds from source with `--build`)
+3. Installs to `~/bin` or `%USERPROFILE%\bin` (customizable via `--install-dir`)
+4. Adds install directory to `PATH` (shell profiles for Bash, Registry for Windows)
+5. **Windows & Linux**: Offers an interactive Q&A to configure TLS, Postgres, and create the initial Admin user
 6. Prints next steps
 
 ---
@@ -26,7 +26,9 @@ For server setup after installing, see [Quick Start](/en/docs/getting-started/qu
 | Platform | Dependencies |
 |----------|-------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (ships with Windows 10/11) |
+| Windows (`--build`) | `git` + `go` + `bun` + `make` |
 
 ---
 
@@ -40,7 +42,7 @@ For server setup after installing, see [Quick Start](/en/docs/getting-started/qu
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Reload shell, then verify:
@@ -53,7 +55,7 @@ For server setup after installing, see [Quick Start](/en/docs/getting-started/qu
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     bedrud --version
     ```
   </TabsContent>
@@ -66,13 +68,15 @@ For server setup after installing, see [Quick Start](/en/docs/getting-started/qu
 ### Bash Installer
 
 ```
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--install-dir <dir>` | `~/bin` | Where to place the binary |
 | `--version <ver>` | `latest` | Pin to a release (e.g. `v1.2.0`) |
+| `--build` | off | Build from source instead of downloading a release |
+| `--branch <name>` | `main` | Git branch to clone (requires `--build`) |
 | `--skip-shell` | off | Don't modify shell RC files or PATH |
 | `-h`, `--help` | — | Print usage and exit |
 
@@ -80,29 +84,35 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 
 ```bash
 # Default
-curl -fsSL https://get.bedrud.org | bash
+curl -fsSL https://bedrud.org/install.sh | bash
 
 # Pin version
-curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
+
+# Build from source (custom branch)
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
+
+# Build from a fork
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
 
 # System-wide install
-curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://bedrud.org/install.sh | sudo bash -s -- --install-dir /usr/local/bin
 
 # CI / automation — skip shell config
-curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --skip-shell
 ```
 
 ### PowerShell Installer
 
 ```
-Usage: irm https://get.bedrud.org/install.ps1 | iex
+Usage: irm https://bedrud.org/install.ps1 | iex
 ```
 
 To pass parameters, save to file first:
 
 ```powershell
-irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
-.\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
+irm https://bedrud.org/install.ps1 -OutFile install.ps1
+.\install.ps1 -Version v1.2.0 -InstallDir C:\Tools -Build
 ```
 
 | Parameter | Default | Description |
@@ -110,6 +120,22 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `-InstallDir <path>` | `$HOME\bin` | Where to place `bedrud.exe` |
 | `-Version <ver>` | `latest` | Install a specific release version |
 | `-SkipPath` | `$false` | Don't add install dir to user PATH |
+| `-Build` | `$false` | Build from source instead of downloading |
+| `-Branch <name>` | `main` | Git branch to clone (requires `-Build`) |
+| `-NoSetup` | `$false` | Download only, skip interactive server setup |
+
+**Examples:**
+
+```powershell
+# Default
+irm https://bedrud.org/install.ps1 | iex
+
+# Build from source
+.\install.ps1 -Build -Branch main
+
+# CI / automation — skip interactive Q&A
+.\install.ps1 -NoSetup -SkipPath
+```
 
 ---
 
@@ -121,13 +147,13 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `BEDRUD_REPO` | `bedrud-ir/bedrud` | Both | Override GitHub repo (for forks or mirrors) |
 
 ```bash
-BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
-BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://bedrud.org/install.sh | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ```powershell
 $env:BEDRUD_REPO = "myorg/bedrud-fork"
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
 
 ---
@@ -169,23 +195,56 @@ uname -m → "x86_64" | "amd64"  → amd64
 **Detection:** `sysctl -n sysctl.proc_translated` returns `1`.
 **Effect:** Switches `darwin_amd64` → `darwin_arm64` for native ARM performance.
 
+### Container Environments (Docker, Kubernetes, etc.)
+
+**Detection:** Checks `/.dockerenv`, `/run/.containerenv`, `/proc/1/comm` (for `docker-init`, `tini`, `containerd`, `runc`), and `/proc/1/cgroup` (for `docker`, `kubepods`, `containerd`).
+**Effect:** Service file installation is skipped. The installer prints manual start commands:
+
+```bash
+# Foreground
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# Background
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+For proper service management in Docker, use `--init` or [tini](https://github.com/krallin/tini) as PID 1.
+
+---
+
+## Init System Support
+
+The installer auto-detects your init system and creates appropriate service files for server setup:
+
+| Init System | Detection | Service Files | Management |
+|-------------|-----------|---------------|------------|
+| systemd | `/run/systemd/system` exists | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | `/sbin/openrc` exists | `/etc/init.d/*` (OpenRC format) | `rc-service`, `rc-update` |
+| SysV init | `service` command available | `/etc/init.d/*` (LSB format) | `service`, `update-rc.d` |
+| **Container** | `/.dockerenv`, `/proc/1/comm`, `/proc/1/cgroup` | None — manual start | Direct binary or `nohup` |
+
+Supported on: Most Linux distributions (systemd, OpenRC, SysV init), WSL1, and Linux containers. Container environments are auto-detected — service file installation is skipped with manual start instructions printed.
+
 ---
 
 ## Install Flow
 
-1. **Windows check** — MINGW/MSYS/CYGWIN detected? Print PowerShell command, exit
-2. **Dependency check** — requires `curl` + `tar`
-3. **Argument parsing** — max 3 flags
-4. **Platform detection** — OS + architecture via `uname`
-5. **Variant detection** — Rosetta 2
-6. **Download** — download `bedrud_{TARGET}.tar.xz`
-7. **Extract & install** — temp dir, extract, `mv → $INSTALL_DIR/bedrud`, `chmod +x`
-8. **Verify** — run `bedrud --version`
-9. **PATH check** — already in PATH? Skip. `--skip-shell`? Print manual command. Otherwise → modify RC file
-10. **Completions** — run `bedrud completions`
-11. **Done** — print success + reload instructions
+1. **Windows check** — MINGW/MSYS/CYGWIN detected in Bash? Redirect to PowerShell.
+2. **WSL check** — WSL detected in PowerShell? Redirect to Bash.
+3. **Dependency check** — Bash: `curl` + `tar`. PowerShell: (default none). Build: `git` + `go` + `bun` + `make`.
+4. **Platform detection** — OS + architecture via `uname` (Bash) or `RuntimeInformation` (PowerShell).
+5. **Install binary** — either:
+   - **Download mode** (default): download and extract zip/tar.xz.
+   - **Build mode** (`--build`): `git clone`, `bun install`, `go mod download`, `make build`.
+6. **Verify** — run `bedrud --version`.
+7. **PATH check** — already in PATH? Skip. Otherwise → modify RC file (Bash) or Registry (PowerShell).
+8. **Interactive Setup** — Q&A for Domain, TLS, Postgres, and Admin user creation.
+9. **Done** — print success + access URL.
 
 Download URL format: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+Build mode clones from: `github.com/{repo}` and runs `make build` (outputs `server/dist/bedrud`).
 
 ---
 
@@ -238,7 +297,7 @@ chmod +x ~/bin/bedrud
 ### Self-Hosted Mirror
 
 ```bash
-BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ### Direct Binary
@@ -255,7 +314,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-For systemd server installs:
+For server installs (systemd, OpenRC, SysV init):
 
 ```bash
 sudo bedrud uninstall
@@ -298,12 +357,25 @@ source ~/.bashrc
 Force native ARM:
 
 ```bash
-arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+arch -arm64 curl -fsSL https://bedrud.org/install.sh | arch -arm64 bash
 ```
 
 ### Windows: "running scripts is disabled"
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
+
+### Windows: WSL detected
+
+If you are running in a WSL terminal (e.g., Ubuntu on Windows), the PowerShell installer will detect this and ask you to run the Bash installer instead. This ensures Bedrud is installed correctly for the Linux environment inside WSL.
+
+### Windows: ARM64 devices (Surface Pro, etc.)
+
+The installer auto-detects `windows_arm64` and downloads the native binary. If you need to force an architecture, download the specific zip from [Releases](https://github.com/bedrud-ir/bedrud/releases).
+
+### Windows: Docker Desktop for Postgres
+
+If you choose to run Postgres in Docker during setup, ensure **Docker Desktop** is installed and running. The installer will attempt to start the container automatically.
+

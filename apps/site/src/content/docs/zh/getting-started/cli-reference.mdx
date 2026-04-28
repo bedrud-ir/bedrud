@@ -57,7 +57,7 @@ bedrud --livekit --config <path>
 |------|--------|------|
 | `--config` | （必需） | LiveKit YAML 配置文件路径 |
 
-**使用者：** `bedrud install` 创建的 systemd `livekit.service`
+**使用者：** `bedrud install` 创建的 init 服务 `livekit.service`
 
 **实现：** `server/internal/livekit/server.go`
 
@@ -65,7 +65,7 @@ bedrud --livekit --config <path>
 
 ### `--run`
 
-`bedrud run` 的别名，`--config` 标志行为相同。由 systemd `bedrud.service` 使用。
+`bedrud run` 的别名，`--config` 标志行为相同。由 init 服务 `bedrud.service` 使用。
 
 ```bash
 bedrud --run --config <path>
@@ -75,7 +75,7 @@ bedrud --run --config <path>
 
 ### `install`
 
-在 Debian/Linux 系统上安装 Bedrud。创建 systemd 服务、配置文件、目录和 TLS 证书。
+在 Debian/Linux 系统上安装 Bedrud。创建 init 服务（systemd、OpenRC 或 SysV init — 自动检测）、配置文件、目录和 TLS 证书。
 
 ```bash
 bedrud install [flags]
@@ -108,9 +108,9 @@ bedrud install [flags]
 5. 在 `/etc/bedrud/config.yaml` 生成 Bedrud 服务器配置
 6. 在 `/etc/bedrud/livekit.yaml` 生成 LiveKit 媒体服务器配置
 7. 在 `/etc/bedrud/cert.pem` + `/etc/bedrud/key.pem` 生成 self-signed 证书（如启用 TLS 且无自定义证书）
-8. 创建 systemd `livekit.service`（除非使用外部 LiveKit）
-9. 创建 systemd `bedrud.service`
-10. 执行 `systemctl daemon-reload`，启用并启动两个服务
+8. 创建 LiveKit init 服务 `livekit.service`（除非使用外部 LiveKit）
+9. 创建 Bedrud init 服务 `bedrud.service`
+10. 通过检测到的 init 系统启用并启动服务
 11. 打印访问 URL
 
 **TLS 选项：**
@@ -124,7 +124,7 @@ bedrud install [flags]
 - `--livekit-domain`：LiveKit 本地运行但客户端通过其独立域名直连
 - `--external-livekit`：无本地 LiveKit；连接到远程服务器
 
-**实现：** `server/internal/install/debian.go`
+**实现：** `server/internal/install/linux.go`
 
 **相关文档：** [安装指南](/zh/docs/getting-started/installation) • [部署指南](/zh/docs/guides/deployment) • [后端部署逻辑](/zh/docs/backend/deployment)
 
@@ -139,12 +139,13 @@ bedrud uninstall
 ```
 
 **删除内容：**
-- 停止并禁用 systemd 服务：`bedrud`、`livekit`
-- 从 `/etc/systemd/system/` 删除 systemd 单元文件
+- 停止并禁用所有 init 系统中的服务：`bedrud`、`livekit`
+- 删除 systemd、OpenRC 和 SysV init 的服务文件
 - 删除二进制文件：`/usr/local/bin/bedrud`、`/tmp/bedrud`、`/tmp/bedrud-livekit-server`
 - 删除目录：`/etc/bedrud`、`/var/lib/bedrud`、`/var/log/bedrud`
+- 删除系统用户: bedrud
 
-**实现：** `server/internal/install/debian.go`
+**实现：** `server/internal/install/` (linux.go, init.go, sysv.go, openrc.go)
 
 **相关文档：** [安装指南 - 卸载](/zh/docs/getting-started/installation#uninstallation)
 
@@ -289,4 +290,4 @@ bedrud user demote --email admin@example.com
 - [安装指南](/zh/docs/getting-started/installation) - 详细的 `bedrud install` 步骤说明、TLS 拓扑、安装后步骤
 - [配置参考](/zh/docs/getting-started/configuration) - 服务器和 LiveKit 配置文件结构
 - [后端部署逻辑](/zh/docs/backend/deployment) - `install` 和 `uninstall` 的内部工作原理
-- [部署指南](/zh/docs/guides/deployment) - 完整的部署选项，包括 systemd 服务
+- [部署指南](/zh/docs/guides/deployment) - 完整的部署选项，包括 init 系统服务

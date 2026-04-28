@@ -1,4 +1,4 @@
----
+﻿---
 title: البداية السريعة
 description: انشر بدرود وانضم إلى اجتماع فيديو في أقل من ٥ دقائق
 order: 1
@@ -27,7 +27,7 @@ order: 1
 
 | المتطلب | التفاصيل |
 |---------|----------|
-| خادم لينكس | amd64 أو arm64، مع وصول `sudo` و `systemd`. macOS/Windows: استخدم Docker أو WSL2 للخادم |
+| خادم لينكس | amd64 أو arm64، مع وصول `sudo` ونظام تهيئة مدعوم (systemd أو OpenRC أو SysV init). macOS/Windows: استخدم Docker أو WSL2 للخادم |
 | منافذ مفتوحة | `8090`، `7880`، `50000–60000/udp`. لـ TLS التلقائي: أيضاً `80` و `443` |
 | نطاق (اختياري) | مع سجل DNS A يشير إلى خادمك. لا تملك نطاقاً؟ يعمل مع IP - راجع البدائل أدناه |
 
@@ -46,7 +46,7 @@ order: 1
   <TabsContent value="macos-linux">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     أعد تحميل الصدفة بعد التثبيت:
@@ -66,7 +66,7 @@ order: 1
   <TabsContent value="windows">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
     أغلق Terminal وأعد فتحه، ثم تحقّق:
@@ -98,7 +98,7 @@ order: 1
 
 ## ٢. نشر الخادم
 
-> **إعداد الخادم يتطلب لينكس مع systemd.** macOS و Windows لا يدعمان `bedrud install` مباشرة - استخدم [Docker](#docker) أو [WSL2](#أنظمة-غير-لينكس) بدلاً من ذلك.
+> **إعداد الخادم يتطلب لينكس مع نظام تهيئة مدعوم (systemd أو OpenRC أو SysV init).** macOS و Windows لا يدعمان `bedrud install` مباشرة - استخدم [Docker](#docker) أو [WSL2](#أنظمة-غير-لينكس) بدلاً من ذلك.
 
 استبدل `meet.example.com` و `admin@example.com` بقيمك:
 
@@ -106,7 +106,7 @@ order: 1
 sudo bedrud install --tls --domain meet.example.com --email admin@example.com
 ```
 
-يثبّت الملف الثنائي في `/usr/local/bin`، يولّد التهيئة، ينشئ خدمات systemd، يوفّر TLS، ويبدأ كل شيء.
+يثبّت الملف الثنائي في `/usr/local/bin`، يولّد التهيئة، ينشئ خدمات init (systemd أو OpenRC أو SysV init)، يوفّر TLS، ويبدأ كل شيء.
 
 > **المنفذ 80 أو 443 مشغول؟** أوقف الخدمات المتعارضة: `sudo systemctl stop nginx apache2 caddy`، ثم أعد التشغيل.
 
@@ -185,7 +185,7 @@ sudo bedrud install --ip 127.0.0.1
 
 ### أنظمة غير لينكس
 
-أمر `bedrud install` يُعدّ خدمات systemd وهو مخصص للينكس فقط. مُثبّت CLI (الخطوة ١) يعمل على جميع المنصات ويضع الملف الثنائي في PATH. لإعداد الخادم، استخدم Docker أو WSL2.
+أمر `bedrud install` يُعدّ خدمات init (systemd أو OpenRC أو SysV init) وهو مخصص للينكس فقط. مُثبّت CLI (الخطوة ١) يعمل على جميع المنصات ويضع الملف الثنائي في PATH. لإعداد الخادم، استخدم Docker أو WSL2.
 
 | نظام التشغيل | الطريقة |
 |--------------|---------|
@@ -254,3 +254,4 @@ docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
 - [دليل النشر](/ar/docs/guides/deployment) — إعداد الإنتاج، البروكسي العكسي، التوسع
 - [نظرة عامة على البنية](/ar/docs/architecture/overview) — كيف تتلاءم الأجزاء معاً
 - [وثائق API](http://localhost:8090/api/swagger) — Swagger UI (نسخة تعمل)
+

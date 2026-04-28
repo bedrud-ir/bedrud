@@ -89,7 +89,8 @@ func (h *UsersHandler) ListUsers(c *fiber.Ctx) error {
 	}
 
 	var response []UserDetails
-	for _, user := range users {
+	for i := range users {
+		user := &users[i]
 		response = append(response, UserDetails{
 			ID:        user.ID,
 			Email:     user.Email,

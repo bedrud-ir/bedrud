@@ -1,4 +1,4 @@
----
+﻿---
 title: Serverinstallation
 description: Bedrud-Server unter Linux installieren
 order: 2
@@ -15,7 +15,7 @@ Diese Anleitung behandelt die Installation des **Bedrud-Servers** (API, Web-UI, 
 | **Betriebssystem** | Debian 12+, Ubuntu 22.04+, Arch Linux (Rolling), Fedora 39+ |
 | **Architektur** | amd64 (x86_64) oder arm64 (aarch64) |
 | **Zugriff** | Root oder sudo |
-| **Init-System** | systemd |
+| **Init-System** | systemd, OpenRC oder SysV init (automatisch erkannt) |
 | **Hardware** | 1 vCPU, 512 MB RAM mindestens. 2 vCPU, 2 GB RAM empfohlen für 10+ gleichzeitige Räume |
 | **Ports** | `8090` (API + Web-UI), `7880` (LiveKit WebSocket), `50000–60000/udp` (WebRTC-Medien) |
 | **Auto-TLS** | Zusätzlich `80` und `443` öffnen. Erfordert eine Domain mit DNS-A-Eintrag, der auf diesen Server verweist |
@@ -37,7 +37,7 @@ Lädt die Bedrud-CLI herunter und installiert sie in Ihrem PATH. Funktioniert un
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Shell nach der Installation neu laden:
@@ -50,7 +50,7 @@ Lädt die Bedrud-CLI herunter und installiert sie in Ihrem PATH. Funktioniert un
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
   </TabsContent>
@@ -126,7 +126,7 @@ Installieren Sie über den Paketmanager Ihrer Distribution.
 
 ## 3. Docker
 
-Bedrud in einem Container ausführen - kein Linux-Server-Setup, kein systemd, kein Binär-Download.
+Bedrud in einem Container ausführen - kein Linux-Server-Setup, kein Init-System-Setup, kein Binär-Download.
 
 ### Vorgefertigtes Image (am schnellsten)
 
@@ -478,7 +478,7 @@ Um Bedrud vollständig zu entfernen:
 sudo bedrud uninstall
 ```
 
-Dies stoppt die Dienste, entfernt die systemd-Units, löscht die Binärdatei aus `/usr/local/bin` und bereinigt `/etc/bedrud`, `/var/lib/bedrud` und `/var/log/bedrud`.
+Dies stoppt die Dienste, entfernt die Service-Dateien aller Init-Systeme, löscht die Binärdatei aus `/usr/local/bin` und bereinigt `/etc/bedrud`, `/var/lib/bedrud` und `/var/log/bedrud`.
 
 ---
 
@@ -497,3 +497,4 @@ Dies stoppt die Dienste, entfernt die systemd-Units, löscht die Binärdatei aus
 | **Warnungen zu selbstsigniertem Zertifikat** | Erwartet. Siehe [Internes TLS-Handbuch](/de/docs/guides/internal-tls) für private CA-Einrichtung |
 | **Kein Video / WebRTC fehlgeschlagen** | HTTPS für Kamerazugriff erforderlich. `--tls` verwenden. Sicherstellen, dass UDP 50000–60000 geöffnet ist |
 | **Reverse Proxy: falsche Client-IP** | Flag `--behind-proxy` verwenden. Konfiguriert vertrauenswürdige Proxy-Header |
+

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -133,19 +134,31 @@ var (
 
 // Load reads the configuration file and returns a Config struct
 func Load(configPath string) (*Config, error) {
+	var loadErr error
 	once.Do(func() {
 		config = &Config{}
 
-		// Read the config file
 		data, err := os.ReadFile(configPath)
 		if err != nil {
-			panic(err)
+			if os.IsNotExist(err) {
+				loadErr = fmt.Errorf(
+					"configuration file not found: %s\n\n"+
+						"Create one by copying the example:\n"+
+						"  cp config.local.yaml.example config.yaml\n"+
+						"Or specify a custom path:\n"+
+						"  CONFIG_PATH=/path/to/config.yaml bedrud run",
+					configPath,
+				)
+			} else {
+				loadErr = fmt.Errorf("failed to read configuration file %s: %w", configPath, err)
+			}
+			return
 		}
 
-		// Unmarshal the YAML into the config struct
 		err = yaml.Unmarshal(data, config)
 		if err != nil {
-			panic(err)
+			loadErr = fmt.Errorf("invalid configuration in %s: %w", configPath, err)
+			return
 		}
 
 		// Override with environment variables if they exist
@@ -245,7 +258,7 @@ func Load(configPath string) (*Config, error) {
 		}
 	})
 
-	return config, nil
+	return config, loadErr
 }
 
 // Get returns the loaded configuration

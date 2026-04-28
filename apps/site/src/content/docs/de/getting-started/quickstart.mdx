@@ -1,4 +1,4 @@
----
+﻿---
 title: Schnellstart
 description: Bedrud bereitstellen und in unter 5 Minuten einem Videomeeting beitreten
 order: 1
@@ -27,7 +27,7 @@ Stellen Sie Bedrud bereit und treten Sie in unter 5 Minuten einem Videomeeting b
 
 | Voraussetzung | Details |
 |---------------|---------|
-| Ein Linux-Server | amd64 oder arm64, mit `sudo`-Zugriff und `systemd`. macOS/Windows: Docker oder WSL2 für Server |
+| Ein Linux-Server | amd64 oder arm64, mit `sudo`-Zugriff und unterstütztem Init-System (systemd, OpenRC oder SysV init). macOS/Windows: Docker oder WSL2 für Server |
 | Offene Ports | `8090`, `7880`, `50000–60000/udp`. Für auto-TLS: zusätzlich `80` und `443` |
 | Eine Domain (optional) | Mit DNS-A-Eintrag, der auf Ihren Server verweist. Keine Domain? Funktioniert auch mit IP - siehe Alternativen unten |
 
@@ -46,7 +46,7 @@ Stellen Sie Bedrud bereit und treten Sie in unter 5 Minuten einem Videomeeting b
   <TabsContent value="macos-linux">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Shell nach der Installation neu laden:
@@ -66,7 +66,7 @@ Stellen Sie Bedrud bereit und treten Sie in unter 5 Minuten einem Videomeeting b
   <TabsContent value="windows">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
     Terminal schließen und neu öffnen, dann überprüfen:
@@ -98,7 +98,7 @@ Stellen Sie Bedrud bereit und treten Sie in unter 5 Minuten einem Videomeeting b
 
 ## 2. Server einrichten
 
-> **Server-Einrichtung erfordert Linux mit systemd.** macOS und Windows unterstützen `bedrud install` nicht direkt — verwenden Sie [Docker](#docker) oder [WSL2](#nicht-linux-systeme).
+> **Server-Einrichtung erfordert Linux mit unterstütztem Init-System (systemd, OpenRC oder SysV init).** macOS und Windows unterstützen `bedrud install` nicht direkt — verwenden Sie [Docker](#docker) oder [WSL2](#nicht-linux-systeme).
 
 Ersetzen Sie `meet.example.com` und `admin@example.com` durch Ihre Werte:
 
@@ -106,7 +106,7 @@ Ersetzen Sie `meet.example.com` und `admin@example.com` durch Ihre Werte:
 sudo bedrud install --tls --domain meet.example.com --email admin@example.com
 ```
 
-Installiert die Server-Binärdatei nach `/usr/local/bin`, generiert die Konfiguration, erstellt systemd-Dienste, richtet TLS ein und startet alles.
+Installiert die Server-Binärdatei nach `/usr/local/bin`, generiert die Konfiguration, erstellt Init-Services (systemd, OpenRC oder SysV init), richtet TLS ein und startet alles.
 
 > **Port 80 oder 443 belegt?** Stoppen Sie Konfliktdienste: `sudo systemctl stop nginx apache2 caddy`, dann erneut ausführen.
 
@@ -185,7 +185,7 @@ sudo bedrud install --ip 127.0.0.1
 
 ### Nicht-Linux-Systeme
 
-Der `bedrud install`-Befehl richtet systemd-Dienste ein und ist nur für Linux verfügbar. Der CLI-Installer (Schritt 1) funktioniert überall und platziert die Binärdatei im PATH. Für die Server-Einrichtung verwenden Sie Docker oder WSL2.
+Der `bedrud install`-Befehl richtet Init-Services (systemd, OpenRC oder SysV init) ein und ist nur für Linux verfügbar. Der CLI-Installer (Schritt 1) funktioniert überall und platziert die Binärdatei im PATH. Für die Server-Einrichtung verwenden Sie Docker oder WSL2.
 
 | OS      | Vorgehen                                                     |
 |---------|---------------------------------------------------------|
@@ -254,3 +254,4 @@ docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
 - [Deployment-Leitfaden](/de/docs/guides/deployment) — Produktionssetup, Reverse Proxy, Skalierung
 - [Architekturübersicht](/de/docs/architecture/overview) — wie die Komponenten zusammenwirken
 - [API-Dokumentation](http://localhost:8090/api/swagger) — Swagger UI (laufende Instanz)
+

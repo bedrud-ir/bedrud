@@ -15,7 +15,7 @@ order: 33
 | واجهة مضمنة | واجهة React مُترجمة ومعروضة مسبقًا SSR داخل الملف الثنائي Go |
 | تخزين SQLite | لا حاجة لخادم قاعدة بيانات |
 | TLS مدمج | شهادات موقعة ذاتيًا أو Let's Encrypt |
-| مثبّت مدمج | يُعدّد systemd والأدلة والإعدادات |
+| مثبّت مدمج | يُعدّد خدمات init (systemd/OpenRC/SysV) والأدلة والإعدادات |
 
 ## تشغيل الملف الثنائي
 
@@ -52,7 +52,7 @@ sudo ./bedrud install --ip 1.2.3.4
 
 ### بنية الخدمات
 
-بعد التثبيت، تعمل خدمتا systemd:
+بعد التثبيت، تعمل خدمتا init (systemd أو OpenRC أو SysV init):
 
 ```mermaid
 flowchart LR
@@ -102,7 +102,7 @@ sudo ./bedrud uninstall
 
 يزيل هذا بالكامل:
 
-- ملفات خدمة systemd
+- ملفات خدمة init (systemd/OpenRC/SysV)
 - الملف الثنائي من `/usr/local/bin/`
 - الإعدادات في `/etc/bedrud/`
 - البيانات في `/var/lib/bedrud/`

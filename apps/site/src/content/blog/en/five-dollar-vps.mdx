@@ -1,4 +1,4 @@
----
+﻿---
 title: "Running Bedrud on a $5 VPS: A Practical Guide"
 description: "Step-by-step guide to deploying Bedrud on Hetzner, DigitalOcean, or any budget VPS provider."
 date: "2026-03-15"
@@ -30,7 +30,7 @@ Any of these work. Hetzner gives you the best bang for buck.
 ## Step 2: Install Bedrud
 
 ```bash
-curl -fsSL https://get.bedrud.org | bash
+curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 The script detects your OS, downloads the correct binary, and installs it to `/usr/local/bin/bedrud`.
@@ -71,3 +71,4 @@ Bedrud exposes a `/metrics` endpoint in Prometheus format. Track:
 - Memory and CPU usage
 
 That's it. Video meetings on a $5 VPS. No Docker, no config files, no ops team required.
+

@@ -32,7 +32,7 @@ func InitializeSessionStore(secret string, secure bool) {
 func SetProviderToSession(c *fiber.Ctx, provider string) error {
 	// Create a complete http.Request from Fiber context
 	req := &http.Request{
-		Method: "GET",
+		Method: http.MethodGet,
 		URL: &url.URL{
 			Scheme: c.Protocol(),
 			Host:   c.Hostname(),

@@ -15,7 +15,7 @@ Bedrud ist als eigenständige „Appliance" für Videokonferenzen konzipiert. Ei
 | Eingebettetes Frontend | React-UI kompiliert und SSR-prerendert im Go-Binary |
 | SQLite-Speicher | Kein Datenbankserver erforderlich |
 | Integriertes TLS | Selbstsignierte Zertifikate oder Let's Encrypt |
-| Integriertes Installationsprogramm | Konfiguriert systemd, Verzeichnisse und Konfigurationen |
+| Integriertes Installationsprogramm | Konfiguriert Init-Services (systemd/OpenRC/SysV), Verzeichnisse und Konfigurationen |
 
 ## Binary ausführen
 
@@ -52,7 +52,7 @@ sudo ./bedrud install --ip 1.2.3.4
 
 ### Dienstarchitektur
 
-Nach der Installation laufen zwei systemd-Dienste:
+Nach der Installation laufen zwei Init-Services (systemd, OpenRC oder SysV init):
 
 ```mermaid
 flowchart LR
@@ -102,7 +102,7 @@ sudo ./bedrud uninstall
 
 Dies entfernt vollständig:
 
-- systemd-Dienstdateien
+- Init-Service-Dateien (systemd/OpenRC/SysV)
 - Binary aus `/usr/local/bin/`
 - Konfiguration in `/etc/bedrud/`
 - Daten in `/var/lib/bedrud/`

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -46,12 +47,13 @@ func setupUsersTestApp(t *testing.T) (*fiber.App, *repository.UserRepository) {
 func TestUsersHandler_ListUsers_Empty(t *testing.T) {
 	app, _ := setupUsersTestApp(t)
 
-	req := httptest.NewRequest("GET", "/admin/users", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/users", http.NoBody)
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
@@ -71,9 +73,10 @@ func TestUsersHandler_ListUsers_WithUsers(t *testing.T) {
 	_ = userRepo.CreateUser(&models.User{ID: "u1", Email: "u1@ex.com", Name: "User 1", Provider: "local", IsActive: true, Accesses: models.StringArray{"user"}})
 	_ = userRepo.CreateUser(&models.User{ID: "u2", Email: "u2@ex.com", Name: "User 2", Provider: "google", IsActive: false, Accesses: models.StringArray{"admin"}})
 
-	req := httptest.NewRequest("GET", "/admin/users", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/users", http.NoBody)
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
@@ -113,11 +116,12 @@ func TestUsersHandler_UpdateUserStatus_Success(t *testing.T) {
 	_ = userRepo.CreateUser(&models.User{ID: "target-user", Email: "target@ex.com", Name: "Target", Provider: "local", IsActive: true})
 
 	body, _ := json.Marshal(UserStatusUpdateRequest{Active: false})
-	req := httptest.NewRequest("PUT", "/admin/users/target-user/status", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, "/admin/users/target-user/status", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req, -1)
+	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
@@ -134,11 +138,12 @@ func TestUsersHandler_UpdateUserStatus_Reactivate(t *testing.T) {
 	_ = userRepo.CreateUser(&models.User{ID: "inactive-user", Email: "inactive@ex.com", Name: "Inactive", Provider: "local", IsActive: false})
 
 	body, _ := json.Marshal(UserStatusUpdateRequest{Active: true})
-	req := httptest.NewRequest("PUT", "/admin/users/inactive-user/status", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, "/admin/users/inactive-user/status", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req, -1)
+	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
@@ -152,11 +157,12 @@ func TestUsersHandler_UpdateUserStatus_NotFound(t *testing.T) {
 	app, _ := setupUsersTestApp(t)
 
 	body, _ := json.Marshal(UserStatusUpdateRequest{Active: false})
-	req := httptest.NewRequest("PUT", "/admin/users/nonexistent-id/status", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, "/admin/users/nonexistent-id/status", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req, -1)
+	defer resp.Body.Close()
 
-	if resp.StatusCode != 404 {
+	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
 	}
 }
@@ -164,11 +170,12 @@ func TestUsersHandler_UpdateUserStatus_NotFound(t *testing.T) {
 func TestUsersHandler_UpdateUserStatus_InvalidBody(t *testing.T) {
 	app, _ := setupUsersTestApp(t)
 
-	req := httptest.NewRequest("PUT", "/admin/users/some-id/status", bytes.NewReader([]byte("not json")))
+	req := httptest.NewRequest(http.MethodPut, "/admin/users/some-id/status", bytes.NewReader([]byte("not json")))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req, -1)
+	defer resp.Body.Close()
 
-	if resp.StatusCode != 400 {
+	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
 }
@@ -250,10 +257,11 @@ func TestUsersHandler_UpdateUserAccesses_Success(t *testing.T) {
 	_ = uRepo.CreateUser(&models.User{ID: "target-acc", Email: "acc@ex.com", Name: "Acc", Provider: "local", IsActive: true, Accesses: models.StringArray{"user"}})
 
 	body, _ := json.Marshal(map[string]interface{}{"accesses": []string{"admin", "user"}})
-	req := httptest.NewRequest("PUT", "/admin/users/target-acc/accesses", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, "/admin/users/target-acc/accesses", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app2.Test(req, -1)
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
@@ -274,10 +282,11 @@ func TestUsersHandler_UpdateUserAccesses_NotFound(t *testing.T) {
 	app.Put("/admin/users/:id/accesses", h.UpdateUserAccesses)
 
 	body, _ := json.Marshal(map[string]interface{}{"accesses": []string{"admin"}})
-	req := httptest.NewRequest("PUT", "/admin/users/nonexistent/accesses", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, "/admin/users/nonexistent/accesses", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 404 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
 	}
 }
@@ -296,10 +305,11 @@ func TestUsersHandler_UpdateUserAccesses_Forbidden(t *testing.T) {
 	app.Put("/admin/users/:id/accesses", h.UpdateUserAccesses)
 
 	body, _ := json.Marshal(map[string]interface{}{"accesses": []string{"admin"}})
-	req := httptest.NewRequest("PUT", "/admin/users/someone/accesses", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, "/admin/users/someone/accesses", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 403 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d", resp.StatusCode)
 	}
 }
@@ -319,9 +329,10 @@ func TestUsersHandler_GetUserDetail_Found(t *testing.T) {
 
 	_ = uRepo.CreateUser(&models.User{ID: "detail-user", Email: "detail@ex.com", Name: "Detail", Provider: "local", IsActive: true, Accesses: models.StringArray{"user"}})
 
-	req := httptest.NewRequest("GET", "/admin/users/detail-user", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/users/detail-user", http.NoBody)
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
@@ -349,9 +360,10 @@ func TestUsersHandler_GetUserDetail_NotFound(t *testing.T) {
 	})
 	app.Get("/admin/users/:id", h.GetUserDetail)
 
-	req := httptest.NewRequest("GET", "/admin/users/nonexistent", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/users/nonexistent", http.NoBody)
 	resp, _ := app.Test(req, -1)
-	if resp.StatusCode != 404 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
 	}
 }

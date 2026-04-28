@@ -5,6 +5,7 @@ import (
 	"bedrud/internal/auth"
 	"bedrud/internal/models"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
@@ -14,8 +15,10 @@ import (
 
 // setupTestConfig initializes a minimal config for testing middleware.
 // Uses sync.Once internally via config.Load, so we create config inline.
-var testCfg *config.Config
-var testCfgOnce sync.Once
+var (
+	testCfg     *config.Config
+	testCfgOnce sync.Once
+)
 
 func getTestConfig() *config.Config {
 	testCfgOnce.Do(func() {
@@ -30,11 +33,7 @@ func getTestConfig() *config.Config {
 	return testCfg
 }
 
-func generateTestToken(userID, email, name, provider string, accesses []string) string {
-	cfg := getTestConfig()
-	token, _ := auth.GenerateToken(userID, email, name, provider, accesses, cfg)
-	return token
-}
+const testBearerPrefix = "Bearer "
 
 // --- Tests using the real Protected() and RequireAccess() functions ---
 
@@ -44,8 +43,9 @@ func TestProtected_Real_NoAuthHeader(t *testing.T) {
 	app.Use(Protected())
 	app.Get("/test", func(c *fiber.Ctx) error { return c.SendString("ok") })
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	resp, _ := app.Test(req)
+	defer resp.Body.Close()
 	if resp.StatusCode != fiber.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
@@ -62,10 +62,11 @@ func TestProtected_Real_ValidToken(t *testing.T) {
 		return c.SendString(claims.UserID)
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+token)
 	resp, _ := app.Test(req)
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 	body, _ := io.ReadAll(resp.Body)
@@ -80,9 +81,10 @@ func TestProtected_Real_InvalidToken(t *testing.T) {
 	app.Use(Protected())
 	app.Get("/test", func(c *fiber.Ctx) error { return c.SendString("ok") })
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer bad-token")
 	resp, _ := app.Test(req)
+	defer resp.Body.Close()
 	if resp.StatusCode != fiber.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
@@ -99,10 +101,11 @@ func TestProtected_Real_NoBearerPrefix(t *testing.T) {
 		return c.SendString(claims.UserID)
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	req.Header.Set("Authorization", token) // no "Bearer " prefix
 	resp, _ := app.Test(req)
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 }
@@ -116,9 +119,10 @@ func TestRequireAccess_Real_HasAccess(t *testing.T) {
 	app.Use(RequireAccess(models.AccessAdmin))
 	app.Get("/admin", func(c *fiber.Ctx) error { return c.SendString("ok") })
 
-	req := httptest.NewRequest("GET", "/admin", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin", http.NoBody)
 	resp, _ := app.Test(req)
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 }
@@ -132,8 +136,9 @@ func TestRequireAccess_Real_InsufficientAccess(t *testing.T) {
 	app.Use(RequireAccess(models.AccessAdmin))
 	app.Get("/admin", func(c *fiber.Ctx) error { return c.SendString("ok") })
 
-	req := httptest.NewRequest("GET", "/admin", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin", http.NoBody)
 	resp, _ := app.Test(req)
+	defer resp.Body.Close()
 	if resp.StatusCode != fiber.StatusForbidden {
 		t.Fatalf("expected 403, got %d", resp.StatusCode)
 	}
@@ -158,11 +163,12 @@ func TestProtected_NoAuthHeader(t *testing.T) {
 		return c.SendString("ok")
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != fiber.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
@@ -180,7 +186,7 @@ func TestProtected_WithValidBearerToken(t *testing.T) {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Missing authorization header"})
 		}
 		tokenStr := authHeader
-		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		if len(authHeader) > 7 && authHeader[:7] == testBearerPrefix {
 			tokenStr = authHeader[7:]
 		}
 		claims, err := auth.ValidateToken(tokenStr, cfg)
@@ -195,13 +201,14 @@ func TestProtected_WithValidBearerToken(t *testing.T) {
 		return c.SendString(claims.UserID)
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+token)
 	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 	body, _ := io.ReadAll(resp.Body)
@@ -221,7 +228,7 @@ func TestProtected_WithTokenWithoutBearerPrefix(t *testing.T) {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Missing authorization header"})
 		}
 		tokenStr := authHeader
-		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		if len(authHeader) > 7 && authHeader[:7] == testBearerPrefix {
 			tokenStr = authHeader[7:]
 		}
 		claims, err := auth.ValidateToken(tokenStr, cfg)
@@ -236,10 +243,11 @@ func TestProtected_WithTokenWithoutBearerPrefix(t *testing.T) {
 		return c.SendString(claims.UserID)
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	req.Header.Set("Authorization", token) // No "Bearer " prefix
 	resp, _ := app.Test(req)
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 }
@@ -254,7 +262,7 @@ func TestProtected_InvalidToken(t *testing.T) {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Missing"})
 		}
 		tokenStr := authHeader
-		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		if len(authHeader) > 7 && authHeader[:7] == testBearerPrefix {
 			tokenStr = authHeader[7:]
 		}
 		_, err := auth.ValidateToken(tokenStr, cfg)
@@ -267,9 +275,10 @@ func TestProtected_InvalidToken(t *testing.T) {
 		return c.SendString("ok")
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer invalid-token-content")
 	resp, _ := app.Test(req)
+	defer resp.Body.Close()
 	if resp.StatusCode != fiber.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
@@ -298,9 +307,10 @@ func TestRequireAccess_HasAccess(t *testing.T) {
 		return c.SendString("admin page")
 	})
 
-	req := httptest.NewRequest("GET", "/admin", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin", http.NoBody)
 	resp, _ := app.Test(req)
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 }
@@ -327,8 +337,9 @@ func TestRequireAccess_InsufficientAccess(t *testing.T) {
 		return c.SendString("admin page")
 	})
 
-	req := httptest.NewRequest("GET", "/admin", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin", http.NoBody)
 	resp, _ := app.Test(req)
+	defer resp.Body.Close()
 	if resp.StatusCode != fiber.StatusForbidden {
 		t.Fatalf("expected 403, got %d", resp.StatusCode)
 	}

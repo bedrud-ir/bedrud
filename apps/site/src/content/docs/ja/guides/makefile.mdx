@@ -27,6 +27,7 @@ make help       # 利用可能なターゲットをすべて表示
 | `make dev-site` | Astro サイトの開発サーバーを実行 |
 | `make dev-ios` | iOS プロジェクトを Xcode で開く |
 | `make dev-android` | Android プロジェクトを Android Studio で開く |
+| `make livekit-download` | 現在の OS/アーキテクチャ向けの LiveKit サーバーをダウンロード |
 
 ### `make init`
 
@@ -54,6 +55,9 @@ make help       # 利用可能なターゲットをすべて表示
 | `make build-front` | フロントエンドのみビルド |
 | `make build-back` | バックエンドのみビルド |
 | `make build-dist` | 本番用 linux/amd64 tarball をビルド |
+| `make build-back-win` | Windows 向けにバックエンドをビルド |
+| `make build-dist-win` | Windows 向けの製品配布ファイルをビルド |
+| `make prep-livekit-win` | 組み込み用の LiveKit Windows バイナリが利用可能であることを確認 |
 | `make build-site` | Astro サイトをビルド（SSG） |
 
 ### `make build`

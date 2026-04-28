@@ -1,4 +1,4 @@
----
+﻿---
 title: Server Installation
 description: Install Bedrud server on Linux
 order: 2
@@ -15,7 +15,7 @@ order: 2
 | **操作系统** | Debian 12+、Ubuntu 22.04+、Arch Linux (rolling)、Fedora 39+ |
 | **架构** | amd64 (x86_64) 或 arm64 (aarch64) |
 | **权限** | Root 或 sudo |
-| **初始化系统** | systemd |
+| **初始化系统** | systemd、OpenRC 或 SysV init（自动检测） |
 | **硬件** | 最低 1 vCPU、512 MB RAM。10+ 并发房间建议 2 vCPU、2 GB RAM |
 | **端口** | `8090`（API + Web UI）、`7880`（LiveKit WebSocket）、`50000–60000/udp`（WebRTC 媒体） |
 | **自动 TLS** | 需额外开放 `80` 和 `443`。需要域名配置 DNS A record 指向此服务器 |
@@ -37,7 +37,7 @@ order: 2
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     安装后重新加载 shell：
@@ -50,7 +50,7 @@ order: 2
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
   </TabsContent>
@@ -126,7 +126,7 @@ bedrud --version
 
 ## 3. Docker
 
-在容器中运行 Bedrud - 无需 Linux 服务器配置、无需 systemd、无需下载二进制文件。
+在容器中运行 Bedrud - 无需 Linux 服务器配置、无需 init 系统、无需下载二进制文件。
 
 ### 预构建镜像（最快）
 
@@ -478,7 +478,7 @@ docker compose up -d
 sudo bedrud uninstall
 ```
 
-此操作会停止服务、删除 systemd 单元文件、从 `/usr/local/bin` 中删除二进制文件，并清理 `/etc/bedrud`、`/var/lib/bedrud` 和 `/var/log/bedrud`。
+此操作会停止服务、删除所有 init 系统的服务文件、从 `/usr/local/bin` 中删除二进制文件，并清理 `/etc/bedrud`、`/var/lib/bedrud` 和 `/var/log/bedrud`。
 
 ---
 
@@ -497,3 +497,4 @@ sudo bedrud uninstall
 | **self-signed certificate 警告** | 属于正常现象。参阅[内网 TLS 指南](/zh/docs/guides/internal-tls)了解私有 CA 配置 |
 | **无视频 / WebRTC 失败** | 摄像头访问需要 HTTPS。使用 `--tls`。确保 UDP 50000–60000 已开放 |
 | **反向代理：错误的客户端 IP** | 使用 `--behind-proxy` 标志。会配置可信代理头 |
+

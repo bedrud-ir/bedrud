@@ -261,9 +261,11 @@ jobs:
           chmod +x docker-ctx/bedrud_linux_*
 
           cat > docker-ctx/Dockerfile <<'DOCKERFILE'
-          FROM alpine:3.21
-          RUN apk add --no-cache ca-certificates tzdata
+          FROM debian:bookworm-slim
+          RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
           ARG TARGETARCH
+          ARG VERSION
+          LABEL org.opencontainers.image.version="${VERSION}"
           COPY bedrud_linux_${TARGETARCH} /usr/local/bin/bedrud
           EXPOSE 8090 7880
           ENTRYPOINT ["bedrud"]
@@ -278,6 +280,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ needs.prepare.outputs.tag }}
 
   # ── Android APK ──────────────────────────────────────────────
   android:

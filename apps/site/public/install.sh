@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# bedrud installer — curl -fsSL https://get.bedrud.org | bash
+﻿#!/usr/bin/env bash
+# bedrud installer — curl -fsSL https://bedrud.org/install.sh | bash
 set -euo pipefail
 
 BINARY_NAME="bedrud"
@@ -10,9 +10,64 @@ else
   INSTALL_DIR="${BEDRUD_INSTALL:-$HOME/.local/bin}"
 fi
 VERSION="latest"
+BUILD=false
+BRANCH="main"
 SKIP_SHELL=false
 NO_SETUP=false
 CONFIG_FILE="/etc/bedrud/config.yaml"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Table of Contents / Script Guide
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# This script performs a full installation of Bedrud. It supports both
+# downloading pre-built binaries and building from source (--build).
+# For Linux environments, it also offers an interactive server setup to 
+# configure Postgres, Let's Encrypt TLS, systemd/openrc, and an admin user.
+#
+# Sections & Functions:
+#
+# 1. Globals & Setup
+#    Defines install directories, repo, and default versions.
+#
+# 2. Helpers (Logging & Prompts)
+#    - info(), warn(), error(), step(): Logging and UI formatting.
+#    - ask(), ask_yn(), ask_pg_details(): Interactive prompt handlers.
+#
+# 3. Environment & Dependency Management
+#    - Windows guard: Blocks execution on Windows (suggests PowerShell).
+#    - detect_pkg_manager(), install_pkg(), pkg_name(): OS package managers.
+#    - ensure_deps(): Installs required tools (tar, xz, unzip, git, make).
+#
+# 4. Argument Parsing
+#    - usage(): Displays help. Parses --install-dir, --build, --no-setup, etc.
+#
+# 5. Platform Detection
+#    Determines OS (Darwin, Linux, FreeBSD) and Architecture (amd64, arm64).
+#    Handles Rosetta 2 translation mappings.
+#
+# 6. Download & Install Phase
+#    - If --build: Clones repo, installs bun/go, runs 'make build'.
+#    - Else: Downloads release tar.xz and extracts binary.
+#
+# 7. PATH Configuration
+#    - in_path(), configure_shell(): Appends INSTALL_DIR to shell profiles.
+#
+# 8. Interactive Server Setup (Linux only, skipped via --no-setup)
+#    - Phase 2: Detects distro, init system, Docker, and Public/Local IPs.
+#    - Phase 2b: Checks for an existing installation and prompts to reinstall.
+#    - Phase 3: Q&A for Domain, TLS, DB, Proxy, and Admin credentials.
+#    - Phase 3.5: Starts Postgres in Docker (if selected).
+#    - Phase 4: Executes `bedrud install` to generate config/service files.
+#    - Phase 5: Edits bedrud config to use Postgres and restarts services.
+#    - Phase 5.5: Health checks service via HTTP/HTTPS and waits for init daemon.
+#    - Phase 5.7: Firewall warnings and Cloudflare/CDN post-install notes.
+#    - Phase 6: Creates and promotes the initial Admin user.
+#    - Phase 7: Verifies installation and displays next steps.
+#
+# 9. Final Output
+#    Displays success messages, access URLs, and next steps for the user.
+# ══════════════════════════════════════════════════════════════════════════════
 
 # ── Colors (tty only) ───────────────────────────────────────────
 if [[ -t 1 ]]; then
@@ -34,6 +89,7 @@ step()  { printf "\n${BLUE}${BOLD}── %s ──${RESET}\n" "$*" ; }
 
 ask() {
   local prompt="$1" default="${2:-}" var="$3" is_secret="${4:-false}"
+  eval "$var=\"\""
   if [[ "$is_secret" == "true" ]]; then
     if [[ -n "$default" ]]; then
       printf "${BOLD}%s [****]:${RESET} " "$prompt"
@@ -65,12 +121,13 @@ ask_yn() {
   else
     printf "${BOLD}%s [y/N]:${RESET} " "$prompt"
   fi
+  local answer=""
   read -r answer </dev/tty || true
   answer="${answer:-$default}"
-  case "${answer,,}" in
-    y|yes) eval "$var=true" ;;
-    n|no)  eval "$var=false" ;;
-    *)     eval "$var=$( [[ '$default' == 'Y' ]] && echo true || echo false )" ;;
+  case "$answer" in
+    [yY]|[yY][eE][sS]) eval "$var=true" ;;
+    [nN]|[nN][oO])     eval "$var=false" ;;
+    *)                 eval "$var=$( [[ "$default" == "Y" ]] && echo true || echo false )" ;;
   esac
 }
 
@@ -90,7 +147,7 @@ case "$(uname -s 2>/dev/null)" in
   MINGW*|MSYS*|CYGWIN*|Windows_NT)
     echo "Windows detected. Run this in PowerShell instead:"
     echo ""
-    echo '  irm https://get.bedrud.org/install.ps1 | iex'
+    echo '  irm https://bedrud.org/install.ps1 | iex'
     echo ""
     echo "Or download from: https://github.com/${REPO}/releases/latest"
     exit 1
@@ -101,16 +158,293 @@ esac
 command -v curl >/dev/null 2>&1 || error "curl is required (https://curl.se)"
 command -v tar >/dev/null 2>&1 || error "tar is required"
 
+if [[ "$BUILD" == true ]]; then
+  command -v git >/dev/null 2>&1 || error "git is required for --build mode"
+  command -v make >/dev/null 2>&1 || error "make is required for --build mode"
+fi
+
+# ── Auto-install missing dependencies ──────────────────────────
+detect_pkg_manager() {
+  if   command -v apt-get >/dev/null 2>&1; then echo "apt"
+  elif command -v dnf     >/dev/null 2>&1; then echo "dnf"
+  elif command -v yum     >/dev/null 2>&1; then echo "yum"
+  elif command -v apk     >/dev/null 2>&1; then echo "apk"
+  elif command -v pacman  >/dev/null 2>&1; then echo "pacman"
+  elif command -v zypper  >/dev/null 2>&1; then echo "zypper"
+  elif command -v pkg     >/dev/null 2>&1; then echo "pkg"
+  elif command -v brew    >/dev/null 2>&1; then echo "brew"
+  else echo ""
+  fi
+}
+
+install_pkg() {
+  local pkg="$1"
+  local pm
+  pm="$(detect_pkg_manager)"
+
+  if [[ -z "$pm" ]]; then return 1; fi
+
+  local install_cmd=""
+  case "$pm" in
+    apt)     install_cmd="apt-get update -qq && apt-get install -y" ;;
+    dnf)     install_cmd="dnf makecache && dnf install -y" ;;
+    yum)     install_cmd="yum makecache && yum install -y" ;;
+    apk)     install_cmd="apk update && apk add" ;;
+    pacman)  install_cmd="pacman -Sy --noconfirm" ;;
+    zypper)  install_cmd="zypper refresh && zypper --non-interactive install" ;;
+    pkg)     install_cmd="pkg update && pkg install -y" ;;
+    brew)    install_cmd="brew install" ;;
+  esac
+
+  local runner=""
+  if [[ "$(id -u)" -eq 0 ]]; then
+    runner=""
+  elif command -v sudo >/dev/null 2>&1; then
+    runner="sudo"
+  else
+    return 1
+  fi
+
+  info "Installing ${pkg}..."
+  if [[ -n "$runner" ]]; then
+    $runner sh -c "$install_cmd \"$pkg\"" || return 1
+  else
+    sh -c "$install_cmd \"$pkg\"" || return 1
+  fi
+  return 0
+}
+
+pkg_name() {
+  local dep="$1" pm="$2"
+  case "$dep" in
+    xz)
+      case "$pm" in apt) echo "xz-utils" ;; *) echo "xz" ;; esac ;;
+    findutils)
+      case "$pm" in apt) echo "findutils" ;; dnf|yum) echo "findutils" ;; *) echo "findutils" ;; esac ;;
+    *)
+      echo "$dep"
+      ;;
+  esac
+}
+
+ensure_deps() {
+  local pm="" skip_auto=false reason=""
+  pm="$(detect_pkg_manager)"
+
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    skip_auto=true
+    reason="macOS — deps pre-installed"
+  elif [[ "$(uname -s)" == "FreeBSD" ]]; then
+    skip_auto=true
+    reason="FreeBSD — deps in base"
+  elif [[ -z "$pm" ]]; then
+    skip_auto=true
+    reason="no package manager found"
+  fi
+
+  # ── tar xz support check (critical) ──
+  if ! tar --xz -tf /dev/null 2>/dev/null && ! command -v xz >/dev/null 2>&1; then
+    if [[ "$skip_auto" == true ]]; then
+      echo ""
+      warn "tar lacks xz support and xz binary not found. Install manually:"
+      if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "    brew install xz"
+      elif [[ "$(uname -s)" == "FreeBSD" ]]; then
+        echo "    pkg install xz"
+      else
+        echo "    apt:   sudo apt-get install -y xz-utils"
+        echo "    dnf:   sudo dnf install -y xz"
+        echo "    apk:   sudo apk add xz"
+        echo "    pacman: sudo pacman -S xz"
+      fi
+      echo ""
+      error "xz support required for tar.xz extraction"
+    else
+      local xz_pkg
+      xz_pkg="$(pkg_name "xz" "$pm")"
+      if ! install_pkg "$xz_pkg"; then
+        if [[ "$(id -u)" -ne 0 ]] && ! command -v sudo >/dev/null 2>&1; then
+          warn "No sudo access. Install manually: ${xz_pkg}"
+          error "Cannot install ${xz_pkg} without root/sudo"
+        fi
+        error "Failed to install ${xz_pkg}"
+      fi
+      if ! tar --xz -tf /dev/null 2>/dev/null && ! command -v xz >/dev/null 2>&1; then
+        error "xz package installed but extraction tools still missing"
+      fi
+      info "tar xz support ready"
+    fi
+  fi
+
+  # ── unzip (required for bun installer in --build mode) ──
+  if [[ "$BUILD" == true ]] && ! command -v unzip >/dev/null 2>&1; then
+    if [[ "$skip_auto" == true ]]; then
+      warn "unzip is required for Bun install (--build mode). Install manually:"
+      if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "    brew install unzip"
+      elif [[ "$(uname -s)" == "FreeBSD" ]]; then
+        echo "    pkg install unzip"
+      else
+        echo "    sudo apt-get install -y unzip"
+        echo "    sudo dnf install -y unzip"
+        echo "    sudo apk add unzip"
+        echo "    sudo pacman -S unzip"
+      fi
+      echo ""
+      error "unzip required for --build mode"
+    else
+      if ! install_pkg "unzip"; then
+        if [[ "$(id -u)" -ne 0 ]] && ! command -v sudo >/dev/null 2>&1; then
+          warn "No sudo access. Install manually: unzip"
+          error "Cannot install unzip without root/sudo"
+        fi
+        error "Failed to install unzip"
+      fi
+      info "unzip installed"
+    fi
+  fi
+
+  # ── git (required for --build mode) ──
+  if [[ "$BUILD" == true ]] && ! command -v git >/dev/null 2>&1; then
+    if [[ "$skip_auto" == true ]]; then
+      warn "git is required for --build mode. Install manually:"
+      if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "    brew install git"
+      elif [[ "$(uname -s)" == "FreeBSD" ]]; then
+        echo "    pkg install git"
+      else
+        echo "    sudo apt-get install -y git"
+        echo "    sudo dnf install -y git"
+        echo "    sudo apk add git"
+        echo "    sudo pacman -S git"
+      fi
+      echo ""
+      error "git required for --build mode"
+    else
+      if ! install_pkg "git"; then
+        if [[ "$(id -u)" -ne 0 ]] && ! command -v sudo >/dev/null 2>&1; then
+          warn "No sudo access. Install manually: git"
+          error "Cannot install git without root/sudo"
+        fi
+        error "Failed to install git"
+      fi
+      info "git installed"
+    fi
+  fi
+
+  # ── make (required for --build mode) ──
+  if [[ "$BUILD" == true ]] && ! command -v make >/dev/null 2>&1; then
+    if [[ "$skip_auto" == true ]]; then
+      warn "make is required for --build mode. Install manually:"
+      if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "    brew install make"
+      elif [[ "$(uname -s)" == "FreeBSD" ]]; then
+        echo "    pkg install gmake"
+      else
+        echo "    sudo apt-get install -y make"
+        echo "    sudo dnf install -y make"
+        echo "    sudo apk add make"
+        echo "    sudo pacman -S make"
+      fi
+      echo ""
+      error "make required for --build mode"
+    else
+      local make_pkg="make"
+      if [[ "$(uname -s)" == "FreeBSD" ]]; then
+        make_pkg="gmake"
+      fi
+      if ! install_pkg "$make_pkg"; then
+        if [[ "$(id -u)" -ne 0 ]] && ! command -v sudo >/dev/null 2>&1; then
+          warn "No sudo access. Install manually: $make_pkg"
+          error "Cannot install $make_pkg without root/sudo"
+        fi
+        error "Failed to install $make_pkg"
+      fi
+      info "make installed"
+    fi
+  fi
+
+  # ── Other deps (non-fatal, best-effort) ──
+  local deps=("grep" "sed" "find" "gawk" "coreutils")
+  local missing=()
+
+  for dep in "${deps[@]}"; do
+    local bins
+    case "$dep" in
+      grep)      bins=("grep") ;;
+      sed)       bins=("sed") ;;
+      find)      bins=("find") ;;
+      gawk)      bins=("awk" "gawk" "mawk") ;;
+      coreutils) bins=("cut" "tr" "head" "seq" "base64" "sort") ;;
+    esac
+
+    local found=false
+    for bin in "${bins[@]}"; do
+      if command -v "$bin" >/dev/null 2>&1; then
+        found=true
+        break
+      fi
+    done
+
+    if [[ "$found" == false ]]; then
+      missing+=("$dep")
+    fi
+  done
+
+  if [[ ${#missing[@]} -eq 0 ]]; then
+    return 0
+  fi
+
+  if [[ "$skip_auto" == true ]]; then
+    warn "Missing optional deps: ${missing[*]} ($reason)"
+    warn "Some features may not work. Install them manually."
+    return 0
+  fi
+
+  local install_names=()
+  for dep in "${missing[@]}"; do
+    install_names+=("$(pkg_name "$dep" "$pm")")
+  done
+
+  info "Installing missing deps: ${install_names[*]}"
+  if [[ "$(id -u)" -eq 0 ]]; then
+    case "$pm" in
+      apt)     apt-get install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      dnf)     dnf install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      yum)     yum install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      apk)     apk add "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      pacman)  pacman -S --noconfirm "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      zypper)  zypper install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+    esac
+  elif command -v sudo >/dev/null 2>&1; then
+    case "$pm" in
+      apt)     sudo apt-get install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      dnf)     sudo dnf install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      yum)     sudo yum install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      apk)     sudo apk add "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      pacman)  sudo pacman -S --noconfirm "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+      zypper)  sudo zypper install -y "${install_names[@]}" 2>/dev/null || warn "Some deps failed to install" ;;
+    esac
+  else
+    warn "Missing deps: ${install_names[*]}"
+    warn "No sudo access. Install manually or re-run with sudo."
+  fi
+}
+
+# ensure_deps runs after arg parse (needs BUILD flag)
+
 # ── Arg parse ───────────────────────────────────────────────────
 usage() {
   cat <<EOF
 ${BOLD}bedrud installer${RESET}
 
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 
 Options:
   --install-dir <dir>   Install directory (default: ~/.local/bin, /usr/local/bin if root)
   --version <ver>       Install specific version (default: latest)
+  --build               Build from source instead of downloading a release
+  --branch <name>       Git branch to clone (default: main, requires --build)
   --skip-shell          Skip shell RC / PATH modification
   --no-setup            Download only, skip interactive server setup
   -h, --help            Show this help
@@ -120,10 +454,12 @@ Environment:
   BEDRUD_REPO           Override GitHub repo (default: bedrud-ir/bedrud)
 
 Examples:
-  curl -fsSL https://get.bedrud.org | bash
-  curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
-  curl -fsSL https://get.bedrud.org | bash -s -- --install-dir /usr/local/bin
-  curl -fsSL https://get.bedrud.org | bash -s -- --no-setup
+  curl -fsSL https://bedrud.org/install.sh | bash
+  curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
+  curl -fsSL https://bedrud.org/install.sh | bash -s -- --install-dir /usr/local/bin
+  curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
+  BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
+  curl -fsSL https://bedrud.org/install.sh | bash -s -- --no-setup
 EOF
   exit 0
 }
@@ -132,12 +468,16 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --install-dir) INSTALL_DIR="$2"; shift 2 ;;
     --version)     VERSION="$2"; shift 2 ;;
+    --build)       BUILD=true; shift ;;
+    --branch)      BRANCH="$2"; shift 2 ;;
     --skip-shell)  SKIP_SHELL=true; shift ;;
     --no-setup)    NO_SETUP=true; shift ;;
     -h|--help)     usage ;;
     *) error "Unknown argument: $1. Run with --help for usage." ;;
   esac
 done
+
+ensure_deps
 
 # ── Platform detection ──────────────────────────────────────────
 OS="$(uname -s)"
@@ -213,28 +553,110 @@ fi
 SKIP_DOWNLOAD="${SKIP_DOWNLOAD:-false}"
 
 if [[ "$SKIP_DOWNLOAD" != true ]]; then
-  ARCHIVE="${TMP_DIR}/bedrud.tar.xz"
+  if [[ "$BUILD" == true ]]; then
+    # ── Build from source ───────────────────────────────────────────
+    step "Building from source"
 
-  info "Downloading bedrud..."
-curl --fail --location --progress-bar --output "$ARCHIVE" "${RELEASE_URL}/bedrud_${TARGET}.tar.xz" \
-  || error "Failed to download bedrud for ${TARGET}. Check https://github.com/${REPO}/releases for available builds."
+    # Install bun if missing
+    if ! command -v bun >/dev/null 2>&1; then
+      info "Installing Bun..."
+      curl -fsSL https://bun.sh/install | bash || error "Failed to install Bun"
+      export BUN_INSTALL="$HOME/.bun"
+      export PATH="$BUN_INSTALL/bin:$PATH"
+    fi
 
-mkdir -p "$TMP_DIR/extracted"
-tar -xf "$ARCHIVE" -C "$TMP_DIR/extracted"
+    # Install go if missing
+    if ! command -v go >/dev/null 2>&1; then
+      GO_VERSION="1.25.9"
+      GO_ARCH="$arch"
+      if [[ "$GO_ARCH" == "armv7" ]]; then GO_ARCH="armv6l"; fi
+      GO_TAR="go${GO_VERSION}.${os}-${GO_ARCH}.tar.gz"
 
-# ── Find and install binary ─────────────────────────────────────
-BINARY_PATH="$(find "$TMP_DIR/extracted" -type f -name "$BINARY_NAME" -o -name "${BINARY_NAME}.*" 2>/dev/null | head -1)"
+      if [[ "$(id -u)" -eq 0 ]]; then
+        GO_DEST="/usr/local"
+      else
+        GO_DEST="$HOME/.local"
+        mkdir -p "$GO_DEST"
+      fi
 
-if [[ -z "$BINARY_PATH" ]]; then
-  warn "Archive contents:"
-  ls -laR "$TMP_DIR/extracted" >&2
-  error "Could not find '${BINARY_NAME}' binary in archive"
-fi
+      info "Installing Go ${GO_VERSION} to ${GO_DEST}/go..."
+      curl -fsSL --progress-bar -o "$TMP_DIR/$GO_TAR" "https://go.dev/dl/$GO_TAR" \
+        || error "Failed to download Go ${GO_VERSION} for ${os}-${GO_ARCH}. Check https://go.dev/dl for available builds."
+      
+      # Remove old Go if it exists in the destination
+      if [[ -d "${GO_DEST}/go" ]]; then
+        rm -rf "${GO_DEST}/go"
+      fi
 
-mv "$BINARY_PATH" "${INSTALL_DIR}/${BINARY_NAME}"
-chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+      tar -C "${GO_DEST}" -xzf "$TMP_DIR/$GO_TAR" || error "Failed to extract Go"
+      export PATH="${GO_DEST}/go/bin:$PATH"
+      info "Go installed successfully"
+    fi
 
-info "Installed bedrud to ${INSTALL_DIR}/${BINARY_NAME}"
+    info "Cloning ${REPO} (branch: ${BRANCH})..."
+    git clone --branch "$BRANCH" --depth 1 "https://github.com/${REPO}.git" "$TMP_DIR/src" \
+      || error "Failed to clone ${REPO} branch '${BRANCH}'"
+
+    mkdir -p "$INSTALL_DIR"
+
+    info "Installing frontend dependencies..."
+    cd "$TMP_DIR/src/apps/web" && bun install \
+      || error "Failed to install frontend dependencies"
+
+    info "Installing Go dependencies..."
+    cd "$TMP_DIR/src/server" && go mod tidy && go mod download \
+      || error "Failed to install Go dependencies"
+
+    info "Downloading LiveKit server..."
+    make -C "$TMP_DIR/src" livekit-download \
+      || error "Failed to download LiveKit server"
+    mkdir -p "$TMP_DIR/src/server/internal/livekit/bin"
+    test -f "$TMP_DIR/src/server/internal/livekit/bin/livekit-server" \
+      || cp "$HOME/.local/bin/livekit-server" "$TMP_DIR/src/server/internal/livekit/bin/livekit-server"
+
+    info "Building bedrud (this may take a few minutes)..."
+    make -C "$TMP_DIR/src" build \
+      || error "Build failed. Check output above for errors."
+
+    BINARY_PATH="$TMP_DIR/src/server/dist/${BINARY_NAME}"
+    if [[ ! -x "$BINARY_PATH" ]]; then
+      error "Build succeeded but binary not found at ${BINARY_PATH}"
+    fi
+
+    rm -f "${INSTALL_DIR}/${BINARY_NAME}" 2>/dev/null || true
+    mv "$BINARY_PATH" "${INSTALL_DIR}/${BINARY_NAME}"
+
+    info "Installed bedrud to ${INSTALL_DIR}/${BINARY_NAME}"
+  else
+    # ── Download pre-built binary ───────────────────────────────────
+    ARCHIVE="${TMP_DIR}/bedrud.tar.xz"
+
+    info "Downloading bedrud..."
+    curl --fail --location --progress-bar --output "$ARCHIVE" "${RELEASE_URL}/bedrud_${TARGET}.tar.xz" \
+      || error "Failed to download bedrud for ${TARGET}. Check https://github.com/${REPO}/releases for available builds."
+
+    mkdir -p "$TMP_DIR/extracted"
+    if tar --xz -tf /dev/null 2>/dev/null; then
+      tar -xf "$ARCHIVE" -C "$TMP_DIR/extracted"
+    else
+      xz -d -c "$ARCHIVE" | tar -xf - -C "$TMP_DIR/extracted"
+    fi
+
+    # ── Find and install binary ─────────────────────────────────────
+    BINARY_PATH="$(find "$TMP_DIR/extracted" -type f -name "$BINARY_NAME" -o -name "${BINARY_NAME}.*" 2>/dev/null | head -1)"
+
+    if [[ -z "$BINARY_PATH" ]]; then
+      warn "Archive contents:"
+      ls -laR "$TMP_DIR/extracted" >&2
+      error "Could not find '${BINARY_NAME}' binary in archive"
+    fi
+
+    rm -f "${INSTALL_DIR}/${BINARY_NAME}" 2>/dev/null || true
+    mv "$BINARY_PATH" "${INSTALL_DIR}/${BINARY_NAME}"
+
+    info "Installed bedrud to ${INSTALL_DIR}/${BINARY_NAME}"
+  fi
+  chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
 fi
 
 if [[ -x "${INSTALL_DIR}/${BINARY_NAME}" ]]; then
@@ -341,11 +763,17 @@ else
 fi
 
 # ════════════════════════════════════════════════════════════════
-# ── Interactive Server Setup (Linux, systemd or sysvinit) ───────
+# ── Interactive Server Setup (Linux: systemd / openrc / sysvinit) ──
 # ════════════════════════════════════════════════════════════════
 
+IS_CONTAINER=false
+if [[ -f /.dockerenv ]] || [[ -f /run/.containerenv ]] \
+   || grep -qa 'container' /proc/1/cgroup 2>/dev/null; then
+  IS_CONTAINER=true
+fi
+
 CAN_SETUP=false
-HAS_SYSTEMD=false
+INIT_SYSTEM="none"
 SKIP_REASON=""
 
 if [[ "$os" != "linux" ]]; then
@@ -353,12 +781,20 @@ if [[ "$os" != "linux" ]]; then
 elif [[ "$NO_SETUP" == true ]]; then
   SKIP_REASON=""
 elif [[ -d /run/systemd/system ]]; then
-  HAS_SYSTEMD=true
+  INIT_SYSTEM="systemd"
+  CAN_SETUP=true
+elif [[ -x /sbin/openrc ]]; then
+  INIT_SYSTEM="openrc"
+  CAN_SETUP=true
+elif [[ "$IS_CONTAINER" == true ]]; then
+  INIT_SYSTEM="none"
   CAN_SETUP=true
 elif command -v service >/dev/null 2>&1; then
+  INIT_SYSTEM="sysv"
   CAN_SETUP=true
 else
-  SKIP_REASON="No supported init system found (need systemd or sysvinit service)."
+  INIT_SYSTEM="none"
+  CAN_SETUP=true
 fi
 
 if [[ "$CAN_SETUP" == true ]]; then
@@ -374,15 +810,9 @@ if [[ "$CAN_SETUP" == true ]]; then
     DETECTED_DISTRO="$(grep -m1 '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')"
   fi
   info "Distro: ${DETECTED_DISTRO}"
-
-  if [[ "$DETECTED_DISTRO" != "ubuntu" && "$DETECTED_DISTRO" != "debian" ]]; then
-    warn "bedrud install is designed for Ubuntu/Debian."
-    warn "Other distros may work but are untested."
-    ask_yn "Continue anyway?" "N" CONTINUE_ANYWAY
-    if [[ "$CONTINUE_ANYWAY" != true ]]; then
-      info "Setup cancelled. Binary installed at ${INSTALL_DIR}/${BINARY_NAME}"
-      exit 0
-    fi
+  info "Init: ${INIT_SYSTEM}"
+  if [[ "$IS_CONTAINER" == true ]]; then
+    info "Container: yes (service file installation will be skipped)"
   fi
 
   if [[ "$(id -u)" -ne 0 ]]; then
@@ -405,6 +835,10 @@ if [[ "$CAN_SETUP" == true ]]; then
   if [[ -n "$LOCAL_IP" ]]; then
     info "Local IP: ${LOCAL_IP}"
   fi
+
+  BEDRUD_IP="${PUBLIC_IP:-${LOCAL_IP:-0.0.0.0}}"
+  info "Detected IPs — Public: ${PUBLIC_IP:-unknown}, Local: ${LOCAL_IP:-unknown}"
+  ask "Bedrud server IP (for TLS, access URLs, LiveKit)" "${BEDRUD_IP}" BEDRUD_IP
 
   HAS_DOCKER=false
   if command -v docker >/dev/null 2>&1; then
@@ -471,12 +905,13 @@ if [[ "$CAN_SETUP" == true ]]; then
       ask_yn "Run Postgres in Docker? (recommended — auto-configured, isolated)" "Y" USE_DOCKER_PG
       if [[ "$USE_DOCKER_PG" == true ]]; then
         PG_DOCKER_CREATED=true
-        PG_HOST="127.0.0.1"
+        ask "Postgres Docker bind address" "127.0.0.1" PG_DOCKER_BIND
+        PG_HOST="$PG_DOCKER_BIND"
         PG_PORT="5432"
         PG_USER="bedrud"
         PG_DBNAME="bedrud"
         PG_PASS="$(head -c 24 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 24)"
-        info "Docker Postgres will be bound to 127.0.0.1 only (not accessible from outside)"
+        info "Postgres Docker will be bound to ${PG_DOCKER_BIND} only"
       else
         ask_pg_details
       fi
@@ -487,7 +922,79 @@ if [[ "$CAN_SETUP" == true ]]; then
 
   # -- Q4: Behind proxy/CDN --
   BEHIND_PROXY=false
+  CDN_TYPE="none"
   ask_yn "Running behind a proxy/CDN? (Cloudflare, nginx, etc.)" "N" BEHIND_PROXY
+
+  if [[ "$BEHIND_PROXY" == true ]]; then
+    ask "What type of proxy/CDN? (cloudflare/nginx/other)" "cloudflare" CDN_TYPE
+  fi
+
+  # -- Q4b: LiveKit WebRTC topology --
+  step "LiveKit configuration"
+
+  USE_EXTERNAL_LK=false
+  EXTERNAL_LK_URL=""
+  USE_LK_DOMAIN=false
+  LK_DOMAIN=""
+  LK_IP=""
+
+  if [[ "$BEHIND_PROXY" == true ]]; then
+    echo ""
+    warn "LiveKit uses WebRTC which requires direct UDP connectivity."
+    warn "A proxy/CDN can handle the web UI, but CANNOT proxy WebRTC media traffic."
+    if [[ "$CDN_TYPE" == "cloudflare" ]]; then
+      echo ""
+      warn "Cloudflare: Standard proxy (Orange Cloud) drops all UDP media packets."
+      warn "  Recommended: Use a separate subdomain for LiveKit with DNS-only (Grey Cloud)."
+    fi
+    echo ""
+  fi
+
+  ask_yn "Use an external LiveKit server (separate machine)?" "N" USE_EXTERNAL_LK
+
+  if [[ "$USE_EXTERNAL_LK" == true ]]; then
+    ask "External LiveKit URL (e.g., https://lk.example.com)" "" EXTERNAL_LK_URL
+  else
+    if [[ "$BEHIND_PROXY" == true ]]; then
+      ask_yn "Use a separate subdomain for LiveKit? (bypasses CDN, recommended)" "Y" USE_LK_DOMAIN
+      if [[ "$USE_LK_DOMAIN" == true ]]; then
+        if [[ "$USE_DOMAIN" == true ]]; then
+          local_lk_default="${SETUP_DOMAIN%%.*}"
+          local_lk_default="lk.${SETUP_DOMAIN#"$local_lk_default".}"
+        fi
+        ask "LiveKit subdomain (e.g., lk.meet.example.com)" "${local_lk_default:-}" LK_DOMAIN
+      fi
+    fi
+
+    DEFAULT_LK_IP="${PUBLIC_IP:-${LOCAL_IP:-}}"
+    if [[ "$BEHIND_PROXY" == true ]]; then
+      echo ""
+      warn "LiveKit needs your server's REAL public IP for WebRTC ICE candidates."
+      warn "This is NOT the CDN IP — it is your server's actual IP that clients can reach."
+      ask "LiveKit server IP (real public IP, for WebRTC)" "$DEFAULT_LK_IP" LK_IP
+    else
+      LK_IP="$BEDRUD_IP"
+    fi
+
+    if [[ "$USE_LK_DOMAIN" != true && "$BEHIND_PROXY" == true ]]; then
+      echo ""
+      warn "WARNING: No separate LiveKit domain configured."
+      warn "WebRTC media traffic will likely NOT work through the CDN."
+      warn "See https://bedrud.org/en/docs/guides/behind-proxy for setup instructions."
+      echo ""
+      ask_yn "Proceed anyway?" "Y" PROCEED_ANYWAY
+      if [[ "$PROCEED_ANYWAY" != true ]]; then
+        ask_yn "Set up a separate subdomain for LiveKit?" "Y" USE_LK_DOMAIN
+        if [[ "$USE_LK_DOMAIN" == true ]]; then
+          if [[ "$USE_DOMAIN" == true ]]; then
+            local_lk_default="${SETUP_DOMAIN%%.*}"
+            local_lk_default="lk.${SETUP_DOMAIN#"$local_lk_default".}"
+          fi
+          ask "LiveKit subdomain" "${local_lk_default:-}" LK_DOMAIN
+        fi
+      fi
+    fi
+  fi
 
   # -- Q5: Admin user --
   step "Admin user"
@@ -509,16 +1016,44 @@ if [[ "$CAN_SETUP" == true ]]; then
   # ── Summary ────────────────────────────────────────────────────
   step "Summary"
   echo ""
-  printf "  ${BOLD}Domain:${RESET}       %s\n" "${DOMAIN:-IP-only (${PUBLIC_IP:-unknown})}"
-  printf "  ${BOLD}TLS:${RESET}         %s\n" "$TLS_MODE"
-  printf "  ${BOLD}Database:${RESET}    %s\n" "$DB_TYPE"
-  if [[ "$DB_TYPE" == "postgres" ]]; then
-    printf "  ${BOLD}PG Host:${RESET}     %s:%s\n" "$PG_HOST" "$PG_PORT"
-    if [[ "$PG_DOCKER_CREATED" == true ]]; then
-      printf "  ${BOLD}PG Docker:${RESET}   yes (127.0.0.1 only)\n"
+  printf "  ${BOLD}Server:${RESET}\n"
+  if [[ -n "$DOMAIN" ]]; then
+    printf "    Domain:       %s\n" "$DOMAIN"
+    if [[ "$BEHIND_PROXY" == true ]]; then
+      printf "                  (behind ${CDN_TYPE})\n"
     fi
   fi
-  printf "  ${BOLD}Behind proxy:${RESET} %s\n" "$BEHIND_PROXY"
+  printf "    IP:           %s\n" "$BEDRUD_IP"
+  printf "    TLS:          %s\n" "$TLS_MODE"
+
+  echo ""
+  printf "  ${BOLD}LiveKit:${RESET}\n"
+  if [[ "$USE_EXTERNAL_LK" == true ]]; then
+    printf "    Mode:         External\n"
+    printf "    URL:          %s\n" "$EXTERNAL_LK_URL"
+  elif [[ "$USE_LK_DOMAIN" == true ]]; then
+    printf "    Mode:         Separate domain (direct DNS)\n"
+    printf "    Domain:       %s\n" "$LK_DOMAIN"
+    printf "    IP:           %s (for WebRTC ICE)\n" "$LK_IP"
+    printf "    UDP range:    50000-60000\n"
+    printf "    Ports:        7880/tcp, 7881/tcp\n"
+  elif [[ "$BEHIND_PROXY" == true ]]; then
+    printf "    Mode:         Embedded (behind CDN)\n"
+    printf "    IP:           %s (for WebRTC ICE)\n" "$LK_IP"
+    printf "    ${YELLOW}WARNING: WebRTC may not work through CDN${RESET}\n"
+  else
+    printf "    Mode:         Embedded (proxied via server)\n"
+  fi
+
+  echo ""
+  printf "  ${BOLD}Database:${RESET}     %s\n" "$DB_TYPE"
+  if [[ "$DB_TYPE" == "postgres" ]]; then
+    printf "    PG Host:      %s:%s\n" "$PG_HOST" "$PG_PORT"
+    if [[ "$PG_DOCKER_CREATED" == true ]]; then
+      printf "    PG Docker:    yes (bound to ${PG_DOCKER_BIND})\n"
+    fi
+  fi
+  printf "  ${BOLD}Init system:${RESET} %s\n" "$INIT_SYSTEM"
   printf "  ${BOLD}Admin:${RESET}       %s (%s)\n" "$ADMIN_NAME" "$ADMIN_EMAIL"
   echo ""
 
@@ -543,12 +1078,12 @@ if [[ "$CAN_SETUP" == true ]]; then
       -e POSTGRES_PASSWORD="${PG_PASS}" \
       -e POSTGRES_DB="${PG_DBNAME}" \
       -v bedrud-pgdata:/var/lib/postgresql/data \
-      -p 127.0.0.1:5432:5432 \
+      -p ${PG_DOCKER_BIND}:5432:5432 \
       --restart unless-stopped \
       postgres:alpine >/dev/null 2>&1 \
       || error "Failed to start Postgres container"
 
-    info "Postgres container started (bound to 127.0.0.1 — not accessible from outside)"
+    info "Postgres container started (bound to ${PG_DOCKER_BIND})"
     info "Waiting for Postgres to be ready..."
     for i in $(seq 1 30); do
       if docker exec bedrud-postgres pg_isready -U "${PG_USER}" -d "${PG_DBNAME}" >/dev/null 2>&1; then
@@ -563,60 +1098,50 @@ if [[ "$CAN_SETUP" == true ]]; then
   fi
 
   # ── Phase 4: Run bedrud install ────────────────────────────────
-  step "Running bedrud install"
+  if [[ -f "$CONFIG_FILE" ]] && [[ -z "$FRESH_FLAG" ]]; then
+    info "Existing installation found — skipping bedrud install"
+  else
+    step "Running bedrud install"
 
-  INSTALL_CMD="${INSTALL_DIR}/${BINARY_NAME} install ${FRESH_FLAG}"
+    INSTALL_CMD="${INSTALL_DIR}/${BINARY_NAME} install ${FRESH_FLAG}"
 
-  if [[ -n "$DOMAIN" ]]; then
-    INSTALL_CMD+=" --domain ${DOMAIN}"
-  fi
-  if [[ -n "$EMAIL" ]]; then
-    INSTALL_CMD+=" --email ${EMAIL}"
-  fi
-  if [[ -n "$PUBLIC_IP" ]]; then
-    INSTALL_CMD+=" --ip ${PUBLIC_IP}"
-  fi
+    if [[ -n "$DOMAIN" ]]; then
+      INSTALL_CMD+=" --domain ${DOMAIN}"
+    fi
+    if [[ -n "$EMAIL" ]]; then
+      INSTALL_CMD+=" --email ${EMAIL}"
+    fi
+    INSTALL_CMD+=" --ip ${BEDRUD_IP}"
 
-  case "$TLS_MODE" in
-    acme)       ;;
-    selfsigned) INSTALL_CMD+=" --self-signed" ;;
-    none)       INSTALL_CMD+=" --no-tls" ;;
-  esac
+    case "$TLS_MODE" in
+      acme)       ;;
+      selfsigned) INSTALL_CMD+=" --self-signed" ;;
+      none)       INSTALL_CMD+=" --no-tls" ;;
+    esac
 
-  if [[ "$BEHIND_PROXY" == true ]]; then
-    INSTALL_CMD+=" --behind-proxy"
-  fi
+    if [[ "$BEHIND_PROXY" == true ]]; then
+      INSTALL_CMD+=" --behind-proxy"
+    fi
 
-  info "Running: ${INSTALL_CMD}"
-  echo ""
+    if [[ "$USE_EXTERNAL_LK" == true && -n "$EXTERNAL_LK_URL" ]]; then
+      INSTALL_CMD+=" --external-livekit ${EXTERNAL_LK_URL}"
+    fi
+    if [[ -n "$LK_DOMAIN" ]]; then
+      INSTALL_CMD+=" --livekit-domain ${LK_DOMAIN}"
+    fi
+    if [[ -n "$LK_IP" ]] && [[ "$LK_IP" != "$BEDRUD_IP" ]]; then
+      INSTALL_CMD+=" --lk-ip ${LK_IP}"
+    fi
+    INSTALL_CMD+=" --lk-udp-range 50000-60000"
 
-  if [[ "$HAS_SYSTEMD" == true ]]; then
+    info "Running: ${INSTALL_CMD}"
+    echo ""
+
     if ! eval "$INSTALL_CMD"; then
       echo ""
       error "bedrud install failed. Check output above for details."
     fi
     info "bedrud install completed"
-  else
-    info "No systemd — skipping bedrud install (service creation requires systemd)"
-    mkdir -p /etc/bedrud
-    if [[ ! -f "$CONFIG_FILE" ]]; then
-      cat > "$CONFIG_FILE" <<CONF
-server:
-  port: "8090"
-  domain: "${DOMAIN}"
-  behind_proxy: ${BEHIND_PROXY}
-
-database:
-  type: "sqlite"
-  path: "/etc/bedrud/bedrud.db"
-
-tls:
-  mode: "${TLS_MODE}"
-CONF
-      info "Config written to ${CONFIG_FILE}"
-    fi
-    warn "Auto-start not available without systemd."
-    warn "Start manually with: bedrud run"
   fi
 
   # ── Phase 5: Postgres config swap ──────────────────────────────
@@ -624,101 +1149,182 @@ CONF
     step "Configuring Postgres"
 
     if command -v sed >/dev/null 2>&1; then
-      sed -i \
-        -e 's|type: "sqlite"|type: "postgres"|' \
-        -e 's|path: ".*"|# path removed (postgres)|' \
-        "$CONFIG_FILE"
+      sed -i -e 's|type: "sqlite"|type: "postgres"|' -e '/path: /d' "$CONFIG_FILE"
 
-      if ! grep -q 'host:.*# pg' "$CONFIG_FILE" 2>/dev/null; then
-        sed -i "/database:/,/^[a-z]/{ \
-          s|host: \"\"|host: \"${PG_HOST}\"|; \
-          s|port: \"\"|port: \"${PG_PORT}\"|; \
-          s|dbname: \"\"|dbname: \"${PG_DBNAME}\"|; \
-          s|sslmode: \"\"|sslmode: \"disable\"|; \
-        }" "$CONFIG_FILE"
+      if ! grep -q 'host:' "$CONFIG_FILE" 2>/dev/null; then
+        sed -i "/type: \"postgres\"/a \\  host: \"${PG_HOST}\"\n  port: \"${PG_PORT}\"\n  dbname: \"${PG_DBNAME}\"\n  user: \"${PG_USER}\"\n  password: \"${PG_PASS}\"\n  sslmode: \"disable\"" "$CONFIG_FILE"
       fi
-
-      sed -i \
-        -e "s|user: \"\"|user: \"${PG_USER}\"|; \
-            s|password: \"\"|password: \"${PG_PASS}\"|" \
-        "$CONFIG_FILE"
 
       info "Config updated for Postgres"
     else
       warn "sed not found. Edit ${CONFIG_FILE} manually for Postgres settings."
     fi
 
-    if [[ "$HAS_SYSTEMD" == true ]]; then
-      systemctl restart bedrud 2>/dev/null || true
-    elif command -v service >/dev/null 2>&1; then
-      service bedrud restart 2>/dev/null || true
+    case "$INIT_SYSTEM" in
+      systemd) systemctl restart bedrud 2>/dev/null || true ;;
+      openrc)  rc-service bedrud restart 2>/dev/null || true ;;
+      sysv)    service bedrud restart 2>/dev/null || true ;;
+      none)    ;;
+    esac
+  fi
+
+  # ── Phase 5.5: Wait for service to be ready ────────────────────
+  if [[ "$IS_CONTAINER" == true || "$INIT_SYSTEM" == "none" ]]; then
+    info "No service management — skipping service wait"
+  else
+    step "Waiting for bedrud service"
+
+    WAIT_URL=""
+    case "$TLS_MODE" in
+      acme)       WAIT_URL="https://${DOMAIN}" ;;
+      selfsigned) WAIT_URL="https://${BEDRUD_IP}" ;;
+      none)       WAIT_URL="http://${BEDRUD_IP}:8090" ;;
+    esac
+
+    WAIT_OK=false
+    for i in $(seq 1 30); do
+      WAIT_CODE="$(curl -sk -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 "${WAIT_URL}" 2>/dev/null || true)"
+      if [[ "$WAIT_CODE" =~ ^[23] ]]; then
+        info "Service ready (HTTP ${WAIT_CODE})"
+        WAIT_OK=true
+        break
+      fi
+      sleep 1
+    done
+    if [[ "$WAIT_OK" != true ]]; then
+      warn "Service not responding after 30s. User creation may fail."
     fi
+  fi
+
+  # ── Phase 5.7: Firewall & CDN notes ─────────────────────────────
+  LK_BINDS_PUBLIC=false
+  if [[ "$USE_LK_DOMAIN" == true ]] || [[ "$USE_EXTERNAL_LK" != true && "$BEHIND_PROXY" == true && -n "$LK_IP" && "$LK_IP" != "$BEDRUD_IP" ]]; then
+    LK_BINDS_PUBLIC=true
+  fi
+
+  if [[ "$LK_BINDS_PUBLIC" == true ]]; then
+    step "Firewall configuration"
+    echo ""
+    warn "LiveKit binds to 0.0.0.0 — ensure these ports are open in your firewall:"
+    echo "  7880/tcp   LiveKit API"
+    echo "  7881/tcp   RTC TCP fallback"
+    echo "  50000-60000/udp  WebRTC media"
+    echo "  3478/udp   TURN relay"
+    if [[ "$TLS_MODE" == "acme" || "$TLS_MODE" == "selfsigned" ]]; then
+      echo "  5349/tcp   TURN TLS"
+    fi
+    echo ""
+    echo "  Example (UFW):"
+    echo "    sudo ufw allow 7880/tcp"
+    echo "    sudo ufw allow 7881/tcp"
+    echo "    sudo ufw allow 50000:60000/udp"
+    echo "    sudo ufw allow 3478/udp"
+    echo ""
+  fi
+
+  if [[ "$CDN_TYPE" == "cloudflare" ]]; then
+    step "Cloudflare setup"
+    echo ""
+    if [[ "$USE_LK_DOMAIN" == true ]]; then
+      warn "DNS setup required in Cloudflare Dashboard:"
+      echo "  1. Go to DNS > Records"
+      echo "  2. Add A record: ${LK_DOMAIN} → ${LK_IP}"
+      echo "  3. Set proxy status to ${BOLD}DNS Only (Grey Cloud)${RESET} — NOT Proxied"
+      echo ""
+      warn "If you also want to proxy the Bedrud server domain through Cloudflare:"
+      echo "  - Set ${DOMAIN} to Proxied (Orange Cloud) as usual"
+      echo "  - WebSocket idle timeout is 100s on free/pro tiers (may cause reconnects)"
+      echo "  - Create a Cache Rule for ${DOMAIN}/twirp/* → Bypass"
+      echo "  - Add a WAF exception for your server IP if backend API calls get challenged"
+    elif [[ "$USE_EXTERNAL_LK" != true ]]; then
+      warn "LiveKit is embedded behind Cloudflare proxy."
+      warn "WebRTC media (UDP) will NOT work through Cloudflare."
+      warn "See: https://bedrud.org/en/docs/guides/behind-proxy"
+    fi
+    echo ""
   fi
 
   # ── Phase 6: Create admin user ─────────────────────────────────
   step "Creating admin user"
 
-  if ! "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" create \
+  if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" create \
     --email "$ADMIN_EMAIL" \
     --password "$ADMIN_PASS" \
     --name "$ADMIN_NAME"; then
+    info "Admin user created"
+  else
     error "Failed to create admin user"
   fi
-  info "Admin user created"
 
-  if ! "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" promote \
+  export BEDRUD_SKIP_MIGRATE=1
+
+  if "${INSTALL_DIR}/${BINARY_NAME}" user --config "$CONFIG_FILE" promote \
     --email "$ADMIN_EMAIL"; then
+    info "Admin promoted to superadmin"
+  else
     error "Failed to promote admin user"
   fi
-  info "Admin promoted to superadmin"
   unset ADMIN_PASS
-
-  # ── Phase 7: Verify ────────────────────────────────────────────
-  step "Verifying installation"
-
-  VERIFY_OK=true
-
-  if [[ "$HAS_SYSTEMD" == true ]]; then
-    if systemctl is-active --quiet bedrud 2>/dev/null; then
-      info "bedrud service: active"
-    else
-      warn "bedrud service: NOT active"
-      VERIFY_OK=false
-    fi
-
-    if systemctl is-active --quiet livekit 2>/dev/null; then
-      info "livekit service: active"
-    else
-      if systemctl list-unit-files livekit.service 2>/dev/null | grep -q livekit; then
-        warn "livekit service: NOT active"
-        VERIFY_OK=false
-      fi
-    fi
-  else
-    if command -v service >/dev/null 2>&1; then
-      if service bedrud status >/dev/null 2>&1; then
-        info "bedrud service: active"
-      else
-        warn "bedrud service: NOT active (or not yet registered)"
-        VERIFY_OK=false
-      fi
-    fi
-  fi
 
   VERIFY_URL=""
   case "$TLS_MODE" in
     acme)       VERIFY_URL="https://${DOMAIN}" ;;
-    selfsigned) VERIFY_URL="https://${PUBLIC_IP:-localhost}" ;;
-    none)       VERIFY_URL="http://${PUBLIC_IP:-localhost}:8090" ;;
+    selfsigned) VERIFY_URL="https://${BEDRUD_IP}" ;;
+    none)       VERIFY_URL="http://${BEDRUD_IP}:8090" ;;
   esac
 
-  HEALTH_CODE=""
-  HEALTH_CODE="$(curl -sk -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "${VERIFY_URL}" 2>/dev/null || true)"
-  if [[ "$HEALTH_CODE" =~ ^[23] ]]; then
-    info "Health check: OK (HTTP ${HEALTH_CODE})"
+  # ── Phase 7: Verify ────────────────────────────────────────────
+  if [[ "$IS_CONTAINER" == true || "$INIT_SYSTEM" == "none" ]]; then
+    VERIFY_OK=true
   else
-    warn "Health check: no response (HTTP ${HEALTH_CODE:-none})"
-    warn "Service may still be starting. Check: systemctl status bedrud"
+    step "Verifying installation"
+
+    VERIFY_OK=true
+
+    case "$INIT_SYSTEM" in
+      systemd)
+        if systemctl is-active --quiet bedrud 2>/dev/null; then
+          info "bedrud service: active"
+        else
+          warn "bedrud service: NOT active"
+          VERIFY_OK=false
+        fi
+
+        if systemctl is-active --quiet livekit 2>/dev/null; then
+          info "livekit service: active"
+        else
+          if systemctl list-unit-files livekit.service 2>/dev/null | grep -q livekit; then
+            warn "livekit service: NOT active"
+            VERIFY_OK=false
+          fi
+        fi
+        ;;
+      openrc)
+        if rc-service bedrud status >/dev/null 2>&1; then
+          info "bedrud service: active"
+        else
+          warn "bedrud service: NOT active"
+          VERIFY_OK=false
+        fi
+        ;;
+      sysv)
+        if service bedrud status >/dev/null 2>&1; then
+          info "bedrud service: active"
+        else
+          warn "bedrud service: NOT active (or not yet registered)"
+          VERIFY_OK=false
+        fi
+        ;;
+    esac
+
+    HEALTH_CODE=""
+    HEALTH_CODE="$(curl -sk -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "${VERIFY_URL}" 2>/dev/null || true)"
+    if [[ "$HEALTH_CODE" =~ ^[23] ]]; then
+      info "Health check: OK (HTTP ${HEALTH_CODE})"
+    else
+      warn "Health check: no response (HTTP ${HEALTH_CODE:-none})"
+      warn "Service may still be starting. Check: systemctl status bedrud"
+    fi
   fi
 
   # ── Final output ───────────────────────────────────────────────
@@ -729,31 +1335,62 @@ CONF
   printf "\n"
   printf "  ${BOLD}Access URL:${RESET}   %s\n" "$VERIFY_URL"
   printf "  ${BOLD}Admin:${RESET}        %s (%s)\n" "$ADMIN_NAME" "$ADMIN_EMAIL"
+  if [[ "$USE_EXTERNAL_LK" == true ]]; then
+    printf "  ${BOLD}LiveKit:${RESET}      External (%s)\n" "$EXTERNAL_LK_URL"
+  elif [[ "$USE_LK_DOMAIN" == true ]]; then
+    printf "  ${BOLD}LiveKit:${RESET}      %s (direct, DNS-only)\n" "$LK_DOMAIN"
+    printf "  ${BOLD}LK NodeIP:${RESET}    %s\n" "$LK_IP"
+  fi
   if [[ "$PG_DOCKER_CREATED" == true ]]; then
-    printf "  ${BOLD}Postgres:${RESET}     Docker (bedrud-postgres, 127.0.0.1:5432)\n"
+    printf "  ${BOLD}Postgres:${RESET}     Docker (bedrud-postgres, ${PG_DOCKER_BIND}:5432)\n"
   fi
   printf "  ${BOLD}Config:${RESET}       %s\n" "$CONFIG_FILE"
-  if [[ "$HAS_SYSTEMD" == true ]]; then
-    printf "  ${BOLD}Logs:${RESET}         journalctl -u bedrud -f\n"
-  else
-    printf "  ${BOLD}Start:${RESET}        bedrud run\n"
-  fi
+  case "$INIT_SYSTEM" in
+    systemd)
+      printf "  ${BOLD}Logs:${RESET}         journalctl -u bedrud -f\n"
+      ;;
+    openrc)
+      printf "  ${BOLD}Logs:${RESET}         tail -f /var/log/bedrud/bedrud.log\n"
+      printf "  ${BOLD}Status:${RESET}       rc-service bedrud status\n"
+      ;;
+    sysv)
+      printf "  ${BOLD}Logs:${RESET}         tail -f /var/log/bedrud/bedrud.log\n"
+      printf "  ${BOLD}Status:${RESET}       service bedrud status\n"
+      ;;
+    none)
+      printf "  ${BOLD}Run:${RESET}          bedrud run --config %s\n" "$CONFIG_FILE"
+      printf "  ${BOLD}Background:${RESET}   nohup bedrud run --config %s > /dev/null 2>&1 &\n" "$CONFIG_FILE"
+      ;;
+  esac
   printf "\n"
   if [[ "$VERIFY_OK" != true ]]; then
-    if [[ "$HAS_SYSTEMD" == true ]]; then
-      printf "  ${YELLOW}${BOLD}Some services not yet active.${RESET} Check:\n"
-      printf "    systemctl status bedrud\n"
-      printf "    systemctl status livekit\n"
-      printf "    journalctl -u bedrud --no-pager -n 50\n"
-    else
-      printf "  ${YELLOW}${BOLD}No systemd — auto-start unavailable.${RESET}\n"
-      printf "    Start manually: bedrud run\n"
-    fi
+    case "$INIT_SYSTEM" in
+      systemd)
+        printf "  ${YELLOW}${BOLD}Some services not yet active.${RESET} Check:\n"
+        printf "    systemctl status bedrud\n"
+        printf "    systemctl status livekit\n"
+        printf "    journalctl -u bedrud --no-pager -n 50\n"
+        ;;
+      openrc)
+        printf "  ${YELLOW}${BOLD}Some services not yet active.${RESET} Check:\n"
+        printf "    rc-service bedrud status\n"
+        printf "    tail -n 50 /var/log/bedrud/bedrud.log\n"
+        ;;
+      sysv)
+        printf "  ${YELLOW}${BOLD}Some services not yet active.${RESET} Check:\n"
+        printf "    service bedrud status\n"
+        printf "    tail -n 50 /var/log/bedrud/bedrud.log\n"
+        ;;
+    esac
     printf "\n"
   fi
 
+  if [[ "$BEHIND_PROXY" == true ]]; then
+    printf "  ${BOLD}Proxy guide:${RESET}  https://bedrud.org/en/docs/guides/behind-proxy\n"
+  fi
+
 # ════════════════════════════════════════════════════════════════
-# ── Non-Linux / no systemd: download-only output ────────────────
+# ── Non-Linux / no init: download-only output ───────────────────
 # ════════════════════════════════════════════════════════════════
 else
   if [[ -n "$SKIP_REASON" ]]; then
@@ -782,3 +1419,4 @@ else
     echo ""
   fi
 fi
+

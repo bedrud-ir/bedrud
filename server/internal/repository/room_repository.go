@@ -21,7 +21,7 @@ func NewRoomRepository(db *gorm.DB) *RoomRepository {
 // CreateRoom creates a new room with default admin permissions for creator.
 // If name is empty, a random URL-safe name is generated.
 // The name is validated to contain only lowercase letters, numbers, and hyphens.
-func (r *RoomRepository) CreateRoom(createdBy string, name string, isPublic bool, mode string, settings models.RoomSettings) (*models.Room, error) {
+func (r *RoomRepository) CreateRoom(createdBy, name string, isPublic bool, mode string, settings *models.RoomSettings) (*models.Room, error) {
 	// Normalize the name: trim whitespace and lowercase
 	name = strings.TrimSpace(strings.ToLower(name))
 
@@ -59,7 +59,7 @@ func (r *RoomRepository) CreateRoom(createdBy string, name string, isPublic bool
 			AdminID:   createdBy,
 			IsActive:  true,
 			IsPublic:  isPublic,
-			Settings:  settings,
+			Settings:  *settings,
 			Mode:      mode,
 			ExpiresAt: time.Now().Add(24 * time.Hour),
 		}
@@ -101,7 +101,6 @@ func (r *RoomRepository) CreateRoom(createdBy string, name string, isPublic bool
 		room = newRoom
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -200,9 +199,9 @@ func (r *RoomRepository) CleanupExpiredRooms() error {
 }
 
 // UpdateParticipantPermissions updates a participant's permissions
-func (r *RoomRepository) UpdateParticipantPermissions(roomID, userID string, permissions models.RoomPermissions) error {
+func (r *RoomRepository) UpdateParticipantPermissions(roomID, userID string, permissions *models.RoomPermissions) error {
 	return r.db.Where("room_id = ? AND user_id = ?", roomID, userID).
-		Updates(&permissions).Error
+		Updates(permissions).Error
 }
 
 // BringToStage brings a participant to the stage
@@ -259,11 +258,11 @@ func (r *RoomRepository) KickParticipant(roomID, userID string) error {
 }
 
 // UpdateRoomSettings updates room global settings
-func (r *RoomRepository) UpdateRoomSettings(roomID string, settings models.RoomSettings) error {
+func (r *RoomRepository) UpdateRoomSettings(roomID string, settings *models.RoomSettings) error {
 	return r.db.Model(&models.Room{}).
 		Where("id = ?", roomID).
 		Select("Settings").
-		Updates(models.Room{Settings: settings}).Error
+		Updates(models.Room{Settings: *settings}).Error
 }
 
 // DeleteRoom deletes a room and its related data. Only the creator can delete.

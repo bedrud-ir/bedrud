@@ -50,10 +50,13 @@ func GenerateSelfSignedCert(certFile, keyFile string) error {
 	if err != nil {
 		return err
 	}
-	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		certOut.Close()
+		return err
+	}
 	certOut.Close()
 
-	keyOut, err := os.OpenFile(keyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(keyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
@@ -61,7 +64,10 @@ func GenerateSelfSignedCert(certFile, keyFile string) error {
 	if err != nil {
 		return err
 	}
-	pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes})
+	if err := pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes}); err != nil {
+		keyOut.Close()
+		return err
+	}
 	keyOut.Close()
 
 	return nil

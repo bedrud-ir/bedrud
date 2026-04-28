@@ -1,6 +1,9 @@
 package database
 
 import (
+	"fmt"
+	"os"
+
 	"bedrud/internal/models"
 
 	"github.com/rs/zerolog/log"
@@ -8,9 +11,16 @@ import (
 
 // RunMigrations performs all database migrations
 func RunMigrations() error {
-	db := GetDB()
+	if os.Getenv("BEDRUD_SKIP_MIGRATE") == "1" {
+		log.Info().Msg("Skipping database migrations (BEDRUD_SKIP_MIGRATE=1)")
+		return nil
+	}
 
-	// Run migrations in correct order
+	db := GetDB()
+	if db == nil {
+		return fmt.Errorf("database not initialized; call database.Initialize first")
+	}
+
 	if err := db.AutoMigrate(&models.User{}); err != nil {
 		return err
 	}
@@ -39,15 +49,20 @@ func RunMigrations() error {
 		return err
 	}
 
-	// Add foreign key constraints manually
-	if err := db.Exec(`
-        ALTER TABLE room_permissions 
-        ADD CONSTRAINT fk_room_permissions_participant 
-        FOREIGN KEY (room_id, user_id) 
-        REFERENCES room_participants(room_id, user_id) 
-        ON DELETE CASCADE
-    `).Error; err != nil {
-		log.Warn().Err(err).Msg("Failed to add foreign key constraint - might already exist")
+	// Add foreign key constraints manually (idempotent, Postgres only)
+	// SQLite does not support ALTER TABLE ADD CONSTRAINT for composite FKs.
+	if db.Dialector.Name() == "postgres" {
+		if !db.Migrator().HasConstraint(&models.RoomPermissions{}, "fk_room_permissions_participant") {
+			if err := db.Exec(`
+				ALTER TABLE room_permissions
+				ADD CONSTRAINT fk_room_permissions_participant
+				FOREIGN KEY (room_id, user_id)
+				REFERENCES room_participants(room_id, user_id)
+				ON DELETE CASCADE
+			`).Error; err != nil {
+				log.Warn().Err(err).Msg("Failed to add foreign key constraint")
+			}
+		}
 	}
 
 	log.Info().Msg("Database migrations completed successfully")

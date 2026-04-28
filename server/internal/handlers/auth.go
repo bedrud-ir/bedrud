@@ -1,15 +1,14 @@
 package handlers
 
 import (
-	"context"
-	"fmt"
-	"net/http"
-	"net/url"
-
 	"bedrud/internal/auth"
 	"bedrud/internal/database"
 	"bedrud/internal/models"
 	"bedrud/internal/repository"
+	"context"
+	"fmt"
+	"net/http"
+	"net/url"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/markbates/goth/gothic"
@@ -78,7 +77,7 @@ func BeginAuthHandler(c *fiber.Ctx) error {
 	}
 
 	// Create a new http.Request for gothic
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", originalReqURL.String(), nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, originalReqURL.String(), http.NoBody)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create http.Request for gothic.GetAuthURL")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -168,7 +167,7 @@ func (h *AuthHandler) CallbackHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", parsedCallbackURL.String(), nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, parsedCallbackURL.String(), http.NoBody)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create http.Request for gothic.CompleteUserAuth")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

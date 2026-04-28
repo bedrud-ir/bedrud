@@ -1,4 +1,4 @@
----
+﻿---
 title: مُثبّت CLI
 description: تثبيت بأمر واحد لبدرود على جميع المنصات
 order: 2
@@ -12,8 +12,8 @@ order: 2
 
 ## ما يفعله المُثبّت
 
-١. يكتشف نظام التشغيل وبنية المعالج وتفاوتات المنصة (Rosetta ٢)
-٢. يُنزّل الملف الثنائي الصحيح من [إصدارات GitHub](https://github.com/bedrud-ir/bedrud/releases)
+١. يكتشف نظام التشغيل وبنية المعالج وتفاوتات المنصة (Rosetta ٢) ونظام التهيئة (systemd/OpenRC/SysV/حاوية)
+٢. يُنزّل الملف الثنائي الصحيح من [إصدارات GitHub](https://github.com/bedrud-ir/bedrud/releases) (أو يبني من المصدر مع `--build`)
 ٣. يُثبّت في `~/bin` (قابل للتخصيص عبر `--install-dir`)
 ٤. يُضيف مجلد التثبيت إلى `PATH` عبر تهيئة الصدفة
 ٥. يُنفّذ `bedrud completions` للاكتمال التلقائي في الصدفة
@@ -26,6 +26,7 @@ order: 2
 | المنصة | الاعتماديات |
 |--------|-------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+ (مضمّن مع Windows 10/11) |
 
 ---
@@ -40,7 +41,7 @@ order: 2
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     أعد تحميل الصدفة، ثم تحقّق:
@@ -53,7 +54,7 @@ order: 2
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     bedrud --version
     ```
   </TabsContent>
@@ -66,13 +67,15 @@ order: 2
 ### مُثبّت Bash
 
 ```
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 ```
 
 | العلامة | الافتراضي | الوصف |
 |---------|-----------|------|
 | `--install-dir <dir>` | `~/bin` | مكان وضع الملف الثنائي |
 | `--version <ver>` | `latest` | تثبيت إصدار محدد (مثال: `v1.2.0`) |
+| `--build` | off | بناء من المصدر بدلاً من تنزيل إصدار |
+| `--branch <name>` | `main` | فرع Git للنسخ (يتطلب `--build`) |
 | `--skip-shell` | off | عدم تعديل ملفات RC للصدفة أو PATH |
 | `-h`, `--help` | — | طباعة التعليمات والخروج |
 
@@ -80,28 +83,34 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 
 ```bash
 # الافتراضي
-curl -fsSL https://get.bedrud.org | bash
+curl -fsSL https://bedrud.org/install.sh | bash
 
 # تثبيت إصدار محدد
-curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
+
+# بناء من المصدر (فرع مخصص)
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
+
+# بناء من نسخة مطابقة
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
 
 # تثبيت على مستوى النظام
-curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://bedrud.org/install.sh | sudo bash -s -- --install-dir /usr/local/bin
 
 # CI / الأتمتة — تخطي تهيئة الصدفة
-curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --skip-shell
 ```
 
 ### مُثبّت PowerShell
 
 ```
-Usage: irm https://get.bedrud.org/install.ps1 | iex
+Usage: irm https://bedrud.org/install.ps1 | iex
 ```
 
 لتمرير المعاملات، احفظ الملف أولاً:
 
 ```powershell
-irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+irm https://bedrud.org/install.ps1 -OutFile install.ps1
 .\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
 ```
 
@@ -121,13 +130,13 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `BEDRUD_REPO` | `bedrud-ir/bedrud` | كلاهما | تجاوز مستودع GitHub (للمسارات أو النسخ المطابقة) |
 
 ```bash
-BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
-BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://bedrud.org/install.sh | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ```powershell
 $env:BEDRUD_REPO = "myorg/bedrud-fork"
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
 
 ---
@@ -169,23 +178,57 @@ uname -m → "x86_64" | "amd64"  → amd64
 **الاكتشاف:** `sysctl -n sysctl.proc_translated` يُعيد `١`.
 **التأثير:** يبدّل `darwin_amd64` → `darwin_arm64` لأداء ARM أصلي.
 
+### بيئات الحاويات (Docker، Kubernetes، إلخ)
+
+**الاكتشاف:** يتحقق من `/.dockerenv` و `/run/.containerenv` و `/proc/1/comm` (لـ `docker-init` و `tini` و `containerd` و `runc`) و `/proc/1/cgroup` (لـ `docker` و `kubepods` و `containerd`).
+**التأثير:** يتم تخطي تثبيت ملفات الخدمة. يطبع المثبّت أوامر التشغيل اليدوي:
+
+```bash
+# المقدمة
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# الخلفية
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+لإدارة الخدمات بشكل صحيح في Docker، استخدم `--init` أو [tini](https://github.com/krallin/tini) كـ PID 1.
+
+---
+
+## دعم أنظمة التهيئة
+
+يكتشف المثبّت نظام التهيئة تلقائيًا وينشئ ملفات الخدمة المناسبة لإعداد الخادم:
+
+| نظام التهيئة | الكشف | ملفات الخدمة | الإدارة |
+|--------------|-------|-------------|---------|
+| systemd | وجود `/run/systemd/system` | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | وجود `/sbin/openrc` | `/etc/init.d/*` (تنسيق OpenRC) | `rc-service`, `rc-update` |
+| SysV init | توفر أمر `service` | `/etc/init.d/*` (تنسيق LSB) | `service`, `update-rc.d` |
+| **حاوية** | `/.dockerenv`، `/proc/1/comm`، `/proc/1/cgroup` | لا يوجد — تشغيل يدوي | ملف ثنائي مباشر أو `nohup` |
+
+مدعوم في: معظم توزيعات Linux (systemd، OpenRC، SysV init) وWSL1 وحاويات Linux. بيئات الحاويات تُكتشف تلقائيًا — يتم تخطي تثبيت ملفات الخدمة مع طباعة تعليمات التشغيل اليدوي.
+
 ---
 
 ## تدفق التثبيت
 
 ١. **فحص Windows** — تم اكتشاف MINGW/MSYS/CYGWIN؟ يطبع أمر PowerShell ويخرج
-٢. **فحص الاعتماديات** — يتطلب `curl` + `tar`
-٣. **تحليل المعاملات** — بحد أقصى ٣ علامات
+٢. **فحص الاعتماديات** — يتطلب `curl` + `tar` (و `git` + `go` + `bun` + `make` مع `--build`)
+٣. **تحليل المعاملات** — علامات بما في ذلك `--build` و `--branch`
 ٤. **اكتشاف المنصة** — نظام التشغيل + البنية عبر `uname`
 ٥. **اكتشاف التفاوتات** — Rosetta ٢
-٦. **التنزيل** — تنزيل `bedrud_{TARGET}.tar.xz`
-٧. **الاستخراج والتثبيت** — مجلد مؤقت، استخراج، `mv → $INSTALL_DIR/bedrud`، `chmod +x`
-٨. **التحقق** — يُنفّذ `bedrud --version`
-٩. **فحص PATH** — موجود بالفعل؟ يتخطى. `--skip-shell`؟ يطبع أمراً يدوياً. وإلا → يعدّل ملف RC
-١٠. **الاكتمالات** — يُنفّذ `bedrud completions`
-١١. **الانتهاء** — يطبع رسالة النجاح وتعليمات إعادة التحميل
+٦. **تثبيت الملف الثنائي** — أحد الخيارين:
+   - **وضع التنزيل** (الافتراضي): تنزيل `bedrud_{TARGET}.tar.xz`، استخراج، تثبيت
+   - **وضع البناء** (`--build`): `git clone --branch <branch> --depth 1`، تنفيذ `make build`، تثبيت الملف الثنائي
+٧. **التحقق** — يُنفّذ `bedrud --version`
+٨. **فحص PATH** — موجود بالفعل؟ يتخطى. `--skip-shell`؟ يطبع أمراً يدوياً. وإلا → يعدّل ملف RC
+٩. **الاكتمالات** — يُنفّذ `bedrud completions`
+١٠. **الانتهاء** — يطبع رسالة النجاح وتعليمات إعادة التحميل
 
 صيغة رابط التنزيل: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+وضع البناء يستنسخ من: `github.com/{repo}` وينفّذ `make build` (الناتج: `server/dist/bedrud`).
 
 ---
 
@@ -238,7 +281,7 @@ chmod +x ~/bin/bedrud
 ### النسخة المطابقة المستضافة ذاتياً
 
 ```bash
-BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ### الملف الثنائي المباشر
@@ -255,7 +298,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-لتثبيتات الخادم عبر systemd:
+لتثبيتات الخادم عبر systemd أو OpenRC أو SysV init:
 
 ```bash
 sudo bedrud uninstall
@@ -298,12 +341,25 @@ source ~/.bashrc
 فرض ARM أصلي:
 
 ```bash
-arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+arch -arm64 curl -fsSL https://bedrud.org/install.sh | arch -arm64 bash
 ```
 
 ### Windows: "running scripts is disabled"
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
+
+### Windows: تم اكتشاف WSL
+
+إذا كنت تقوم بالتشغيل في محطة WSL (على سبيل المثال، Ubuntu على Windows)، فسيقوم مُثبّت PowerShell باكتشاف ذلك ويطلب منك تشغيل مُثبّت Bash بدلاً من ذلك. يضمن ذلك تثبيت Bedrud بشكل صحيح لبيئة Linux داخل WSL.
+
+### Windows: أجهزة ARM64 (Surface Pro، إلخ.)
+
+يكتشف المُثبّت تلقائياً `windows_arm64` ويقوم بتنزيل الملف الثنائي الأصلي. إذا كنت بحاجة إلى فرض هيكلية معينة، فقم بتنزيل ملف zip المحدد من [الإصدارات](https://github.com/bedrud-ir/bedrud/releases).
+
+### Windows: Docker Desktop لـ Postgres
+
+إذا اخترت تشغيل Postgres في Docker أثناء الإعداد، فتأكد من تثبيت **Docker Desktop** وتشغيله. سيحاول المُثبّت بدء تشغيل الحاوية تلقائياً.
+

@@ -1,4 +1,4 @@
----
+﻿---
 title: Sunucu Kurulumu
 description: Bedrud sunucusunu Linux'a kurun
 order: 2
@@ -15,7 +15,7 @@ Bu kılavuz, bir Linux sunucusuna **Bedrud sunucusunun** (API, web arayüzü, We
 | **İşletim sistemi** | Debian 12+, Ubuntu 22.04+, Arch Linux (rolling), Fedora 39+ |
 | **Mimari** | amd64 (x86_64) veya arm64 (aarch64) |
 | **Erişim** | Root veya sudo |
-| **Başlatma sistemi** | systemd |
+| **Başlatma sistemi** | systemd, OpenRC veya SysV init (otomatik algılanır) |
 | **Donanım** | 1 vCPU, 512 MB RAM minimum. 10+ eşzamanlı oda için 2 vCPU, 2 GB RAM önerilir |
 | **Bağlantı noktaları** | `8090` (API + web arayüzü), `7880` (LiveKit WebSocket), `50000–60000/udp` (WebRTC medya) |
 | **Otomatik TLS** | Ayrıca `80` ve `443` bağlantı noktalarını açın. Bu sunucuya işaret eden DNS A kaydına sahip bir alan adı gerektirir |
@@ -37,7 +37,7 @@ Bedrud CLI ikili dosyasını indirir ve PATH'inize kurar. Linux, macOS ve Window
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Kurulumdan sonra kabuğunuzu yeniden yükleyin:
@@ -50,7 +50,7 @@ Bedrud CLI ikili dosyasını indirir ve PATH'inize kurar. Linux, macOS ve Window
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
   </TabsContent>
@@ -126,7 +126,7 @@ Dağıtımınızın paket yöneticisi aracılığıyla kurun.
 
 ## 3. Docker
 
-Bedrud'u bir konteynerde çalıştırın - Linux sunucu kurulumu, systemd veya ikili dosya indirmesi gerekmez.
+Bedrud'u bir konteynerde çalıştırın - Linux sunucu kurulumu, init sistemi kurulumu veya ikili dosya indirmesi gerekmez.
 
 ### Önceden Derlenmiş İmaj (en hızlı)
 
@@ -478,7 +478,7 @@ Bedrud'u tamamen kaldırmak için:
 sudo bedrud uninstall
 ```
 
-Bu, servisleri durdurur, systemd birimlerini kaldırır, `/usr/local/bin` dizininden ikili dosyayı siler ve `/etc/bedrud`, `/var/lib/bedrud` ve `/var/log/bedrud` dizinlerini temizler.
+Bu, servisleri durdurur, tüm init sistemlerinin servis dosyalarını kaldırır, `/usr/local/bin` dizininden ikili dosyayı siler ve `/etc/bedrud`, `/var/lib/bedrud` ve `/var/log/bedrud` dizinlerini temizler.
 
 ---
 
@@ -497,3 +497,4 @@ Bu, servisleri durdurur, systemd birimlerini kaldırır, `/usr/local/bin` dizini
 | **Kendi imzalı sertifika uyarıları** | Beklenen davranış. Özel CA kurulumu için bkz. [Dahili TLS Kılavuzu](/tr/docs/guides/internal-tls) |
 | **Video yok / WebRTC başarısız** | Kamera erişimi için HTTPS gerekli. `--tls` kullanın. UDP 50000–60000'ün açık olduğundan emin olun |
 | **Ters vekil sunucu: yanlış istemci IP'si** | `--behind-proxy` bayrağını kullanın. Güvenilir vekil başlıklarını yapılandırır |
+

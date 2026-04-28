@@ -1,4 +1,4 @@
----
+﻿---
 title: Быстрый старт
 description: Разверните Bedrud и присоединитесь к видеоконференции за 5 минут
 order: 1
@@ -27,7 +27,7 @@ order: 1
 
 | Требование | Подробности |
 |-------------|---------|
-| Linux-сервер | amd64 или arm64, с доступом `sudo` и `systemd`. Для macOS/Windows: используйте Docker или WSL2 для сервера |
+| Linux-сервер | amd64 или arm64, с доступом `sudo` и поддерживаемой системой инициализации (systemd, OpenRC или SysV init). Для macOS/Windows: используйте Docker или WSL2 для сервера |
 | Открытые порты | `8090`, `7880`, `50000–60000/udp`. Для авто-TLS: также `80` и `443` |
 | Домен (опционально) | С DNS A-записью, указывающей на ваш сервер. Нет домена? Работает с IP - см. альтернативы ниже |
 
@@ -46,7 +46,7 @@ order: 1
   <TabsContent value="macos-linux">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Перезагрузите оболочку после установки:
@@ -66,7 +66,7 @@ order: 1
   <TabsContent value="windows">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
     Закройте и снова откройте терминал, затем проверьте:
@@ -98,7 +98,7 @@ order: 1
 
 ## 2. Разверните сервер
 
-> **Установка сервера требует Linux с systemd.** macOS и Windows не поддерживают `bedrud install` напрямую — используйте [Docker](#docker) или [WSL2](#системы-отличные-от-linux) вместо этого.
+> **Установка сервера требует Linux с поддерживаемой системой инициализации (systemd, OpenRC или SysV init).** macOS и Windows не поддерживают `bedrud install` напрямую — используйте [Docker](#docker) или [WSL2](#системы-отличные-от-linux) вместо этого.
 
 Замените `meet.example.com` и `admin@example.com` на свои значения:
 
@@ -106,7 +106,7 @@ order: 1
 sudo bedrud install --tls --domain meet.example.com --email admin@example.com
 ```
 
-Устанавливает бинарный файл в `/usr/local/bin`, генерирует конфигурацию, создаёт службы systemd, подготавливает TLS и запускает всё.
+Устанавливает бинарный файл в `/usr/local/bin`, генерирует конфигурацию, создаёт init-сервисы (systemd, OpenRC или SysV init), подготавливает TLS и запускает всё.
 
 > **Порт 80 или 443 занят?** Остановите конфликтующие службы: `sudo systemctl stop nginx apache2 caddy`, затем запустите установку снова.
 
@@ -185,7 +185,7 @@ sudo bedrud install --ip 127.0.0.1
 
 ### Системы, отличные от Linux
 
-Команда `bedrud install` настраивает службы systemd и работает только в Linux. CLI-установщик (шаг 1) работает везде и помещает бинарный файл в PATH. Для установки сервера используйте Docker или WSL2.
+Команда `bedrud install` настраивает init-сервисы (systemd, OpenRC или SysV init) и работает только в Linux. CLI-установщик (шаг 1) работает везде и помещает бинарный файл в PATH. Для установки сервера используйте Docker или WSL2.
 
 | ОС      | Способ                                                     |
 |---------|---------------------------------------------------------|
@@ -254,3 +254,4 @@ docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
 - [Руководство по развёртыванию](/ru/docs/guides/deployment) — настройка production, обратный прокси, масштабирование
 - [Обзор архитектуры](/ru/docs/architecture/overview) — как компоненты работают вместе
 - [Документация API](http://localhost:8090/api/swagger) — Swagger UI (на запущенном экземпляре)
+

@@ -190,7 +190,7 @@ func TestGenerateRandomRoomName_Format(t *testing.T) {
 }
 
 func TestGenerateRandomRoomName_PassesValidation(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		name, err := GenerateRandomRoomName()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -203,7 +203,7 @@ func TestGenerateRandomRoomName_PassesValidation(t *testing.T) {
 
 func TestGenerateRandomRoomName_Uniqueness(t *testing.T) {
 	seen := make(map[string]bool)
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		name, err := GenerateRandomRoomName()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

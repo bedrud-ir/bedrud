@@ -30,7 +30,7 @@ echo "deb https://bedrud-ir.github.io/bedrud stable main" \
 sudo apt update && sudo apt install bedrud
 ```
 
-软件包将二进制文件安装到 `/usr/local/bin/bedrud` 并注册一个 systemd 服务。安装后，运行交互式安装程序：
+软件包将二进制文件安装到 `/usr/local/bin/bedrud` 并注册一个 init 服务（自动检测 systemd/OpenRC/SysV）。安装后，运行交互式安装程序：
 
 ```bash
 sudo bedrud install

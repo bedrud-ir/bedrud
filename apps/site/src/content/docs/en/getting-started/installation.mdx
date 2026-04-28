@@ -1,4 +1,4 @@
----
+﻿---
 title: Server Installation
 description: Install Bedrud server on Linux
 order: 2
@@ -15,7 +15,7 @@ This guide covers installing the **Bedrud server** (API, web UI, WebRTC media se
 | **Operating system** | Debian 12+, Ubuntu 22.04+, Arch Linux (rolling), Fedora 39+ |
 | **Architecture** | amd64 (x86_64) or arm64 (aarch64) |
 | **Access** | Root or sudo |
-| **Init system** | systemd |
+| **Init system** | systemd, OpenRC, or SysV init (auto-detected) |
 | **Hardware** | 1 vCPU, 512 MB RAM minimum. 2 vCPU, 2 GB RAM recommended for 10+ concurrent rooms |
 | **Ports** | `8090` (API + web UI), `7880` (LiveKit WebSocket), `50000–60000/udp` (WebRTC media) |
 | **Auto-TLS** | Additionally open `80` and `443`. Requires a domain with DNS A record pointing to this server |
@@ -37,7 +37,7 @@ Downloads and installs the Bedrud CLI binary to your PATH. Works on Linux, macOS
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Reload your shell after install:
@@ -50,7 +50,7 @@ Downloads and installs the Bedrud CLI binary to your PATH. Works on Linux, macOS
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
   </TabsContent>
@@ -126,7 +126,7 @@ Install via your distribution's package manager.
 
 ## 3. Docker
 
-Run Bedrud in a container - no Linux server setup, no systemd, no binary download.
+Run Bedrud in a container - no Linux server setup, no init system setup, no binary download.
 
 ### Pre-built Image (fastest)
 
@@ -478,7 +478,7 @@ To completely remove Bedrud:
 sudo bedrud uninstall
 ```
 
-This stops services, removes systemd units, deletes the binary from `/usr/local/bin`, and cleans up `/etc/bedrud`, `/var/lib/bedrud`, and `/var/log/bedrud`.
+This stops services, removes service files for all init systems, deletes the binary from `/usr/local/bin`, and cleans up `/etc/bedrud`, `/var/lib/bedrud`, and `/var/log/bedrud`.
 
 ---
 
@@ -497,3 +497,4 @@ This stops services, removes systemd units, deletes the binary from `/usr/local/
 | **Self-signed cert warnings** | Expected. See [Internal TLS Guide](/en/docs/guides/internal-tls) for private CA setup |
 | **No video / WebRTC failed** | HTTPS required for camera access. Use `--tls`. Ensure UDP 50000–60000 is open |
 | **Reverse proxy: wrong client IP** | Use `--behind-proxy` flag. Configures trusted proxy headers |
+

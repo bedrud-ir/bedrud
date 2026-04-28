@@ -1,0 +1,286 @@
+﻿---
+title: 在代理/CDN 之后
+description: 在 Cloudflare、nginx 和其他反向代理之后运行 Bedrud
+order: 29
+---
+
+当您的服务器位于反向代理或 CDN 之后时，如何部署 Bedrud。这是一个常见的生产环境设置，但 WebRTC (LiveKit) 需要特殊处理，因为 **CDN 无法代理 UDP 媒体流量**。
+
+---
+
+## 问题所在 (The Problem)
+
+Bedrud 有两个面向网络的组件，它们有不同的要求：
+
+| 组件 | 流量 | CDN/代理兼容？ |
+|-----------|---------|----------------------|
+| Bedrud Server | HTTP/WebSocket (TCP) | 是 |
+| LiveKit (WebRTC) | UDP 媒体 + TCP 信令 | **否 — UDP 必须直接到达服务器** |
+
+Cloudflare、nginx 或 Traefik 等标准代理可以很好地处理 HTTP/HTTPS 流量。但是 LiveKit 的 WebRTC 媒体通过 **UDP 端口**传输，这些代理会静默丢弃 (drop) 或无法转发 (forward) 这些 UDP 流量。
+
+```
+浏览器 ──HTTP/WS──► CDN ──HTTP/WS──► Bedrud Server    ✓ 正常工作
+浏览器 ──UDP────────► CDN ──X─────────► LiveKit        ✗ 被丢弃
+浏览器 ──UDP─────────────────────────► LiveKit         ✓ 直连
+```
+
+---
+
+## 部署选项 (Deployment Options)
+
+### 选项 1：分离 LiveKit 域名（推荐）
+
+使用两个 DNS 记录：一个用于 Bedrud 服务器（已代理），另一个用于 LiveKit（仅 DNS）。
+
+```
+meet.example.com     → A 记录 → CDN 代理 (橙色云朵) → Bedrud 服务器
+lk.meet.example.com  → A 记录 → 仅 DNS (灰色云朵)    → 同一台服务器
+```
+
+当您选择“Behind proxy”并提供 LiveKit 子域名时，安装程序会自动处理此问题。
+
+**步骤：**
+
+1. 运行安装程序并回答代理/CDN 问题：
+   ```bash
+   curl -fsSL https://bedrud.org/install.sh | bash
+   ```
+   - "Running behind a proxy/CDN?" → **Yes**
+   - "What type?" → **cloudflare**
+   - "Use a separate subdomain for LiveKit?" → **Yes**
+   - 输入 `lk.meet.example.com` 作为 LiveKit 子域名
+   - 输入您服务器的**真实公网 IP**（不是 CDN IP）供 LiveKit 使用
+
+2. 在您的 DNS 提供商处，创建：
+   - `meet.example.com` → 通过 CDN 代理
+   - `lk.meet.example.com` → **仅 DNS** (灰色云朵)，指向服务器的真实 IP
+
+3. 在防火墙中打开所需端口：
+   ```bash
+   sudo ufw allow 7880/tcp    # LiveKit API
+   sudo ufw allow 7881/tcp    # RTC TCP 回退
+   sudo ufw allow 50000:60000/udp  # WebRTC 媒体
+   sudo ufw allow 3478/udp    # TURN 中继
+   sudo ufw allow 5349/tcp    # TURN TLS (如果使用 TLS)
+   ```
+
+**为什么这有效：** 浏览器通过 `lk.meet.example.com` 直接连接到 LiveKit，完全绕过 CDN。WebRTC UDP 流量直接流向您的服务器。Bedrud Web UI 仍然受益于 CDN 缓存和 DDoS 防护。
+
+### 选项 2：外部 LiveKit 服务器
+
+在不位于任何代理之后的独立机器上运行 LiveKit。
+
+```
+浏览器 ──► CDN ──► Bedrud Server ──API──► LiveKit Server
+浏览器 ──────────────────────────────────► LiveKit Server
+```
+
+**步骤：**
+
+1. 在独立的机器上设置 LiveKit 服务器（参见 [LiveKit 文档](https://docs.livekit.io/deploy/)）
+
+2. 运行 Bedrud 安装程序并选择“external LiveKit server”：
+   ```bash
+   bedrud install \
+     --domain meet.example.com \
+     --behind-proxy \
+     --external-livekit https://lk.example.com \
+     --email admin@example.com
+   ```
+
+3. 确保 LiveKit 服务器的端口已打开且客户端可访问。
+
+### 选项 3：相同 IP，不同配置（使用显式 NodeIP 的嵌入式 LK）
+
+如果您无法使用独立域名，可以将 LiveKit 保持为嵌入式 (embedded)，并为 WebRTC ICE 候选者显式设置真实的服务器 IP。信令 (WebSocket) 仍然通过 CDN，但媒体 (UDP) 会绕过它。
+
+```
+浏览器 ──WS/信令──► CDN ──► Bedrud Server ──► 嵌入式 LiveKit
+浏览器 ──UDP 媒体──────────────────────► 服务器 IP (直连)
+```
+
+**步骤：**
+
+1. 运行安装程序：
+   ```bash
+   bedrud install \
+     --domain meet.example.com \
+     --behind-proxy \
+     --lk-ip 您的真实服务器IP \
+     --lk-udp-range 50000-60000
+   ```
+
+2. 在防火墙上打开 WebRTC 端口：
+   ```bash
+   sudo ufw allow 50000:60000/udp
+   sudo ufw allow 7881/tcp
+   sudo ufw allow 3478/udp
+   ```
+
+**限制：**
+- 客户端必须能够通过 UDP 端口访问您服务器的真实 IP
+- WebSocket 信令通过 CDN（受空闲超时 idle timeouts 限制）
+- 可靠性低于选项 1 或 2
+
+---
+
+## Cloudflare 特定说明
+
+### DNS 设置
+
+| 记录 | 名称 | 内容 | 代理 |
+|--------|------|---------|-------|
+| A | `meet` | 您的服务器 IP | **已代理** (橙色云朵) |
+| A | `lk` | 您的服务器 IP | **仅 DNS** (灰色云朵) |
+
+### WebSocket 超时
+
+Cloudflare 免费版和专业版对 WebSocket 连接有 **100 秒的空闲超时**。如果用户在房间内没有活动的信令，连接可能会断开。这会导致重新连接 (reconnect) —— 音频/视频通常会恢复，但这可能会造成干扰。
+
+缓解措施：在 `livekit.yaml` 中配置 LiveKit 保活 (keep-alive) 间隔：
+```yaml
+rtc:
+  peer_connection_configs:
+    - video_codec: H264
+  # 保活有助于防止通过 CDN 时因空闲而断开连接
+```
+
+### 缓存规则
+
+确保 Cloudflare 不缓存 LiveKit API 响应。创建一条缓存规则：
+
+- **URL 模式：** `lk.yourdomain.com/twirp/*`
+- **缓存级别：** **绕过 (Bypass)**
+
+### WAF 例外
+
+如果您的 Bedrud 服务器通过 CDN 对 LiveKit 进行后端 API 调用（在使用独立域名的情况下很少见），Cloudflare 的 WAF 可能会质询或阻止这些请求。为您的服务器 IP 地址添加一个 WAF 例外。
+
+### DDoS 防护
+
+当为 LiveKit 域名使用“仅 DNS”（灰色云朵）时，该子域名**不会**获得 Cloudflare 的 DDoS 防护。LiveKit 内置的速率限制 (rate limiting) 和身份验证（API 密钥）提供了一定的保护。为了增加安全性，请考虑：
+- 将 `--external-livekit` 选项与位于独立防火墙之后的专用 LiveKit 机器配合使用
+- 使用防火墙规则限制仅允许 Bedrud 服务器的 IP 访问 LiveKit API
+
+---
+
+## nginx 反向代理
+
+如果使用 nginx 作为反向代理（而非 CDN），您需要代理 Bedrud 服务器，但让 LiveKit 流量直接通过。
+
+### 仅针对 Bedrud Server 的 nginx 配置
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name meet.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/meet.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/meet.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # WebSocket 支持（如果通过 nginx 代理 LiveKit 信令）
+    location /livekit {
+        proxy_pass http://127.0.0.1:7880;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+    }
+}
+```
+
+### 重要提示：UDP 媒体仍需要直接访问
+
+即使使用 nginx，WebRTC UDP 媒体也不会通过 nginx。客户端直接连接到 UDP 端口上的 LiveKit NodeIP。您仍然需要：
+
+1. 在防火墙中打开 UDP 端口 `50000-60000`（或您配置的范围）
+2. 确保 `livekit.yaml` 中的 `node_ip` 已正确设置为您服务器的公网 IP
+3. 安装时使用 `--behind-proxy` 标志，以便服务器信任代理标头 (proxy headers)
+
+```bash
+bedrud install \
+  --domain meet.example.com \
+  --behind-proxy \
+  --lk-ip 您的真实服务器IP \
+  --lk-udp-range 50000-60000
+```
+
+---
+
+## 所需的防火墙端口
+
+| 端口 | 协议 | 服务 | 是否始终需要？ |
+|------|----------|---------|-----------------|
+| 7880 | TCP | LiveKit API | 仅当使用 LK 域名或外部服务器时 |
+| 7881 | TCP | RTC TCP 回退 | 是 |
+| 50000-60000 | UDP | WebRTC 媒体 | 是 |
+| 3478 | UDP | TURN 中继 | 推荐 |
+| 5349 | TCP | TURN TLS | 如果启用了 TLS |
+| 80/443 | TCP | HTTP/HTTPS | 是（通过 CDN 或直连） |
+
+**嵌入模式（没有独立的 LK 域名）：** 只需要打开 7881/tcp、50000-60000/udp 和 3478/udp。7880 端口通过 Bedrud 服务器进行代理。
+
+---
+
+## 故障排除 (Troubleshooting)
+
+### 用户可以加入房间，但音频/视频无法工作
+
+**原因：** UDP 媒体流量无法到达 LiveKit 服务器。
+
+1. 检查 WebRTC UDP 端口是否已打开：
+   ```bash
+   sudo ss -ulnp | grep -E '(7882|50000|3478)'
+   ```
+2. 验证 `/etc/bedrud/livekit.yaml` 中的 `node_ip` 是否为您服务器真实的公网 IP
+3. 如果位于 CDN 之后，请确保 LiveKit 域名使用的是“仅 DNS”（灰色云朵）
+
+### WebSocket 每隔约 100 秒断开一次
+
+**原因：** Cloudflare 免费版/专业版的空闲超时。
+
+解决方案：
+- 使用独立的 LiveKit 域名（仅 DNS） —— 信令直连，无超时
+- 升级到 Cloudflare 商业版或企业版（更长的 WebSocket 超时）
+
+### LiveKit ICE 候选者显示 CDN IP 而非服务器 IP
+
+**原因：** `livekit.yaml` 中的 `node_ip` 设置不正确。
+
+修复：
+```bash
+# 检查当前配置
+grep node_ip /etc/bedrud/livekit.yaml
+
+# 如果错误，请使用正确的 IP 重新安装
+bedrud install --fresh --lk-ip 您的真实服务器IP
+```
+
+### 客户端完全无法连接到 LiveKit
+
+1. 检查 LiveKit 服务是否正在运行：
+   ```bash
+   systemctl status livekit
+   journalctl -u livekit -n 50
+   ```
+2. 检查端口绑定情况：
+   ```bash
+   ss -tlnp | grep 7880
+   ss -tlnp | grep 7881
+   ```
+3. 如果使用独立的 LK 域名，请验证 DNS 解析：
+   ```bash
+   dig +short lk.meet.example.com
+   # 应该返回您服务器真实的 IP，而不是 CDN IP
+   ```
+

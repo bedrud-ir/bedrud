@@ -1,4 +1,4 @@
----
+﻿---
 title: Установка сервера
 description: Установите сервер Bedrud на Linux
 order: 2
@@ -15,7 +15,7 @@ order: 2
 | **Операционная система** | Debian 12+, Ubuntu 22.04+, Arch Linux (rolling), Fedora 39+ |
 | **Архитектура** | amd64 (x86_64) или arm64 (aarch64) |
 | **Доступ** | Root или sudo |
-| **Система инициализации** | systemd |
+| **Система инициализации** | systemd, OpenRC или SysV init (автоопределение) |
 | **Оборудование** | 1 vCPU, 512 МБ RAM минимум. 2 vCPU, 2 ГБ RAM рекомендуется для 10+ одновременных комнат |
 | **Порты** | `8090` (API + веб-интерфейс), `7880` (LiveKit WebSocket), `50000–60000/udp` (медиа WebRTC) |
 | **Авто-TLS** | Дополнительно откройте `80` и `443`. Требуется домен с DNS A-записью, указывающей на этот сервер |
@@ -37,7 +37,7 @@ order: 2
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     Перезагрузите оболочку после установки:
@@ -50,7 +50,7 @@ order: 2
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
   </TabsContent>
@@ -126,7 +126,7 @@ bedrud --version
 
 ## 3. Docker
 
-Запустите Bedrud в контейнере - не требуется настройка Linux-сервера, systemd или загрузка бинарного файла.
+Запустите Bedrud в контейнере - не требуется настройка Linux-сервера, система инициализации или загрузка бинарного файла.
 
 ### Готовый образ (быстро)
 
@@ -478,7 +478,7 @@ docker compose up -d
 sudo bedrud uninstall
 ```
 
-Эта команда останавливает службы, удаляет unit-файлы systemd, удаляет бинарный файл из `/usr/local/bin` и очищает `/etc/bedrud`, `/var/lib/bedrud` и `/var/log/bedrud`.
+Эта команда останавливает службы, удаляет сервис-файлы всех систем инициализации, удаляет бинарный файл из `/usr/local/bin` и очищает `/etc/bedrud`, `/var/lib/bedrud` и `/var/log/bedrud`.
 
 ---
 
@@ -497,3 +497,4 @@ sudo bedrud uninstall
 | **Предупреждения самоподписанного сертификата** | Это ожидаемо. См. [Руководство по внутреннему TLS](/ru/docs/guides/internal-tls) для настройки приватного CA |
 | **Нет видео / ошибка WebRTC** | Для доступа к камере требуется HTTPS. Используйте `--tls`. Убедитесь, что UDP 50000–60000 открыт |
 | **Обратный прокси: неверный IP клиента** | Используйте флаг `--behind-proxy`. Настраивает доверенные заголовки прокси |
+

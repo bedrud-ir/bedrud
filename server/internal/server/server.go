@@ -16,9 +16,7 @@
 
 package server
 
-
 import (
-	root "bedrud"
 	"bedrud/config"
 	"bedrud/internal/auth"
 	"bedrud/internal/database"
@@ -28,8 +26,10 @@ import (
 	"bedrud/internal/models"
 	"bedrud/internal/repository"
 	"bedrud/internal/scheduler"
+	"bedrud/internal/utils"
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -38,6 +38,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	root "bedrud"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
@@ -66,6 +68,19 @@ func Run(configPath string) error {
 		(strings.Contains(internalHost, "localhost") || strings.Contains(internalHost, "127.0.0.1"))
 	if useInternalLK {
 		log.Info().Msg("➜ Starting internal managed LiveKit server...")
+		if len(cfg.LiveKit.APISecret) < 32 {
+			return fmt.Errorf(
+				"LiveKit API secret is too short (%d chars, need at least 32).\n\n"+
+					"Generate a secret:\n"+
+					"  openssl rand -hex 32\n\n"+
+					"Then set it in config.yaml:\n"+
+					"  livekit:\n"+
+					"    apiSecret: <generated-secret>\n"+
+					"Or via environment:\n"+
+					"  LIVEKIT_API_SECRET=<secret> bedrud run",
+				len(cfg.LiveKit.APISecret),
+			)
+		}
 		certFile, keyFile := "", ""
 		if cfg.Server.EnableTLS && !cfg.Server.DisableTLS {
 			certFile = cfg.Server.CertFile
@@ -89,9 +104,11 @@ func Run(configPath string) error {
 		return err
 	}
 	defer database.Close()
-	database.RunMigrations()
+	if err := database.RunMigrations(); err != nil {
+		log.Error().Err(err).Msg("Failed to run database migrations")
+	}
 	roomRepo := repository.NewRoomRepository(database.GetDB())
-	scheduler.Initialize(roomRepo, cfg.LiveKit)
+	scheduler.Initialize(roomRepo, &cfg.LiveKit)
 	defer scheduler.Stop()
 	auth.Init(cfg)
 
@@ -165,7 +182,7 @@ func Run(configPath string) error {
 	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
 	authService := auth.NewAuthService(userRepo, passkeyRepo)
 	authHandler := handlers.NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)
-	roomHandler := handlers.NewRoomHandler(cfg.LiveKit, cfg.Chat, roomRepo)
+	roomHandler := handlers.NewRoomHandler(&cfg.LiveKit, &cfg.Chat, roomRepo)
 
 	api.Post("/auth/register", authHandler.Register)
 	api.Post("/auth/login", authHandler.Login)
@@ -267,9 +284,9 @@ func Run(configPath string) error {
 		}
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 		if c.Path() == "/" {
-			return c.Status(200).Send(indexHTML)
+			return c.Status(http.StatusOK).Send(indexHTML)
 		}
-		return c.Status(200).Send(shellHTML)
+		return c.Status(http.StatusOK).Send(shellHTML)
 	})
 
 	go func() {
@@ -284,7 +301,7 @@ func Run(configPath string) error {
 
 			// Manager for HTTP-01 challenge on port 80
 			go func() {
-				log.Info().Msg("➜ Starting ACME challenge server on port 80")
+				log.Info().Msgf("➜ Starting ACME challenge server on %s (bound 0.0.0.0:80)", utils.DisplayAddr("0.0.0.0", "80"))
 				if err := http.ListenAndServe(":80", certManager.HTTPHandler(nil)); err != nil {
 					log.Error().Err(err).Msg("ACME challenge server failed")
 				}
@@ -300,7 +317,7 @@ func Run(configPath string) error {
 				log.Error().Err(err).Msg("Failed to listen on :443 for ACME — falling back to plain HTTP")
 				// fall through to the plain-HTTP / manual-TLS block below
 			} else {
-				log.Info().Msg("➜ Bedrud is running on HTTPS 443 with Let's Encrypt")
+				log.Info().Msgf("➜ Bedrud is running on HTTPS %s (bound 0.0.0.0:443)", utils.DisplayAddr("0.0.0.0", "443"))
 				_ = app.Listener(ln)
 				return
 			}
@@ -312,16 +329,16 @@ func Run(configPath string) error {
 			// Start HTTP on port 80 for bots/local use
 			go func() {
 				httpAddr := cfg.Server.Host + ":80"
-				log.Info().Msgf("➜ Also listening on HTTP %s", httpAddr)
+				log.Info().Msgf("➜ Also listening on HTTP %s (bound %s)", utils.DisplayAddr(cfg.Server.Host, "80"), httpAddr)
 				if err := app.Listen(httpAddr); err != nil {
 					log.Debug().Err(err).Msg("HTTP server failed (might be port 80 restricted)")
 				}
 			}()
 			// Start HTTPS on primary port
-			log.Info().Msgf("➜ Bedrud is running on HTTPS %s (Self-signed or provided certs)", addr)
+			log.Info().Msgf("➜ Bedrud is running on HTTPS %s (bound %s)", utils.DisplayAddr(cfg.Server.Host, cfg.Server.Port), addr)
 			_ = app.ListenTLS(addr, cfg.Server.CertFile, cfg.Server.KeyFile)
 		} else {
-			log.Info().Msgf("➜ Bedrud is running on HTTP %s", addr)
+			log.Info().Msgf("➜ Bedrud is running on HTTP %s (bound %s)", utils.DisplayAddr(cfg.Server.Host, cfg.Server.Port), addr)
 			_ = app.Listen(addr)
 		}
 	}()

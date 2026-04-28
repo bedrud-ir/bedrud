@@ -1,4 +1,4 @@
----
+﻿---
 title: Quick Start
 description: Deploy Bedrud and join a video meeting in under 5 minutes
 order: 1
@@ -27,7 +27,7 @@ order: 1
 
 | 需求 | 详情 |
 |------|------|
-| 一台 Linux 服务器 | amd64 或 arm64，需要 `sudo` 权限和 `systemd`。服务器部署需要 Linux。macOS/Windows 用户请使用 Docker 或 WSL2 |
+| 一台 Linux 服务器 | amd64 或 arm64，需要 `sudo` 权限和受支持的 init 系统（systemd、OpenRC 或 SysV init）。服务器部署需要 Linux。macOS/Windows 用户请使用 Docker 或 WSL2 |
 | 开放端口 | `8090`、`7880`、`50000–60000/udp`。自动 TLS 还需开放 `80` 和 `443` |
 | 域名（可选） | 需配置 DNS A record 指向你的服务器。没有域名？可直接使用 IP - 参见下方替代方案 |
 
@@ -46,7 +46,7 @@ order: 1
   <TabsContent value="macos-linux">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     安装后重新加载 shell：
@@ -66,7 +66,7 @@ order: 1
   <TabsContent value="windows">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     ```
 
     关闭并重新打开终端，然后验证：
@@ -98,7 +98,7 @@ order: 1
 
 ## 2. 部署服务器
 
-> **服务器部署需要 Linux 和 systemd。** macOS 和 Windows 不支持 `bedrud install` — 请使用 [Docker](#docker) 或 [WSL2](#非-linux-系统)。
+> **服务器部署需要 Linux 和受支持的 init 系统（systemd、OpenRC 或 SysV init）。** macOS 和 Windows 不支持 `bedrud install` — 请使用 [Docker](#docker) 或 [WSL2](#非-linux-系统)。
 
 将 `meet.example.com` 和 `admin@example.com` 替换为你的实际值：
 
@@ -106,7 +106,7 @@ order: 1
 sudo bedrud install --tls --domain meet.example.com --email admin@example.com
 ```
 
-将服务器二进制文件安装到 `/usr/local/bin`，生成配置，创建 systemd 服务，配置 TLS，启动所有服务。
+将服务器二进制文件安装到 `/usr/local/bin`，生成配置，创建 init 服务（systemd、OpenRC 或 SysV init），配置 TLS，启动所有服务。
 
 > **端口 80 或 443 被占用？** 停止冲突服务：`sudo systemctl stop nginx apache2 caddy`，然后重新运行。
 
@@ -185,7 +185,7 @@ sudo ./bedrud install --ip 127.0.0.1
 
 ### 非 Linux 系统
 
-`bedrud install` 命令会设置 systemd 服务，仅限 Linux。CLI 安装程序（步骤 1）适用于所有平台，并自动将二进制文件放入 PATH。服务器部署请使用 Docker 或 WSL2。
+`bedrud install` 命令会设置 init 服务（systemd、OpenRC 或 SysV init），仅限 Linux。CLI 安装程序（步骤 1）适用于所有平台，并自动将二进制文件放入 PATH。服务器部署请使用 Docker 或 WSL2。
 
 | 操作系统 | 方式 |
 |----------|------|
@@ -254,3 +254,4 @@ docker stop bedrud && docker rm bedrud && docker volume rm bedrud-data
 - [部署指南](/zh/docs/guides/deployment) - 生产环境配置、反向代理、扩容
 - [架构概览](/zh/docs/architecture/overview) - 各组件如何协同工作
 - [API 文档](http://localhost:8090/api/swagger) - Swagger UI（需运行实例）
+

@@ -1,4 +1,4 @@
-import {
+﻿import {
   ArrowDownToLine,
   ArrowRight,
   BookOpen,
@@ -217,7 +217,7 @@ function PlatformContent({
             <h4 className="font-semibold">Fedora / RHEL</h4>
             <p className="mt-1 text-sm text-muted-foreground">dnf</p>
             <CopyButton
-              text="sudo dnf install https://get.bedrud.org/rpm/bedrud-desktop-latest.x86_64.rpm"
+              text="sudo dnf install https://bedrud.org/install.sh/rpm/bedrud-desktop-latest.x86_64.rpm"
               label="dnf install"
               className={cn(btnClass, "mt-4")}
             />

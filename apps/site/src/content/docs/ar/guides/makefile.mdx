@@ -27,6 +27,7 @@ make help       # Show all available targets
 | `make dev-site` | تشغيل خادم تطوير موقع Astro |
 | `make dev-ios` | فتح مشروع iOS في Xcode |
 | `make dev-android` | فتح مشروع Android في Android Studio |
+| `make livekit-download` | تنزيل خادم LiveKit لنظام التشغيل والمعمارية الحاليين |
 
 ### `make init`
 
@@ -54,6 +55,9 @@ make help       # Show all available targets
 | `make build-front` | بناء الواجهة فقط |
 | `make build-back` | بناء الخلفية فقط |
 | `make build-dist` | بناء أرشيف إنتاج linux/amd64 |
+| `make build-back-win` | بناء الخلفية لنظام Windows |
+| `make build-dist-win` | بناء توزيعة إنتاج لنظام Windows |
+| `make prep-livekit-win` | التأكد من توفر ملف LiveKit الثنائي لنظام Windows للتضمين |
 | `make build-site` | بناء موقع Astro (SSG) |
 
 ### `make build`

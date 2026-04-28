@@ -1,4 +1,4 @@
----
+﻿---
 title: CLI インストーラー
 description: すべてのプラットフォーム向け Bedrud ワンコマンドインストール
 order: 2
@@ -12,8 +12,8 @@ order: 2
 
 ## インストーラーの動作
 
-1. OS、CPU アーキテクチャ、プラットフォームバリアント（Rosetta 2）を検出
-2. [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) から正しいバイナリをダウンロード
+1. OS、CPU アーキテクチャ、プラットフォームバリアント（Rosetta 2）、イニットシステム（systemd/OpenRC/SysV init/コンテナ）を検出
+2. [GitHub Releases](https://github.com/bedrud-ir/bedrud/releases) から正しいバイナリをダウンロード（または `--build` でソースからビルド）
 3. `~/bin` にインストール（`--install-dir` でカスタマイズ可能）
 4. シェル設定を通じてインストールディレクトリを `PATH` に追加
 5. `bedrud completions` を実行してシェルのタブ補完を設定
@@ -26,6 +26,7 @@ order: 2
 | プラットフォーム | 依存関係 |
 |----------|-------------|
 | macOS / Linux | `curl` + `tar` |
+| macOS / Linux (`--build`) | `curl` + `git` + `go` + `bun` + `make` |
 | Windows | PowerShell 5.1+（Windows 10/11 に同梱） |
 
 ---
@@ -40,7 +41,7 @@ order: 2
   <TabsContent value="bash">
 
     ```bash
-    curl -fsSL https://get.bedrud.org | bash
+    curl -fsSL https://bedrud.org/install.sh | bash
     ```
 
     シェルを再読み込みして、確認します:
@@ -53,7 +54,7 @@ order: 2
   <TabsContent value="powershell">
 
     ```powershell
-    irm https://get.bedrud.org/install.ps1 | iex
+    irm https://bedrud.org/install.ps1 | iex
     bedrud --version
     ```
   </TabsContent>
@@ -66,13 +67,15 @@ order: 2
 ### Bash インストーラー
 
 ```
-Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
+Usage: curl -fsSL https://bedrud.org/install.sh | bash -s -- [options]
 ```
 
 | フラグ | デフォルト | 説明 |
 |------|---------|-------------|
 | `--install-dir <dir>` | `~/bin` | バイナリの配置先 |
 | `--version <ver>` | `latest` | リリースを固定（例: `v1.2.0`） |
+| `--build` | オフ | リリースをダウンロードせずソースからビルド |
+| `--branch <name>` | `main` | クローンするGitブランチ（`--build` 必須） |
 | `--skip-shell` | オフ | シェル RC ファイルや PATH を変更しない |
 | `-h`, `--help` | — | 使い方を表示して終了 |
 
@@ -80,28 +83,34 @@ Usage: curl -fsSL https://get.bedrud.org | bash -s -- [options]
 
 ```bash
 # デフォルト
-curl -fsSL https://get.bedrud.org | bash
+curl -fsSL https://bedrud.org/install.sh | bash
 
 # バージョン固定
-curl -fsSL https://get.bedrud.org | bash -s -- --version v1.2.0
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --version v1.2.0
+
+# ソースからビルド（カスタムブランチ）
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --build --branch my-feature
+
+# フォークからビルド
+BEDRUD_REPO=myuser/bedrud curl -fsSL https://bedrud.org/install.sh | bash -s -- --build
 
 # システム全体にインストール
-curl -fsSL https://get.bedrud.org | sudo bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://bedrud.org/install.sh | sudo bash -s -- --install-dir /usr/local/bin
 
 # CI / 自動化 — シェル設定をスキップ
-curl -fsSL https://get.bedrud.org | bash -s -- --skip-shell
+curl -fsSL https://bedrud.org/install.sh | bash -s -- --skip-shell
 ```
 
 ### PowerShell インストーラー
 
 ```
-Usage: irm https://get.bedrud.org/install.ps1 | iex
+Usage: irm https://bedrud.org/install.ps1 | iex
 ```
 
 パラメータを渡すには、まずファイルに保存します:
 
 ```powershell
-irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
+irm https://bedrud.org/install.ps1 -OutFile install.ps1
 .\install.ps1 -Version v1.2.0 -InstallDir C:\Tools
 ```
 
@@ -121,13 +130,13 @@ irm https://get.bedrud.org/install.ps1 -OutFile install.ps1
 | `BEDRUD_REPO` | `bedrud-ir/bedrud` | 両方 | GitHub リポジトリを上書き（フォークやミラー用） |
 
 ```bash
-BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://get.bedrud.org | bash
-BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://get.bedrud.org | bash
+BEDRUD_INSTALL=/opt/bedrud curl -fsSL https://bedrud.org/install.sh | bash
+BEDRUD_REPO=myorg/bedrud-fork curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ```powershell
 $env:BEDRUD_REPO = "myorg/bedrud-fork"
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
 
 ---
@@ -169,23 +178,57 @@ uname -m → "x86_64" | "amd64"  → amd64
 **検出:** `sysctl -n sysctl.proc_translated` が `1` を返します。
 **影響:** ネイティブ ARM パフォーマンスのため `darwin_amd64` → `darwin_arm64` に切り替えます。
 
+### コンテナ環境（Docker、Kubernetes 等）
+
+**検出:** `/.dockerenv`、`/run/.containerenv`、`/proc/1/comm`（`docker-init`、`tini`、`containerd`、`runc` 用）、および `/proc/1/cgroup`（`docker`、`kubepods`、`containerd` 用）をチェックします。
+**影響:** サービスファイルのインストールはスキップされます。インストーラーは手動起動コマンドを表示します：
+
+```bash
+# フォアグラウンド
+/usr/local/bin/bedrud run --config /etc/bedrud/config.yaml
+
+# バックグラウンド
+nohup /usr/local/bin/bedrud run --config /etc/bedrud/config.yaml \
+  > /var/log/bedrud/bedrud.log 2>&1 &
+```
+
+Docker で適切なサービス管理を行うには、`--init` または [tini](https://github.com/krallin/tini) を PID 1 として使用してください。
+
+---
+
+## イニットシステムのサポート
+
+インストーラーはイニットシステムを自動検出し、サーバーセットアップに適切なサービスファイルを作成します：
+
+| イニットシステム | 検出方法 | サービスファイル | 管理コマンド |
+|-------------|-----------|---------------|------------|
+| systemd | `/run/systemd/system` が存在 | `/etc/systemd/system/*.service` | `systemctl` |
+| OpenRC | `/sbin/openrc` が存在 | `/etc/init.d/*`（OpenRC 形式） | `rc-service`、`rc-update` |
+| SysV init | `service` コマンドが利用可能 | `/etc/init.d/*`（LSB 形式） | `service`、`update-rc.d` |
+| **コンテナ** | `/.dockerenv`、`/proc/1/comm`、`/proc/1/cgroup` | なし — 手動起動 | バイナリ直接実行または `nohup` |
+
+対応環境：ほとんどのLinuxディストリビューション（systemd、OpenRC、SysV init）、WSL1、およびLinuxコンテナ。コンテナ環境は自動検出されます — サービスファイルのインストールはスキップされ、手動起動の手順が表示されます。
+
 ---
 
 ## インストールフロー
 
 1. **Windows チェック** — MINGW/MSYS/CYGWIN を検出? PowerShell コマンドを表示して終了
-2. **依存関係チェック** — `curl` + `tar` が必要
-3. **引数のパース** — 最大 3 フラグ
+2. **依存関係チェック** — `curl` + `tar` が必要（`--build` 時は `git` + `go` + `bun` + `make` も）
+3. **引数のパース** — `--build` と `--branch` を含むフラグ
 4. **プラットフォーム検出** — `uname` による OS + アーキテクチャ
 5. **バリアント検出** — Rosetta 2
-6. **ダウンロード** — `bedrud_{TARGET}.tar.xz` をダウンロード
-7. **展開とインストール** — 一時ディレクトリ、展開、`mv → $INSTALL_DIR/bedrud`、`chmod +x`
-8. **検証** — `bedrud --version` を実行
-9. **PATH チェック** — 既に PATH にある? スキップ。`--skip-shell`? 手動コマンドを表示。それ以外 → RC ファイルを変更
-10. **補完** — `bedrud completions` を実行
-11. **完了** — 成功メッセージ + 再読み込み手順を表示
+6. **バイナリのインストール** — いずれか:
+   - **ダウンロードモード** (デフォルト): `bedrud_{TARGET}.tar.xz` をダウンロード、展開、インストール
+   - **ビルドモード** (`--build`): `git clone --branch <branch> --depth 1`、`make build` を実行、バイナリをインストール
+7. **検証** — `bedrud --version` を実行
+8. **PATH チェック** — 既に PATH にある? スキップ。`--skip-shell`? 手動コマンドを表示。それ以外 → RC ファイルを変更
+9. **補完** — `bedrud completions` を実行
+10. **完了** — 成功メッセージ + 再読み込み手順を表示
 
 ダウンロード URL の形式: `github.com/{repo}/releases/{ver}/bedrud_{TARGET}.tar.xz`
+
+ビルドモードは `github.com/{repo}` からクローンし `make build` を実行します（出力: `server/dist/bedrud`）。
 
 ---
 
@@ -238,7 +281,7 @@ chmod +x ~/bin/bedrud
 ### セルフホストミラー
 
 ```bash
-BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://get.bedrud.org | bash
+BEDRUD_REPO=mycompany/bedrud-mirror curl -fsSL https://bedrud.org/install.sh | bash
 ```
 
 ### 直接バイナリ
@@ -255,7 +298,7 @@ rm ~/bin/bedrud
 #   ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.config/fish/config.fish
 ```
 
-systemd サーバーインストールの場合:
+サーバーインストール（systemd、OpenRC、SysV init）の場合:
 
 ```bash
 sudo bedrud uninstall
@@ -298,12 +341,25 @@ source ~/.bashrc
 ネイティブ ARM を強制:
 
 ```bash
-arch -arm64 curl -fsSL https://get.bedrud.org | arch -arm64 bash
+arch -arm64 curl -fsSL https://bedrud.org/install.sh | arch -arm64 bash
 ```
 
 ### Windows: "running scripts is disabled"
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-irm https://get.bedrud.org/install.ps1 | iex
+irm https://bedrud.org/install.ps1 | iex
 ```
+
+### Windows: WSL を検出
+
+WSL ターミナル（例: Windows 上の Ubuntu）で実行している場合、PowerShell インストーラーはそれを検出し、Bash インストーラーを実行するように促します。これにより、WSL 内の Linux 環境に Bedrud が正しくインストールされることが保証されます。
+
+### Windows: ARM64 デバイス (Surface Pro 等)
+
+インストーラーは自動的に `windows_arm64` を検出し、ネイティブバイナリをダウンロードします。特定のアーキテクチャを強制する必要がある場合は、[Releases](https://github.com/bedrud-ir/bedrud/releases) から特定の zip ファイルをダウンロードしてください。
+
+### Windows: Postgres 用の Docker Desktop
+
+セットアップ中に Docker で Postgres を実行することを選択した場合は、**Docker Desktop** がインストールされ、実行されていることを確認してください。インストーラーは自動的にコンテナを起動しようとします。
+
