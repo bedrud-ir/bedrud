@@ -6,6 +6,7 @@ export interface AuthTokens {
 }
 
 const REMEMBER_KEY = 'auth_remember'
+const ACCESS_TOKEN_KEY = 'auth_at'
 
 interface AuthStore {
   tokens: AuthTokens | null
@@ -26,11 +27,16 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
 
   setTokens: (tokens, remember = true) => {
     set({ tokens })
-    if (remember === 'ephemeral') return
+    if (remember === 'ephemeral') {
+      sessionStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken)
+      return
+    }
     if (remember) {
       localStorage.setItem(REMEMBER_KEY, '1')
+      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken)
     } else {
       sessionStorage.setItem(REMEMBER_KEY, '1')
+      sessionStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken)
     }
   },
 
@@ -38,13 +44,17 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     const current = get().tokens
     if (!current) return
     set({ tokens: { ...current, accessToken } })
+    const storage = localStorage.getItem(REMEMBER_KEY) ? localStorage : sessionStorage
+    storage.setItem(ACCESS_TOKEN_KEY, accessToken)
   },
 
   clear: () => {
     set({ tokens: null, initialized: false })
     _init.promise = null
     localStorage.removeItem(REMEMBER_KEY)
+    localStorage.removeItem(ACCESS_TOKEN_KEY)
     sessionStorage.removeItem(REMEMBER_KEY)
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY)
   },
 
   initialize: async () => {
@@ -61,6 +71,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         return
       }
 
+      // Try cookie-based refresh first (primary path).
       try {
         const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
           method: 'POST',
@@ -71,13 +82,36 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         if (res.ok) {
           const data = (await res.json()) as { access_token: string; refresh_token: string }
           get().setTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
-        } else {
-          get().clear()
+          set({ initialized: true })
+          return
         }
       } catch {
-        // Network error — leave remember flag for retry on next page load.
+        // Network error — fall through to persisted token
       }
 
+      // Fallback: use the persisted access token. It may still be valid
+      // (24h TTL) even if the refresh cookie was lost.
+      const storage = localStorage.getItem(REMEMBER_KEY) ? localStorage : sessionStorage
+      const persistedAT = storage.getItem(ACCESS_TOKEN_KEY)
+      if (persistedAT) {
+        // Validate by calling /api/auth/me
+        try {
+          const meRes = await fetch(`${BASE_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${persistedAT}` },
+            credentials: 'include',
+          })
+          if (meRes.ok) {
+            get().setTokens({ accessToken: persistedAT, refreshToken: null })
+            set({ initialized: true })
+            return
+          }
+        } catch {
+          // Token expired — fall through to clear
+        }
+      }
+
+      // Both paths failed — clear session
+      get().clear()
       set({ initialized: true })
       _init.promise = null
     })()

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from '@tanstack/react-router'
 import { LayoutDashboard, LogOut, Menu, Radio, Settings, Shield, Users, Video } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuthStore } from '#/lib/auth.store'
 import type { User } from '#/lib/user.store'
@@ -26,6 +26,8 @@ export const Route = createFileRoute('/dashboard')({
   // Loader runs before the component renders, eliminating the empty-profile flash.
   // staleTime: Infinity means TanStack Router won't refetch on every sub-route navigation.
   loader: async () => {
+    // Skip on SSR — no browser origin means relative URLs can't be resolved
+    if (typeof window === 'undefined') return
     // Skip fetch if user is already in memory (e.g. soft navigation back to /dashboard)
     if (useUserStore.getState().user) return
     const u = await api.get<User & { accesses?: string[] }>('/api/auth/me')
@@ -74,7 +76,7 @@ function NavLink({
     <Link to={to} onClick={onClick}>
       <div
         className={cn(
-          'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
+          'flex items-center gap-2 px-2 py-1.5 text-xs font-medium transition-colors',
           active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
         )}
       >
@@ -127,7 +129,7 @@ function SidebarContent({
       </nav>
 
       <div className="shrink-0 border-t p-2">
-        <div className="group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-accent">
+        <div className="group flex items-center gap-2 px-2 py-1.5 transition-colors hover:bg-accent">
           <Avatar className="h-6 w-6 shrink-0">
             {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
             <AvatarFallback className="bg-primary text-[9px] font-semibold text-primary-foreground">
@@ -155,7 +157,7 @@ function Sidebar({ user, onLogout }: { user: User | null; onLogout: () => void }
   return (
     <aside className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-52 flex-col border-r bg-card">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b px-4">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
+        <div className="flex h-6 w-6 items-center justify-center bg-primary">
           <Radio className="h-3 w-3 text-primary-foreground" />
         </div>
         <span className="font-mono text-xs font-semibold tracking-tight">bedrud</span>
@@ -172,7 +174,7 @@ function MobileNav({ user, onLogout }: { user: User | null; onLogout: () => void
     <>
       <button
         onClick={() => setOpen(true)}
-        className="lg:hidden rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        className="lg:hidden p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         aria-label="Open navigation"
       >
         <Menu className="h-4 w-4" />
@@ -181,7 +183,7 @@ function MobileNav({ user, onLogout }: { user: User | null; onLogout: () => void
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-52 p-0 flex flex-col">
           <SheetHeader className="flex h-11 shrink-0 flex-row items-center gap-2 border-b px-4 space-y-0">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
+            <div className="flex h-6 w-6 items-center justify-center bg-primary">
               <Radio className="h-3 w-3 text-primary-foreground" />
             </div>
             <SheetTitle className="font-mono text-xs font-semibold tracking-tight">bedrud</SheetTitle>
@@ -208,7 +210,7 @@ function TopBar({ user, onLogout }: { user: User | null; onLogout: () => void })
       <MobileNav user={user} onLogout={onLogout} />
 
       <Link to="/dashboard" className="flex items-center gap-2 lg:hidden">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
+        <div className="flex h-6 w-6 items-center justify-center bg-primary">
           <Radio className="h-3 w-3 text-primary-foreground" />
         </div>
         <span className="font-mono text-xs font-semibold">bedrud</span>
@@ -267,6 +269,43 @@ function DashboardLayout() {
   const user = useUserStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.clear)
   const clearUser = useUserStore((s) => s.clear)
+
+  // SSR hydration fallback: beforeLoad/loader skip on the server, and TanStack
+  // Router doesn't re-run them during client hydration. This effect ensures auth
+  // init + user data fetch happen on the client regardless of SSR behavior.
+  useEffect(() => {
+    if (user) return // already loaded (e.g. soft navigation)
+    let cancelled = false
+    ;(async () => {
+      await useAuthStore.getState().initialize()
+      if (cancelled) return
+      if (!useAuthStore.getState().tokens) {
+        navigate({ to: '/auth' })
+        return
+      }
+      try {
+        const u = await api.get<User & { accesses?: string[] }>('/api/auth/me')
+        if (cancelled) return
+        useUserStore.getState().setUser({
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          provider: u.provider,
+          isAdmin: u.accesses?.includes('superadmin') ?? false,
+          accesses: u.accesses ?? [],
+          avatarUrl: u.avatarUrl,
+        })
+      } catch {
+        if (!cancelled) {
+          clearAuth()
+          navigate({ to: '/auth' })
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user, navigate, clearAuth])
 
   async function handleLogout() {
     try {
