@@ -111,4 +111,3 @@ export function TerminalMockup({ lang }: { lang: Locale }) {
     </div>
   );
 }
-

@@ -574,4 +574,3 @@ export function DownloadSection({ lang }: { lang: Locale }) {
     </section>
   );
 }
-

@@ -119,4 +119,3 @@ export function HeroSection({ lang }: { lang: Locale }) {
     </section>
   );
 }
-
