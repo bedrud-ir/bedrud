@@ -23,7 +23,7 @@ function resolveOAuthBase(): string {
 
 const OAUTH_BASE = resolveOAuthBase()
 
-const providers = [
+const ALL_PROVIDERS = [
   {
     id: 'google',
     label: 'Continue with Google',
@@ -68,23 +68,23 @@ const providers = [
   },
 ]
 
-export function OAuthButtons() {
-  if (!OAUTH_BASE) {
-    return (
-      <div className="rounded-md border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
-        OAuth is not configured. Set <code className="font-mono">VITE_OAUTH_URL</code> or{' '}
-        <code className="font-mono">VITE_API_URL</code> in your environment.
-      </div>
-    )
-  }
+interface Props {
+  availableProviders: string[]
+}
+
+export function OAuthButtons({ availableProviders }: Props) {
+  if (!OAUTH_BASE) return null
+
+  const filtered = ALL_PROVIDERS.filter((p) => availableProviders.includes(p.id))
+  if (filtered.length === 0) return null
 
   return (
     <div className="space-y-2">
-      {providers.map(({ id, label, icon }) => (
+      {filtered.map(({ id, label, icon }) => (
         <a
           key={id}
           href={`${OAUTH_BASE}/api/auth/${id}/login`}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+          className="flex w-full items-center justify-center gap-2 border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
         >
           {icon}
           {label}

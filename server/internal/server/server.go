@@ -161,6 +161,7 @@ func Run(configPath string) error {
 	userRepo := repository.NewUserRepository(database.GetDB())
 	passkeyRepo := repository.NewPasskeyRepository(database.GetDB())
 	settingsRepo := repository.NewSettingsRepository(database.GetDB())
+	settingsRepo.SetConfig(cfg)
 	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
 	authService := auth.NewAuthService(userRepo, passkeyRepo)
 	authHandler := handlers.NewAuthHandler(authService, cfg, settingsRepo, inviteTokenRepo)

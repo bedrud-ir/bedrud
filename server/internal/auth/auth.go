@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/go-passkeys/go-passkeys/webauthn"
@@ -566,56 +567,79 @@ func (s *AuthService) FinishLoginPasskey(challengeStr string, credentialID, clie
 	}, nil
 }
 
+// activeProviders tracks which provider names were successfully initialized.
+var activeProviders []string
+
 func Init(cfg *config.Config) {
-	providers := []goth.Provider{}
+	initProvidersFromConfig(cfg)
+}
 
-	log.Debug().
-		Strs("providers", func() []string {
-			var p []string
-			if cfg.Auth.Google.ClientID != "" {
-				p = append(p, "google")
-			}
-			if cfg.Auth.Github.ClientID != "" {
-				p = append(p, "github")
-			}
-			return p
-		}()).
-		Msg("Auth configuration loaded")
-
-	// Initialize Google provider if credentials are provided
-	if cfg.Auth.Google.ClientID != "" && cfg.Auth.Google.ClientSecret != "" {
-
-		provider := google.New(
-			cfg.Auth.Google.ClientID,
-			cfg.Auth.Google.ClientSecret,
-			cfg.Auth.Google.RedirectURL,
-			"email",
-			"profile",
-			"openid",
-		)
-		provider.SetHostedDomain("") // Allow any domain
-		providers = append(providers, provider)
-	}
-
-	// Initialize GitHub provider if credentials are provided
-	if cfg.Auth.Github.ClientID != "" && cfg.Auth.Github.ClientSecret != "" {
-		providers = append(providers, github.New(
-			cfg.Auth.Github.ClientID,
-			cfg.Auth.Github.ClientSecret,
-			cfg.Auth.Github.RedirectURL,
-			"user:email",
-		))
-	}
-
-	// Initialize Twitter provider if credentials are provided
-	if cfg.Auth.Twitter.ClientID != "" && cfg.Auth.Twitter.ClientSecret != "" {
-		providers = append(providers, twitter.New(
-			cfg.Auth.Twitter.ClientID,
-			cfg.Auth.Twitter.ClientSecret,
-			cfg.Auth.Twitter.RedirectURL,
-		))
-	}
-
-	log.Debug().Int("provider_count", len(providers)).Msg("Using providers")
+func initProvidersFromConfig(cfg *config.Config) {
+	providers, names := buildProviders(
+		cfg.Auth.Google.ClientID, cfg.Auth.Google.ClientSecret, cfg.Auth.Google.RedirectURL,
+		cfg.Auth.Github.ClientID, cfg.Auth.Github.ClientSecret, cfg.Auth.Github.RedirectURL,
+		cfg.Auth.Twitter.ClientID, cfg.Auth.Twitter.ClientSecret, cfg.Auth.Twitter.RedirectURL,
+	)
+	activeProviders = names
+	log.Debug().Strs("providers", names).Msg("Using providers")
 	goth.UseProviders(providers...)
+}
+
+// ReloadProviders reinitializes goth OAuth providers from effective settings.
+// Called after admin saves auth settings.
+func ReloadProviders(s *models.SystemSettings) {
+	providers, names := buildProviders(
+		s.GoogleClientID, s.GoogleClientSecret, s.GoogleRedirectURL,
+		s.GithubClientID, s.GithubClientSecret, s.GithubRedirectURL,
+		s.TwitterClientID, s.TwitterClientSecret, s.TwitterRedirectURL,
+	)
+	activeProviders = names
+	log.Info().
+		Strs("providers", names).
+		Int("count", len(providers)).
+		Msg("Reloaded OAuth providers from settings")
+	goth.UseProviders(providers...)
+}
+
+// looksLikePlaceholder returns true if the value looks like a template/placeholder
+// string rather than a real credential (e.g. "your-github-client-id").
+func looksLikePlaceholder(v string) bool {
+	v = strings.ToLower(strings.TrimSpace(v))
+	return strings.HasPrefix(v, "your-") || strings.HasPrefix(v, "replace-") || strings.HasPrefix(v, "example-") || strings.HasPrefix(v, "xxx") || strings.HasPrefix(v, "todo")
+}
+
+func buildProviders(
+	googleID, googleSecret, googleRedirect,
+	githubID, githubSecret, githubRedirect,
+	twitterID, twitterSecret, twitterRedirect string,
+) ([]goth.Provider, []string) {
+	var providers []goth.Provider
+	var names []string
+
+	if googleID != "" && googleSecret != "" && !looksLikePlaceholder(googleID) && !looksLikePlaceholder(googleSecret) {
+		p := google.New(googleID, googleSecret, googleRedirect, "email", "profile", "openid")
+		p.SetHostedDomain("")
+		providers = append(providers, p)
+		names = append(names, "google")
+	}
+	if githubID != "" && githubSecret != "" && !looksLikePlaceholder(githubID) && !looksLikePlaceholder(githubSecret) {
+		providers = append(providers, github.New(githubID, githubSecret, githubRedirect, "user:email"))
+		names = append(names, "github")
+	}
+	if twitterID != "" && twitterSecret != "" && !looksLikePlaceholder(twitterID) && !looksLikePlaceholder(twitterSecret) {
+		providers = append(providers, twitter.New(twitterID, twitterSecret, twitterRedirect))
+		names = append(names, "twitter")
+	}
+
+	return providers, names
+}
+
+// ConfiguredProviders returns the provider names that were successfully
+// initialized with real credentials. This is the authoritative list used
+// by the public settings endpoint to show/hide OAuth buttons.
+func ConfiguredProviders() []string {
+	if activeProviders == nil {
+		return []string{}
+	}
+	return activeProviders
 }

@@ -189,6 +189,10 @@ func main() {
 	passkeyRepo := repository.NewPasskeyRepository(database.GetDB())
 	roomRepo := repository.NewRoomRepository(database.GetDB())
 	settingsRepo := repository.NewSettingsRepository(database.GetDB())
+		settingsRepo.SetConfig(cfg)
+		if effective, err := settingsRepo.GetEffectiveSettings(); err == nil {
+			auth.ReloadProviders(effective)
+		}
 	inviteTokenRepo := repository.NewInviteTokenRepository(database.GetDB())
 
 	scheduler.Initialize(roomRepo, cfg.LiveKit)

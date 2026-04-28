@@ -6,11 +6,15 @@ import (
 	"bedrud/internal/repository"
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 )
+
+const maskedSecret = "••••••••"
 
 type AdminHandler struct {
 	settingsRepo    *repository.SettingsRepository
@@ -22,34 +26,106 @@ func NewAdminHandler(sr *repository.SettingsRepository, itr *repository.InviteTo
 }
 
 func (h *AdminHandler) GetSettings(c *fiber.Ctx) error {
-	s, err := h.settingsRepo.GetSettings()
+	s, err := h.settingsRepo.GetEffectiveSettings()
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch settings"})
 	}
-	return c.JSON(s)
+	return c.JSON(maskSettings(s))
 }
 
 // GetPublicSettings returns only the fields relevant to anonymous visitors (no auth required).
 func (h *AdminHandler) GetPublicSettings(c *fiber.Ctx) error {
-	s, err := h.settingsRepo.GetSettings()
+	s, err := h.settingsRepo.GetEffectiveSettings()
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch settings"})
 	}
 	return c.JSON(fiber.Map{
 		"registrationEnabled":   s.RegistrationEnabled,
 		"tokenRegistrationOnly": s.TokenRegistrationOnly,
+		"passkeysEnabled":       s.PasskeysEnabled,
+		"oauthProviders":        auth.ConfiguredProviders(),
 	})
 }
 
 func (h *AdminHandler) UpdateSettings(c *fiber.Ctx) error {
+	// Get existing settings first (to preserve secrets when client sends masked values)
+	existing, err := h.settingsRepo.GetSettings()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch current settings"})
+	}
+
 	var input models.SystemSettings
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
 	}
+
+	// Unmask: if the client sent masked placeholders, keep the existing value
+	unmaskSecrets(&input, existing)
+
+	input.ID = 1
 	if err := h.settingsRepo.SaveSettings(&input); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to save settings"})
 	}
-	return c.JSON(input)
+
+	// Reload runtime-configurable subsystems
+	effective, err := h.settingsRepo.GetEffectiveSettings()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Settings saved but failed to reload"})
+	}
+	auth.ReloadProviders(effective)
+
+	log.Info().Msg("Admin settings updated and providers reloaded")
+	return c.JSON(maskSettings(effective))
+}
+
+// unmaskSecrets preserves existing secret values when the client sends the
+// masked placeholder "••••••••" instead of a real value.
+func unmaskSecrets(input, existing *models.SystemSettings) {
+	type pair struct {
+		incoming *string
+		current  string
+	}
+	secrets := []pair{
+		{&input.GoogleClientSecret, existing.GoogleClientSecret},
+		{&input.GithubClientSecret, existing.GithubClientSecret},
+		{&input.TwitterClientSecret, existing.TwitterClientSecret},
+		{&input.JWTSecret, existing.JWTSecret},
+		{&input.SessionSecret, existing.SessionSecret},
+		{&input.LiveKitAPISecret, existing.LiveKitAPISecret},
+		{&input.ChatUploadS3SecretKey, existing.ChatUploadS3SecretKey},
+	}
+	for _, s := range secrets {
+		if strings.TrimSpace(*s.incoming) == maskedSecret || strings.TrimSpace(*s.incoming) == "" {
+			*s.incoming = s.current
+		}
+	}
+}
+
+// maskSettings returns a copy with secret fields replaced by a placeholder.
+func maskSettings(s *models.SystemSettings) *models.SystemSettings {
+	cp := *s
+	if cp.GoogleClientSecret != "" {
+		cp.GoogleClientSecret = maskedSecret
+	}
+	if cp.GithubClientSecret != "" {
+		cp.GithubClientSecret = maskedSecret
+	}
+	if cp.TwitterClientSecret != "" {
+		cp.TwitterClientSecret = maskedSecret
+	}
+	if cp.JWTSecret != "" {
+		cp.JWTSecret = maskedSecret
+	}
+	if cp.SessionSecret != "" {
+		cp.SessionSecret = maskedSecret
+	}
+	if cp.LiveKitAPISecret != "" {
+		cp.LiveKitAPISecret = maskedSecret
+	}
+	if cp.ChatUploadS3SecretKey != "" {
+		cp.ChatUploadS3SecretKey = maskedSecret
+	}
+	return &cp
 }
 
 func (h *AdminHandler) ListInviteTokens(c *fiber.Ctx) error {
