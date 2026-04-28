@@ -1,0 +1,38 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - img [ref=e6]
+      - generic [ref=e12]: bedrud
+    - generic [ref=e13]:
+      - button "Switch to dark mode" [ref=e14]:
+        - img
+      - link "Sign in" [ref=e16] [cursor=pointer]:
+        - /url: /auth/login
+      - link "Get started" [ref=e17] [cursor=pointer]:
+        - /url: /auth/register
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - heading "Talk to people, not the platform." [level=1] [ref=e21]:
+          - text: Talk to people,
+          - text: not the platform.
+        - paragraph [ref=e22]: Self-hosted voice rooms. Share a link, start talking. No account needed to join.
+      - generic [ref=e23]:
+        - generic [ref=e25]:
+          - generic [ref=e26]: localhost:3000/m/
+          - textbox "your-room" [ref=e27]
+          - button "Join" [disabled]:
+            - generic: Join
+            - img
+        - paragraph [ref=e28]:
+          - link "Sign in" [ref=e29] [cursor=pointer]:
+            - /url: /auth/login
+          - text: to create rooms ·
+          - link "join as guest" [ref=e30] [cursor=pointer]:
+            - /url: /auth
+  - contentinfo [ref=e31]:
+    - generic [ref=e32]: © 2026 Bedrud
+    - link "Docs" [ref=e34] [cursor=pointer]:
+      - /url: https://bedrud.org/docs?utm_source=app&utm_medium=footer
+    - link "GitHub" [ref=e35] [cursor=pointer]:
+      - /url: https://bedrud.org/github?utm_source=app&utm_medium=footer

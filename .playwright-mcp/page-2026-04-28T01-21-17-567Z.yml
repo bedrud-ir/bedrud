@@ -1,0 +1,41 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - img [ref=e6]
+      - generic [ref=e12]: bedrud
+    - generic [ref=e13]:
+      - generic [ref=e30]:
+        - paragraph [ref=e31]:
+          - text: Voice-first meetings,
+          - text: built for humans.
+        - paragraph [ref=e32]: Instant rooms. No installs. Just open a room and start talking — with anyone, anywhere.
+      - generic [ref=e33]:
+        - generic [ref=e34]: End-to-end encrypted
+        - generic [ref=e36]: Zero telemetry
+        - generic [ref=e38]: Your infrastructure
+    - link "© 2026 Bedrud" [ref=e40] [cursor=pointer]:
+      - /url: https://bedrud.org?utm_source=app&utm_medium=footer
+  - generic [ref=e41]:
+    - button "Switch to dark mode" [ref=e44]:
+      - img
+    - generic [ref=e47]:
+      - generic [ref=e48]:
+        - img [ref=e50]
+        - heading "Join as guest" [level=1] [ref=e53]
+        - paragraph [ref=e54]: No account needed — just pick a name and you're in.
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - text: Display name
+          - textbox "Display name" [active] [ref=e57]:
+            - /placeholder: What should we call you?
+        - button "Continue as guest" [ref=e58]:
+          - text: Continue as guest
+          - img
+      - generic [ref=e63]: have an account?
+      - generic [ref=e64]:
+        - link "Sign in" [ref=e65] [cursor=pointer]:
+          - /url: /auth/login
+          - button "Sign in" [ref=e66]
+        - link "Register" [ref=e67] [cursor=pointer]:
+          - /url: /auth/register
+          - button "Register" [ref=e68]

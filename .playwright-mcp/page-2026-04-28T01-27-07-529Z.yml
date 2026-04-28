@@ -1,0 +1,90 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]:
+      - img [ref=e6]
+      - generic [ref=e12]: bedrud
+    - navigation [ref=e13]:
+      - paragraph [ref=e14]: Main
+      - link "Rooms" [ref=e15] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [ref=e16]:
+          - img [ref=e17]
+          - text: Rooms
+      - link "Settings" [ref=e22] [cursor=pointer]:
+        - /url: /dashboard/settings
+        - generic [ref=e23]:
+          - img [ref=e24]
+          - text: Settings
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - paragraph [ref=e29]: Admin
+          - generic [ref=e30]: Restricted
+        - link "Overview" [ref=e31] [cursor=pointer]:
+          - /url: /dashboard/admin
+          - generic [ref=e32]:
+            - img [ref=e33]
+            - text: Overview
+        - link "Users" [ref=e35] [cursor=pointer]:
+          - /url: /dashboard/admin/users
+          - generic [ref=e36]:
+            - img [ref=e37]
+            - text: Users
+        - link "Rooms" [ref=e42] [cursor=pointer]:
+          - /url: /dashboard/admin/rooms
+          - generic [ref=e43]:
+            - img [ref=e44]
+            - text: Rooms
+        - link "Settings" [ref=e47] [cursor=pointer]:
+          - /url: /dashboard/admin/settings
+          - generic [ref=e48]:
+            - img [ref=e49]
+            - text: Settings
+    - generic [ref=e53]:
+      - generic [ref=e55]: M
+      - generic [ref=e56]:
+        - paragraph [ref=e57]: Mamad
+        - paragraph [ref=e58]: me@mamad.dev
+      - button "Sign out" [ref=e59]:
+        - img [ref=e60]
+  - banner [ref=e63]:
+    - generic [ref=e64]:
+      - button "Switch to dark mode" [ref=e65]:
+        - img
+      - button "M" [ref=e66]:
+        - generic [ref=e68]: M
+  - main [ref=e69]:
+    - generic [ref=e70]:
+      - generic [ref=e71]:
+        - heading "Mamad's rooms" [level=1] [ref=e72]
+        - paragraph [ref=e73]: Create, join, or manage your meeting rooms.
+      - generic [ref=e74]:
+        - generic [ref=e75]:
+          - img [ref=e76]
+          - textbox "Join by room name or invite code..." [ref=e79]
+        - button "New room" [ref=e80]:
+          - img [ref=e81]
+          - generic [ref=e82]: New room
+      - generic [ref=e83]:
+        - generic [ref=e84]:
+          - button "My Rooms1" [ref=e85]
+          - button "Recent" [ref=e86]
+        - generic [ref=e87]:
+          - img [ref=e88]
+          - textbox "Filter..." [ref=e91]
+      - generic [ref=e94]:
+        - generic [ref=e95]:
+          - generic "Inactive" [ref=e96]
+          - button "hello-fucking-world" [ref=e97]
+        - generic [ref=e99]:
+          - img [ref=e100]
+          - text: Private
+        - generic [ref=e103]:
+          - button "Copy link" [ref=e104]:
+            - img [ref=e105]
+          - button "Settings" [ref=e108]:
+            - img [ref=e109]
+          - button "Delete" [ref=e112]:
+            - img [ref=e113]
+        - button "Open" [ref=e116]:
+          - text: Open
+          - img [ref=e117]

@@ -83,7 +83,8 @@ function AuthLayout() {
         <div
           className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-48 blur-2xl"
           style={{
-            background: 'radial-gradient(circle, color-mix(in oklab, var(--accent-800) 8%, transparent), transparent 70%)',
+            background:
+              'radial-gradient(circle, color-mix(in oklab, var(--accent-800) 8%, transparent), transparent 70%)',
             animation: 'blob 15s ease-in-out 6s infinite',
           }}
         />

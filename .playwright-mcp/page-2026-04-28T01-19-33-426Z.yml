@@ -1,0 +1,49 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]:
+      - img [ref=e6]
+      - generic [ref=e12]: bedrud
+    - navigation [ref=e13]:
+      - paragraph [ref=e14]: Main
+      - link "Rooms" [ref=e15] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [ref=e16]:
+          - img [ref=e17]
+          - text: Rooms
+      - link "Settings" [ref=e22] [cursor=pointer]:
+        - /url: /dashboard/settings
+        - generic [ref=e23]:
+          - img [ref=e24]
+          - text: Settings
+    - generic [ref=e28]:
+      - generic [ref=e30]: "?"
+      - generic [ref=e31]:
+        - paragraph [ref=e32]: …
+        - paragraph
+      - button "Sign out" [ref=e33]:
+        - img [ref=e34]
+  - banner [ref=e37]:
+    - generic [ref=e38]:
+      - button "Switch to dark mode" [ref=e39]:
+        - img
+      - button "?" [ref=e40]:
+        - generic [ref=e42]: "?"
+  - main [ref=e43]:
+    - generic [ref=e44]:
+      - generic [ref=e45]:
+        - heading "Rooms" [level=1] [ref=e46]
+        - paragraph [ref=e47]: Create, join, or manage your meeting rooms.
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - img [ref=e50]
+          - textbox "Join by room name or invite code..." [ref=e53]
+        - button "New room" [ref=e54]:
+          - img [ref=e55]
+          - generic [ref=e56]: New room
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - button "My Rooms" [ref=e59]
+          - button "Recent" [ref=e60]
+        - generic [ref=e61]:
+          - img [ref=e62]
+          - textbox "Filter..." [ref=e65]
