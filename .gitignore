@@ -42,3 +42,6 @@ server/livekit.yaml
 server/internal/livekit/bin/
 server/internal/livekit/LICENSEserver/tmp/
 server/tmp/
+
+# Playwright MCP snapshots
+.playwright-mcp/
