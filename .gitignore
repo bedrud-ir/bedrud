@@ -38,6 +38,7 @@ access.log
 .spm-cache/
 
 deploy
+server/livekit.yaml
 server/internal/livekit/bin/
 server/internal/livekit/LICENSEserver/tmp/
 server/tmp/
