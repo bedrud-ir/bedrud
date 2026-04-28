@@ -29,6 +29,7 @@ import (
 	"bedrud/internal/utils"
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -67,6 +68,19 @@ func Run(configPath string) error {
 		(strings.Contains(internalHost, "localhost") || strings.Contains(internalHost, "127.0.0.1"))
 	if useInternalLK {
 		log.Info().Msg("➜ Starting internal managed LiveKit server...")
+		if len(cfg.LiveKit.APISecret) < 32 {
+			return fmt.Errorf(
+				"LiveKit API secret is too short (%d chars, need at least 32).\n\n"+
+					"Generate a secret:\n"+
+					"  openssl rand -hex 32\n\n"+
+					"Then set it in config.yaml:\n"+
+					"  livekit:\n"+
+					"    apiSecret: <generated-secret>\n"+
+					"Or via environment:\n"+
+					"  LIVEKIT_API_SECRET=<secret> bedrud run",
+				len(cfg.LiveKit.APISecret),
+			)
+		}
 		certFile, keyFile := "", ""
 		if cfg.Server.EnableTLS && !cfg.Server.DisableTLS {
 			certFile = cfg.Server.CertFile
