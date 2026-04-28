@@ -124,7 +124,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
         run: |
-          go build -ldflags="-s -w" -o ../dist/bedrud ./cmd/bedrud/main.go
+          go build -ldflags="-s -w -X main.version=${{ needs.prepare.outputs.tag }}-${{ needs.prepare.outputs.sha_short }}" -o ../dist/bedrud ./cmd/bedrud/main.go
 
       - name: Package server (tar.xz + .deb)
         run: |

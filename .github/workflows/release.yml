@@ -245,6 +245,8 @@ jobs:
           FROM debian:bookworm-slim
           RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
           ARG TARGETARCH
+          ARG VERSION
+          LABEL org.opencontainers.image.version="${VERSION}"
           COPY bedrud_linux_${TARGETARCH} /usr/local/bin/bedrud
           EXPOSE 8090 7880
           ENTRYPOINT ["bedrud"]
@@ -259,6 +261,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
 
       - name: Export Docker images for offline use
         run: |

@@ -33,6 +33,7 @@ RUN apk add --no-cache curl && \
 FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS backend
 COPY --from=xx / /
 ARG TARGETPLATFORM
+ARG VERSION=dev
 
 # Install cross-compilation toolchain (runs on build platform, targets TARGETPLATFORM)
 RUN apk add --no-cache clang lld
@@ -53,11 +54,13 @@ COPY --from=livekit /out/livekit-server ./internal/livekit/bin/livekit-server
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=1 \
-    xx-go build -ldflags="-s -w" -o /bedrud ./cmd/bedrud/main.go && \
+    xx-go build -ldflags="-s -w -X main.version=${VERSION}" -o /bedrud ./cmd/bedrud/main.go && \
     xx-verify /bedrud
 
 # ── Stage 4: Runtime ────────────────────────────────────────────────────────
 FROM alpine:3.21
+ARG VERSION=dev
+LABEL org.opencontainers.image.version="${VERSION}"
 RUN apk add --no-cache ca-certificates tzdata
 COPY --from=backend /bedrud /usr/local/bin/bedrud
 EXPOSE 8090 7880
