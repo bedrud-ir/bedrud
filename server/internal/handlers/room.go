@@ -159,10 +159,13 @@ func (h *RoomHandler) JoinRoom(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Room not found"})
 	}
 
-	// Enforce room active state
-	if !room.IsActive {
-		return c.Status(fiber.StatusGone).JSON(fiber.Map{"error": "room is no longer active"})
-	}
+		// Re-activate inactive rooms on join - starts a new session.
+		if !room.IsActive {
+			room.IsActive = true
+			if err := h.roomRepo.UpdateRoom(room); err != nil {
+				log.Error().Err(err).Str("room", room.Name).Msg("Failed to re-activate room")
+			}
+		}
 
 	// Enforce participant limit
 	if room.MaxParticipants > 0 {
