@@ -36,6 +36,20 @@ export default defineConfig({
   output: "static",
   site: "https://bedrud.org",
   srcDir: "./src",
+  redirects: {
+    "/docs": "/en/docs",
+    "/blog": "/en/blog",
+    "/about": "/en/about",
+    "/download": "/en/download",
+    "/features": "/en/features",
+    "/install": "/en/install",
+    "/privacy": "/en/privacy",
+    "/terms": "/en/terms",
+    "/contact": "/en/contact",
+    "/contributors": "/en/contributors",
+    "/changelog": "/en/changelog",
+    "/demo": "/en/demo",
+  },
   integrations: [
     icon({
       include: {

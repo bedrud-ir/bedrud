@@ -19,7 +19,7 @@ function applyTheme(theme: "light" | "dark") {
   localStorage.setItem("theme", theme);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta)
-    meta.setAttribute("content", theme === "dark" ? "#09090b" : "#ffffff");
+    meta.setAttribute("content", theme === "dark" ? "#0C0A09" : "#FFFBF9");
 }
 
 export function ThemeToggle({

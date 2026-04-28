@@ -292,70 +292,70 @@
 }
 
 :root {
-  --background: #FFFFFF;
-  --foreground: #1A1F2E;
+  --background: #FFFBF9;
+  --foreground: #1C1917;
 
-  --card: #F7F8FB;
-  --card-foreground: #1A1F2E;
+  --card: #FFF1F2;
+  --card-foreground: #1C1917;
 
   --popover: #FFFFFF;
-  --popover-foreground: #1A1F2E;
+  --popover-foreground: #1C1917;
 
-  --primary: #2A47C8;
+  --primary: #E11D48;
   --primary-foreground: #FFFFFF;
 
-  --secondary: #F2F4FB;
-  --secondary-foreground: #1A1F2E;
+  --secondary: #F0FDFA;
+  --secondary-foreground: #1C1917;
 
-  --muted: #F2F4FB;
-  --muted-foreground: #6B7488;
+  --muted: #F0FDFA;
+  --muted-foreground: #57534E;
 
-  --accent: #F2F4FB;
-  --accent-foreground: #1A1F2E;
+  --accent: #F0FDFA;
+  --accent-foreground: #1C1917;
 
   --destructive: #DC2626;
 
-  --border: #E6E8EE;
-  --input: #E6E8EE;
-  --ring: #3B5BD9;
+  --border: #E7E5E4;
+  --input: #E7E5E4;
+  --ring: #F43F5E;
 
-  --radius: 0.625rem;
+  --radius: 0px;
 
   /* Spotlight — aurora blobs for hero */
-  --spotlight-a: color-mix(in oklab, #3B5BD9 8%, transparent);
-  --spotlight-b: color-mix(in oklab, #5E7ACC 6%, transparent);
+  --spotlight-a: color-mix(in oklab, #F43F5E 8%, transparent);
+  --spotlight-b: color-mix(in oklab, #14B8A6 6%, transparent);
 }
 
 .dark {
-  --background: #0E1220;
-  --foreground: #EEF1F8;
+  --background: #0C0A09;
+  --foreground: #FAFAF9;
 
-  --card: #161B2E;
-  --card-foreground: #EEF1F8;
+  --card: #1C1917;
+  --card-foreground: #FAFAF9;
 
-  --popover: #161B2E;
-  --popover-foreground: #EEF1F8;
+  --popover: #1C1917;
+  --popover-foreground: #FAFAF9;
 
-  --primary: #7A8FE8;
-  --primary-foreground: #0E1220;
+  --primary: #FB7185;
+  --primary-foreground: #0C0A09;
 
-  --secondary: #1E2440;
-  --secondary-foreground: #EEF1F8;
+  --secondary: #1C1917;
+  --secondary-foreground: #FAFAF9;
 
-  --muted: #1E2440;
-  --muted-foreground: #A6ADC0;
+  --muted: #1C1917;
+  --muted-foreground: #A8A29E;
 
-  --accent: #1E2440;
-  --accent-foreground: #EEF1F8;
+  --accent: #1C1917;
+  --accent-foreground: #FAFAF9;
 
   --destructive: #F87171;
 
-  --border: #2A3047;
-  --input: #2A3047;
-  --ring: #7A8FE8;
+  --border: #292524;
+  --input: #292524;
+  --ring: #FB7185;
 
-  --spotlight-a: color-mix(in oklab, #5C76DD 15%, transparent);
-  --spotlight-b: color-mix(in oklab, #7A8FE8 12%, transparent);
+  --spotlight-a: color-mix(in oklab, #FB7185 15%, transparent);
+  --spotlight-b: color-mix(in oklab, #14B8A6 12%, transparent);
 }
 
 /* View Transition circular reveal for theme toggle */
