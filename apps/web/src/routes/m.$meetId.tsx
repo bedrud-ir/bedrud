@@ -3,13 +3,13 @@ import { LiveKitRoom, RoomAudioRenderer, useTracks } from '@livekit/components-r
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { AudioCaptureOptions } from 'livekit-client'
 import { Track } from 'livekit-client'
-import { PhoneOff, Wifi } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAudioPreferencesStore } from '#/lib/audio-preferences.store'
 import { useAuthStore } from '#/lib/auth.store'
 import { useRecentRoomsStore } from '#/lib/recent-rooms.store'
 import { usePinnedParticipants } from '#/lib/usePinnedParticipants'
+import { ErrorPage } from '@/components/ErrorPage'
 import { AskActionBanner } from '@/components/meeting/AskActionBanner'
 import { AudioProcessorManager } from '@/components/meeting/AudioProcessorManager'
 import { BeforeUnloadLock } from '@/components/meeting/BeforeUnloadLock'
@@ -238,52 +238,7 @@ function MeetingPage() {
   }
 
   if (joinError) {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: '#07070f',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 16,
-        }}
-      >
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: '50%',
-            background: 'rgba(239,68,68,0.1)',
-            border: '1px solid rgba(239,68,68,0.25)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Wifi size={22} style={{ color: '#f87171' }} />
-        </div>
-        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>Failed to join room</p>
-        <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, maxWidth: 320, textAlign: 'center' }}>{joinError}</p>
-        <button
-          onClick={() => navigate({ to: '/dashboard' })}
-          style={{
-            marginTop: 8,
-            padding: '8px 20px',
-            borderRadius: 10,
-            border: 'none',
-            background: 'color-mix(in oklab, var(--primary) 20%, transparent)',
-            color: 'var(--sky-300)',
-            fontSize: 13,
-            cursor: 'pointer',
-          }}
-        >
-          Back to dashboard
-        </button>
-      </div>
-    )
+    return <ErrorPage variant="room-error" error={joinError} showBack={false} />
   }
 
   if (!joinData) {
@@ -318,52 +273,7 @@ function MeetingPage() {
   const { id, token, livekitHost: wsUrl, name: roomName, adminId } = joinData
 
   if (wasKicked) {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: '#07070f',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 16,
-        }}
-      >
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: '50%',
-            background: 'rgba(239,68,68,0.1)',
-            border: '1px solid rgba(239,68,68,0.25)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <PhoneOff size={22} style={{ color: '#f87171' }} />
-        </div>
-        <p style={{ color: 'white', fontSize: 16, fontWeight: 600 }}>You were removed</p>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>A moderator removed you from this room.</p>
-        <button
-          onClick={() => navigate({ to: '/dashboard' })}
-          style={{
-            marginTop: 8,
-            padding: '8px 20px',
-            borderRadius: 10,
-            border: 'none',
-            background: 'color-mix(in oklab, var(--primary) 20%, transparent)',
-            color: 'var(--sky-300)',
-            fontSize: 13,
-            cursor: 'pointer',
-          }}
-        >
-          Back to dashboard
-        </button>
-      </div>
-    )
+    return <ErrorPage variant="kicked" showBack={false} />
   }
 
   return (
