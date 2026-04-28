@@ -3,6 +3,7 @@ import { Eye, EyeOff, KeyRound, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuthStore } from '#/lib/auth.store'
+import { getPublicSettings, type PublicSettings } from '#/lib/use-public-settings'
 import { useUserStore } from '#/lib/user.store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,11 +13,6 @@ export const Route = createFileRoute('/auth/register')({ component: RegisterPage
 interface AuthResponse {
   user: { id: string; email: string; name: string; provider: string; accesses: string[] | null; avatarUrl?: string }
   tokens: { accessToken: string; refreshToken: string }
-}
-
-interface PublicSettings {
-  registrationEnabled: boolean
-  tokenRegistrationOnly: boolean
 }
 
 function RegisterPage() {
@@ -36,10 +32,16 @@ function RegisterPage() {
   const [settings, setSettings] = useState<PublicSettings | null>(null)
 
   useEffect(() => {
-    api
-      .get<PublicSettings>('/api/auth/settings')
+    getPublicSettings()
       .then(setSettings)
-      .catch(() => setSettings({ registrationEnabled: true, tokenRegistrationOnly: false }))
+      .catch(() =>
+        setSettings({
+          registrationEnabled: true,
+          tokenRegistrationOnly: false,
+          passkeysEnabled: true,
+          oauthProviders: [],
+        }),
+      )
   }, [])
 
   const requiresToken = settings?.tokenRegistrationOnly === true
@@ -100,7 +102,7 @@ function RegisterPage() {
           <h1 className="text-2xl font-bold tracking-tight">Registration closed</h1>
           <p className="text-sm text-muted-foreground">This instance is not accepting new accounts.</p>
         </div>
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           The administrator has disabled new registrations.
         </div>
         <p className="text-center text-sm text-muted-foreground">
@@ -127,9 +129,7 @@ function RegisterPage() {
 
       {/* Global error */}
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
+        <div className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -213,7 +213,7 @@ function RegisterPage() {
         {requiresToken && (
           <div className="space-y-1.5">
             <label htmlFor="reg-invite" className="text-sm font-medium flex items-center gap-1.5">
-              <KeyRound className="h-3.5 w-3.5" style={{ color: 'var(--sky-300)' }} />
+              <KeyRound className="h-3.5 w-3.5" style={{ color: 'var(--accent-500)' }} />
               Invite token <span className="text-destructive">*</span>
             </label>
             <Input

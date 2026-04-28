@@ -55,7 +55,7 @@ function GuestPage() {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-1">
-        <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <div className="mb-4 inline-flex h-11 w-11 items-center justify-center bg-primary/10 text-primary">
           <UserRound className="h-5 w-5" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight">Join as guest</h1>

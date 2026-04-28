@@ -19,7 +19,7 @@ function Waveform() {
       {bars.map((h, i) => (
         <span
           key={i}
-          className="w-[3px] rounded-full bg-white/30"
+          className="w-[3px] bg-white/30"
           style={{
             height: `${h * 4}px`,
             animation: `wave 1.4s ease-in-out ${(i * 0.09).toFixed(2)}s infinite alternate`,
@@ -65,7 +65,7 @@ function AuthLayout() {
 
         {/* Aurora blobs */}
         <div
-          className="pointer-events-none absolute -left-20 -top-20 h-80 w-80 rounded-full blur-3xl"
+          className="pointer-events-none absolute -left-20 -top-20 h-80 w-80 blur-3xl"
           style={{
             background:
               'radial-gradient(circle, color-mix(in oklab, var(--primary) 19%, transparent), transparent 70%)',
@@ -73,17 +73,17 @@ function AuthLayout() {
           }}
         />
         <div
-          className="pointer-events-none absolute -bottom-16 -right-16 h-72 w-72 rounded-full blur-3xl"
+          className="pointer-events-none absolute -bottom-16 -right-16 h-72 w-72 blur-3xl"
           style={{
             background:
-              'radial-gradient(circle, color-mix(in oklab, var(--sky-700) 15%, transparent), transparent 70%)',
+              'radial-gradient(circle, color-mix(in oklab, var(--accent-600) 15%, transparent), transparent 70%)',
             animation: 'blob 12s ease-in-out 3s infinite',
           }}
         />
         <div
-          className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-48 rounded-full blur-2xl"
+          className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-48 blur-2xl"
           style={{
-            background: 'radial-gradient(circle, color-mix(in oklab, var(--sky-800) 8%, transparent), transparent 70%)',
+            background: 'radial-gradient(circle, color-mix(in oklab, var(--accent-800) 8%, transparent), transparent 70%)',
             animation: 'blob 15s ease-in-out 6s infinite',
           }}
         />
@@ -91,9 +91,9 @@ function AuthLayout() {
         {/* Logo */}
         <div className="relative flex items-center gap-3">
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-xl"
+            className="flex h-9 w-9 items-center justify-center"
             style={{
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--sky-700) 100%)',
+              background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent-600) 100%)',
               boxShadow: '0 2px 16px color-mix(in oklab, var(--primary) 31%, transparent)',
             }}
           >
@@ -113,7 +113,7 @@ function AuthLayout() {
                 className="bg-clip-text text-transparent"
                 style={{
                   backgroundImage:
-                    'linear-gradient(135deg, var(--sky-300) 0%, var(--cyan-400) 50%, var(--cyan-300) 100%)',
+                    'linear-gradient(135deg, var(--accent-300) 0%, var(--accent-400) 50%, var(--accent-300) 100%)',
                 }}
               >
                 built for humans.
@@ -129,8 +129,8 @@ function AuthLayout() {
             {['End-to-end encrypted', 'Zero telemetry', 'Your infrastructure'].map((item) => (
               <div key={item} className="flex items-center gap-2 text-xs text-white/40">
                 <span
-                  className="h-1.5 w-1.5 rounded-full shrink-0"
-                  style={{ background: 'linear-gradient(135deg, var(--primary), var(--sky-700))' }}
+                  className="h-1.5 w-1.5 shrink-0"
+                  style={{ background: 'linear-gradient(135deg, var(--primary), var(--accent-600))' }}
                 />
                 {item}
               </div>

@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff, Fingerprint, Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuthStore } from '#/lib/auth.store'
+import { getPublicSettings, type PublicSettings } from '#/lib/use-public-settings'
 import { useUserStore } from '#/lib/user.store'
 import { base64ToBuffer, bufferToBase64 } from '#/lib/webauthn'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
@@ -32,6 +33,15 @@ function LoginPage() {
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
   const [error, setError] = useState('')
+  const [settings, setSettings] = useState<PublicSettings | null>(null)
+
+  useEffect(() => {
+    getPublicSettings().then(setSettings)
+  }, [])
+
+  const showPasskey = settings?.passkeysEnabled !== false
+  const oauthProviders = settings?.oauthProviders ?? []
+  const hasAltAuth = showPasskey || oauthProviders.length > 0
 
   function handleSuccess(res: AuthResponse) {
     setTokens(res.tokens)
@@ -113,9 +123,7 @@ function LoginPage() {
 
       {/* Global error */}
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
+        <div className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
       )}
 
       {/* Email/password form */}
@@ -176,24 +184,28 @@ function LoginPage() {
         </Button>
       </form>
 
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t" />
+      {/* Divider — only if alt auth methods exist */}
+      {hasAltAuth && (
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-background px-3 text-xs text-muted-foreground">or continue with</span>
+          </div>
         </div>
-        <div className="relative flex justify-center">
-          <span className="bg-background px-3 text-xs text-muted-foreground">or continue with</span>
-        </div>
-      </div>
+      )}
 
       {/* Passkey */}
-      <Button variant="outline" className="w-full gap-2" onClick={handlePasskey} disabled={isPasskeyLoading}>
-        {isPasskeyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />}
-        {isPasskeyLoading ? 'Authenticating…' : 'Sign in with Passkey'}
-      </Button>
+      {showPasskey && (
+        <Button variant="outline" className="w-full gap-2" onClick={handlePasskey} disabled={isPasskeyLoading}>
+          {isPasskeyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />}
+          {isPasskeyLoading ? 'Authenticating…' : 'Sign in with Passkey'}
+        </Button>
+      )}
 
       {/* OAuth */}
-      <OAuthButtons />
+      <OAuthButtons availableProviders={oauthProviders} />
 
       {/* Footer links */}
       <p className="text-center text-sm text-muted-foreground">
