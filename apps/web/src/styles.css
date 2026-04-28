@@ -10,8 +10,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Bedrud Design Tokens — Cobalt + Gold (Accessible)
-   Vibe: Linear / Stripe / Notion — credibility-first, premium, editorial.
+   Bedrud Design Tokens — Rose + Teal (Retro)
+   Sharp corners. Bold colors. No purple.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @theme inline {
@@ -35,51 +35,34 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
 
-  /* Primary scale (mapped to --sky-* names) */
-  --color-sky-50: var(--sky-50);
-  --color-sky-100: var(--sky-100);
-  --color-sky-200: var(--sky-200);
-  --color-sky-300: var(--sky-300);
-  --color-sky-400: var(--sky-400);
-  --color-sky-500: var(--sky-500);
-  --color-sky-600: var(--sky-600);
-  --color-sky-700: var(--sky-700);
-  --color-sky-800: var(--sky-800);
-  --color-sky-900: var(--sky-900);
+  /* Primary scale (rose) */
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
 
-  /* Secondary scale (mapped to --cyan-* names) */
-  --color-cyan-50: var(--cyan-50);
-  --color-cyan-100: var(--cyan-100);
-  --color-cyan-200: var(--cyan-200);
-  --color-cyan-300: var(--cyan-300);
-  --color-cyan-400: var(--cyan-400);
-  --color-cyan-500: var(--cyan-500);
-  --color-cyan-600: var(--cyan-600);
-  --color-cyan-700: var(--cyan-700);
-  --color-cyan-800: var(--cyan-800);
-  --color-cyan-900: var(--cyan-900);
-
-  /* Accent scale (mapped to --fuchsia-* names) */
-  --color-fuchsia-50: var(--fuchsia-50);
-  --color-fuchsia-100: var(--fuchsia-100);
-  --color-fuchsia-200: var(--fuchsia-200);
-  --color-fuchsia-300: var(--fuchsia-300);
-  --color-fuchsia-400: var(--fuchsia-400);
-  --color-fuchsia-500: var(--fuchsia-500);
-  --color-fuchsia-600: var(--fuchsia-600);
-  --color-fuchsia-700: var(--fuchsia-700);
-  --color-fuchsia-800: var(--fuchsia-800);
-  --color-fuchsia-900: var(--fuchsia-900);
-
-  /* Semantic aliases */
-  --color-accent-bright: var(--accent-bright);
-  --color-accent-bright-hover: var(--accent-bright-hover);
-  --color-info: var(--info);
+  /* Accent scale (teal) */
+  --color-teal-50: var(--accent-50);
+  --color-teal-100: var(--accent-100);
+  --color-teal-200: var(--accent-200);
+  --color-teal-300: var(--accent-300);
+  --color-teal-400: var(--accent-400);
+  --color-teal-500: var(--accent-500);
+  --color-teal-600: var(--accent-600);
+  --color-teal-700: var(--accent-700);
+  --color-teal-800: var(--accent-800);
+  --color-teal-900: var(--accent-900);
 }
 
 /* ── View Transitions: theme switch circle animation ─────────────────────── */
@@ -92,6 +75,7 @@
 @layer base {
   * {
     border-color: var(--border);
+    border-radius: 0 !important;
     box-sizing: border-box;
   }
   html,
@@ -213,4 +197,45 @@
 
 .chat-toast {
   animation: chat-toast-in 0.22s ease-out forwards;
+}
+
+/* ── Landing page hero animations ─────────────────────────────────────────── */
+
+@keyframes hero-float-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.97); }
+}
+
+@keyframes hero-float-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-25px, 20px) scale(1.03); }
+  66% { transform: translate(15px, -25px) scale(0.95); }
+}
+
+@keyframes hero-float-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(20px, 10px) scale(1.04); }
+}
+
+.hero-blob-a {
+  animation: hero-float-a 18s ease-in-out infinite;
+}
+.hero-blob-b {
+  animation: hero-float-b 22s ease-in-out infinite;
+}
+.hero-blob-c {
+  animation: hero-float-c 15s ease-in-out infinite;
+}
+
+/* Feature card hover */
+.feature-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 0.06);
+}
+.dark .feature-card:hover {
+  box-shadow: 0 4px 20px rgb(0 0 0 / 0.3);
 }
